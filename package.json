@@ -1,0 +1,25 @@
+{
+  "name": "strateger-netlify",
+  "version": "1.0.0",
+  "description": "Strateger Race Strategy Manager - Netlify Functions",
+  "main": "index.html",
+  "scripts": {
+    "dev": "netlify dev",
+    "build": "echo 'No build needed'",
+    "deploy": "netlify deploy --prod"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^0.9.0"
+  },
+  "devDependencies": {
+    "netlify-cli": "^23.13.0"
+  },
+  "keywords": [
+    "racing",
+    "strategy",
+    "karting",
+    "endurance"
+  ],
+  "author": "Holyland Racing",
+  "license": "MIT"
+}
