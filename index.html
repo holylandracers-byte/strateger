@@ -68,6 +68,13 @@
 	.bg-navy-900 { background-color: #0f172a; }
 	.text-ice { color: #22d3ee; }
 	.text-neon { color: #a3e635; }
+	/* מונע auto-scroll על focus */
+	.starter-radio:focus,
+	.starter-indicator:focus {
+		outline: none;
+		scroll-margin: 0;
+		scroll-behavior: auto;
+	}
 	
         :root {
             --safe-area-top: env(safe-area-inset-top);
@@ -265,7 +272,7 @@
                     <button id="retryBtn" class="hidden text-xs bg-red-900 text-red-300 px-3 py-1 rounded mt-2" onclick="initHostPeer()" data-i18n="retry">Retry</button>
                 </div>
                 
-                <button onclick="toggleConfigPanel()" class="w-full bg-navy-800 text-gray-300 text-sm py-2 rounded-lg mb-3 border border-gray-700 flex items-center justify-center gap-2">
+                <button onclick="toggleConfigPanel(event)" class="w-full bg-navy-800 text-gray-300 text-sm py-2 rounded-lg mb-3 border border-gray-700 flex items-center justify-center gap-2">
                     <span data-i18n="raceSettings">⚙️ Race Settings</span>
                     <span id="configArrow">▼</span>
                 </button>
@@ -1380,12 +1387,18 @@
 			document.getElementById('simResult').className = `bg-navy-950 p-2 rounded text-xs border font-mono text-center whitespace-pre-line ${valid ? 'text-neon border-neon/50' : 'text-danger border-danger/50'}`;
 		}
 
-        function toggleConfigPanel() {
-            const panel = document.getElementById('configPanel');
-            const arrow = document.getElementById('configArrow');
-            panel.classList.toggle('hidden');
-            arrow.innerText = panel.classList.contains('hidden') ? '▼' : '▲';
-        }
+        function toggleConfigPanel(event) {
+			// אם זה לחיצה על נהג, התעלם
+			if (event && event.target.closest('.starter-indicator, .starter-radio, .driver-input')) {
+				console.log('🛡️ Blocked toggle from driver interaction');
+				return;
+			}
+			
+			const panel = document.getElementById('configPanel');
+			const arrow = document.getElementById('configArrow');
+			panel.classList.toggle('hidden');
+			arrow.innerText = panel.classList.contains('hidden') ? '▼' : '▲';
+		}
 		
 		// ==================== LIVE TIMING ====================
 		function updateSearchConfig() {
@@ -2593,9 +2606,12 @@
 			// ✅ Event handler אמיתי עם stopPropagation
 			label.addEventListener('click', function(e) {
 				e.stopPropagation();
+				e.preventDefault();          // ✅ חדש
+				e.stopImmediatePropagation(); // ✅ חדש
+				
 				radio.checked = true;
-				updateStarterVisuals();
-			});
+				updateStarterVisuals(e);
+			}, true);  // ✅ capture phase
 			
 			label.appendChild(radio);
 			label.appendChild(indicator);
@@ -2622,8 +2638,17 @@
 		}
 		
 		function updateStarterVisuals(event) {
-			if (event) event.stopPropagation();  // ✅ הוסף
+			if (event) {
+				event.stopPropagation();
+				event.preventDefault();
+			}
 			
+			// שמור scroll position
+			const scrollPos = window.scrollY || document.documentElement.scrollTop;
+			const configPanel = document.getElementById('configPanel');
+			const panelScrollPos = configPanel ? configPanel.scrollTop : 0;
+			
+			// עדכן אינדיקטורים
 			document.querySelectorAll('.starter-indicator').forEach(ind => {
 				const radio = ind.previousElementSibling;
 				if (radio && radio.checked) {
@@ -2632,6 +2657,12 @@
 					ind.className = 'starter-indicator w-8 h-8 rounded-full border-2 border-gray-500 flex items-center justify-center text-sm hover:border-ice transition';
 				}
 			});
+			
+			// החזר scroll position
+			window.scrollTo(0, scrollPos);
+			if (configPanel) {
+				configPanel.scrollTop = panelScrollPos;
+			}
 		}
         
         function updateDriversListHeight() {
