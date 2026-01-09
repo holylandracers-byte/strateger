@@ -85,13 +85,8 @@
 			margin: 0;
 			padding: 0;
 			height: 100%;
-			overflow: auto;  /* ✅ */
+			overflow: hidden;  /* ✅ */
 			overscroll-behavior: none;
-			-webkit-overflow-scrolling: touch;
-		}
-
-		#setupScreen {
-			overflow-y: auto !important;
 			-webkit-overflow-scrolling: touch;
 		}
         
@@ -132,7 +127,7 @@
         .competitor-row.danger-zone { background: rgba(239, 68, 68, 0.15); }
         
         /* Scrollable lists */
-        .overflow-y-scroll { overflow-y: scroll !important; -webkit-overflow-scrolling: touch; }
+        .overflow-y-auto { overflow-y: auto !important; -webkit-overflow-scrolling: touch; }
 		
 		/* Radio button styling */
 		input[type="radio"]:checked + span { color: #22d3ee; font-weight: bold; }
@@ -166,13 +161,19 @@
 				max-width: 1000px;
 			}
 		}
+		
+		#langSelect {
+			width: auto !important;
+			max-width: 70px;
+		}
 
 		/* Viewer mode - disable interactions - חדש! */
 		.viewer-mode button:not(.btn-view-only),
-		.viewer-mode .editable {
-			opacity: 0.5 !important;
-			cursor: not-allowed !important;
-			pointer-events: none !important;
+		.viewer-mode .editable,
+		.viewer-mode input,
+		.viewer-mode select:not(#langSelect),
+		.viewer-mode .host-only {
+			display: none !important;
 		}
 
 		.viewer-mode .btn-view-only {
@@ -180,19 +181,71 @@
 			pointer-events: auto !important;
 		}
 
-		/* תיקון header overlap במסכים קטנים */
+		/* Preview screen responsive fixes */
 		@media (max-width: 640px) {
-			header {
+			/* EXISTING RULES - KEEP THESE */
+			header .flex {
+				flex-direction: column;
+				align-items: stretch;
+			}
+			
+			#hostCodeDisplay {
+				order: -1;
+				margin-bottom: 0.5rem;
+			}
+			
+			.header-info-grid {
+				display: grid;
+				grid-template-columns: 1fr;
+				gap: 0.5rem;
+				width: 100%;
+			}
+			
+			.header-info-item {
+				display: flex;
+				flex-direction: column;
+				align-items: center;
 				padding: 0.5rem;
+				background: rgba(15, 23, 42, 0.5);
+				border-radius: 0.5rem;
 			}
 			
-			header select {
-				font-size: 0.7rem;
-				padding: 0.25rem 0.5rem;
+			.header-info-label {
+				font-size: 0.65rem;
+				color: #9ca3af;
+				margin-bottom: 0.25rem;
 			}
 			
-			#langSelect option {
-				font-size: 0.75rem;
+			.header-info-value {
+				font-size: 1.25rem;
+				font-weight: bold;
+			}
+			
+			/* ADD THESE NEW RULES */
+			.simulation-preview {
+				padding: 0.75rem;
+			}
+			
+			.simulation-preview h2 {
+				font-size: 1.25rem;
+			}
+			
+			.simulation-preview h3 {
+				font-size: 1rem;
+			}
+			
+			/* Stack preview buttons vertically on phones */
+			#previewScreen .flex.gap-3:last-of-type {
+				flex-direction: column;
+			}
+			
+			#previewScreen .flex.gap-3:last-of-type button {
+				width: 100%;
+			}
+			
+			/* Strategy summary - single column */
+			#strategySummary {
+				grid-template-columns: 1fr !important;
 			}
 		}
 		
@@ -209,32 +262,140 @@
 				font-size: 1.75rem;
 			}
 		}
+		
+		/* Dynamic grid for control buttons */
+		.control-grid {
+			display: grid;
+			grid-template-columns: repeat(3, 1fr);
+			gap: 0.5rem;
+		}
+
+		.control-grid.no-night {
+			grid-template-columns: repeat(2, 1fr);
+		}
+
+		@media (max-width: 640px) {
+			.control-grid {
+				grid-template-columns: repeat(2, 1fr);
+			}
+			
+			.control-grid.no-night {
+				grid-template-columns: 1fr;
+			}
+		}
+		
+		/* Pre-race simulation preview */
+		.simulation-preview {
+			background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+			border: 2px solid #22d3ee;
+			border-radius: 1rem;
+			padding: 1rem;
+		}
+
+		.stint-timeline {
+			position: relative;
+			height: 60px;
+			background: #0f172a;
+			border-radius: 0.5rem;
+			overflow: hidden;
+		}
+
+		.stint-block {
+			position: absolute;
+			height: 100%;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			font-size: 0.75rem;
+			font-weight: bold;
+			border-right: 2px solid #020617;
+			transition: all 0.3s;
+		}
+
+		.stint-block:hover {
+			transform: scaleY(1.1);
+			z-index: 10;
+		}
+
+		.pit-marker {
+			position: absolute;
+			width: 3px;
+			height: 100%;
+			background: #ef4444;
+			box-shadow: 0 0 8px #ef4444;
+		}
+
+		.time-marker {
+			position: absolute;
+			bottom: -20px;
+			font-size: 0.65rem;
+			color: #9ca3af;
+			transform: translateX(-50%);
+		}
+		
+		#driversList {
+			-webkit-overflow-scrolling: touch;
+		}
+		
+		/* Prevent over-scrolling in setup and preview screens */
+		#setupScreen {
+			overflow-y: auto !important;
+			-webkit-overflow-scrolling: touch;
+			height: 100%;
+			max-height: 100vh;
+			padding-bottom: env(safe-area-inset-bottom, 1rem);
+		}
+
+		#previewScreen {
+			max-height: 100vh;
+			overflow-y: auto;
+			padding-bottom: env(safe-area-inset-bottom, 1rem);
+		}
+
+		/* Ensure content doesn't extend beyond last button */
+		#setupScreen > div,
+		#previewScreen > div {
+			padding-bottom: 2rem;
+		}
+
+		/* Make sure buttons stay visible */
+		#startRaceBtn,
+		#previewScreen .flex.gap-3:last-of-type {
+			margin-bottom: 0;
+		}
     </style>
 </head>
 <body class="bg-navy-950 text-gray-200 min-h-screen flex flex-col">
     <!-- Header -->
-    <header class="bg-navy-900 border-b border-gray-800 p-2 shrink-0">
-		<div class="flex flex-wrap justify-between items-center gap-2">
-			<!-- Left side -->
-			<div class="flex items-center gap-2 min-w-0">
-				<span id="liveIndicator" class="hidden sync-dot live-dot flex-shrink-0"></span>
-				<span id="headerModeText" class="text-xs text-gray-500 whitespace-nowrap">LIVE</span>
+	<header class="bg-navy-900 border-b border-gray-800 p-2 shrink-0">
+		<div class="flex justify-between items-center gap-3">
+			<!-- Code & Viewers - משמאל -->
+			<div class="flex items-center gap-2">
+				<div id="hostCodeDisplay" class="hidden flex items-center gap-2 bg-navy-800 px-3 py-2 rounded border border-ice/50">
+					<i class="fas text-ice text-sm"></i>
+					<span class="text-[10px] text-gray-400" data-i18n="code">Code:</span>
+					<code id="dashboardHostId" class="text-ice font-mono font-bold text-sm">---</code>
+					<button onclick="copyHostCode()" class="text-gray-400 hover:text-white transition-colors ml-1" title="Copy code">
+						<i class="fas fa-copy text-xs"></i>
+					</button>
+				</div>
+				
+				<div id="syncControls" class="hidden flex items-center gap-2 bg-navy-800 px-3 py-2 rounded border border-gray-700">
+					<span id="syncDot" class="sync-dot bg-green-500"></span>
+					<span id="syncText" class="text-xs text-gray-400" data-i18n="synced">Synced</span>
+				</div>
+				
+				<div id="liveIndicator" class="hidden sync-dot live-dot"></div>
 			</div>
 			
-			<!-- Right side -->
-			<div class="flex items-center gap-2 flex-wrap">
-				<select id="langSelect" onchange="setLanguage(this.value)" 
-						class="text-xs bg-navy-800 px-2 py-1 rounded border border-gray-700 hover:bg-navy-700 text-white cursor-pointer">
-					<option value="en">EN</option>
-					<option value="he">HE</option>
-					<option value="fr">FR</option>
-					<option value="pt">PT</option>
-				</select>
-				<span id="connStatus" class="hidden flex items-center gap-1 text-xs whitespace-nowrap">
-					<span class="sync-dot bg-gray-500"></span>
-					<span data-i18n="offline">Offline</span>
-				</span>
-			</div>
+			<!-- Language Select - מימין -->
+			<select id="langSelect" onchange="setLanguage(this.value)" 
+					class="text-xs bg-navy-800 px-2 py-1 rounded border border-gray-700 hover:bg-navy-700 text-white cursor-pointer">
+				<option value="en">EN</option>
+				<option value="he">HE</option>
+				<option value="fr">FR</option>
+				<option value="pt">PT</option>
+			</select>
 		</div>
 	</header>
 
@@ -259,6 +420,10 @@
                     <p class="text-[10px] text-gray-500" data-i18n="viewerDesc">Watch live</p>
                 </button>
             </div>
+			<button id="loadStrategyBtn" onclick="loadStrategyLibrary()" 
+					class="hidden w-full bg-navy-800 text-gray-300 text-sm py-2 rounded-lg mb-3 border border-gray-700 hover:border-ice">
+				📚 <span data-i18n="loadStrategy">Load Saved Strategy</span>
+			</button>
 
             <!-- Host Section -->
             <div id="hostSection" class="hidden">
@@ -342,6 +507,15 @@
                         <label class="text-[10px] text-gray-400" data-i18n="maxStint">Max Stint (min)</label>
                         <input type="number" id="maxStint" value="60" oninput="runSim()" class="w-full bg-navy-950 border border-gray-700 rounded p-2 text-white text-sm">
                     </div>
+					<!-- Pit Window Restrictions -->
+					<div>
+						<label class="text-[10px] text-gray-400" data-i18n="pitClosedStart">🚫 Pit Closed Start (min)</label>
+						<input type="number" id="pitClosedStart" min="0" max="120" value="0" oninput="runSim()" class="w-full bg-navy-950 border border-gray-700 rounded p-2 text-white text-sm">
+					</div>
+					<div>
+						<label class="text-[10px] text-gray-400" data-i18n="pitClosedEnd">🚫 Pit Closed End (min)</label>
+						<input type="number" id="pitClosedEnd" min="0" max="120" value="0" oninput="runSim()" class="w-full bg-navy-950 border border-gray-700 rounded p-2 text-white text-sm">
+					</div>
                 </div>
                 
                 <div class="bg-navy-800 p-2 rounded border border-gray-700">
@@ -397,10 +571,15 @@
                             <button onclick="removeDriverField()" class="text-xs bg-navy-700 px-2 py-1 rounded hover:bg-navy-600">-</button>
                         </div>
                     </div>
-                    <div id="driversList" class="space-y-2 overflow-y-scroll transition-all duration-300" style="max-height: 208px;"></div>
+                    <div id="driversList" class="space-y-2 transition-all duration-300"></div>
                 </div>
-
-                <button id="startRaceBtn" onclick="initRace()" class="w-full bg-ice hover:bg-cyan-300 text-navy-950 font-bold py-3 rounded-lg text-lg mt-4 shadow-[0_0_15px_rgba(34,211,238,0.3)] transition btn-press" data-i18n="startRace">
+				
+				<button onclick="generatePreview()" 
+						class="w-full mt-4 bg-gradient-to-r from-purple-600 to-fuchsia-500 hover:from-fuchsia-500 hover:to-purple-600 text-white font-bold py-4 rounded-lg shadow-[0_0_20px_rgba(168,85,247,0.4)] transition-all">
+					<i class="fas fa-chart-gantt mr-2"></i>
+					<span data-i18n="previewStrategy">Preview Strategy</span>
+				</button>
+                <button id="startRaceBtn" onclick="initRace()" class="w-full bg-ice hover:bg-cyan-300 text-navy-950 font-bold py-3 rounded-lg text-lg mt-2 shadow-[0_0_15px_rgba(34,211,238,0.3)] transition btn-press" data-i18n="startRace">
                     Start Race (Host)
                 </button>
             </div>
@@ -418,36 +597,163 @@
                 </div>
             </div>
         </div>
+		<script>
+		// Hide preview when dashboard is active
+		function hidePreviewWhenDashboardActive() {
+			const dashboard = document.getElementById('raceDashboard');
+			const preview = document.getElementById('previewScreen');
+			if (dashboard && preview) {
+				const observer = new MutationObserver(() => {
+					if (!dashboard.classList.contains('hidden')) {
+						preview.classList.add('hidden');
+					}
+				});
+				observer.observe(dashboard, { attributes: true, attributeFilter: ['class'] });
+			}
+		}
+		window.addEventListener('DOMContentLoaded', hidePreviewWhenDashboardActive);
+		</script>
     </div>
+	<!-- Pre-Race Simulation Preview -->
+	<div id="previewScreen" class="hidden flex-1 overflow-y-auto p-4">
+		<div class="max-w-4xl mx-auto">
+			<div class="simulation-preview">
+				<div class="flex items-center justify-between mb-4">
+					<h2 class="text-2xl font-bold text-ice">
+						<i class="fas fa-chart-gantt mr-2"></i>
+						<span data-i18n="racePreview">Race Strategy Preview</span>
+					</h2>
+					<button onclick="closePreview()" class="text-gray-400 hover:text-white">
+						<i class="fas fa-times text-xl"></i>
+					</button>
+				</div>
+				
+				<!-- AI Strategy Assistant (Moved from Setup) -->
+			<div class="bg-navy-900 p-4 rounded-lg border border-purple-500/30 shadow-lg mb-4">
+				<h3 class="text-sm font-bold text-purple-400 mb-3 flex items-center gap-2">
+					<span>🤖</span>
+					<span data-i18n="aiAssistant">AI Strategy Assistant</span>
+				</h3>
+
+				<!-- Weather Conditions -->
+				<div class="mb-3">
+					<label class="text-[10px] text-gray-400 mb-1 block data-i18n="expectedConditions">Expected Conditions:</label>
+					<div class="grid grid-cols-3 gap-1">
+						<label class="flex items-center justify-center gap-1 bg-navy-950 p-2 rounded border border-gray-600 cursor-pointer has-[:checked]:border-yellow-400 has-[:checked]:bg-yellow-400/20">
+							<input type="radio" name="weatherCondition" value="dry" checked class="hidden">
+							<span class="text-[10px]">☀️ Dry</span>
+						</label>
+						<label class="flex items-center justify-center gap-1 bg-navy-950 p-2 rounded border border-gray-600 cursor-pointer has-[:checked]:border-blue-400 has-[:checked]:bg-blue-400/20">
+							<input type="radio" name="weatherCondition" value="wet" class="hidden">
+							<span class="text-[10px]">☁️ Wet</span>
+						</label>
+						<label class="flex items-center justify-center gap-1 bg-navy-950 p-2 rounded border border-gray-600 cursor-pointer has-[:checked]:border-orange-400 has-[:checked]:bg-orange-400/20">
+							<input type="radio" name="weatherCondition" value="mixed" class="hidden">
+							<span class="text-[10px]"><span data-i18n="mixed">🌤️ Mixed</span></span>
+						</label>
+					</div>
+				</div>
+				
+				<div class="mb-3">
+					<label class="text-[10px] text-gray-400 mb-1 block data-i18n="strategyInstructions">Strategy Instructions:</label>
+					<textarea id="strategyInstructions" 
+							placeholder="e.g., 'Focus double stints during night shifts for Squad A', 'Keep driver X fresh for final stints', 'Minimize pit stops in first 3 hours'..."
+							class="w-full bg-navy-950 border border-gray-600 rounded p-2 text-white text-xs h-20 resize-none"></textarea>
+				</div>
+				
+				<button onclick="generateAIStrategy()" 
+						class="w-full bg-purple-600 hover:bg-purple-700 text-white text-sm py-2 rounded flex items-center justify-center gap-2 transition">
+					<span data-i18n="generateAi">🤖 Generate AI Strategy</span>
+				</button>
+				
+				<div id="aiStrategyStatus" class="text-[10px] text-center mt-2 hidden"></div>
+			</div>
+			
+			<!-- Race Start Time Configuration -->
+				<div class="bg-navy-900 rounded-lg p-4 mb-4">
+					<label class="block text-sm text-gray-400 mb-2">
+						<i class="fas fa-clock mr-2"></i>
+						<span data-i18n="raceStartTime">Race Start Time</span>
+					</label>
+					<div class="flex justify-between text-xs text-gray-400 mt-6">
+						<span>Start: <span id="timelineStart">--:--</span></span>
+						<span>End: <span id="timelineEnd">--:--</span></span>
+					</div>
+					<input type="time" id="raceStartTime" 
+						   class="w-full bg-navy-800 border border-gray-700 rounded px-3 py-2 text-white"
+						   onchange="updatePreview()">
+				</div>
+	
+				
+				<!-- Driver Breakdown -->
+				<div class="bg-navy-900 rounded-lg p-4 mb-4">
+					<h3 class="text-lg font-bold text-neon mb-3">
+						<i class="fas fa-users mr-2"></i>
+						<span data-i18n="driverSchedule">Driver Schedule</span>
+					</h3>
+					<div id="driverScheduleList" class="space-y-3"></div>
+				</div>
+				
+				<!-- Strategy Summary -->
+				<div class="bg-navy-900 rounded-lg p-4 mb-4">
+					<h3 class="text-lg font-bold text-neon mb-3">
+						<i class="fas fa-list-check mr-2"></i>
+						<span data-i18n="strategySummary">Strategy Summary</span>
+					</h3>
+					<div id="strategySummary" class="grid grid-cols-2 gap-3"></div>
+				</div>
+				
+				<!-- Action Buttons -->
+				<div class="flex flex-col sm:flex-row gap-3 mb-0">
+					<button onclick="editStrategy()" 
+							class="w-full sm:flex-1 bg-navy-800 hover:bg-navy-700 text-white font-bold py-3 rounded-lg border border-gray-700">
+						<i class="fas fa-edit mr-2"></i>
+						<span data-i18n="editStrategy">Edit Strategy</span>
+					</button>
+					<button onclick="saveStrategy()" 
+							class="w-full sm:flex-1 bg-gold/20 hover:bg-gold/30 text-gold font-bold py-3 rounded-lg border border-gold/50">
+						<i class="fas fa-save mr-2"></i>
+						<span data-i18n="saveStrategy">Save Strategy</span>
+					</button>
+					<button onclick="initRace()" 
+							class="w-full sm:flex-1 bg-gradient-to-r from-neon to-green-400 hover:from-green-400 hover:to-neon text-black font-bold py-3 rounded-lg shadow-lg">
+						<i class="fas fa-flag-checkered mr-2"></i>
+						<span data-i18n="startRace">Start Race</span>
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
 
     <!-- Race Dashboard -->
     <div id="raceDashboard" class="hidden flex flex-col h-full overflow-hidden">
         <!-- Top Bar -->
-        <div class="bg-navy-900 border-b border-gray-800 p-2 flex justify-between items-center shrink-0">
-			<div class="flex items-center gap-2">
-				<div id="hostCodeDisplay" class="hidden flex items-center gap-1 bg-navy-800 px-2 py-1 rounded border border-ice/50 cursor-pointer" onclick="copyHostCode()">
-					<span class="text-[10px] text-gray-400" data-i18n="code">Code:</span>
-					<span id="dashboardHostId" class="text-xs font-mono font-bold text-ice">---</span>
-					<span class="text-[10px]">📋</span>
+        <div class="bg-navy-900 border-b border-gray-800 shrink-0">
+			<!-- Race Info Section -->
+			<div class="p-2 flex items-center justify-between gap-3">
+				<!-- Race Time -->
+				<div class="flex flex-col items-center">
+					<p class="text-[10px] text-gray-500" data-i18n="raceTime">Race Time</p>
+					<p id="raceTimerDisplay" class="text-xl font-mono font-bold text-white big-digit">00:00:00</p>
 				</div>
-				<div id="syncControls" class="hidden flex items-center gap-1">
-					<span id="syncDot" class="sync-dot bg-green-500"></span>
-					<span id="syncText" class="text-[10px] text-gray-400" data-i18n="synced">Synced</span>
+				
+				<!-- Pit Stops -->
+				<div class="flex flex-col items-center">
+					<p class="text-[10px] text-gray-500" data-i18n="pitStops">Pit Stops</p>
+					<p id="pitCountDisplay" class="text-lg font-bold">
+						<span class="text-neon">0</span>
+						<span class="text-gray-500">/</span>
+						<span>0</span>
+					</p>
 				</div>
+				
+				<!-- Weather Button -->
+				<button id="btnRain" onclick="toggleRain()" class="btn-press bg-navy-800 border border-blue-500/50 rounded-lg px-3 py-2 hover:bg-navy-700">
+					<span id="rainIcon" class="text-lg">☀️</span>
+					<span id="rainText" class="text-xs font-bold text-yellow-400 block" data-i18n="dry">Dry</span>
+				</button>
 			</div>
-            <div class="text-right">
-                <p class="text-[10px] text-gray-500" data-i18n="raceTime">Race Time</p>
-                <p id="raceTimerDisplay" class="text-xl font-mono font-bold text-white big-digit">00:00:00</p>
-            </div>
-			<div class="flex items-center gap-2">
-				<p class="text-[10px] text-gray-500" data-i18n="pitStops">Pit Stops</p>
-				<p id="pitCountDisplay" class="text-lg font-bold text-neon">0 / 0</p>
-			</div>
-			<button id="btnRain" onclick="toggleRain()" class="btn-press bg-navy-800 border border-blue-500/50 rounded-lg p-2 group hover:bg-navy-700">
-				<span id="rainIcon" class="text-lg">☀️</span>
-				<span id="rainText" class="text-xs font-bold text-yellow-400" data-i18n="dry">Dry</span>
-			</button>
-        </div>
+		</div>
 
         <!-- Live Timing Panel (collapsible) -->
         <div id="liveTimingPanel" class="hidden bg-navy-900/80 border-b border-red-500/50 overflow-hidden transition-all duration-300 shrink-0" style="max-height: 350px;">
@@ -536,6 +842,18 @@
             </div>
         </div>
         
+        <!-- Pit Indicator for Viewer Mode -->
+        <div id="viewerPitIndicator" class="hidden bg-fuel/20 border-b border-fuel/50 p-2 text-center shrink-0">
+            <div class="flex items-center justify-center gap-2">
+                <span class="text-fuel text-sm font-bold">🏁 IN PIT</span>
+                <span id="viewerPitTimer" class="text-fuel font-mono font-bold text-lg">--</span>
+            </div>
+            <p class="text-[10px] text-gray-400 mt-1">
+                <span data-i18n="nextDriverIn">Next Driver:</span> 
+                <span id="viewerNextDriver" class="text-white font-bold">---</span>
+            </p>
+        </div>
+        
         <!-- Squad & Night Display -->
         <div id="activeSquadDisplay" class="hidden bg-navy-800 border-b border-gray-600 p-2 text-center shrink-0">
 			<span class="text-xs text-gray-400" data-i18n="activeSquad">Active Squad:</span>
@@ -548,7 +866,7 @@
         </div>
 
         <!-- Control Buttons -->
-        <div class="grid grid-cols-3 gap-2 p-2 bg-navy-900 border-b border-gray-800 shrink-0">
+        <div class="control-grid" id="controlButtonsGrid">
 			<button id="btnPush" onclick="setMode('push')" data-viewer-disabled="true" class="btn-press bg-navy-800 border border-green-900/50 rounded-lg p-2 group hover:bg-navy-700">
 				<span class="block text-lg">🔥 <span data-i18n="push">Push</span></span>
 			</button>
@@ -628,6 +946,90 @@
             <button onclick="cancelPitStop()" class="text-red-400 py-2 text-sm">❌ <span data-i18n="cancelPit">Cancel Pit Entry</span></button>
         </div>
     </div>
+
+	<!-- Saved Race Modal -->
+	<div id="savedRaceModal" class="hidden fixed inset-0 bg-navy-950/98 z-50 flex flex-col items-center justify-center p-4 backdrop-blur-md">
+		<div class="bg-gradient-to-br from-navy-900 to-navy-950 p-6 rounded-2xl border-2 border-ice shadow-[0_0_40px_rgba(34,211,238,0.3)] w-full max-w-md">
+			<div class="text-center mb-6">
+				<div class="w-16 h-16 bg-ice/20 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+					<i class="fas fa-flag-checkered text-3xl text-ice"></i>
+				</div>
+				<h2 class="text-2xl font-bold text-ice mb-2" data-i18n="activeRaceFound">Active Race Found!</h2>
+				<p class="text-gray-400 text-sm" data-i18n="raceInProgress">A race is currently in progress</p>
+			</div>
+			
+			<div class="bg-navy-950 rounded-lg p-4 mb-6 border border-gray-700">
+				<div class="space-y-3">
+					<div class="flex items-center justify-between">
+						<span class="text-gray-400 text-sm flex items-center gap-2">
+							<i class="fas fa-user text-ice"></i>
+							<span data-i18n="currentDriver">Current Driver</span>
+						</span>
+						<span id="savedRaceDriver" class="text-white font-bold text-lg">---</span>
+					</div>
+					<div class="flex items-center justify-between">
+						<span class="text-gray-400 text-sm flex items-center gap-2">
+							<i class="fas fa-clock text-neon"></i>
+							<span data-i18n="timeRemaining">Time Remaining</span>
+						</span>
+						<span id="savedRaceTime" class="text-neon font-bold text-lg font-mono">--:--:--</span>
+					</div>
+					<div class="flex items-center justify-between">
+						<span class="text-gray-400 text-sm flex items-center gap-2">
+							<i class="fas fa-stop text-fuel"></i>
+							<span data-i18n="pitStops">Pit Stops</span>
+						</span>
+						<span id="savedRacePits" class="text-white font-bold">
+							<span class="text-neon">0</span> / <span>0</span>
+						</span>
+					</div>
+				</div>
+			</div>
+			
+			<div class="space-y-3">
+				<button onclick="continueRace()" 
+						class="w-full bg-gradient-to-r from-ice to-cyan-400 hover:from-cyan-400 hover:to-ice text-navy-950 font-bold py-4 rounded-lg text-lg shadow-lg transition-all transform hover:scale-105">
+					<i class="fas fa-play mr-2"></i>
+					<span data-i18n="continueRace">Continue Race</span>
+				</button>
+				<button onclick="confirmDiscardRace()" 
+						class="w-full bg-navy-800 hover:bg-navy-700 text-gray-300 font-bold py-3 rounded-lg border border-gray-600 transition-all">
+					<i class="fas fa-times mr-2"></i>
+					<span data-i18n="discardRace">Discard & Start New</span>
+				</button>
+			</div>
+			
+			<p class="text-xs text-gray-500 text-center mt-4">
+				<i class="fas fa-exclamation-triangle text-yellow-500 mr-1"></i>
+				<span data-i18n="raceWarning">Discarding will permanently delete this race data</span>
+			</p>
+		</div>
+	</div>
+
+	<!-- Confirm Discard Modal -->
+	<div id="confirmDiscardModal" class="hidden fixed inset-0 bg-navy-950/98 z-[60] flex flex-col items-center justify-center p-4 backdrop-blur-md">
+		<div class="bg-navy-900 p-6 rounded-xl border-2 border-red-500 shadow-[0_0_40px_rgba(239,68,68,0.3)] w-full max-w-sm">
+			<div class="text-center mb-6">
+				<div class="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+					<i class="fas fa-exclamation-triangle text-3xl text-red-500"></i>
+				</div>
+				<h3 class="text-xl font-bold text-white mb-2" data-i18n="confirmDiscard">Are You Sure?</h3>
+				<p class="text-gray-400 text-sm" data-i18n="confirmDiscardMessage">This will permanently delete the active race. This action cannot be undone.</p>
+			</div>
+			<div class="space-y-3">
+				<button onclick="finalDiscardRace()" 
+						class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg transition-all">
+					<i class="fas fa-trash mr-2"></i>
+					<span data-i18n="yesDiscard">Yes, Discard Race</span>
+				</button>
+				<button onclick="cancelDiscard()" 
+						class="w-full bg-navy-800 hover:bg-navy-700 text-gray-300 font-bold py-3 rounded-lg border border-gray-600 transition-all">
+					<i class="fas fa-arrow-left mr-2"></i>
+					<span data-i18n="noKeepRace">No, Keep Race</span>
+				</button>
+			</div>
+		</div>
+	</div>
 	
 	<!-- Manual Input Modal -->
 	<div id="manualInputModal" class="hidden fixed inset-0 bg-navy-950/95 z-50 flex flex-col items-center justify-center p-4 backdrop-blur-sm">
@@ -671,6 +1073,18 @@
 			<div class="flex gap-2 mt-4">
 				<button onclick="applyManualInput()" class="flex-1 bg-ice text-navy-950 font-bold py-2 rounded-lg" data-i18n="apply">Apply</button>
 				<button onclick="closeManualInput()" class="flex-1 bg-navy-700 text-gray-300 py-2 rounded-lg" data-i18n="cancel">Cancel</button>
+			</div>
+		</div>
+	</div>
+	<!-- Strategy Library Modal -->
+	<div id="strategyModal" class="hidden fixed inset-0 bg-navy-950/95 z-50 flex flex-col items-center justify-center p-4 backdrop-blur-sm">
+		<div class="bg-navy-900 rounded-lg border border-gray-700 w-full max-w-lg max-h-[80vh] flex flex-col">
+			<div class="flex items-center justify-between p-4 border-b border-gray-700">
+				<h3 class="text-ice text-lg font-bold">📚 Saved Strategies</h3>
+				<button onclick="closeStrategyModal()" class="text-gray-400 hover:text-white text-xl">&times;</button>
+			</div>
+			<div id="strategyList" class="flex-1 overflow-y-auto p-4 space-y-2">
+				<p class="text-gray-500 text-center">Loading...</p>
 			</div>
 		</div>
 	</div>
@@ -739,6 +1153,29 @@
             competitors: [],
             updateInterval: null
         };
+
+		let aiStrategyConfig = {
+			weatherCondition: 'dry',
+			instructions: '',
+			starterDriverIdx: 0,
+			useAI: false
+		};
+
+		// Strategy preferences based on conditions
+		const strategyPreferences = {
+			dry: {
+				stintPenalty: 0,
+				description: 'Standard strategy - maximize stint length'
+			},
+			wet: {
+				stintPenalty: 120000, // 2 minutes shorter stints in wet
+				description: 'Wet conditions - shorter, safer stints'
+			},
+			mixed: {
+				stintPenalty: 60000, // 1 minute shorter in mixed
+				description: 'Mixed conditions - flexible strategy'
+			}
+		};
 		
 		// ==================== I18N ====================
 		let currentLang = 'en';
@@ -850,6 +1287,44 @@
 				usingIframe: 'Using iframe',
 				connectionFailed: 'Connection failed',
 				stopped: 'Stopped',
+				racePreview: 'Race Strategy Preview',
+				raceStartTime: 'Race Start Time',
+				driverSchedule: 'Driver Schedule',
+				strategySummary: 'Strategy Summary',
+				editStrategy: 'Back to Setup',
+				saveStrategy: 'Save Strategy',
+				previewStrategy: 'Preview Strategy',
+				stopLiveTiming: 'Stop',
+				activeRaceFound: 'Active Race Found!',
+				raceInProgress: 'A race is currently in progress',
+				timeRemaining: 'Time Remaining',
+				continueRace: 'Continue Race',
+				discardRace: 'Discard & Start New',
+				raceWarning: 'Discarding will permanently delete this race data',
+				confirmDiscard: 'Are You Sure?',
+				confirmDiscardMessage: 'This will permanently delete the active race. This action cannot be undone.',
+				yesDiscard: 'Yes, Discard Race',
+				noKeepRace: 'No, Keep Race',
+				loadStrategy: 'Load Saved Strategy',
+				savedStrategies: '📚 Saved Strategies',
+				noSavedStrategies: 'No saved strategies yet',
+				strategyName: 'Strategy Name:',
+				strategySaved: '✅ Strategy saved:',
+				aiAssistant: '🤖 AI Strategy Assistant',
+				expectedConditions: 'Expected Conditions:',
+				mixed: 'Mixed',
+				strategyInstructions: 'Strategy Instructions:',
+				aiPlaceholder: "e.g., 'Focus double stints during night for Squad A', 'Keep driver X fresh for final stints'...",
+				generateAi: '🤖 Generate AI Strategy',
+				analyzing: '🤖 Analyzing strategy...',
+				aiApplied: '✅ AI strategy applied!',
+				aiError: '❌ Error generating strategy',
+				pitClosedStart: '🚫 Pit Closed Start (min)',
+				pitClosedEnd: '🚫 Pit Closed End (min)',
+				finish: 'Finish',
+				raceFinished: '🏁 Race Finished!',
+				savedToDb: '✅ Strategy saved to database',
+				safetyWarning: '⚠️ Safety Warning',
 			},
 			he: {
 				offline: 'לא מחובר',
@@ -957,6 +1432,44 @@
 				usingIframe: 'משתמש ב-iframe',
 				connectionFailed: 'החיבור נכשל',
 				stopped: 'נעצר',
+				racePreview: 'תצוגה מקדימה של אסטרטגיה',
+				raceStartTime: 'שעת התחלת המירוץ',
+				driverSchedule: 'לוח זמנים נהגים',
+				strategySummary: 'סיכום אסטרטגיה',
+				editStrategy: 'חזרה למסך ראשי',
+				saveStrategy: 'שמור אסטרטגיה',
+				previewStrategy: 'תצוגה מקדימה',
+				stopLiveTiming: 'עצור',
+				activeRaceFound: 'נמצא מירוץ פעיל!',
+				raceInProgress: 'מירוץ מתקיים כעת',
+				timeRemaining: 'זמן נותר',
+				continueRace: 'המשך מירוץ',
+				discardRace: 'מחק והתחל חדש',
+				raceWarning: 'מחיקה תמחק לצמיתות את נתוני המירוץ',
+				confirmDiscard: 'האם אתה בטוח?',
+				confirmDiscardMessage: 'פעולה זו תמחק לצמיתות את המירוץ הפעיל. לא ניתן לבטל פעולה זו.',
+				yesDiscard: 'כן, מחק מירוץ',
+				noKeepRace: 'לא, שמור מירוץ',
+				loadStrategy: 'טען אסטרטגיה שמורה',
+				savedStrategies: '📚 אסטרטגיות שמורות',
+				noSavedStrategies: 'אין אסטרטגיות שמורות עדיין',
+				strategyName: 'שם האסטרטגיה:',
+				strategySaved: '✅ האסטרטגיה נשמרה:',
+				aiAssistant: '🤖 עוזר אסטרטגיה (AI)',
+				expectedConditions: 'תנאים צפויים:',
+				mixed: 'מעורב',
+				strategyInstructions: 'הוראות לאלגוריתם:',
+				aiPlaceholder: "לדוגמה: 'תן דאבל סטינטים בלילה לחוליה א', 'שמור את נהג X לסוף'...",
+				generateAi: '🤖 צור אסטרטגיה',
+				analyzing: '🤖 מנתח אסטרטגיה...',
+				aiApplied: '✅ אסטרטגיה הוחלה!',
+				aiError: '❌ שגיאה ביצירת אסטרטגיה',
+				pitClosedStart: '🚫 פיטס סגור בהתחלה (דק\')',
+				pitClosedEnd: '🚫 פיטס סגור בסוף (דק\')',
+				finish: 'סיום',
+				raceFinished: '🏁 המירוץ הסתיים!',
+				savedToDb: '✅ נשמר למסד הנתונים',
+				safetyWarning: '⚠️ אזהרת בטיחות',
 			},
 			fr: {
 				offline: 'Hors ligne',
@@ -1058,6 +1571,44 @@
 				pushActive: '🔥 Pousser Actif',
 				problemActive: '🐢 Problème Actif',
 				stopped: 'Arrêté',
+				racePreview: 'Aperçu de la Stratégie',
+				raceStartTime: 'Heure de Départ',
+				driverSchedule: 'Horaire des Pilotes',
+				strategySummary: 'Résumé de la Stratégie',
+				editStrategy: 'Retour à l\'écran principal',
+				saveStrategy: 'Enregistrer la Stratégie',
+				previewStrategy: 'Aperçu de la Stratégie',
+				stopLiveTiming: 'Arrêter',
+				activeRaceFound: 'Course Active Trouvée!',
+				raceInProgress: 'Une course est actuellement en cours',
+				timeRemaining: 'Temps Restant',
+				continueRace: 'Continuer la Course',
+				discardRace: 'Supprimer et Recommencer',
+				raceWarning: 'La suppression effacera définitivement les données de course',
+				confirmDiscard: 'Êtes-vous Sûr?',
+				confirmDiscardMessage: 'Cela supprimera définitivement la course active. Cette action ne peut pas être annulée.',
+				yesDiscard: 'Oui, Supprimer la Course',
+				noKeepRace: 'Non, Garder la Course',
+				loadStrategy: 'Charger une Stratégie',
+				savedStrategies: '📚 Stratégies Enregistrées',
+				noSavedStrategies: 'Aucune stratégie enregistrée',
+				strategyName: 'Nom de la stratégie:',
+				strategySaved: '✅ Stratégie enregistrée:',
+				aiAssistant: '🤖 Assistant Stratégie IA',
+				expectedConditions: 'Conditions Prévues:',
+				mixed: 'Mixte',
+				strategyInstructions: 'Instructions:',
+				aiPlaceholder: "ex: 'Double relais la nuit pour l'équipe A', 'Garder pilote X pour la fin'...",
+				generateAi: '🤖 Générer Stratégie',
+				analyzing: '🤖 Analyse en cours...',
+				aiApplied: '✅ Stratégie appliquée!',
+				aiError: '❌ Erreur de génération',
+				pitClosedStart: '🚫 Pit Fermé Début (min)',
+				pitClosedEnd: '🚫 Pit Fermé Fin (min)',
+				finish: 'Fin',
+				raceFinished: '🏁 Course Terminée!',
+				savedToDb: '✅ Enregistré dans la BDD',
+				safetyWarning: '⚠️ Avertissement de Sécurité',
 			},
 			pt: {
 				offline: 'Offline',
@@ -1158,7 +1709,45 @@
 				nightActive: '🌙 Noite Ativa',
 				pushActive: '🔥 Atacar Ativo',
 				problemActive: '🐢 Problema Ativo',
-				stopped: 'Parado'
+				stopped: 'Parado',
+				racePreview: 'Visualização da Estratégia de Corrida',
+				raceStartTime: 'Hora de Início da Corrida',
+				driverSchedule: 'Horário dos Pilotos',
+				strategySummary: 'Resumo da Estratégia',
+				editStrategy: 'Voltar para tela principal',
+				saveStrategy: 'Salvar Estratégia',
+				previewStrategy: 'Visualizar Estratégia',
+				stopLiveTiming: 'Parar',
+				activeRaceFound: 'Corrida Ativa Encontrada!',
+				raceInProgress: 'Uma corrida está atualmente em andamento',
+				timeRemaining: 'Tempo Restante',
+				continueRace: 'Continuar Corrida',
+				discardRace: 'Descartar e Começar Novo',
+				raceWarning: 'Descartar irá excluir permanentemente os dados da corrida',
+				confirmDiscard: 'Tem Certeza?',
+				confirmDiscardMessage: 'Isso excluirá permanentemente a corrida ativa. Esta ação não pode ser desfeita.',
+				yesDiscard: 'Sim, Descartar Corrida',
+				noKeepRace: 'Não, Manter Corrida',
+				loadStrategy: 'Carregar Estratégia',
+				savedStrategies: '📚 Estratégias Salvas',
+				noSavedStrategies: 'Nenhuma estratégia salva',
+				strategyName: 'Nome da Estratégia:',
+				strategySaved: '✅ Estratégia salva:',
+				aiAssistant: '🤖 Assistente de Estratégia IA',
+				expectedConditions: 'Condições Esperadas:',
+				mixed: 'Misto',
+				strategyInstructions: 'Instruções:',
+				aiPlaceholder: "ex: 'Duplo stint à noite para Equipa A', 'Guardar piloto X para o fim'...",
+				generateAi: '🤖 Gerar Estratégia',
+				analyzing: '🤖 Analisando estratégia...',
+				aiApplied: '✅ Estratégia aplicada!',
+				aiError: '❌ Erro ao gerar',
+				pitClosedStart: '🚫 Pit Fechado Início (min)',
+				pitClosedEnd: '🚫 Pit Fechado Fim (min)',
+				finish: 'Fim',
+				raceFinished: '🏁 Corrida Terminada!',
+				savedToDb: '✅ Salvo no banco de dados',
+				safetyWarning: '⚠️ Aviso de Segurança',
 			}
 		};
 		
@@ -1187,6 +1776,10 @@
 				}
 			});
 			updateSearchPlaceholder();
+			const aiInput = document.getElementById('strategyInstructions');
+			if (aiInput) {
+				aiInput.placeholder = t('aiPlaceholder');
+			}
 		}
 		
 		function updateSearchPlaceholder() {
@@ -1267,6 +1860,10 @@
 			}
 			conn = null;
 			connections = [];
+			
+			// Hide load strategy button when switching roles
+			const loadBtn = document.getElementById('loadStrategyBtn');
+			if (loadBtn) loadBtn.classList.add('hidden');
 			
             role = r;
             document.getElementById('hostBtn').classList.toggle('border-ice', r === 'host');
@@ -1354,37 +1951,344 @@
 
         // ==================== SIMULATION ====================
         function runSim() {
-			const dur = parseFloat(document.getElementById('raceDuration').value) || 12;
-			const stops = parseInt(document.getElementById('reqPitStops').value) || 0;
-			const minS = parseFloat(document.getElementById('minStint').value) || 10;
-			const maxS = parseFloat(document.getElementById('maxStint').value) || 60;
-			const pitTime = parseInt(document.getElementById('minPitTime').value) || 120;
+			// Store last calculation time to prevent infinite loops
+			const now = Date.now();
+			if (window.lastRunSimTime && now - window.lastRunSimTime < 100) return;
+			window.lastRunSimTime = now;
 			
-			// Total race time in minutes
-			const totalRaceMin = dur * 60;
+			const raceDur = parseFloat(document.getElementById('raceDuration').value);
+			const reqStops = parseInt(document.getElementById('reqPitStops').value);
+			const minStint = parseFloat(document.getElementById('minStint').value);
+			const maxStint = parseFloat(document.getElementById('maxStint').value);
+			const allowDouble = document.getElementById('allowDouble').checked;
+			const useSquads = document.getElementById('useSquads').checked;
+			const minPit = parseInt(document.getElementById('minPitTime').value) || 0;
 			
-			// Total pit time in minutes
-			const totalPitMin = (stops * pitTime) / 60;
+			// Get weather condition
+			const weatherRadio = document.querySelector('input[name="weatherCondition"]:checked');
+			aiStrategyConfig.weatherCondition = weatherRadio ? weatherRadio.value : 'dry';
+			aiStrategyConfig.instructions = document.getElementById('strategyInstructions')?.value || '';
 			
-			// Available driving time
-			const drivingTimeMin = totalRaceMin - totalPitMin;
+			// Get starter driver
+			const starterRadio = document.querySelector('.starter-radio:checked');
+			const allRadios = document.querySelectorAll('.starter-radio');
+			aiStrategyConfig.starterDriverIdx = Array.from(allRadios).indexOf(starterRadio);
 			
-			// Average stint considering pit stops
-			const avgStint = drivingTimeMin / (stops + 1);
+			if (!raceDur || !reqStops || !minStint || !maxStint) {
+				document.getElementById('simResult').innerText = '⚠️ Please fill all fields';
+				return;
+			}
 			
-			const valid = avgStint >= minS && avgStint <= maxS;
+			const raceMs = raceDur * 3600000;
+			const minStintMs = minStint * 60000;
+			const maxStintMs = maxStint * 60000;
 			
-			const labels = {
-				en: { avg: 'Avg Stint', drive: 'Drive Time', pit: 'Pit Time', ok: '✅ Valid', bad: '⚠️ Out of range' },
-				he: { avg: 'סטינט ממוצע', drive: 'זמן נהיגה', pit: 'זמן פיטסים', ok: '✅ תקין', bad: '⚠️ מחוץ לטווח' },
-				fr: { avg: 'Stint Moy', drive: 'Temps Conduite', pit: 'Temps Pits', ok: '✅ Valide', bad: '⚠️ Hors limites' },
-				pt: { avg: 'Stint Médio', drive: 'Tempo Condução', pit: 'Tempo Pits', ok: '✅ Válido', bad: '⚠️ Fora do intervalo' }
+			// Apply weather penalty
+			const weatherPrefs = strategyPreferences[aiStrategyConfig.weatherCondition];
+			const effectiveMaxStintMs = Math.max(minStintMs, maxStintMs - weatherPrefs.stintPenalty - 60000); // Always -1min for safety
+			
+			const pitTimeMs = (minPit * 1000) * reqStops;
+			const drivingMs = raceMs - pitTimeMs;
+			const totalStints = reqStops + 1;
+			
+			let avgStintMs = Math.floor(drivingMs / totalStints);
+			avgStintMs = Math.max(minStintMs, Math.min(effectiveMaxStintMs, avgStintMs));
+			
+			const drivers = Array.from(document.querySelectorAll('.driver-input')).map((input, i) => {
+				const squadToggle = document.querySelectorAll('.squad-toggle')[i];
+				return {
+					name: input.value,
+					squad: squadToggle?.checked ? 'B' : 'A',
+					isStarter: i === aiStrategyConfig.starterDriverIdx
+				};
+			});
+			
+			// Generate strategy with AI considerations
+			const strategy = generateSmartStrategy({
+				totalStints,
+				avgStintMs,
+				minStintMs,
+				maxStintMs: effectiveMaxStintMs,
+				drivers,
+				allowDouble,
+				useSquads,
+				weatherCondition: aiStrategyConfig.weatherCondition,
+				instructions: aiStrategyConfig.instructions
+			});
+			
+			// Save for later use
+			window.generatedStrategy = strategy;
+			
+			// Display results
+			const avgStintMin = (avgStintMs / 60000).toFixed(1);
+			const totalDriveMin = (drivingMs / 60000).toFixed(0);
+			
+			let result = `✅ ${totalStints} stints × ~${avgStintMin}min = ${totalDriveMin}min drive\n`;
+			result += `🏁 Pit stops: ${reqStops} × ${minPit}s = ${(reqStops * minPit / 60).toFixed(1)}min\n`;
+			result += `${weatherPrefs.description}\n`;
+			
+			if (strategy.doubleStints && strategy.doubleStints.length > 0) {
+				result += `\n💪 ${strategy.doubleStints.length} double stints planned`;
+			}
+			
+			if (useSquads && strategy.nightShifts) {
+				result += `\n🌙 Night mode: ${strategy.nightShifts} shift rotations`;
+			}
+			
+			document.getElementById('simResult').innerText = result;
+			
+			// Update preview if it's showing
+			if (!document.getElementById('previewScreen').classList.contains('hidden')) {
+				updatePreview();
+			}
+			
+			saveHostState();
+		}
+
+		function generateSmartStrategy(params) {
+			const {
+				totalStints,
+				avgStintMs,
+				minStintMs,
+				maxStintMs,
+				drivers,
+				allowDouble,
+				useSquads,
+				weatherCondition,
+				instructions
+			} = params;
+			
+			const stints = [];
+			const doubleStints = [];
+			let nightShifts = 0;
+			
+			// Find starter
+			const starterIdx = drivers.findIndex(d => d.isStarter);
+			let currentDriverIdx = starterIdx >= 0 ? starterIdx : 0;
+			
+			// Separate squads if needed
+			const squadA = drivers.filter(d => d.squad === 'A');
+			const squadB = drivers.filter(d => d.squad === 'B');
+			
+			// Calculate rough night period (assuming ~8-12 hours into race)
+			const nightStartStint = Math.floor(totalStints * 0.4);
+			const nightEndStint = Math.floor(totalStints * 0.7);
+			
+			let remainingMs = totalStints * avgStintMs;
+			let stintNumber = 1;
+			
+			for (let i = 0; i < totalStints; i++) {
+				const isNightPeriod = useSquads && i >= nightStartStint && i < nightEndStint;
+				const isEndGame = i >= totalStints - 3; // Last 3 stints
+				const isStarting = i === 0;
+				
+				let stintDuration = avgStintMs;
+				let isDouble = false;
+				
+				// Strategy logic
+				if (allowDouble && isNightPeriod && Math.random() > 0.5) {
+					// Double stint during night to finish faster
+					stintDuration = Math.min(maxStintMs, avgStintMs * 1.8);
+					isDouble = true;
+					doubleStints.push(i);
+				} else if (isEndGame && allowDouble) {
+					// Consider double in endgame
+					stintDuration = Math.min(maxStintMs, avgStintMs * 1.5);
+				} else if (weatherCondition === 'wet') {
+					// Shorter, safer stints in wet
+					stintDuration = Math.max(minStintMs, avgStintMs * 0.85);
+				}
+				
+				// Select driver
+				let driver;
+				if (isStarting) {
+					driver = drivers[currentDriverIdx];
+				} else if (useSquads && isNightPeriod) {
+					// Rotate within active squad
+					const activeSquad = Math.floor((i - nightStartStint) / 2) % 2 === 0 ? squadA : squadB;
+					if (i === nightStartStint || i === nightEndStint - Math.floor((nightEndStint - nightStartStint) / 2)) {
+						nightShifts++;
+					}
+					const squadDrivers = activeSquad.map((d, idx) => drivers.findIndex(dr => dr.name === d.name));
+					currentDriverIdx = squadDrivers[Math.floor(Math.random() * squadDrivers.length)];
+					driver = drivers[currentDriverIdx];
+				} else {
+					// Normal rotation
+					currentDriverIdx = (currentDriverIdx + 1) % drivers.length;
+					driver = drivers[currentDriverIdx];
+				}
+				
+				stints.push({
+					number: stintNumber++,
+					driver: driver.name,
+					durationMs: stintDuration,
+					isDouble: isDouble,
+					isNight: isNightPeriod,
+					squad: driver.squad
+				});
+				
+				remainingMs -= stintDuration;
+			}
+			
+			return {
+				stints,
+				avgStintMs,
+				totalStints,
+				doubleStints,
+				nightShifts,
+				weatherCondition,
+				starterDriver: drivers[starterIdx >= 0 ? starterIdx : 0].name,
+				timestamp: Date.now()
 			};
-			const l = labels[currentLang] || labels.en;
+		}
+
+		async function generateAIStrategy() {
+			const statusEl = document.getElementById('aiStrategyStatus');
+			statusEl.classList.remove('hidden');
+			statusEl.innerText = '🤖 Analyzing strategy...';
+			statusEl.className = 'text-[10px] text-yellow-500 text-center mt-2';
 			
-			document.getElementById('simResult').innerText = 
-				`${l.avg}: ${avgStint.toFixed(1)} min\n${l.drive}: ${drivingTimeMin.toFixed(0)} min | ${l.pit}: ${totalPitMin.toFixed(0)} min\n${valid ? l.ok : l.bad}`;
-			document.getElementById('simResult').className = `bg-navy-950 p-2 rounded text-xs border font-mono text-center whitespace-pre-line ${valid ? 'text-neon border-neon/50' : 'text-danger border-danger/50'}`;
+			const instructions = document.getElementById('strategyInstructions').value;
+			
+			if (!instructions || instructions.trim().length < 10) {
+				statusEl.innerText = '⚠️ Please provide detailed instructions';
+				statusEl.className = 'text-[10px] text-red-400 text-center mt-2';
+				return;
+			}
+			
+			// Gather current config
+			const raceDur = parseFloat(document.getElementById('raceDuration').value);
+			const reqStops = parseInt(document.getElementById('reqPitStops').value);
+			const minStint = parseFloat(document.getElementById('minStint').value);
+			const maxStint = parseFloat(document.getElementById('maxStint').value);
+			const allowDouble = document.getElementById('allowDouble').checked;
+			const useSquads = document.getElementById('useSquads').checked;
+			const weatherCondition = document.querySelector('input[name="weatherCondition"]:checked')?.value || 'dry';
+			
+			const drivers = Array.from(document.querySelectorAll('.driver-input')).map((input, i) => {
+				const starterRadio = document.querySelectorAll('.starter-radio')[i];
+				const squadToggle = document.querySelectorAll('.squad-toggle')[i];
+				return {
+					name: input.value,
+					isStarter: starterRadio?.checked || false,
+					squad: squadToggle?.checked ? 'B' : 'A'
+				};
+			});
+			
+			const prompt = `You are an expert karting race strategist. Analyze this endurance race setup and provide optimal strategy recommendations.
+
+		**Race Configuration:**
+		- Duration: ${raceDur} hours
+		- Required pit stops: ${reqStops}
+		- Stint limits: ${minStint}-${maxStint} minutes
+		- Weather: ${weatherCondition}
+		- Double stints allowed: ${allowDouble ? 'Yes' : 'No'}
+		- Squad system: ${useSquads ? 'Yes (A/B rotation for night shifts)' : 'No'}
+		- Starting driver: ${drivers.find(d => d.isStarter)?.name || drivers[0].name}
+
+		**Drivers:**
+		${drivers.map(d => `- ${d.name} (Squad ${d.squad})${d.isStarter ? ' [STARTER]' : ''}`).join('\n')}
+
+		**User Instructions:**
+		${instructions}
+
+		**Please provide:**
+		1. Recommended stint durations considering max-1min safety buffer
+		2. Driver rotation strategy (starting with the designated starter)
+		3. If squads enabled: optimal night shift strategy with double stints
+		4. Weather-based adjustments
+		5. Endgame strategy (last 2-3 stints)
+		6. Any special considerations based on user instructions
+
+		Format your response as specific, actionable recommendations in JSON format:
+		{
+		"stintTargetMinutes": number,
+		"starterNote": "string",
+		"driverRotation": ["driver1", "driver2", ...],
+		"doubleStintRecommendations": ["stint 5-6 for Squad A in night", ...],
+		"weatherNotes": "string",
+		"endgameStrategy": "string",
+		"specialConsiderations": ["note1", "note2", ...]
+		}`;
+
+			try {
+				const response = await fetch("https://api.anthropic.com/v1/messages", {
+					method: "POST",
+					headers: {
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify({
+						model: "claude-sonnet-4-20250514",
+						max_tokens: 1000,
+						messages: [
+							{ role: "user", content: prompt }
+						],
+					})
+				});
+				
+				const data = await response.json();
+				
+				if (data.content && data.content[0]) {
+					const aiResponse = data.content[0].text;
+					
+					// Try to parse JSON from response
+					const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
+					if (jsonMatch) {
+						const recommendations = JSON.parse(jsonMatch[0]);
+						applyAIRecommendations(recommendations);
+						statusEl.innerText = '✅ AI strategy applied!';
+						statusEl.className = 'text-[10px] text-green-400 text-center mt-2';
+					} else {
+						// Show text response
+						statusEl.innerText = '✅ Strategy generated - check console for details';
+						console.log('AI Strategy Recommendations:', aiResponse);
+						statusEl.className = 'text-[10px] text-green-400 text-center mt-2';
+					}
+				}
+			} catch (error) {
+				console.error('AI Strategy Error:', error);
+				statusEl.innerText = '❌ Error generating strategy';
+				statusEl.className = 'text-[10px] text-red-400 text-center mt-2';
+			}
+			
+			// Hide status after 5 seconds
+			setTimeout(() => {
+				statusEl.classList.add('hidden');
+			}, 5000);
+		}
+
+		function applyAIRecommendations(recommendations) {
+			console.log('Applying AI recommendations:', recommendations);
+			
+			// Update target stint if provided
+			if (recommendations.stintTargetMinutes) {
+				const currentMax = parseFloat(document.getElementById('maxStint').value);
+				const suggested = Math.min(currentMax - 1, recommendations.stintTargetMinutes);
+				// Store for use in strategy generation
+				aiStrategyConfig.targetStintMin = suggested;
+			}
+			
+			// Store AI recommendations for strategy generation
+			aiStrategyConfig.useAI = true;
+			aiStrategyConfig.recommendations = recommendations;
+			
+			// Re-run simulation with AI insights
+			runSim();
+			
+			// Show recommendations in a readable format
+			let summary = '🤖 AI Recommendations:\n\n';
+			if (recommendations.starterNote) summary += `🏁 ${recommendations.starterNote}\n`;
+			if (recommendations.weatherNotes) summary += `🌤️ ${recommendations.weatherNotes}\n`;
+			if (recommendations.endgameStrategy) summary += `🏆 ${recommendations.endgameStrategy}\n`;
+			
+			if (recommendations.specialConsiderations) {
+				summary += '\n💡 Key Points:\n';
+				recommendations.specialConsiderations.forEach(note => {
+					summary += `  • ${note}\n`;
+				});
+			}
+			
+			document.getElementById('simResult').innerText = summary;
 		}
 
         function toggleConfigPanel(event) {
@@ -1676,6 +2580,453 @@
 		
 		function refreshLiveTiming() {
 			fetchLiveTimingFromProxy();
+		}
+		
+		// ==================== PRE-RACE SIMULATION ====================
+		let previewData = null;
+
+		function generatePreview() {
+			const inputs = document.querySelectorAll('.driver-input');
+			
+			if (inputs.length < 2) {
+				alert('Minimum 2 drivers required');
+				return;
+			}
+			
+			// Read from form
+			config = {
+				raceMs: parseFloat(document.getElementById('raceDuration').value) * 3600000,
+				reqStops: parseInt(document.getElementById('reqPitStops').value) || 0,
+				minPitSec: parseInt(document.getElementById('minPitTime').value) || 120,
+				minStintMs: parseFloat(document.getElementById('minStint').value) * 60000,
+				maxStintMs: parseFloat(document.getElementById('maxStint').value) * 60000,
+				trackFuel: document.getElementById('trackFuel').checked,
+				useSquads: document.getElementById('useSquads').checked,
+				pitClosedStartMs: (parseInt(document.getElementById('pitClosedStart').value) || 0) * 60000,
+				pitClosedEndMs: (parseInt(document.getElementById('pitClosedEnd').value) || 0) * 60000
+			};
+			
+			// ✅ Debug: verify what was read
+			console.log('Config reqStops:', config.reqStops);
+			console.log('Form value:', document.getElementById('reqPitStops').value);
+			
+			// Build drivers from form
+			const squads = document.querySelectorAll('.squad-toggle');
+			drivers = Array.from(inputs).map((d, i) => ({ 
+				name: d.value, 
+				totalMs: 0, 
+				stints: 0, 
+				squad: squads[i]?.checked ? 'B' : 'A',
+				color: `hsl(${(i * 360 / inputs.length)}, 70%, 50%)`,
+				logs: []
+			}));
+			
+			// Calculate preview data
+			previewData = {
+				startTime: null,
+				drivers: [],
+				totalRaceTime: config.raceMs,
+				totalStops: config.reqStops,
+				stints: []
+			};
+			
+			// Set default start time to now
+			const now = new Date();
+			document.getElementById('raceStartTime').value = 
+				now.getHours().toString().padStart(2, '0') + ':' + 
+				now.getMinutes().toString().padStart(2, '0');
+			
+			updatePreview();
+			
+			// Show preview screen
+			document.getElementById('setupScreen').classList.add('hidden');
+			document.getElementById('previewScreen').classList.remove('hidden');
+		}
+
+		function showStrategyModal(strategies) {
+			const list = document.getElementById('strategyList');
+			
+			if (!strategies || strategies.length === 0) {
+				list.innerHTML = '<p class="text-gray-500 text-center py-8">No saved strategies yet</p>';
+			} else {
+				list.innerHTML = strategies.map(s => `
+					<div class="bg-navy-800 p-3 rounded-lg border border-gray-700 hover:border-ice cursor-pointer transition"
+						onclick="loadStrategy(${s.id})">
+						<div class="flex justify-between items-start mb-2">
+							<span class="font-bold text-white">${s.name}</span>
+							<span class="text-xs text-gray-500">${new Date(s.createdAt).toLocaleDateString()}</span>
+						</div>
+						<div class="flex gap-4 text-xs text-gray-400">
+							<span>⏱️ ${formatTime(s.raceDuration)}</span>
+							<span>🔧 ${s.requiredStops} stops</span>
+							<span>👥 ${s.drivers?.length || '?'} drivers</span>
+						</div>
+						<div class="mt-2 text-xs text-gray-500">
+							${s.drivers?.map(d => d.name).join(', ') || ''}
+						</div>
+					</div>
+				`).join('');
+			}
+			
+			document.getElementById('strategyModal').classList.remove('hidden');
+		}
+
+		function closeStrategyModal() {
+			document.getElementById('strategyModal').classList.add('hidden');
+		}
+
+		function updatePreview() {
+			const startTimeInput = document.getElementById('raceStartTime').value;
+			if (!startTimeInput) return;
+			
+			const [hours, minutes] = startTimeInput.split(':').map(Number);
+			const startDate = new Date();
+			startDate.setHours(hours, minutes, 0, 0);
+			
+			previewData.startTime = startDate;
+			
+			// 1. Calculate the TOTAL "Budget" for driving
+			const totalRaceMs = config.raceMs;
+			const pitTimeMs = config.minPitSec * 1000;
+			const stopsRequired = config.reqStops;
+			const stintsRequired = stopsRequired + 1;
+			
+			// Pit stops happen between stints, so Total Pits = Stints - 1
+			// Note: If stopsRequired is strictly enforced, ensure logic aligns. 
+			// Usually N stops means N+1 stints.
+			const totalPitTime = stopsRequired * pitTimeMs; 
+			const totalDrivingBudget = totalRaceMs - totalPitTime;
+			
+			if (totalDrivingBudget <= 0) {
+				alert('Error: Pit time exceeds race duration!');
+				return;
+			}
+
+			// Constraints
+			const safeMaxStintMs = config.maxStintMs - 60000; // Max - 1 min
+			const minStintMs = config.minStintMs;
+			const pitClosedStartMs = config.pitClosedStartMs || 0;
+			const pitClosedEndMs = config.pitClosedEndMs || 0;
+
+			// 2. Initialize all stints with EQUAL duration (Average)
+			// This guarantees mathematically that Sum(Stints) + Sum(Pits) = RaceDuration
+			let durations = new Array(stintsRequired).fill(Math.floor(totalDrivingBudget / stintsRequired));
+			
+			// Distribute remainder ms to make it exact
+			let remainder = totalDrivingBudget % stintsRequired;
+			for(let i=0; i<remainder; i++) durations[i]++;
+
+			// 3. APPLY LOGIC: Front-Load early stints, shorten later ones
+			// We try to push early stints to SafeMax, taking time from later stints
+			
+			const frontLoadCount = Math.ceil(stintsRequired * 0.4); // Push first 40% of stints
+			
+			for (let i = 0; i < stintsRequired; i++) {
+				// Don't touch the very last stint yet (it has special constraints)
+				if (i === stintsRequired - 1) continue;
+
+				let targetDur = durations[i];
+				
+				// If it's an early stint, aim for SafeMax
+				if (i < frontLoadCount) {
+					targetDur = safeMaxStintMs;
+				}
+				
+				// Handle Pit Closed Start constraint for first stint
+				if (i === 0) {
+					targetDur = Math.max(targetDur, pitClosedStartMs);
+				}
+				
+				// How much do we want to add?
+				let wantedToAdd = targetDur - durations[i];
+				
+				if (wantedToAdd > 0) {
+					// Try to "steal" this time from future stints (starting from the end backwards)
+					// We leave the last stint alone for now unless necessary, to keep it flexible for PitClosedEnd
+					let stolenAmount = 0;
+					
+					// Iterate backwards from second-to-last down to i+1
+					for (let j = stintsRequired - 2; j > i; j--) {
+						if (wantedToAdd <= 0) break;
+						
+						let available = durations[j] - minStintMs;
+						if (available > 0) {
+							let take = Math.min(available, wantedToAdd);
+							durations[j] -= take;
+							stolenAmount += take;
+							wantedToAdd -= take;
+						}
+					}
+					
+					// Add what we managed to steal to the current stint
+					durations[i] += stolenAmount;
+				}
+			}
+
+			// 4. Validate Last Stint (Pit Closed End)
+			// The last stint MUST be >= PitClosedEnd
+			const lastIdx = stintsRequired - 1;
+			if (durations[lastIdx] < pitClosedEndMs) {
+				const deficit = pitClosedEndMs - durations[lastIdx];
+				
+				// We need to find 'deficit' time from previous stints (starting from the beginning this time)
+				// to give to the last stint
+				let collected = 0;
+				for (let i = 0; i < lastIdx; i++) {
+					if (deficit <= 0) break;
+					
+					// If first stint, respect PitClosedStart
+					let limit = (i === 0) ? Math.max(minStintMs, pitClosedStartMs) : minStintMs;
+					
+					let available = durations[i] - limit;
+					if (available > 0) {
+						let take = Math.min(available, deficit);
+						durations[i] -= take;
+						collected += take;
+						deficit -= take;
+					}
+				}
+				durations[lastIdx] += collected;
+			}
+
+			// 5. Final check for AI overrides (optional, applies mostly to driver selection, not timing in this fix)
+			// If you want AI to override durations, apply it here, but verify total sum matches budget.
+
+			// ========== RENDER DATA ==========
+			const driversCount = drivers.length;
+			let driverSchedule = drivers.map((d, idx) => ({
+				name: d.name,
+				color: d.color || `hsl(${(idx * 360 / driversCount)}, 70%, 50%)`,
+				stints: [],
+				totalTime: 0
+			}));
+
+			const timeline = [];
+			let currentTime = 0;
+			
+			// Get starter driver index
+			const starterRadio = document.querySelector('.starter-radio:checked');
+			const allRadios = document.querySelectorAll('.starter-radio');
+			window.previewStarterIdx = starterRadio ? Array.from(allRadios).indexOf(starterRadio) : 0;
+			
+			for (let s = 0; s < stintsRequired; s++) {
+				const driverIdx = (window.previewStarterIdx + s) % driversCount;
+				const isLastStint = s === stintsRequired - 1;
+				let stintDuration = durations[s];
+				
+				// Add stint to timeline
+				timeline.push({
+					type: 'stint',
+					stintNumber: s + 1,
+					driverIdx,
+					driverName: drivers[driverIdx].name,
+					color: driverSchedule[driverIdx].color,
+					start: currentTime,
+					duration: stintDuration,
+					startTime: new Date(startDate.getTime() + currentTime),
+					endTime: new Date(startDate.getTime() + currentTime + stintDuration)
+				});
+				
+				// Update driver stats
+				driverSchedule[driverIdx].stints.push({
+					number: driverSchedule[driverIdx].stints.length + 1,
+					globalNumber: s + 1,
+					start: currentTime,
+					duration: stintDuration,
+					startTime: new Date(startDate.getTime() + currentTime),
+					endTime: new Date(startDate.getTime() + currentTime + stintDuration)
+				});
+				driverSchedule[driverIdx].totalTime += stintDuration;
+				
+				currentTime += stintDuration;
+				
+				// Add pit stop (except after last stint)
+				if (!isLastStint) {
+					timeline.push({
+						type: 'pit',
+						pitNumber: s + 1,
+						start: currentTime,
+						duration: pitTimeMs,
+						startTime: new Date(startDate.getTime() + currentTime)
+					});
+					currentTime += pitTimeMs;
+				}
+			}
+			
+			previewData.timeline = timeline;
+			previewData.driverSchedule = driverSchedule;
+			
+			renderPreview();
+		}
+
+		function renderPreview() {
+			if (!previewData || !previewData.timeline) return;
+
+			const timeline = previewData.timeline;
+			const totalTime = config.raceMs;
+			
+			// Calculate ACTUAL values from timeline
+			const actualStints = timeline.filter(t => t.type === 'stint');
+			const actualStops = timeline.filter(t => t.type === 'pit').length;
+			const actualDrivingTime = actualStints.reduce((sum, s) => sum + s.duration, 0);
+			const actualAvgStint = actualDrivingTime / actualStints.length;
+			
+			// Get elements (with safety check)
+			const scheduleEl = document.getElementById('driverScheduleList');
+			const summaryEl = document.getElementById('strategySummary');
+			const timeStartEl = document.getElementById('timelineStart');
+			const timeEndEl = document.getElementById('timelineEnd');
+			
+			// Safety check - if elements don't exist, return
+			if ( !scheduleEl || !summaryEl || !timeStartEl || !timeEndEl) {
+				console.error('Missing preview elements:', {
+					scheduleEl: !!scheduleEl,
+					summaryEl: !!summaryEl,
+					timeStartEl: !!timeStartEl,
+					timeEndEl: !!timeEndEl
+				});
+				return;
+			}
+			
+			timeline.forEach((item, index) => {
+				const el = document.createElement('div');
+				const widthPercent = (item.duration / totalTime) * 100;
+				const leftPercent = (item.start / totalTime) * 100;
+				
+				if (item.type === 'stint') {
+					el.className = 'stint-block';
+					el.style.cssText = `
+						left: ${leftPercent}%;
+						width: ${widthPercent}%;
+						background: ${item.color};
+					`;
+					el.innerHTML = `<span class="text-[10px] truncate px-1">${item.driverName.split(' ')[0]}</span>`;
+					el.title = `${item.driverName}: ${formatTime(item.duration)}`;
+				} else {
+					el.style.cssText = `
+						position: absolute;
+						left: ${leftPercent}%;
+						width: 3px;
+						height: 100%;
+						background: linear-gradient(0deg, #fbbf24 50%, #000 50%);
+						background-size: 100% 6px;
+						z-index: 20;
+					`;
+					el.title = `Pit Stop: ${config.minPitSec}s`;
+				}
+				
+			});
+			
+			// Time markers - fix Date parsing
+			const startTime = previewData.startTime instanceof Date 
+				? previewData.startTime 
+				: new Date(previewData.startTime);
+			const endTime = new Date(startTime.getTime() + totalTime);
+			
+			timeStartEl.innerText = formatTimeOfDay(startTime);
+			timeEndEl.innerText = formatTimeOfDay(endTime);
+			
+			// Stint-by-stint schedule
+			scheduleEl.innerHTML = `
+				<div class="mb-6">
+					<h4 class="text-sm font-bold text-gray-400 mb-2 flex items-center gap-2">
+						<i class="fas fa-list-ol"></i> Stint-by-Stint Schedule
+					</h4>
+					<div class="space-y-1">
+						${actualStints.map((stint) => {
+							const pitAfter = timeline.find(t => t.type === 'pit' && t.pitNumber === stint.stintNumber);
+							const stintStart = stint.startTime instanceof Date ? stint.startTime : new Date(stint.startTime);
+							const stintEnd = stint.endTime instanceof Date ? stint.endTime : new Date(stint.endTime);
+							return `
+								<div class="flex items-center gap-2 bg-navy-950 p-2 rounded border-l-4" style="border-color: ${stint.color}">
+									<span class="text-xs text-gray-500 w-8">#${stint.stintNumber}</span>
+									<span class="font-bold text-white flex-1">${stint.driverName}</span>
+									<span class="text-xs text-gray-400">${formatTimeOfDay(stintStart)}</span>
+									<span class="text-xs text-gray-600">→</span>
+									<span class="text-xs text-gray-400">${formatTimeOfDay(stintEnd)}</span>
+									<span class="text-xs text-neon font-mono w-16 text-right">${formatTime(stint.duration)}</span>
+									${pitAfter ? '<span class="text-xs text-gold">🔧</span>' : '<span class="text-xs text-gray-600">🏁</span>'}
+								</div>
+							`;
+						}).join('')}
+					</div>
+				</div>
+				<div>
+					<h4 class="text-sm font-bold text-gray-400 mb-2 flex items-center gap-2">
+						<i class="fas fa-users"></i> Driver Summary
+					</h4>
+					<div class="grid grid-cols-2 gap-2">
+						${previewData.driverSchedule.map((driver) => `
+							<div class="bg-navy-800 p-3 rounded-lg border-l-4" style="border-color: ${driver.color}">
+								<div class="font-bold text-white text-sm mb-1">${driver.name}</div>
+								<div class="text-xs text-gray-400 space-y-1">
+									<div class="flex justify-between">
+										<span>Stints:</span>
+										<span class="text-white">${driver.stints.length}</span>
+									</div>
+									<div class="flex justify-between">
+										<span>Total:</span>
+										<span class="text-ice font-mono">${formatTime(driver.totalTime)}</span>
+									</div>
+									<div class="flex justify-between">
+										<span>Avg:</span>
+										<span class="text-gray-300 font-mono">${formatTime(driver.totalTime / driver.stints.length)}</span>
+									</div>
+								</div>
+								<div class="mt-2 text-[10px] text-gray-500">
+									${driver.stints.map(s => `#${s.globalNumber}`).join(', ')}
+								</div>
+							</div>
+						`).join('')}
+					</div>
+				</div>
+			`;
+			
+			// Strategy summary
+			summaryEl.innerHTML = `
+				<div class="bg-navy-800 rounded p-3">
+					<div class="text-xs text-gray-400 mb-1">Race Duration</div>
+					<div class="text-xl font-bold text-ice">${formatTime(config.raceMs)}</div>
+				</div>
+				<div class="bg-navy-800 rounded p-3">
+					<div class="text-xs text-gray-400 mb-1">Pit Stops</div>
+					<div class="text-xl font-bold text-neon">${actualStops}</div>
+				</div>
+				<div class="bg-navy-800 rounded p-3">
+					<div class="text-xs text-gray-400 mb-1">Total Stints</div>
+					<div class="text-xl font-bold text-gold">${actualStints.length}</div>
+				</div>
+				<div class="bg-navy-800 rounded p-3">
+					<div class="text-xs text-gray-400 mb-1">Avg Stint</div>
+					<div class="text-xl font-bold text-white">${formatTime(actualAvgStint)}</div>
+				</div>
+			`;
+		}
+
+		function formatTimeOfDay(date) {
+			return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+		}
+		
+		function formatTime(ms) {
+			if (!ms) return '--:--';
+			const totalSec = Math.floor(ms / 1000);
+			const hours = Math.floor(totalSec / 3600);
+			const mins = Math.floor((totalSec % 3600) / 60);
+			const secs = totalSec % 60;
+			
+			if (hours > 0) {
+				return `${hours}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+			}
+			return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+		}
+
+		function closePreview() {
+			document.getElementById('previewScreen').classList.add('hidden');
+			document.getElementById('setupScreen').classList.remove('hidden');
+		}
+
+		function editStrategy() {
+			closePreview();
 		}
 		
 		// ==================== DEMO MODE ====================
@@ -2007,6 +3358,86 @@
 			}
 			stopProxyLiveTiming();
 		}
+
+		// ==================== STRATEGY PERSISTENCE ====================
+		async function saveStrategy() {
+			if (!previewData || !config) {
+				alert('Generate a preview first!');
+				return;
+			}
+			
+			const name = prompt('Strategy name:', `${formatTime(config.raceMs)} - ${drivers.length} drivers`);
+			if (!name) return;
+			
+			try {
+				const response = await fetch('/.netlify/functions/save-strategy', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						name,
+						config,
+						drivers: drivers.map(d => ({ name: d.name, squad: d.squad, color: d.color })),
+						timeline: previewData.timeline,
+						driverSchedule: previewData.driverSchedule
+					})
+				});
+				
+				const result = await response.json();
+				if (result.success) {
+					alert(`✅ Strategy saved: ${result.name}`);
+				} else {
+					alert(`❌ Error: ${result.error}`);
+				}
+			} catch (e) {
+				alert(`❌ Failed to save: ${e.message}`);
+			}
+		}
+
+		async function loadStrategyLibrary() {
+			try {
+				const response = await fetch('/.netlify/functions/get-strategies');
+				const result = await response.json();
+				
+				if (!result.success) {
+					alert('Failed to load strategies');
+					return;
+				}
+				
+				showStrategyModal(result.strategies);
+			} catch (e) {
+				alert(`Error: ${e.message}`);
+			}
+		}
+
+		async function loadStrategy(id) {
+			try {
+				const response = await fetch(`/.netlify/functions/load-strategy?id=${id}`);
+				const result = await response.json();
+				
+				if (!result.success) {
+					alert('Failed to load strategy');
+					return;
+				}
+				
+				const s = result.strategy;
+				config = s.config;
+				drivers = s.drivers.map(d => ({ ...d, totalMs: 0, stints: 0, logs: [] }));
+				previewData = { timeline: s.timeline, driverSchedule: s.driverSchedule, startTime: new Date() };
+				
+				document.getElementById('strategyModal').classList.add('hidden');
+				document.getElementById('setupScreen').classList.add('hidden');
+				document.getElementById('previewScreen').classList.remove('hidden');
+				
+				// Set start time to now
+				const now = new Date();
+				document.getElementById('raceStartTime').value = 
+					`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+				
+				renderPreview();
+			} catch (e) {
+				alert(`Error: ${e.message}`);
+			}
+		}
 		
 		// ==================== RACE STATE PERSISTENCE ====================
 		function saveRaceState() {
@@ -2105,25 +3536,21 @@
 				}
 				
 				const elapsed = Date.now() - raceState.timestamp;
-				const raceRemaining = raceState.config.raceMs - (raceState.timestamp - raceState.state.startTime);
+				const raceElapsedTotal = raceState.timestamp - raceState.state.startTime;
+				const raceRemaining = raceState.config.raceMs - raceElapsedTotal - elapsed;
 				
 				if (raceRemaining <= 0) {
 					localStorage.removeItem(RACE_STATE_KEY);
 					return;
 				}
 				
-				const msgs = {
-					en: `Active race found!\nDriver: ${raceState.drivers[raceState.state.currentDriverIdx].name}\nRemaining: ${fmtHMS(raceRemaining - elapsed)}\n\nContinue?`,
-					he: `נמצא מירוץ פעיל!\nנהג: ${raceState.drivers[raceState.state.currentDriverIdx].name}\nנותר: ${fmtHMS(raceRemaining - elapsed)}\n\nלהמשיך?`,
-					fr: `Course active trouvée!\nPilote: ${raceState.drivers[raceState.state.currentDriverIdx].name}\nRestant: ${fmtHMS(raceRemaining - elapsed)}\n\nContinuer?`,
-					pt: `Corrida ativa encontrada!\nPiloto: ${raceState.drivers[raceState.state.currentDriverIdx].name}\nRestante: ${fmtHMS(raceRemaining - elapsed)}\n\nContinuar?`
-				};
+				window.savedRaceData = { raceState, elapsed };
 				
-				if (confirm(msgs[currentLang] || msgs.en)) {
-					restoreRaceState(raceState, elapsed);
-				} else {
-					localStorage.removeItem(RACE_STATE_KEY);
-				}
+				document.getElementById('savedRaceDriver').innerText = raceState.drivers[raceState.state.currentDriverIdx].name;
+				document.getElementById('savedRaceTime').innerText = fmtHMS(raceRemaining);
+				document.getElementById('savedRacePits').innerHTML = `<span class="text-neon">${raceState.state.pitCount}</span> / <span>${raceState.config.reqStops}</span>`;
+				document.getElementById('savedRaceModal').classList.remove('hidden');
+				
 			} catch (e) {
 				console.error("Failed to check saved race:", e);
 				localStorage.removeItem(RACE_STATE_KEY);
@@ -2152,8 +3579,28 @@
 			}, 100);
 		}
 
-		function clearSavedRace() {
+		function continueRace() {
+			if (!window.savedRaceData) return;
+			const { raceState, elapsed } = window.savedRaceData;
+			document.getElementById('savedRaceModal').classList.add('hidden');
+			restoreRaceState(raceState, elapsed);
+			delete window.savedRaceData;
+		}
+
+		function confirmDiscardRace() {
+			document.getElementById('confirmDiscardModal').classList.remove('hidden');
+		}
+
+		function cancelDiscard() {
+			document.getElementById('confirmDiscardModal').classList.add('hidden');
+		}
+
+		function finalDiscardRace() {
 			localStorage.removeItem(RACE_STATE_KEY);
+			document.getElementById('savedRaceModal').classList.add('hidden');
+			document.getElementById('confirmDiscardModal').classList.add('hidden');
+			delete window.savedRaceData;
+			console.log('Race discarded - ready for new race');
 		}
 
         // ==================== AUDIO ====================
@@ -2302,9 +3749,55 @@
 				}
 				
 				runSim();
+			
+			// Add event listeners to auto-recalculate on changes
+			attachConfigListeners();
 			} catch (e) {
 				console.error("Failed to restore config:", e);
 			}
+		}
+		
+		function attachConfigListeners() {
+			// Attach listeners to all config inputs
+			const configInputs = [
+				'raceDuration', 'reqPitStops', 'minStint', 'maxStint',
+				'minDriverTime', 'maxDriverTime', 'minPitTime', 'releaseBuffer',
+				'maxFuelTime', 'allowDouble', 'trackFuel', 'useSquads'
+			];
+			
+			configInputs.forEach(id => {
+				const el = document.getElementById(id);
+				if (el && !el.dataset.listenerAttached) {
+					el.addEventListener('change', () => runSim());
+					el.dataset.listenerAttached = 'true';
+				}
+			});
+			
+			// Weather condition radios
+			document.querySelectorAll('input[name="weatherCondition"]').forEach(radio => {
+				if (!radio.dataset.listenerAttached) {
+					radio.addEventListener('change', () => runSim());
+					radio.dataset.listenerAttached = 'true';
+				}
+			});
+			
+			// Starter driver radios
+			document.querySelectorAll('.starter-radio').forEach(radio => {
+				if (!radio.dataset.listenerAttached) {
+					radio.addEventListener('change', () => runSim());
+					radio.dataset.listenerAttached = 'true';
+				}
+			});
+			
+			// Squad toggles
+			document.querySelectorAll('.squad-toggle').forEach(toggle => {
+				if (!toggle.dataset.listenerAttached) {
+					toggle.addEventListener('change', () => runSim());
+					toggle.dataset.listenerAttached = 'true';
+				}
+			});
+			
+			console.log('✅ Config change listeners attached');
 		}
 
         // ==================== HOST PEER ====================
@@ -2328,12 +3821,15 @@
                 peer = new Peer(myId, peerConfig);
                 
                 peer.on('open', (id) => {
-                    console.log("Peer connected with ID:", id);
-                    document.getElementById('myHostId').innerText = id;
-                    statusText.innerText = "✅ " + t('connected');
-                    statusText.className = "text-[10px] text-green-500 font-bold mt-2";
-                    connectionRetries = 0;
-                });
+					console.log("Peer connected with ID:", id);
+					document.getElementById('myHostId').innerText = id;
+					statusText.innerText = "✅ " + t('connected');
+					statusText.className = "text-[10px] text-green-500 font-bold mt-2";
+					connectionRetries = 0;
+					
+					// Show load strategy button for host
+					document.getElementById('loadStrategyBtn').classList.remove('hidden');
+				});
                 
                 peer.on('connection', (c) => {
                     console.log("New client connected:", c.peer);
@@ -2379,12 +3875,18 @@
         }
         
         function updateClientCount() {
-            const count = connections.filter(c => c.open).length;
-            const syncText = document.getElementById('syncText');
-            if (syncText) {
-                syncText.innerText = count > 0 ? `${count} ${t('viewer')}${count > 1 ? 's' : ''}` : t('synced');
-            }
-        }
+			const count = connections.filter(c => c.open).length;
+			const syncText = document.getElementById('syncText');
+			if (syncText) {
+				const viewerText = {
+					en: count > 1 ? 'viewers' : 'viewer',
+					he: count > 1 ? 'צופים' : 'צופה',
+					fr: count > 1 ? 'spectateurs' : 'spectateur',
+					pt: count > 1 ? 'espectadores' : 'espectador'
+				};
+				syncText.innerText = count > 0 ? `${count} ${viewerText[currentLang] || viewerText.en}` : t('synced');
+			}
+		}
 
         // ==================== CLIENT PEER ====================
 		function initClientPeer() {
@@ -2544,14 +4046,30 @@
         function broadcast() {
 			if (role !== 'host' || !peer || connections.length === 0) return;
 			const now = Date.now();
+			
+			// Calculate total pit time
+			let totalPitTime = 0;
+			drivers.forEach(d => {
+				d.logs.forEach(log => {
+					if (log.pit) totalPitTime += log.pit;
+				});
+			});
+			
+			// Add current pit time if in pit
+			if (state.isInPit) {
+				totalPitTime += (now - state.pitStart);
+			}
+			
 			const msg = {
 				config: config,
 				drivers: drivers,
 				state: state,
 				liveTimingConfig: liveTimingConfig,
-				syncedTimes: {  // ✅ הוסף
+				syncedTimes: {
 					raceElapsed: now - state.startTime,
 					stintElapsed: state.isInPit ? 0 : (now - state.stintStart + state.stintOffset),
+					pitElapsed: state.isInPit ? (now - state.pitStart) : 0,
+					totalPitTime: totalPitTime,
 					timestamp: now
 				}
 			};
@@ -2578,7 +4096,6 @@
 			list.innerHTML = '';
 			["Driver 1", "Driver 2", "Driver 3", "Driver 4"].forEach((n, i) => createDriverInput(n, i === 0, i < 2 ? 'A' : 'B'));
 			toggleSquadsInput();
-			updateDriversListHeight();
 		}
         
         function createDriverInput(val, checked, squad) {
@@ -2664,27 +4181,16 @@
 				configPanel.scrollTop = panelScrollPos;
 			}
 		}
-        
-        function updateDriversListHeight() {
-			const list = document.getElementById('driversList');
-			const count = list.children.length;
-			const rowHeight = 52;
-			const maxVisible = 10;
-			const newHeight = Math.min(count, maxVisible) * rowHeight;
-			list.style.maxHeight = newHeight + 'px';
-		}
 
 		function addDriverField() { 
 			createDriverInput(`Driver ${document.getElementById('driversList').children.length + 1}`, false, 'A'); 
 			toggleSquadsInput();
-			updateDriversListHeight();
 		}
 
 		function removeDriverField() { 
 			const l = document.getElementById('driversList'); 
 			if (l.children.length > 2) {
 				l.removeChild(l.lastChild);
-				updateDriversListHeight();
 			}
 		}
 
@@ -2745,8 +4251,32 @@
 				pendingPitEntry: false,
 				globalStintNumber: 1
 			};
-			
+
+			// Use generated strategy if available
+			if (window.generatedStrategy && window.generatedStrategy.stints) {
+				state.targetStintMs = window.generatedStrategy.avgStintMs || state.targetStintMs;
+				state.plannedStrategy = window.generatedStrategy;
+				
+				// Find the starter driver index
+				const starterIdx = drivers.findIndex(d => d.name === window.generatedStrategy.starterDriver);
+				if (starterIdx >= 0) {
+					state.currentDriverIdx = starterIdx;
+					state.nextDriverIdx = (starterIdx + 1) % drivers.length;
+				}
+				
+				console.log('Using generated strategy:', window.generatedStrategy);
+				console.log(`Starting with driver: ${drivers[state.currentDriverIdx].name}`);
+				
+				// If strategy includes double stints, note them
+				if (window.generatedStrategy.doubleStints && window.generatedStrategy.doubleStints.length > 0) {
+					state.plannedDoubles = window.generatedStrategy.doubleStints;
+				}
+			}
+
 			recalculateTargetStint();
+			setTimeout(() => {
+				broadcast();
+			}, 100);
 			saveHostState();
             broadcast(); 
             startHostUI();
@@ -2774,10 +4304,13 @@
 					raceRemaining = config.raceMs - (now - state.startTime);
 					stintTime = state.isInPit ? 0 : (now - state.stintStart + state.stintOffset);
 				} else if (syncedTimes) {
-					// ✅ Viewer mode - חשב בעצמך
-					const timeSinceLastSync = now - (syncedTimes.timestamp || now);
+					// Viewer mode - more precise calculation
+					const timeSinceLastSync = now - syncedTimes.timestamp;
+					
+					// Race time includes all time that passed
 					raceRemaining = config.raceMs - (syncedTimes.raceElapsed + timeSinceLastSync);
 					
+					// Stint time - only if not in pit
 					if (!state.isInPit) {
 						stintTime = syncedTimes.stintElapsed + timeSinceLastSync;
 					} else {
@@ -2786,6 +4319,22 @@
 				} else {
 					raceRemaining = config.raceMs - (now - state.startTime);
 					stintTime = state.isInPit ? 0 : (now - state.stintStart + state.stintOffset);
+				}
+
+				// Update viewer pit indicator
+				if (role === 'client') {
+					const viewerPitIndicator = document.getElementById('viewerPitIndicator');
+					const viewerPitTimer = document.getElementById('viewerPitTimer');
+					const viewerNextDriver = document.getElementById('viewerNextDriver');
+					
+					if (state.isInPit) {
+						viewerPitIndicator.classList.remove('hidden');
+						const pitElapsed = syncedTimes ? (now - (syncedTimes.timestamp - syncedTimes.pitElapsed)) : 0;
+						viewerPitTimer.innerText = Math.floor(pitElapsed / 1000) + 's';
+						viewerNextDriver.innerText = drivers[state.nextDriverIdx]?.name || '---';
+					} else {
+						viewerPitIndicator.classList.add('hidden');
+					}
 				}
 				
 				if (raceRemaining <= 0) { 
@@ -2887,12 +4436,14 @@
 				stratBox.className = "p-3 text-center border-b-2 flex flex-col items-center justify-center rounded-lg shadow-lg shrink-0 transition-colors duration-500";
 
 				if (state.trackCondition === 'wet') {
-					rIcon.className = "fa-solid fa-cloud-showers-heavy text-ice animate-pulse";
+					rIcon.innerHTML = "☁️";  // ענן בלבד
+					rIcon.className = "text-lg text-ice";
 					rText.innerText = t('wet');
 					rText.className = "text-xs font-bold text-ice";
 					stratBox.classList.add("bg-blue-900/90", "border-ice");
 				} else if (state.trackCondition === 'drying') {
-					rIcon.className = "fa-solid fa-cloud-rain text-yellow-400";
+					rIcon.innerHTML = "🌤️";  // שמש עם ענן
+					rIcon.className = "text-lg";
 					rText.innerText = t('drying');
 					rText.className = "text-xs font-bold text-yellow-400";
 					stratBox.classList.add("bg-yellow-900/50", "border-yellow-500");
@@ -2918,6 +4469,13 @@
                         syncText.innerText = t('synced');
                     }
                 }
+				// Update current stint time in logs
+				if (!state.isInPit) {
+					const stintEl = document.getElementById(`currentStintTime_${state.currentDriverIdx}`);
+					if (stintEl) {
+						stintEl.innerText = fmtHMS(Math.max(0, stintTime));
+					}
+				}
             } catch (e) { 
                 console.error("Render Error", e); 
             }
@@ -2929,32 +4487,48 @@
 			const now = Date.now();
 			const raceElapsed = now - state.startTime;
 			
-			// סכום stints
+			// Calculate total stint time (driving time)
 			let totalStintTime = 0;
 			drivers.forEach(d => {
 				totalStintTime += d.totalMs;
 			});
 			
-			// הוסף stint נוכחי
+			// Add current stint if driving
 			if (!state.isInPit) {
 				const currentStintTime = now - state.stintStart + state.stintOffset;
 				totalStintTime += currentStintTime;
 			}
 			
-			// חשב הפרש
-			const diff = Math.abs(raceElapsed - totalStintTime);
+			// Calculate total pit time
+			let totalPitTime = 0;
+			drivers.forEach(d => {
+				d.logs.forEach(log => {
+					if (log.pit) totalPitTime += log.pit;
+				});
+			});
+			
+			// Add current pit time if in pit
+			if (state.isInPit) {
+				totalPitTime += (now - state.pitStart);
+			}
+			
+			// Total accounted time should equal race elapsed
+			const totalAccountedTime = totalStintTime + totalPitTime;
+			const diff = Math.abs(raceElapsed - totalAccountedTime);
 			const diffSeconds = (diff / 1000).toFixed(1);
 			
-			console.log('⏱️ Timer Sync:');
-			console.log(`  Race: ${fmtHMS(raceElapsed)}`);
-			console.log(`  Stints: ${fmtHMS(totalStintTime)}`);
-			console.log(`  Diff: ${diffSeconds}s`);
+			console.log('⏱️ Timer Sync Check:');
+			console.log(`  Race Elapsed: ${fmtHMS(raceElapsed)}`);
+			console.log(`  Driving Time: ${fmtHMS(totalStintTime)}`);
+			console.log(`  Pit Time: ${fmtHMS(totalPitTime)}`);
+			console.log(`  Total Accounted: ${fmtHMS(totalAccountedTime)}`);
+			console.log(`  Difference: ${diffSeconds}s`);
 			
 			if (diff > 5000) {
-				console.warn(`⚠️ Timer sync issue! ${diffSeconds}s`);
+				console.warn(`⚠️ Timer sync issue! ${diffSeconds}s difference`);
 				return { synced: false, difference: diff };
 			} else {
-				console.log('✅ Synced!');
+				console.log('✅ Timers synced!');
 				return { synced: true, difference: diff };
 			}
 		}
@@ -3064,9 +4638,9 @@
 				// Show current running stint for active driver
 				if (i === state.currentDriverIdx && !state.isInPit && stintMs > 0) {
 					logContent += `
-						<div class="flex justify-between items-center text-[10px] py-1 border-b border-gray-800 bg-ice/10 animate-pulse">
+						<div class="flex justify-between items-center text-[10px] py-1 border-b border-gray-800 bg-ice/10">
 							<span class="text-ice font-bold">#${state.globalStintNumber} 🏎️</span>
-							<span class="text-ice font-bold">${fmtHMS(stintMs)}</span>
+							<span id="currentStintTime_${i}" class="text-ice font-bold">${fmtHMS(stintMs)}</span>
 							<span class="text-gray-500">--</span>
 						</div>
 					`;
@@ -3175,6 +4749,7 @@
 				document.getElementById('pitModal').classList.add('hidden');
 				document.getElementById('pitPhase2').classList.add('hidden');
 				document.getElementById('btnResetMode').classList.add('hidden');
+				saveRaceState();
 				broadcast();
 			};
 
@@ -3285,6 +4860,7 @@
                 state.squadsActive = !state.squadsActive; 
                 broadcast(); 
                 renderFrame(); 
+				updateControlGrid();
             } 
         }
         
@@ -3302,11 +4878,31 @@
 				renderFrame();
 			}
 		}
+		
+		function updateControlGrid() {
+			const grid = document.getElementById('controlButtonsGrid');
+			if (grid) {
+				if (state.squadsActive) {
+					grid.classList.remove('no-night');
+				} else {
+					grid.classList.add('no-night');
+				}
+			}
+		}
         
         function setMode(m) { 
 			state.mode = m; 
 			document.getElementById('btnResetMode').classList.toggle('hidden', m === 'normal'); 
-			recalculateTargetStint();
+			
+			// Smart recalculation based on mode
+			if (m === 'bad') {
+				// Problem mode - suggest minimum stint for quick pit
+				state.targetStintMs = config.minStintMs + 30000; // min + 30 seconds buffer
+				beep(400, 'sine', 0.3); // Alert sound
+			} else {
+				recalculateTargetStint();
+			}
+			
 			broadcast(); 
 			renderFrame();
 		}
@@ -3324,7 +4920,7 @@
 			const drivingTimeRemaining = raceRemaining - remainingPitTimeMs;
 			
 			if (state.mode === 'push') {
-				state.targetStintMs = config.maxStintMs - 60000;
+				state.targetStintMs = config.maxStintMs - 60000; // Max - 1 minute for safety
 			} else if (state.mode === 'bad') {
 				state.targetStintMs = config.minStintMs;
 			} else {
@@ -3358,7 +4954,16 @@
 				document.getElementById('liveTimingPanel').classList.remove('hidden');
 				document.getElementById('liveIndicator').classList.remove('hidden');
 			}
-			
+
+			// Auto-save race state every 5 seconds
+			if (!window.raceSaveInterval) {
+				window.raceSaveInterval = setInterval(() => {
+					if (role === 'host' && state.isRunning) {
+						saveRaceState();
+					}
+				}, 5000);
+			}
+
 			keepScreenAwake();
 			
 			raceInterval = setInterval(() => { 
@@ -3407,5 +5012,21 @@
 		}
 
     </script>
+	<!-- Hide preview when dashboard is active -->
+	<script>
+	(function() {
+		const dashboard = document.getElementById('raceDashboard');
+		const preview = document.getElementById('previewScreen');
+		
+		if (dashboard && preview) {
+			const observer = new MutationObserver(() => {
+				if (!dashboard.classList.contains('hidden')) {
+					preview.classList.add('hidden');
+				}
+			});
+			observer.observe(dashboard, { attributes: true, attributeFilter: ['class'] });
+		}
+	})();
+	</script>
 </body>
 </html>
