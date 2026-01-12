@@ -2,6 +2,9 @@
 <html lang="en" dir="ltr">
 <head>
     <meta charset="UTF-8">
+    <!-- Google API -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="https://apis.google.com/js/api.js" async defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -18,6 +21,7 @@
 	</style>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 	<script src="/js/racefacer-scraper.js"></script>
+	<script src="/js/apex-scraper.js"></script>
 	<script src="/js/live-timing-manager.js"></script>
     <script>
         tailwind.config = {
@@ -45,129 +49,187 @@
         }
     </script>
     <style>
-	/* Tailwind Fallback for Safari/Offline */
-	.hidden { display: none !important; }
-	.flex { display: flex; }
-	.flex-col { flex-direction: column; }
-	.flex-1 { flex: 1 1 0%; }
-	.items-center { align-items: center; }
-	.justify-center { justify-content: center; }
-	.gap-2 { gap: 0.5rem; }
-	.gap-3 { gap: 0.75rem; }
-	.p-2 { padding: 0.5rem; }
-	.p-3 { padding: 0.75rem; }
-	.p-4 { padding: 1rem; }
-	.rounded { border-radius: 0.25rem; }
-	.rounded-lg { border-radius: 0.5rem; }
-	.text-white { color: white; }
-	.text-center { text-align: center; }
-	.font-bold { font-weight: 700; }
-	.w-full { width: 100%; }
-	.border { border-width: 1px; }
-	.bg-navy-950 { background-color: #020617; }
-	.bg-navy-900 { background-color: #0f172a; }
-	.text-ice { color: #22d3ee; }
-	.text-neon { color: #a3e635; }
-	/* מונע auto-scroll על focus */
-	.starter-radio:focus,
-	.starter-indicator:focus {
-		outline: none;
-		scroll-margin: 0;
-		scroll-behavior: auto;
-	}
-	
-        :root {
-            --safe-area-top: env(safe-area-inset-top);
-            --safe-area-bottom: env(safe-area-inset-bottom);
-        }
-        
-        html, body {
+		/* ==================== BASE STYLES ==================== */
+		:root {
+			--safe-area-top: env(safe-area-inset-top);
+			--safe-area-bottom: env(safe-area-inset-bottom);
+			--navy-950: #020617;
+			--navy-900: #0f172a;
+			--navy-800: #1e293b;
+			--navy-700: #334155;
+			--ice: #22d3ee;
+			--neon: #a3e635;
+			--danger: #ef4444;
+			--fuel: #f97316;
+		}
+		
+		html, body {
 			margin: 0;
 			padding: 0;
 			height: 100%;
-			overflow: hidden;  /* ✅ */
+			overflow: hidden;
 			overscroll-behavior: none;
 			-webkit-overflow-scrolling: touch;
 		}
-        
-        body { 
-            background: #020617; 
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            padding-top: var(--safe-area-top);
-            padding-bottom: var(--safe-area-bottom);
-        }
-        
-        .sync-dot { width: 8px; height: 8px; border-radius: 50%; animation: pulse 2s infinite; }
-        .live-dot { background: #ef4444; box-shadow: 0 0 8px #ef4444; }
-        
-        .big-digit { font-variant-numeric: tabular-nums; letter-spacing: 0.05em; }
-        
-        .btn-press { 
-            transition: transform 0.1s, box-shadow 0.1s;
-            -webkit-tap-highlight-color: transparent;
-        }
-        .btn-press:active { transform: scale(0.95); }
-        
-        @keyframes flash { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-        .flash-alert { animation: flash 0.3s ease-in-out 3; }
-        
-        /* Progress bar zones */
-        .zone-forbidden { background: repeating-linear-gradient(45deg, #ef4444, #ef4444 5px, #991b1b 5px, #991b1b 10px); opacity: 0.3; }
-        .zone-optimal { background: linear-gradient(90deg, #22c55e, #a3e635); }
-        
-        /* RTL support */
-        [dir="rtl"] .grid { direction: rtl; }
-        
-        /* Live Timing styles */
-        .position-up { color: #22c55e; }
-        .position-down { color: #ef4444; }
-        .position-same { color: #9ca3af; }
-        .competitor-row { transition: background-color 0.3s; }
-        .competitor-row.our-team { background: rgba(34, 211, 238, 0.2); border: 1px solid #22d3ee; }
-        .competitor-row.danger-zone { background: rgba(239, 68, 68, 0.15); }
-        
-        /* Scrollable lists */
-        .overflow-y-auto { overflow-y: auto !important; -webkit-overflow-scrolling: touch; }
 		
-		/* Radio button styling */
-		input[type="radio"]:checked + span { color: #22d3ee; font-weight: bold; }
-		.has-\[\:checked\]\:border-ice:has(:checked) { border-color: #22d3ee; }
+		body { 
+			background: var(--navy-950); 
+			font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+			padding-top: var(--safe-area-top);
+			padding-bottom: var(--safe-area-bottom);
+		}
+
+		/* ==================== TAILWIND FALLBACKS ==================== */
+		.hidden { display: none !important; }
+		.flex { display: flex; }
+		.flex-col { flex-direction: column; }
+		.flex-1 { flex: 1 1 0%; }
+		.items-center { align-items: center; }
+		.justify-center { justify-content: center; }
+		.gap-2 { gap: 0.5rem; }
+		.gap-3 { gap: 0.75rem; }
+		.p-2 { padding: 0.5rem; }
+		.p-3 { padding: 0.75rem; }
+		.p-4 { padding: 1rem; }
+		.rounded { border-radius: 0.25rem; }
+		.rounded-lg { border-radius: 0.5rem; }
+		.text-white { color: white; }
+		.text-center { text-align: center; }
+		.font-bold { font-weight: 700; }
+		.w-full { width: 100%; }
+		.border { border-width: 1px; }
+		.bg-navy-950 { background-color: var(--navy-950); }
+		.bg-navy-900 { background-color: var(--navy-900); }
+		.text-ice { color: var(--ice); }
+		.text-neon { color: var(--neon); }
+		.overflow-y-auto { overflow-y: auto !important; -webkit-overflow-scrolling: touch; }
+
+		/* ==================== ANIMATIONS ==================== */
+		@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+		@keyframes flash { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+		
+		.sync-dot { 
+			width: 8px; 
+			height: 8px; 
+			border-radius: 50%; 
+			animation: pulse 2s infinite; 
+		}
+		.live-dot { 
+			background: var(--danger); 
+			box-shadow: 0 0 8px var(--danger); 
+		}
+		.flash-alert { animation: flash 0.3s ease-in-out 3; }
+
+		/* ==================== BUTTONS ==================== */
+		.btn-press { 
+			transition: transform 0.1s, box-shadow 0.1s;
+			-webkit-tap-highlight-color: transparent;
+		}
+		.btn-press:active { transform: scale(0.95); }
+		
+		.big-digit { 
+			font-variant-numeric: tabular-nums; 
+			letter-spacing: 0.05em; 
+		}
+
+		/* ==================== PROGRESS BAR ==================== */
+		.zone-forbidden { 
+			background: repeating-linear-gradient(45deg, #ef4444, #ef4444 5px, #991b1b 5px, #991b1b 10px); 
+			opacity: 0.3; 
+		}
+		.zone-optimal { 
+			background: linear-gradient(90deg, #22c55e, #a3e635); 
+		}
+
+		/* ==================== RTL SUPPORT ==================== */
+		[dir="rtl"] .grid { direction: rtl; }
+
+		/* ==================== LIVE TIMING ==================== */
+		.position-up { color: #22c55e; }
+		.position-down { color: #ef4444; }
+		.position-same { color: #9ca3af; }
+		.competitor-row { transition: background-color 0.3s; }
+		.competitor-row.our-team { 
+			background: rgba(34, 211, 238, 0.2); 
+			border: 1px solid var(--ice); 
+		}
+		.competitor-row.danger-zone { 
+			background: rgba(239, 68, 68, 0.15); 
+		}
+
+		/* ==================== FORM ELEMENTS ==================== */
+		input[type="radio"]:checked + span { color: var(--ice); font-weight: bold; }
+		.has-\[\:checked\]\:border-ice:has(:checked) { border-color: var(--ice); }
 		.has-\[\:checked\]\:bg-ice\/20:has(:checked) { background-color: rgba(34, 211, 238, 0.2); }
 		
-		/* Starter radio styling */
+		.starter-radio:focus,
+		.starter-indicator:focus {
+			outline: none;
+			scroll-margin: 0;
+			scroll-behavior: auto;
+		}
+		
 		.starter-radio:checked + div {
-			border-color: #22d3ee !important;
+			border-color: var(--ice) !important;
 			background-color: rgba(34, 211, 238, 0.3);
 			box-shadow: 0 0 8px rgba(34, 211, 238, 0.5);
 		}
 		
-		/* Responsive design for laptop/desktop */
-		@media (min-width: 768px) {
-			#raceDashboard {
-				max-width: 900px;  /* ✅ שונה מ-600px ל-900px */
-				margin: 0 auto;
-				border-left: 1px solid #334155;
-				border-right: 1px solid #334155;
-			}
-			
-			#setupScreen .max-w-md {
-				max-width: 500px;
-			}
-		}
-
-		/* Extra large screens - חדש! */
-		@media (min-width: 1200px) {
-			#raceDashboard {
-				max-width: 1000px;
-			}
-		}
-		
 		#langSelect {
 			width: auto !important;
-			max-width: 70px;
+			max-width: 50px;
 		}
 
-		/* Viewer mode - disable interactions - חדש! */
+		/* ==================== SIMULATION PREVIEW ==================== */
+		.simulation-preview {
+			background: linear-gradient(135deg, var(--navy-800) 0%, var(--navy-900) 100%);
+			border: 2px solid var(--ice);
+			border-radius: 1rem;
+			padding: 1rem;
+		}
+
+		.stint-timeline {
+			position: relative;
+			height: 60px;
+			background: var(--navy-900);
+			border-radius: 0.5rem;
+			overflow: hidden;
+		}
+
+		.stint-block {
+			position: absolute;
+			height: 100%;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			font-size: 0.75rem;
+			font-weight: bold;
+			border-right: 2px solid var(--navy-950);
+			transition: all 0.3s;
+		}
+
+		.stint-block:hover {
+			transform: scaleY(1.1);
+			z-index: 10;
+		}
+
+		.pit-marker {
+			position: absolute;
+			width: 3px;
+			height: 100%;
+			background: var(--danger);
+			box-shadow: 0 0 8px var(--danger);
+		}
+
+		.time-marker {
+			position: absolute;
+			bottom: -20px;
+			font-size: 0.65rem;
+			color: #9ca3af;
+			transform: translateX(-50%);
+		}
+
+		/* ==================== VIEWER MODE ==================== */
 		.viewer-mode button:not(.btn-view-only),
 		.viewer-mode .editable,
 		.viewer-mode input,
@@ -181,163 +243,11 @@
 			pointer-events: auto !important;
 		}
 
-		/* Preview screen responsive fixes */
-		@media (max-width: 640px) {
-			/* EXISTING RULES - KEEP THESE */
-			header .flex {
-				flex-direction: column;
-				align-items: stretch;
-			}
-			
-			#hostCodeDisplay {
-				order: -1;
-				margin-bottom: 0.5rem;
-			}
-			
-			.header-info-grid {
-				display: grid;
-				grid-template-columns: 1fr;
-				gap: 0.5rem;
-				width: 100%;
-			}
-			
-			.header-info-item {
-				display: flex;
-				flex-direction: column;
-				align-items: center;
-				padding: 0.5rem;
-				background: rgba(15, 23, 42, 0.5);
-				border-radius: 0.5rem;
-			}
-			
-			.header-info-label {
-				font-size: 0.65rem;
-				color: #9ca3af;
-				margin-bottom: 0.25rem;
-			}
-			
-			.header-info-value {
-				font-size: 1.25rem;
-				font-weight: bold;
-			}
-			
-			/* ADD THESE NEW RULES */
-			.simulation-preview {
-				padding: 0.75rem;
-			}
-			
-			.simulation-preview h2 {
-				font-size: 1.25rem;
-			}
-			
-			.simulation-preview h3 {
-				font-size: 1rem;
-			}
-			
-			/* Stack preview buttons vertically on phones */
-			#previewScreen .flex.gap-3:last-of-type {
-				flex-direction: column;
-			}
-			
-			#previewScreen .flex.gap-3:last-of-type button {
-				width: 100%;
-			}
-			
-			/* Strategy summary - single column */
-			#strategySummary {
-				grid-template-columns: 1fr !important;
-			}
-		}
-		
-		@media (min-width: 1024px) {
-			#raceDashboard {
-				max-width: 700px;
-			}
-			
-			.text-4xl {
-				font-size: 3rem;
-			}
-			
-			.text-2xl {
-				font-size: 1.75rem;
-			}
-		}
-		
-		/* Dynamic grid for control buttons */
-		.control-grid {
-			display: grid;
-			grid-template-columns: repeat(3, 1fr);
-			gap: 0.5rem;
-		}
-
-		.control-grid.no-night {
-			grid-template-columns: repeat(2, 1fr);
-		}
-
-		@media (max-width: 640px) {
-			.control-grid {
-				grid-template-columns: repeat(2, 1fr);
-			}
-			
-			.control-grid.no-night {
-				grid-template-columns: 1fr;
-			}
-		}
-		
-		/* Pre-race simulation preview */
-		.simulation-preview {
-			background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-			border: 2px solid #22d3ee;
-			border-radius: 1rem;
-			padding: 1rem;
-		}
-
-		.stint-timeline {
-			position: relative;
-			height: 60px;
-			background: #0f172a;
-			border-radius: 0.5rem;
-			overflow: hidden;
-		}
-
-		.stint-block {
-			position: absolute;
-			height: 100%;
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			font-size: 0.75rem;
-			font-weight: bold;
-			border-right: 2px solid #020617;
-			transition: all 0.3s;
-		}
-
-		.stint-block:hover {
-			transform: scaleY(1.1);
-			z-index: 10;
-		}
-
-		.pit-marker {
-			position: absolute;
-			width: 3px;
-			height: 100%;
-			background: #ef4444;
-			box-shadow: 0 0 8px #ef4444;
-		}
-
-		.time-marker {
-			position: absolute;
-			bottom: -20px;
-			font-size: 0.65rem;
-			color: #9ca3af;
-			transform: translateX(-50%);
-		}
-		
+		/* ==================== SCROLLABLE AREAS ==================== */
 		#driversList {
 			-webkit-overflow-scrolling: touch;
 		}
 		
-		/* Prevent over-scrolling in setup and preview screens */
 		#setupScreen {
 			overflow-y: auto !important;
 			-webkit-overflow-scrolling: touch;
@@ -352,50 +262,169 @@
 			padding-bottom: env(safe-area-inset-bottom, 1rem);
 		}
 
-		/* Ensure content doesn't extend beyond last button */
 		#setupScreen > div,
 		#previewScreen > div {
 			padding-bottom: 2rem;
 		}
 
-		/* Make sure buttons stay visible */
 		#startRaceBtn,
 		#previewScreen .flex.gap-3:last-of-type {
 			margin-bottom: 0;
 		}
-    </style>
+
+		/* ==================== DASHBOARD LAYOUT ==================== */
+		#raceDashboard {
+			max-width: 100%;
+		}
+
+		/* ==================== RESPONSIVE: MOBILE (< 480px) ==================== */
+		@media (max-width: 480px) {
+			header > div,
+			header .flex {
+				padding: 0.25rem 0.5rem;
+				gap: 0.25rem !important;
+			}
+			
+			#hostCodeDisplay {
+				padding: 0.25rem 0.5rem !important;
+			}
+			
+			#hostCodeDisplay code {
+				font-size: 0.65rem !important;
+			}
+			
+			#hostCodeDisplay .text-\[10px\],
+			#hostCodeDisplay .text-\[9px\] {
+				display: none;
+			}
+			
+			#syncControls {
+				padding: 0.25rem 0.5rem !important;
+			}
+			
+			#syncControls .text-xs,
+			#syncControls .text-\[10px\] {
+				font-size: 0.6rem !important;
+			}
+			
+			#langSelect {
+				padding: 0.15rem 0.25rem !important;
+				font-size: 0.6rem !important;
+			}
+		}
+
+		/* ==================== RESPONSIVE: SMALL SCREENS (< 640px) ==================== */
+		@media (max-width: 640px) {
+			.simulation-preview {
+				padding: 0.75rem;
+			}
+			
+			.simulation-preview h2 {
+				font-size: 1.25rem;
+			}
+			
+			.simulation-preview h3 {
+				font-size: 1rem;
+			}
+			
+			#previewScreen .flex.gap-3:last-of-type {
+				flex-direction: column;
+			}
+			
+			#previewScreen .flex.gap-3:last-of-type button {
+				width: 100%;
+			}
+			
+			#strategySummary {
+				grid-template-columns: 1fr !important;
+			}
+		}
+
+		/* ==================== RESPONSIVE: TABLET (768px+) ==================== */
+		@media (min-width: 768px) {
+			#raceDashboard {
+				border-left: 1px solid var(--navy-700);
+				border-right: 1px solid var(--navy-700);
+			}
+			
+			#setupScreen .max-w-md {
+				max-width: 500px;
+			}
+		}
+
+		/* ==================== RESPONSIVE: DESKTOP (1024px+) ==================== */
+		@media (min-width: 1024px) {
+			.text-4xl {
+				font-size: 3rem;
+			}
+			
+			.text-2xl {
+				font-size: 1.75rem;
+			}
+		}
+
+		/* ==================== GOOGLE INTEGRATION ==================== */
+		.google-btn {
+			background: white;
+			color: #444;
+			border: 1px solid #ddd;
+			padding: 0.5rem 1rem;
+			border-radius: 0.5rem;
+			display: flex;
+			align-items: center;
+			gap: 0.5rem;
+			font-weight: 500;
+			cursor: pointer;
+			transition: background 0.2s, box-shadow 0.2s;
+		}
+		
+		.google-btn:hover {
+			background: #f8f8f8;
+			box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+		}
+		
+		.google-btn img {
+			width: 18px;
+			height: 18px;
+		}
+		
+		.user-avatar {
+			width: 32px;
+			height: 32px;
+			border-radius: 50%;
+			border: 2px solid var(--ice);
+		}
+	</style>
 </head>
 <body class="bg-navy-950 text-gray-200 min-h-screen flex flex-col">
     <!-- Header -->
-	<header class="bg-navy-900 border-b border-gray-800 p-2 shrink-0">
-		<div class="flex justify-between items-center gap-3">
-			<!-- Code & Viewers - משמאל -->
-			<div class="flex items-center gap-2">
-				<div id="hostCodeDisplay" class="hidden flex items-center gap-2 bg-navy-800 px-3 py-2 rounded border border-ice/50">
-					<i class="fas text-ice text-sm"></i>
-					<span class="text-[10px] text-gray-400" data-i18n="code">Code:</span>
-					<code id="dashboardHostId" class="text-ice font-mono font-bold text-sm">---</code>
-					<button onclick="copyHostCode()" class="text-gray-400 hover:text-white transition-colors ml-1" title="Copy code">
-						<i class="fas fa-copy text-xs"></i>
-					</button>
-				</div>
-				
-				<div id="syncControls" class="hidden flex items-center gap-2 bg-navy-800 px-3 py-2 rounded border border-gray-700">
-					<span id="syncDot" class="sync-dot bg-green-500"></span>
-					<span id="syncText" class="text-xs text-gray-400" data-i18n="synced">Synced</span>
-				</div>
-				
-				<div id="liveIndicator" class="hidden sync-dot live-dot"></div>
-			</div>
-			
-			<!-- Language Select - מימין -->
+	<header class="bg-navy-900 border-b border-gray-800 shrink-0">
+		<div class="flex justify-between items-center px-2 py-1 gap-1">
+			<!-- Language Select - LEFT -->
 			<select id="langSelect" onchange="setLanguage(this.value)" 
-					class="text-xs bg-navy-800 px-2 py-1 rounded border border-gray-700 hover:bg-navy-700 text-white cursor-pointer">
+					class="text-xs bg-navy-800 px-1 py-0.5 rounded border border-gray-700 text-white cursor-pointer w-12">
 				<option value="en">EN</option>
 				<option value="he">HE</option>
 				<option value="fr">FR</option>
 				<option value="pt">PT</option>
 			</select>
+			
+			<!-- Sync Status - CENTER -->
+			<div id="syncControls" class="hidden flex items-center gap-1 bg-navy-800 px-2 py-1 rounded border border-gray-700">
+				<span id="syncDot" class="sync-dot bg-green-500"></span>
+				<span id="syncText" class="text-[10px] text-gray-400" data-i18n="synced">Synced</span>
+			</div>
+			
+			<div id="liveIndicator" class="hidden sync-dot live-dot"></div>
+			
+			<!-- Host Code - RIGHT -->
+			<div id="hostCodeDisplay" class="hidden flex items-center gap-1 bg-navy-800 px-2 py-1 rounded border border-ice/50">
+				<span class="text-[9px] text-gray-400" data-i18n="code">Code:</span>
+				<code id="dashboardHostId" class="text-ice font-mono font-bold text-xs">---</code>
+				<button onclick="copyHostCode()" class="text-gray-400 hover:text-white ml-0.5 p-1" title="Copy code">
+					<i class="fas fa-copy text-[10px]"></i>
+				</button>
+			</div>
 		</div>
 	</header>
 
@@ -424,6 +453,59 @@
 					class="hidden w-full bg-navy-800 text-gray-300 text-sm py-2 rounded-lg mb-3 border border-gray-700 hover:border-ice">
 				📚 <span data-i18n="loadStrategy">Load Saved Strategy</span>
 			</button>
+
+			<!-- Google Integration Section -->
+			<div id="googleSection" class="mt-4 mb-6 p-3 bg-navy-800 rounded-lg border border-gray-700">
+				<div class="flex items-center justify-between mb-2">
+					<span class="text-sm font-bold text-white flex items-center gap-2">
+						<img src="https://www.google.com/favicon.ico" class="w-4 h-4">
+						<span data-i18n="googleConnect">Google Connect</span>
+					</span>
+					<span id="googleStatus" class="text-[10px] text-gray-500">Not connected</span>
+				</div>
+				
+				<!-- Sign In Button -->
+				<div id="googleSignInContainer" class="flex justify-center">
+					<button onclick="googleSignIn()" class="google-btn">
+						<img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
+						<span data-i18n="signInGoogle">Sign in with Google</span>
+					</button>
+				</div>
+				
+				<!-- Signed In View -->
+				<div id="googleSignedIn" class="hidden">
+					<div class="flex items-center gap-3 mb-3">
+						<img id="googleAvatar" src="" class="user-avatar">
+						<div>
+							<p id="googleName" class="text-sm font-bold text-white">User</p>
+							<p id="googleEmail" class="text-[10px] text-gray-400">email@example.com</p>
+						</div>
+						<button onclick="googleSignOut()" class="ml-auto text-xs text-red-400 hover:text-red-300">
+							<i class="fas fa-sign-out-alt"></i>
+						</button>
+					</div>
+					
+					<!-- Google Features -->
+					<div class="grid grid-cols-2 gap-2">
+						<button onclick="showTeamEmailModal()" class="bg-navy-900 border border-gray-600 rounded p-2 text-center hover:border-ice transition">
+							<i class="fas fa-envelope text-ice mb-1"></i>
+							<p class="text-[10px] text-gray-300" data-i18n="emailTeam">Email Team</p>
+						</button>
+						<button onclick="showCalendarModal()" class="bg-navy-900 border border-gray-600 rounded p-2 text-center hover:border-neon transition">
+							<i class="fas fa-calendar-plus text-neon mb-1"></i>
+							<p class="text-[10px] text-gray-300" data-i18n="addCalendar">Add to Calendar</p>
+						</button>
+						<button onclick="shareStrategyEmail()" class="bg-navy-900 border border-gray-600 rounded p-2 text-center hover:border-gold transition">
+							<i class="fas fa-share text-gold mb-1"></i>
+							<p class="text-[10px] text-gray-300" data-i18n="shareStrategy">Share Strategy</p>
+						</button>
+						<button onclick="checkTeamAvailability()" class="bg-navy-900 border border-gray-600 rounded p-2 text-center hover:border-purple-400 transition">
+							<i class="fas fa-users text-purple-400 mb-1"></i>
+							<p class="text-[10px] text-gray-300" data-i18n="checkAvailability">Check Availability</p>
+						</button>
+					</div>
+				</div>
+			</div>
 
             <!-- Host Section -->
             <div id="hostSection" class="hidden">
@@ -455,7 +537,8 @@
                     <div class="space-y-2">
                         <div>
                             <label class="text-[10px] text-gray-400" data-i18n="liveTimingUrl">Live Timing URL (APEX/RaceFacer)</label>
-                            <input type="url" id="liveTimingUrl" placeholder="https://live.racefacer.com/race/..." class="w-full bg-navy-950 border border-gray-600 rounded p-2 text-white text-sm">
+                            <input type="url" id="liveTimingUrl" placeholder="https://live.racefacer.com/... or https://apex-timing.com/..." 
+       							class="w-full bg-navy-950 border border-gray-600 rounded p-2 text-white text-sm">
                         </div>
                         
                         <div>
@@ -726,32 +809,31 @@
 	</div>
 
     <!-- Race Dashboard -->
-    <div id="raceDashboard" class="hidden flex flex-col h-full overflow-hidden">
-        <!-- Top Bar -->
-        <div class="bg-navy-900 border-b border-gray-800 shrink-0">
-			<!-- Race Info Section -->
-			<div class="p-2 flex items-center justify-between gap-3">
-				<!-- Race Time -->
-				<div class="flex flex-col items-center">
-					<p class="text-[10px] text-gray-500" data-i18n="raceTime">Race Time</p>
-					<p id="raceTimerDisplay" class="text-xl font-mono font-bold text-white big-digit">00:00:00</p>
-				</div>
+    <div id="raceDashboard" class="hidden flex flex-col h-full overflow-y-auto">
+		<!-- Top Bar -->
+		<div class="bg-navy-900 border-b border-gray-800 shrink-0">
+			<div class="p-2 flex items-center justify-between gap-2">
+				<!-- Weather Button - LEFT -->
+				<button id="btnRain" onclick="toggleRain()" class="btn-press bg-navy-800 border border-blue-500/50 rounded-lg px-3 py-2 hover:bg-navy-700 shrink-0">
+					<span id="rainIcon" class="text-base">☀️</span>
+					<span id="rainText" class="text-[10px] font-bold text-yellow-400 block" data-i18n="dry">Dry</span>
+				</button>
 				
-				<!-- Pit Stops -->
+				<!-- Pit Stops - CENTER -->
 				<div class="flex flex-col items-center">
 					<p class="text-[10px] text-gray-500" data-i18n="pitStops">Pit Stops</p>
-					<p id="pitCountDisplay" class="text-lg font-bold">
+					<p id="pitCountDisplay" class="text-base font-bold">
 						<span class="text-neon">0</span>
 						<span class="text-gray-500">/</span>
 						<span>0</span>
 					</p>
 				</div>
 				
-				<!-- Weather Button -->
-				<button id="btnRain" onclick="toggleRain()" class="btn-press bg-navy-800 border border-blue-500/50 rounded-lg px-3 py-2 hover:bg-navy-700">
-					<span id="rainIcon" class="text-lg">☀️</span>
-					<span id="rainText" class="text-xs font-bold text-yellow-400 block" data-i18n="dry">Dry</span>
-				</button>
+				<!-- Race Time - RIGHT -->
+				<div class="flex flex-col items-center">
+					<p class="text-[10px] text-gray-500" data-i18n="raceTime">Race Time</p>
+					<p id="raceTimerDisplay" class="text-lg font-mono font-bold text-white big-digit">00:00:00</p>
+				</div>
 			</div>
 		</div>
 
@@ -866,20 +948,22 @@
         </div>
 
         <!-- Control Buttons -->
-        <div class="control-grid" id="controlButtonsGrid">
-			<button id="btnPush" onclick="setMode('push')" data-viewer-disabled="true" class="btn-press bg-navy-800 border border-green-900/50 rounded-lg p-2 group hover:bg-navy-700">
-				<span class="block text-lg">🔥 <span data-i18n="push">Push</span></span>
+        <div class="p-2 shrink-0">
+			<div class="grid grid-cols-2 gap-2" id="controlButtonsGrid">
+				<button id="btnPush" onclick="setMode('push')" data-viewer-disabled="true" class="btn-press bg-navy-800 border border-green-900/50 rounded-lg p-3 hover:bg-navy-700">
+					<span class="text-base">🔥 <span data-i18n="push">Push</span></span>
+				</button>
+				<button id="btnBad" onclick="setMode('bad')" data-viewer-disabled="true" class="btn-press bg-navy-800 border border-red-900/50 rounded-lg p-3 hover:bg-navy-700">
+					<span class="text-base">🐢 <span data-i18n="problem">Problem</span></span>
+				</button>
+			</div>
+			<button id="btnNight" onclick="toggleNightMode()" data-viewer-disabled="true" class="hidden w-full btn-press bg-navy-800 border border-purple-500/50 rounded-lg p-2 mt-2 hover:bg-navy-700 text-purple-300">
+				<span class="text-base">🌙 <span data-i18n="night">Night</span></span>
 			</button>
-            <button id="btnBad" onclick="setMode('bad')" data-viewer-disabled="true" class="btn-press bg-navy-800 border border-red-900/50 rounded-lg p-2 group hover:bg-navy-700">
-				<span class="block text-lg">🐢 <span data-i18n="problem">Problem</span></span>
+			<button id="btnResetMode" onclick="setMode('normal')" data-viewer-disabled="true" class="hidden w-full btn-press bg-navy-800 border border-gray-600 rounded-lg p-2 mt-2">
+				<span class="text-sm text-gray-400" data-i18n="resetMode">↩️ Reset Mode</span>
 			</button>
-			<button id="btnNight" onclick="toggleNightMode()" data-viewer-disabled="true" class="hidden btn-press bg-navy-800 border border-purple-500/50 rounded-lg p-2 group hover:bg-navy-700 text-purple-300">
-                <span class="block text-lg">🌙 <span data-i18n="night">Night</span></span>
-            </button>
-			<button id="btnResetMode" onclick="setMode('normal')" data-viewer-disabled="true" class="hidden btn-press bg-navy-800 border border-gray-600 rounded-lg p-2 col-span-3">
-                <span class="text-sm text-gray-400" data-i18n="resetMode">↩️ Reset Mode</span>
-            </button>
-        </div>
+		</div>
 
         <!-- Driver Stats -->
         <div class="flex-1 overflow-y-auto bg-navy-950 p-2">
@@ -1280,8 +1364,6 @@
 				nightActive: '🌙 Night Active',
 				pushActive: '🔥 Push Active',
 				problemActive: '🐢 Problem Active',
-				connecting: 'Connecting...',
-				connected: 'Connected',
 				teamNotFound: 'Team not found',
 				connectionIssues: 'Connection issues',
 				usingIframe: 'Using iframe',
@@ -1325,6 +1407,25 @@
 				raceFinished: '🏁 Race Finished!',
 				savedToDb: '✅ Strategy saved to database',
 				safetyWarning: '⚠️ Safety Warning',
+				googleConnect: 'Google Connect',
+				signInGoogle: 'Sign in with Google',
+				emailTeam: 'Email Team',
+				addCalendar: 'Add to Calendar',
+				shareStrategy: 'Share Strategy',
+				checkAvailability: 'Check Availability',
+				recipients: 'Recipients (comma separated)',
+				emailSubject: 'Subject',
+				message: 'Message',
+				attachStrategy: 'Attach current strategy',
+				sendEmail: 'Send Email',
+				addToCalendar: 'Add to Google Calendar',
+				eventTitle: 'Event Title',
+				startDate: 'Start Date',
+				startTime: 'Start Time',
+				location: 'Location',
+				inviteDrivers: 'Invite Drivers (emails)',
+				addReminder: 'Add reminder (1 day before)',
+				createEvent: 'Create Event',
 			},
 			he: {
 				offline: 'לא מחובר',
@@ -1425,8 +1526,6 @@
 				nightActive: '🌙 לילה פעיל',
 				pushActive: '🔥 קצב פעיל',
 				problemActive: '🐢 תקלה פעיל',
-				connecting: 'מתחבר...',
-				connected: 'מחובר',
 				teamNotFound: 'קבוצה לא נמצאה',
 				connectionIssues: 'בעיות חיבור',
 				usingIframe: 'משתמש ב-iframe',
@@ -1470,6 +1569,25 @@
 				raceFinished: '🏁 המירוץ הסתיים!',
 				savedToDb: '✅ נשמר למסד הנתונים',
 				safetyWarning: '⚠️ אזהרת בטיחות',
+				googleConnect: 'התחברות Google',
+				signInGoogle: 'התחבר עם Google',
+				emailTeam: 'שלח מייל לצוות',
+				addCalendar: 'הוסף ליומן',
+				shareStrategy: 'שתף אסטרטגיה',
+				checkAvailability: 'בדוק זמינות',
+				recipients: 'נמענים (מופרדים בפסיק)',
+				emailSubject: 'נושא',
+				message: 'הודעה',
+				attachStrategy: 'צרף אסטרטגיה נוכחית',
+				sendEmail: 'שלח מייל',
+				addToCalendar: 'הוסף ליומן Google',
+				eventTitle: 'כותרת אירוע',
+				startDate: 'תאריך התחלה',
+				startTime: 'שעת התחלה',
+				location: 'מיקום',
+				inviteDrivers: 'הזמן נהגים (אימיילים)',
+				addReminder: 'הוסף תזכורת (יום לפני)',
+				createEvent: 'צור אירוע',
 			},
 			fr: {
 				offline: 'Hors ligne',
@@ -1570,6 +1688,10 @@
 				nightActive: '🌙 Nuit Active',
 				pushActive: '🔥 Pousser Actif',
 				problemActive: '🐢 Problème Actif',
+				teamNotFound: 'Équipe non trouvée',
+				connectionIssues: 'Problèmes de connexion',
+				usingIframe: 'Utilisation de l\'iframe',
+				connectionFailed: 'Échec de connexion',
 				stopped: 'Arrêté',
 				racePreview: 'Aperçu de la Stratégie',
 				raceStartTime: 'Heure de Départ',
@@ -1609,6 +1731,25 @@
 				raceFinished: '🏁 Course Terminée!',
 				savedToDb: '✅ Enregistré dans la BDD',
 				safetyWarning: '⚠️ Avertissement de Sécurité',
+				googleConnect: 'Connexion Google',
+				signInGoogle: 'Se connecter avec Google',
+				emailTeam: 'Envoyer email à l\'équipe',
+				addCalendar: 'Ajouter au calendrier',
+				shareStrategy: 'Partager la stratégie',
+				checkAvailability: 'Vérifier disponibilité',
+				recipients: 'Destinataires (séparés par virgule)',
+				emailSubject: 'Sujet',
+				message: 'Message',
+				attachStrategy: 'Joindre la stratégie actuelle',
+				sendEmail: 'Envoyer Email',
+				addToCalendar: 'Ajouter à Google Agenda',
+				eventTitle: 'Titre de l\'événement',
+				startDate: 'Date de début',
+				startTime: 'Heure de début',
+				location: 'Lieu',
+				inviteDrivers: 'Inviter pilotes (emails)',
+				addReminder: 'Ajouter rappel (1 jour avant)',
+				createEvent: 'Créer l\'événement',
 			},
 			pt: {
 				offline: 'Offline',
@@ -1709,6 +1850,10 @@
 				nightActive: '🌙 Noite Ativa',
 				pushActive: '🔥 Atacar Ativo',
 				problemActive: '🐢 Problema Ativo',
+				teamNotFound: 'Equipa não encontrada',
+				connectionIssues: 'Problemas de conexão',
+				usingIframe: 'Usando iframe',
+				connectionFailed: 'Conexão falhou',
 				stopped: 'Parado',
 				racePreview: 'Visualização da Estratégia de Corrida',
 				raceStartTime: 'Hora de Início da Corrida',
@@ -1748,6 +1893,25 @@
 				raceFinished: '🏁 Corrida Terminada!',
 				savedToDb: '✅ Salvo no banco de dados',
 				safetyWarning: '⚠️ Aviso de Segurança',
+				googleConnect: 'Conexão Google',
+				signInGoogle: 'Entrar com Google',
+				emailTeam: 'Enviar e-mail para equipe',
+				addCalendar: 'Adicionar à Agenda',
+				shareStrategy: 'Compartilhar Estratégia',
+				checkAvailability: 'Verificar Disponibilidade',
+				recipients: 'Destinatários (separados por vírgula)',
+				emailSubject: 'Assunto',
+				message: 'Mensagem',
+				attachStrategy: 'Anexar estratégia atual',
+				sendEmail: 'Enviar E-mail',
+				addToCalendar: 'Adicionar ao Google Agenda',
+				eventTitle: 'Título do Evento',
+				startDate: 'Data de Início',
+				startTime: 'Hora de Início',
+				location: 'Local',
+				inviteDrivers: 'Convidar Pilotos (e-mails)',
+				addReminder: 'Adicionar lembrete (1 dia antes)',
+				createEvent: 'Criar Evento',
 			}
 		};
 		
@@ -2045,6 +2209,22 @@
 			saveHostState();
 		}
 
+		function checkGoogleSession() {
+			const savedUser = localStorage.getItem('strateger_google_user');
+			if (savedUser) {
+				// If we have a user in storage but no access token in memory (page refresh),
+				// we should either try to silent refresh or just clear to be safe/force login.
+				if (!googleAccessToken) {
+					console.log('Session state check: User present but no token. Clearing for security.');
+					// Optional: You could try to auto-login here if you implemented persistent tokens,
+					// but for this simple version, we log out to force fresh auth.
+					googleSignOut();
+				}
+			}
+		}
+		// Add listener once
+		window.addEventListener('load', checkGoogleSession);
+
 		function generateSmartStrategy(params) {
 			const {
 				totalStints,
@@ -2145,150 +2325,130 @@
 		async function generateAIStrategy() {
 			const statusEl = document.getElementById('aiStrategyStatus');
 			statusEl.classList.remove('hidden');
-			statusEl.innerText = '🤖 Analyzing strategy...';
+			statusEl.innerText = t('analyzing');
 			statusEl.className = 'text-[10px] text-yellow-500 text-center mt-2';
 			
 			const instructions = document.getElementById('strategyInstructions').value;
 			
-			if (!instructions || instructions.trim().length < 10) {
-				statusEl.innerText = '⚠️ Please provide detailed instructions';
-				statusEl.className = 'text-[10px] text-red-400 text-center mt-2';
-				return;
-			}
-			
-			// Gather current config
+			// איסוף נתונים מהממשק
 			const raceDur = parseFloat(document.getElementById('raceDuration').value);
 			const reqStops = parseInt(document.getElementById('reqPitStops').value);
 			const minStint = parseFloat(document.getElementById('minStint').value);
 			const maxStint = parseFloat(document.getElementById('maxStint').value);
+			const pitTime = parseInt(document.getElementById('minPitTime').value);
 			const allowDouble = document.getElementById('allowDouble').checked;
 			const useSquads = document.getElementById('useSquads').checked;
 			const weatherCondition = document.querySelector('input[name="weatherCondition"]:checked')?.value || 'dry';
 			
-			const drivers = Array.from(document.querySelectorAll('.driver-input')).map((input, i) => {
-				const starterRadio = document.querySelectorAll('.starter-radio')[i];
-				const squadToggle = document.querySelectorAll('.squad-toggle')[i];
-				return {
-					name: input.value,
-					isStarter: starterRadio?.checked || false,
-					squad: squadToggle?.checked ? 'B' : 'A'
-				};
-			});
-			
-			const prompt = `You are an expert karting race strategist. Analyze this endurance race setup and provide optimal strategy recommendations.
+			// הכנת אובייקט אילוצים נקי ל-Gemini
+			const constraints = {
+				raceDuration: raceDur * 60, // דקות
+				totalStints: reqStops + 1,
+				pitStops: reqStops,
+				minStint: minStint,
+				maxStint: maxStint,
+				pitTime: pitTime,
+				useSquads: useSquads,
+				allowDouble: allowDouble,
+				minDrive: parseInt(document.getElementById('minDriverTime').value) || 0,
+				maxDrive: parseInt(document.getElementById('maxDriverTime').value) || 0
+			};
 
-		**Race Configuration:**
-		- Duration: ${raceDur} hours
-		- Required pit stops: ${reqStops}
-		- Stint limits: ${minStint}-${maxStint} minutes
-		- Weather: ${weatherCondition}
-		- Double stints allowed: ${allowDouble ? 'Yes' : 'No'}
-		- Squad system: ${useSquads ? 'Yes (A/B rotation for night shifts)' : 'No'}
-		- Starting driver: ${drivers.find(d => d.isStarter)?.name || drivers[0].name}
-
-		**Drivers:**
-		${drivers.map(d => `- ${d.name} (Squad ${d.squad})${d.isStarter ? ' [STARTER]' : ''}`).join('\n')}
-
-		**User Instructions:**
-		${instructions}
-
-		**Please provide:**
-		1. Recommended stint durations considering max-1min safety buffer
-		2. Driver rotation strategy (starting with the designated starter)
-		3. If squads enabled: optimal night shift strategy with double stints
-		4. Weather-based adjustments
-		5. Endgame strategy (last 2-3 stints)
-		6. Any special considerations based on user instructions
-
-		Format your response as specific, actionable recommendations in JSON format:
-		{
-		"stintTargetMinutes": number,
-		"starterNote": "string",
-		"driverRotation": ["driver1", "driver2", ...],
-		"doubleStintRecommendations": ["stint 5-6 for Squad A in night", ...],
-		"weatherNotes": "string",
-		"endgameStrategy": "string",
-		"specialConsiderations": ["note1", "note2", ...]
-		}`;
+			const prompt = `
+			User Instructions: ${instructions || "Optimize for speed."}
+			Drivers Available: ${drivers.map(d => d.name + " (Squad " + d.squad + ")").join(', ')}
+			Weather: ${weatherCondition}
+			`;
 
 			try {
-				const response = await fetch("https://api.anthropic.com/v1/messages", {
-					method: "POST",
-					headers: {
-						"Content-Type": "application/json",
-					},
-					body: JSON.stringify({
-						model: "claude-sonnet-4-20250514",
-						max_tokens: 1000,
-						messages: [
-							{ role: "user", content: prompt }
-						],
-					})
+				// קריאה לפונקציה החדשה ב-Netlify
+				const response = await fetch('/.netlify/functions/ai-strategy', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ prompt, constraints }) // שולחים גם constraints
 				});
 				
 				const data = await response.json();
 				
-				if (data.content && data.content[0]) {
-					const aiResponse = data.content[0].text;
+				if (!data.success) throw new Error(data.error || 'AI request failed');
+				
+				// Gemini מחזיר אובייקט תוכן בתוך content
+				const result = data.content; 
+				
+				// החלת ההמלצות
+				if (result.stints && Array.isArray(result.stints)) {
+					applyAIStrategyToTimeline(result.stints);
+					statusEl.innerText = '✅ AI strategy applied!';
+					statusEl.className = 'text-[10px] text-green-400 text-center mt-2';
 					
-					// Try to parse JSON from response
-					const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
-					if (jsonMatch) {
-						const recommendations = JSON.parse(jsonMatch[0]);
-						applyAIRecommendations(recommendations);
-						statusEl.innerText = '✅ AI strategy applied!';
-						statusEl.className = 'text-[10px] text-green-400 text-center mt-2';
-					} else {
-						// Show text response
-						statusEl.innerText = '✅ Strategy generated - check console for details';
-						console.log('AI Strategy Recommendations:', aiResponse);
-						statusEl.className = 'text-[10px] text-green-400 text-center mt-2';
-					}
+					// הצגת הסבר
+					document.getElementById('simResult').innerText = "🤖 AI Plan: " + (result.explanation || "Optimized strategy generated.");
+				} else {
+					throw new Error("Invalid AI response format");
 				}
+
 			} catch (error) {
 				console.error('AI Strategy Error:', error);
-				statusEl.innerText = '❌ Error generating strategy';
+				statusEl.innerText = `❌ ${error.message}`;
 				statusEl.className = 'text-[10px] text-red-400 text-center mt-2';
 			}
 			
-			// Hide status after 5 seconds
-			setTimeout(() => {
-				statusEl.classList.add('hidden');
-			}, 5000);
+			setTimeout(() => statusEl.classList.add('hidden'), 5000);
 		}
 
-		function applyAIRecommendations(recommendations) {
-			console.log('Applying AI recommendations:', recommendations);
+		// פונקציית עזר חדשה שממירה את תשובת ה-AI לטיים-ליין של המערכת
+		function applyAIStrategyToTimeline(aiStints) {
+			// עדכון הנתונים הלוקאליים
+			if (!previewData) generatePreview(); // יצירת בסיס אם אין
 			
-			// Update target stint if provided
-			if (recommendations.stintTargetMinutes) {
-				const currentMax = parseFloat(document.getElementById('maxStint').value);
-				const suggested = Math.min(currentMax - 1, recommendations.stintTargetMinutes);
-				// Store for use in strategy generation
-				aiStrategyConfig.targetStintMin = suggested;
-			}
-			
-			// Store AI recommendations for strategy generation
-			aiStrategyConfig.useAI = true;
-			aiStrategyConfig.recommendations = recommendations;
-			
-			// Re-run simulation with AI insights
-			runSim();
-			
-			// Show recommendations in a readable format
-			let summary = '🤖 AI Recommendations:\n\n';
-			if (recommendations.starterNote) summary += `🏁 ${recommendations.starterNote}\n`;
-			if (recommendations.weatherNotes) summary += `🌤️ ${recommendations.weatherNotes}\n`;
-			if (recommendations.endgameStrategy) summary += `🏆 ${recommendations.endgameStrategy}\n`;
-			
-			if (recommendations.specialConsiderations) {
-				summary += '\n💡 Key Points:\n';
-				recommendations.specialConsiderations.forEach(note => {
-					summary += `  • ${note}\n`;
+			// מיפוי הנהגים מה-AI לנהגים שלנו (לפי שם)
+			const newTimeline = [];
+			let currentTime = 0;
+			const startTime = previewData.startTime || new Date();
+
+			aiStints.forEach((stint, idx) => {
+				// מציאת הנהג המתאים
+				const driverIdx = drivers.findIndex(d => d.name.toLowerCase() === stint.driver.toLowerCase());
+				const safeDriverIdx = driverIdx >= 0 ? driverIdx : 0; // Fallback
+				
+				const durationMs = stint.durationMin * 60000;
+				
+				// יצירת אובייקט סטינט
+				newTimeline.push({
+					type: 'stint',
+					stintNumber: idx + 1,
+					driverIdx: safeDriverIdx,
+					driverName: drivers[safeDriverIdx].name,
+					color: drivers[safeDriverIdx].color || `hsl(${(safeDriverIdx * 360 / drivers.length)}, 70%, 50%)`,
+					start: currentTime,
+					duration: durationMs,
+					startTime: new Date(startTime.getTime() + currentTime),
+					endTime: new Date(startTime.getTime() + currentTime + durationMs),
+					note: stint.notes // הערות מה-AI
 				});
-			}
+				
+				currentTime += durationMs;
+
+				// הוספת עצירה (אם זה לא הסטינט האחרון)
+				if (idx < aiStints.length - 1) {
+					const pitMs = config.minPitSec * 1000;
+					newTimeline.push({
+						type: 'pit',
+						pitNumber: idx + 1,
+						start: currentTime,
+						duration: pitMs,
+						startTime: new Date(startTime.getTime() + currentTime)
+					});
+					currentTime += pitMs;
+				}
+			});
+
+			previewData.timeline = newTimeline;
 			
-			document.getElementById('simResult').innerText = summary;
+			// חישוב מחדש של סטטיסטיקות נהגים
+			recalculateDriverStatsFromTimeline();
+			
+			renderPreview();
 		}
 
         function toggleConfigPanel(event) {
@@ -2364,108 +2524,47 @@
 		}
 		
 		async function fetchLiveTimingFromProxy() {
-			if (!liveTimingConfig.url) {
-				console.log('No live timing URL configured');
-				return;
-			}
+			if (!liveTimingConfig.url) return;
 			
-			// עדכן את ה-search config
 			updateSearchConfig();
-			
-			// עדכן סטטוס
 			updateProxyStatus("🔄 " + t('connecting'));
 			
-			const url = liveTimingConfig.url;
-			const searchTerm = searchConfig.driverName || searchConfig.teamName || searchConfig.kartNumber || '';
-			
-			console.log(`[Strateger] Starting live timing with URL: ${url}`);
-			console.log(`[Strateger] Search term: "${searchTerm}"`);
-			
-			// צור מנהל חדש אם לא קיים
+			// יצירת מנהל אם לא קיים
 			if (!liveTimingManager) {
+				// כאן אנחנו מסתמכים על הקובץ live-timing-manager.js שנטען
+				// הוא יחליט אם להשתמש ב-Apex Scraper החדש או הישן
 				liveTimingManager = new LiveTimingManager();
 			}
 			
-			// התחל את ה-scraper
+			const url = liveTimingConfig.url;
+			// איחוד פרמטרים לחיפוש חכם
+			const searchTerm = searchConfig.driverName || searchConfig.teamName || searchConfig.kartNumber || '';
+
+			// התחלת הסקרייפר דרך המנהל
 			liveTimingManager.start(url, searchTerm, {
-				updateInterval: 5000, // 5 שניות בין עדכונים
+				updateInterval: 2000, // מהיר יותר בשביל WebSocket
 				
-				/**
-				 * נקרא בכל פעם שיש עדכון מהסקרייפר
-				 */
 				onUpdate: (data) => {
-					console.log(`[Strateger] Live timing update #${data.updateNumber} received`);
-					
-					// עדכן את המצב הגלובלי של Strateger
+					// הטיפול בנתונים נשאר זהה למה שיש לך כבר
 					if (data.ourTeam) {
-						// שמור מיקום קודם
 						liveData.previousPosition = liveData.position;
-						
-						// עדכן נתונים
 						liveData.position = data.ourTeam.position;
 						liveData.lastLap = data.ourTeam.lastLap;
 						liveData.bestLap = data.ourTeam.bestLap;
 						liveData.laps = data.ourTeam.totalLaps;
 						liveData.gapToLeader = data.ourTeam.gap;
-						
-						console.log(`[Strateger] Our team: P${data.ourTeam.position}, ${data.ourTeam.totalLaps} laps, Gap: ${data.ourTeam.gap}s`);
-					} else {
-						console.warn('[Strateger] Our team not found in results');
 					}
-					
-					// עדכן רשימת מתחרים
 					liveData.competitors = data.competitors;
-					
-					// עדכן UI
 					updateLiveTimingUI();
 					
-					// עדכן סטטוס עם שם הספק
-					const statusText = data.found 
-						? `✅ ${t('connected')} - ${data.provider}` 
-						: `⚠️ ${t('connected')} - ${t('teamNotFound')}`;
-					updateProxyStatus(statusText);
-					
-					// סנכרן עם WebRTC אם יש peer
-					if (typeof syncDataToPeer === 'function') {
-						syncDataToPeer();
-					}
+					// עדכון סטטוס שמראה באיזה פרוטוקול אנחנו משתמשים
+					const method = data.provider || 'http';
+					updateProxyStatus(`✅ Connected (${method})`);
 				},
 				
-				/**
-				 * נקרא כשיש שגיאה
-				 */
-				onError: (error, consecutiveErrors) => {
-					console.error(`[Strateger] Live timing error (${consecutiveErrors || 0} consecutive):`, error.message);
-					
-					// הצג שגיאה למשתמש
-					const errorMsg = consecutiveErrors >= 3 
-						? `⚠️ ${t('connectionIssues')}` 
-						: `⚠️ ${error.message}`;
-					updateProxyStatus(errorMsg);
-					
-					// אם יש הרבה שגיאות ברציפות, נסה iframe כגיבוי
-					if (consecutiveErrors >= 3 && !liveData.position) {
-						console.log('[Strateger] Too many errors, falling back to iframe');
-						setTimeout(() => {
-							if (!liveData.position) {
-								updateProxyStatus("⚠️ " + t('usingIframe'));
-								openLiveTimingEmbed();
-							}
-						}, 3000);
-					}
-				},
-				
-				/**
-				 * נקרא כשיש שגיאה חמורה (5 שגיאות ברציפות)
-				 */
-				onFatalError: (error) => {
-					console.error('[Strateger] Fatal error, scraper stopped:', error.message);
-					updateProxyStatus("❌ " + t('connectionFailed'));
-					
-					// אופציונלי: פתח iframe אוטומטית
-					setTimeout(() => {
-						openLiveTimingEmbed();
-					}, 2000);
+				onError: (err, count) => {
+					console.error("Scraper Error:", err);
+					updateProxyStatus(`⚠️ Error ${count}: ${err.message}`);
 				}
 			});
 		}
@@ -2865,59 +2964,21 @@
 			const timeline = previewData.timeline;
 			const totalTime = config.raceMs;
 			
-			// Calculate ACTUAL values from timeline
+			// Calculate ACTUAL values
 			const actualStints = timeline.filter(t => t.type === 'stint');
 			const actualStops = timeline.filter(t => t.type === 'pit').length;
 			const actualDrivingTime = actualStints.reduce((sum, s) => sum + s.duration, 0);
 			const actualAvgStint = actualDrivingTime / actualStints.length;
 			
-			// Get elements (with safety check)
+			// Get elements
 			const scheduleEl = document.getElementById('driverScheduleList');
 			const summaryEl = document.getElementById('strategySummary');
 			const timeStartEl = document.getElementById('timelineStart');
 			const timeEndEl = document.getElementById('timelineEnd');
 			
-			// Safety check - if elements don't exist, return
-			if ( !scheduleEl || !summaryEl || !timeStartEl || !timeEndEl) {
-				console.error('Missing preview elements:', {
-					scheduleEl: !!scheduleEl,
-					summaryEl: !!summaryEl,
-					timeStartEl: !!timeStartEl,
-					timeEndEl: !!timeEndEl
-				});
-				return;
-			}
+			if (!scheduleEl || !summaryEl || !timeStartEl || !timeEndEl) return;
 			
-			timeline.forEach((item, index) => {
-				const el = document.createElement('div');
-				const widthPercent = (item.duration / totalTime) * 100;
-				const leftPercent = (item.start / totalTime) * 100;
-				
-				if (item.type === 'stint') {
-					el.className = 'stint-block';
-					el.style.cssText = `
-						left: ${leftPercent}%;
-						width: ${widthPercent}%;
-						background: ${item.color};
-					`;
-					el.innerHTML = `<span class="text-[10px] truncate px-1">${item.driverName.split(' ')[0]}</span>`;
-					el.title = `${item.driverName}: ${formatTime(item.duration)}`;
-				} else {
-					el.style.cssText = `
-						position: absolute;
-						left: ${leftPercent}%;
-						width: 3px;
-						height: 100%;
-						background: linear-gradient(0deg, #fbbf24 50%, #000 50%);
-						background-size: 100% 6px;
-						z-index: 20;
-					`;
-					el.title = `Pit Stop: ${config.minPitSec}s`;
-				}
-				
-			});
-			
-			// Time markers - fix Date parsing
+			// Time markers
 			const startTime = previewData.startTime instanceof Date 
 				? previewData.startTime 
 				: new Date(previewData.startTime);
@@ -2926,6 +2987,11 @@
 			timeStartEl.innerText = formatTimeOfDay(startTime);
 			timeEndEl.innerText = formatTimeOfDay(endTime);
 			
+			// --- FIX: RTL Arrow Direction ---
+			// אם הממשק ב-RTL, החץ צריך להצביע שמאלה (מההתחלה לסוף)
+			const isRTL = document.documentElement.dir === 'rtl';
+			const arrowIcon = isRTL ? '←' : '→'; 
+
 			// Stint-by-stint schedule
 			scheduleEl.innerHTML = `
 				<div class="mb-6">
@@ -2933,47 +2999,58 @@
 						<i class="fas fa-list-ol"></i> Stint-by-Stint Schedule
 					</h4>
 					<div class="space-y-1">
-						${actualStints.map((stint) => {
+						${actualStints.map((stint, index) => {
 							const pitAfter = timeline.find(t => t.type === 'pit' && t.pitNumber === stint.stintNumber);
 							const stintStart = stint.startTime instanceof Date ? stint.startTime : new Date(stint.startTime);
 							const stintEnd = stint.endTime instanceof Date ? stint.endTime : new Date(stint.endTime);
+							const durationMin = (stint.duration / 60000).toFixed(0);
+
 							return `
-								<div class="flex items-center gap-2 bg-navy-950 p-2 rounded border-l-4" style="border-color: ${stint.color}">
-									<span class="text-xs text-gray-500 w-8">#${stint.stintNumber}</span>
-									<span class="font-bold text-white flex-1">${stint.driverName}</span>
-									<span class="text-xs text-gray-400">${formatTimeOfDay(stintStart)}</span>
-									<span class="text-xs text-gray-600">→</span>
-									<span class="text-xs text-gray-400">${formatTimeOfDay(stintEnd)}</span>
-									<span class="text-xs text-neon font-mono w-16 text-right">${formatTime(stint.duration)}</span>
-									${pitAfter ? '<span class="text-xs text-gold">🔧</span>' : '<span class="text-xs text-gray-600">🏁</span>'}
+								<div class="flex items-center gap-2 bg-navy-950 p-2 rounded border-l-4 hover:bg-navy-900 transition" style="border-color: ${stint.color}">
+									
+									<div class="flex flex-col gap-0.5 mr-1">
+										<button onclick="moveStint(${index}, -1)" class="text-[8px] bg-navy-800 hover:bg-navy-700 px-1 rounded text-ice ${index === 0 ? 'opacity-30 pointer-events-none' : ''}">▲</button>
+										<button onclick="moveStint(${index}, 1)" class="text-[8px] bg-navy-800 hover:bg-navy-700 px-1 rounded text-ice ${index === actualStints.length - 1 ? 'opacity-30 pointer-events-none' : ''}">▼</button>
+									</div>
+
+									<span class="text-xs text-gray-500 w-6">#${stint.stintNumber}</span>
+									
+									<div class="flex-1 min-w-0">
+										<span class="font-bold text-white block truncate">${stint.driverName}</span>
+										<div class="flex items-center gap-1 text-[10px] text-gray-400">
+											<span>${formatTimeOfDay(stintStart)}</span>
+											<span class="text-gray-600 font-bold">${arrowIcon}</span> <span>${formatTimeOfDay(stintEnd)}</span>
+										</div>
+									</div>
+
+									<div class="text-right whitespace-nowrap">
+										<span class="text-xs text-neon font-mono block">${durationMin}m</span>
+										<span class="text-[10px] text-gray-500">${stint.note || ''}</span>
+									</div>
+									
+									${pitAfter ? '<span class="text-xs text-gold ml-1" title="Pit Stop">🔧</span>' : '<span class="text-xs text-gray-600 ml-1">🏁</span>'}
 								</div>
 							`;
 						}).join('')}
 					</div>
 				</div>
+				
 				<div>
 					<h4 class="text-sm font-bold text-gray-400 mb-2 flex items-center gap-2">
 						<i class="fas fa-users"></i> Driver Summary
 					</h4>
 					<div class="grid grid-cols-2 gap-2">
 						${previewData.driverSchedule.map((driver) => `
-							<div class="bg-navy-800 p-3 rounded-lg border-l-4" style="border-color: ${driver.color}">
-								<div class="font-bold text-white text-sm mb-1">${driver.name}</div>
-								<div class="text-xs text-gray-400 space-y-1">
-									<div class="flex justify-between">
-										<span>Stints:</span>
-										<span class="text-white">${driver.stints.length}</span>
-									</div>
-									<div class="flex justify-between">
-										<span>Total:</span>
-										<span class="text-ice font-mono">${formatTime(driver.totalTime)}</span>
-									</div>
-									<div class="flex justify-between">
-										<span>Avg:</span>
-										<span class="text-gray-300 font-mono">${formatTime(driver.totalTime / driver.stints.length)}</span>
-									</div>
+							<div class="bg-navy-800 p-2 rounded border-l-2" style="border-color: ${driver.color}">
+								<div class="flex justify-between items-center">
+									<span class="text-xs text-white font-bold truncate pr-2">${driver.name}</span>
+									<span class="text-xs text-ice font-mono">${formatTime(driver.totalTime)}</span>
 								</div>
-								<div class="mt-2 text-[10px] text-gray-500">
+								<div class="flex justify-between mt-1 text-[10px] text-gray-500">
+									<span>${driver.stints.length} stints</span>
+									<span>Avg: ${(driver.totalTime / driver.stints.length / 60000).toFixed(0)}m</span>
+								</div>
+								<div class="mt-1 text-[9px] text-gray-600 truncate">
 									${driver.stints.map(s => `#${s.globalNumber}`).join(', ')}
 								</div>
 							</div>
@@ -3001,6 +3078,73 @@
 					<div class="text-xl font-bold text-white">${formatTime(actualAvgStint)}</div>
 				</div>
 			`;
+		}
+
+		function moveStint(stintIndex, direction) {
+			if (!previewData || !previewData.timeline) return;
+
+			// Filter to get only stints indices in the timeline array
+			const allEvents = previewData.timeline;
+			const stintIndices = [];
+			allEvents.forEach((evt, idx) => {
+				if (evt.type === 'stint') stintIndices.push(idx);
+			});
+
+			const currentRealIdx = stintIndices[stintIndex];
+			const targetRealIdx = stintIndices[stintIndex + direction];
+
+			if (targetRealIdx === undefined) return;
+
+			// Swap driver info but keep duration/schedule slots
+			const currentStint = allEvents[currentRealIdx];
+			const targetStint = allEvents[targetRealIdx];
+
+			const temp = {
+				driverIdx: currentStint.driverIdx,
+				driverName: currentStint.driverName,
+				color: currentStint.color,
+				note: currentStint.note
+			};
+
+			currentStint.driverIdx = targetStint.driverIdx;
+			currentStint.driverName = targetStint.driverName;
+			currentStint.color = targetStint.color;
+			currentStint.note = targetStint.note;
+
+			targetStint.driverIdx = temp.driverIdx;
+			targetStint.driverName = temp.driverName;
+			targetStint.color = temp.color;
+			targetStint.note = temp.note;
+
+			// Recalculate stats
+			recalculateDriverStatsFromTimeline();
+			
+			// Re-render
+			renderPreview();
+		}
+
+		function recalculateDriverStatsFromTimeline() {
+			// Reset stats
+			previewData.driverSchedule = drivers.map((d, i) => ({
+				name: d.name,
+				color: d.color || `hsl(${(i * 360 / drivers.length)}, 70%, 50%)`,
+				stints: [],
+				totalTime: 0
+			}));
+
+			// Rebuild from timeline
+			previewData.timeline.forEach(item => {
+				if (item.type === 'stint') {
+					const d = previewData.driverSchedule[item.driverIdx];
+					if (d) {
+						d.stints.push({
+							globalNumber: item.stintNumber,
+							duration: item.duration
+						});
+						d.totalTime += item.duration;
+					}
+				}
+			});
 		}
 
 		function formatTimeOfDay(date) {
@@ -3369,6 +3513,15 @@
 			const name = prompt('Strategy name:', `${formatTime(config.raceMs)} - ${drivers.length} drivers`);
 			if (!name) return;
 			
+			const isPublic = confirm('Make this strategy public?\n\nOK = Public (visible to all)\nCancel = Private (only you)');
+			
+			// Generate device ID for private strategies
+			let deviceId = localStorage.getItem('strateger_device_id');
+			if (!deviceId) {
+				deviceId = 'device_' + Math.random().toString(36).substr(2, 16);
+				localStorage.setItem('strateger_device_id', deviceId);
+			}
+			
 			try {
 				const response = await fetch('/.netlify/functions/save-strategy', {
 					method: 'POST',
@@ -3378,13 +3531,15 @@
 						config,
 						drivers: drivers.map(d => ({ name: d.name, squad: d.squad, color: d.color })),
 						timeline: previewData.timeline,
-						driverSchedule: previewData.driverSchedule
+						driverSchedule: previewData.driverSchedule,
+						isPublic: isPublic,
+						deviceId: deviceId
 					})
 				});
 				
 				const result = await response.json();
 				if (result.success) {
-					alert(`✅ Strategy saved: ${result.name}`);
+					alert(`✅ Strategy saved: ${result.name}\n${isPublic ? '🌐 Public' : '🔒 Private'}`);
 				} else {
 					alert(`❌ Error: ${result.error}`);
 				}
@@ -3394,8 +3549,10 @@
 		}
 
 		async function loadStrategyLibrary() {
+			let deviceId = localStorage.getItem('strateger_device_id') || '';
+			
 			try {
-				const response = await fetch('/.netlify/functions/get-strategies');
+				const response = await fetch(`/.netlify/functions/get-strategies?deviceId=${deviceId}`);
 				const result = await response.json();
 				
 				if (!result.success) {
@@ -3411,7 +3568,7 @@
 
 		async function loadStrategy(id) {
 			try {
-				const response = await fetch(`/.netlify/functions/load-strategy?id=${id}`);
+				const response = await fetch(`/.netlify/functions/load-strategies?id=${id}`);
 				const result = await response.json();
 				
 				if (!result.success) {
@@ -3563,9 +3720,12 @@
 			drivers = raceState.drivers;
 			liveTimingConfig = raceState.liveTimingConfig || {};
 			
-			if (!state.isInPit) {
-				state.stintOffset += elapsed;
-			}
+			// FIX: Do NOT add elapsed time to stintOffset. 
+			// Since we use (Date.now() - stintStart), wall-clock time is already accounted for.
+			// Adding elapsed here causes the "Ghost Time" / Double Counting issue.
+			// if (!state.isInPit) {
+			// 	state.stintOffset += elapsed; 
+			// }
 			
 			role = 'host';
 			selectRole('host');
@@ -3575,9 +3735,28 @@
 					clearInterval(checkPeer);
 					startHostUI();
 					startLiveTimingUpdates();
+					
+					// Force UI update for buttons immediately after restore
+					updateButtonVisibility(); 
 				}
 			}, 100);
 		}
+
+		function updateButtonVisibility() {
+            const resetBtn = document.getElementById('btnResetMode');
+            if (!resetBtn) return;
+
+            // Check if ANY special mode is active
+            const isPush = state.pushMode || state.mode === 'push';
+            const isBad = state.badMode || state.mode === 'bad';
+            const isNight = state.squadsActive; // Night mode
+
+            if (isPush || isBad || isNight) {
+                resetBtn.classList.remove('hidden');
+            } else {
+                resetBtn.classList.add('hidden');
+            }
+        }
 
 		function continueRace() {
 			if (!window.savedRaceData) return;
@@ -3640,10 +3819,6 @@
 			const code = document.getElementById(elementId).innerText;
 			if (!code || code === '---') return;
 			navigator.clipboard.writeText(code);
-		}
-		
-		function copyHostCode() {
-			copyCode('dashboardHostId');
 		}
 
         // ==================== STATE PERSISTENCE ====================
@@ -4196,48 +4371,53 @@
 
         // ==================== RACE INITIALIZATION ====================
         function initRace() {
-            if (role === 'client') return;
-            
-            const inputs = document.querySelectorAll('.driver-input');
-            const radios = document.querySelectorAll('.starter-radio');
-            const squads = document.querySelectorAll('.squad-toggle');
-            let startIdx = 0; 
-            radios.forEach((r, i) => { if (r.checked) startIdx = i; });
-            
-            if (inputs.length < 2) return alert("Minimum 2 drivers required");
-            
+			if (role === 'client') return;
+			
+			const inputs = document.querySelectorAll('.driver-input');
+			const radios = document.querySelectorAll('.starter-radio');
+			const squads = document.querySelectorAll('.squad-toggle');
+			let startIdx = 0; 
+			radios.forEach((r, i) => { if (r.checked) startIdx = i; });
+			
+			if (inputs.length < 2) return alert("Minimum 2 drivers required");
+			
 			config = {
-                raceMs: parseFloat(document.getElementById('raceDuration').value) * 3600000,
-                reqStops: parseInt(document.getElementById('reqPitStops').value) || 0,
-                minPitSec: parseInt(document.getElementById('minPitTime').value) || 0,
-                releaseBufferSec: parseInt(document.getElementById('releaseBuffer').value) || 0,
-                minStintMs: parseFloat(document.getElementById('minStint').value) * 60000,
-                maxStintMs: parseFloat(document.getElementById('maxStint').value) * 60000,
-                minDriverMs: parseFloat(document.getElementById('minDriverTime').value) * 60000,
-                maxDriverMs: parseFloat(document.getElementById('maxDriverTime').value) * 60000,
-                allowDouble: document.getElementById('allowDouble').checked,
-                trackFuel: document.getElementById('trackFuel').checked,
-                maxFuelMs: parseFloat(document.getElementById('maxFuelTime').value) * 60000,
-                useSquads: document.getElementById('useSquads').checked
-            };
-            
-            liveTimingConfig.url = document.getElementById('liveTimingUrl').value;
-            updateSearchConfig();
-            
-            drivers = Array.from(inputs).map((d, i) => ({ 
-                name: d.value, 
-                totalMs: 0, 
-                stints: 0, 
-                squad: squads[i].checked ? 'B' : 'A', 
-                logs: [], 
-                isExpanded: false 
-            }));
-            
-            state = { 
-				isRunning: true, 
-				startTime: Date.now(), 
-				stintStart: Date.now(), 
-				fuelStart: Date.now(), 
+				raceMs: parseFloat(document.getElementById('raceDuration').value) * 3600000,
+				reqStops: parseInt(document.getElementById('reqPitStops').value) || 0,
+				minPitSec: parseInt(document.getElementById('minPitTime').value) || 0,
+				releaseBufferSec: parseInt(document.getElementById('releaseBuffer').value) || 0,
+				minStintMs: parseFloat(document.getElementById('minStint').value) * 60000,
+				maxStintMs: parseFloat(document.getElementById('maxStint').value) * 60000,
+				minDriverMs: parseFloat(document.getElementById('minDriverTime').value) * 60000,
+				maxDriverMs: parseFloat(document.getElementById('maxDriverTime').value) * 60000,
+				allowDouble: document.getElementById('allowDouble').checked,
+				trackFuel: document.getElementById('trackFuel').checked,
+				maxFuelMs: parseFloat(document.getElementById('maxFuelTime').value) * 60000,
+				useSquads: document.getElementById('useSquads').checked
+			};
+			
+			liveTimingConfig.url = document.getElementById('liveTimingUrl').value;
+			updateSearchConfig();
+			
+			drivers = Array.from(inputs).map((d, i) => ({ 
+				name: d.value, 
+				totalMs: 0, 
+				stints: 0, 
+				squad: squads[i].checked ? 'B' : 'A', 
+				logs: [], 
+				isExpanded: false 
+			}));
+			
+			const raceStartTime = Date.now();
+			
+			// Initialize State
+			state = { 
+				isRunning: true,
+				pushMode: false,
+				badMode: false, 
+				startTime: raceStartTime, 
+				stintStart: raceStartTime,
+				fuelStart: raceStartTime, 
 				currentDriverIdx: startIdx, 
 				pitCount: 0, 
 				isInPit: false, 
@@ -4249,49 +4429,64 @@
 				targetStintMs: config.raceMs / (config.reqStops + 1), 
 				squadsActive: false,
 				pendingPitEntry: false,
-				globalStintNumber: 1
+				globalStintNumber: 1,
+				raceSaved: false,
+				// New: Arrays for strategy tracking
+				stintTargets: [],
+				deltaHistory: []
 			};
 
-			// Use generated strategy if available
-			if (window.generatedStrategy && window.generatedStrategy.stints) {
-				state.targetStintMs = window.generatedStrategy.avgStintMs || state.targetStintMs;
-				state.plannedStrategy = window.generatedStrategy;
+			// Load Strategy from Preview if available
+			if (window.previewData && window.previewData.timeline) {
+				const stints = window.previewData.timeline.filter(t => t.type === 'stint');
+				// Map durations to targets
+				state.stintTargets = stints.map(s => s.duration);
 				
-				// Find the starter driver index
-				const starterIdx = drivers.findIndex(d => d.name === window.generatedStrategy.starterDriver);
-				if (starterIdx >= 0) {
-					state.currentDriverIdx = starterIdx;
-					state.nextDriverIdx = (starterIdx + 1) % drivers.length;
-				}
+				// Use the generated strategy plan to set initial target
+				state.targetStintMs = state.stintTargets[0] || config.maxStintMs;
 				
-				console.log('Using generated strategy:', window.generatedStrategy);
-				console.log(`Starting with driver: ${drivers[state.currentDriverIdx].name}`);
-				
-				// If strategy includes double stints, note them
+				// If strategy dictates a specific start driver, use it (override UI if needed)
+				// But usually UI starter matches strategy.
+				console.log('🏁 Race Initialized with Planned Strategy:', state.stintTargets);
+			} else {
+				// Fallback: Fill array with averages if no preview generated
+				const avg = config.raceMs / (config.reqStops + 1);
+				const totalStints = config.reqStops + 1;
+				state.stintTargets = new Array(totalStints).fill(avg);
+			}
+
+			// Apply specific strategy details if available
+			if (window.generatedStrategy) {
 				if (window.generatedStrategy.doubleStints && window.generatedStrategy.doubleStints.length > 0) {
 					state.plannedDoubles = window.generatedStrategy.doubleStints;
 				}
 			}
 
-			recalculateTargetStint();
 			setTimeout(() => {
 				broadcast();
 			}, 100);
 			saveHostState();
-            broadcast(); 
-            startHostUI();
-            startLiveTimingUpdates();
-        }
+			document.getElementById('btnResetMode').classList.add('hidden');
+			broadcast(); 
+			startHostUI();
+			startLiveTimingUpdates();
+		}
 
         // ==================== TICK ====================
-        function tick() { 
-            if (!state.isRunning) return;
-            renderFrame();
+		function tick() { 
+			if (!state.isRunning) return;
+			renderFrame();
+			
+			// Update stats with current stint time
+			if (!state.isInPit) {
+				const stintTime = Date.now() - state.stintStart + state.stintOffset;
+				updateStats(stintTime);
+			}
 			
 			if (liveTimingConfig.demoMode) {
 				updateDemoData();
 			}
-        }
+		}
 
         // ==================== RENDERING ====================
         function renderFrame() {
@@ -4404,27 +4599,22 @@
 					document.getElementById('sleepWidget').classList.add('hidden');
 				}
 				
-				// Push/Problem button styling
 				const btnPush = document.getElementById('btnPush');
-				const btnBad = document.getElementById('btnBad');
-
 				if (btnPush) {
-					if (state.mode === 'push') {
-						btnPush.className = "btn-press bg-green-900 border-2 border-green-400 rounded-lg p-2 group text-white shadow-[0_0_15px_rgba(34,197,94,0.5)]";
-						btnPush.innerHTML = `<span class="block text-lg">🔥 ${t('pushActive')}</span>`;
+					if (state.pushMode || state.mode === 'push') {
+						btnPush.className = "btn-press bg-green-700 border-2 border-green-400 rounded-lg p-3 text-white";
 					} else {
-						btnPush.className = "btn-press bg-navy-800 border border-green-900/50 rounded-lg p-2 group hover:bg-navy-700";
-						btnPush.innerHTML = `<span class="block text-lg">🔥 ${t('push')}</span>`;
+						btnPush.className = "btn-press bg-navy-800 border border-green-900/50 rounded-lg p-3 hover:bg-navy-700";
 					}
 				}
 
+				// Problem button styling
+				const btnBad = document.getElementById('btnBad');
 				if (btnBad) {
-					if (state.mode === 'bad') {
-						btnBad.className = "btn-press bg-red-900 border-2 border-red-400 rounded-lg p-2 group text-white shadow-[0_0_15px_rgba(239,68,68,0.5)]";
-						btnBad.innerHTML = `<span class="block text-lg">🐢 ${t('problemActive')}</span>`;
+					if (state.badMode || state.mode === 'bad') {
+						btnBad.className = "btn-press bg-red-700 border-2 border-red-400 rounded-lg p-3 text-white";
 					} else {
-						btnBad.className = "btn-press bg-navy-800 border border-red-900/50 rounded-lg p-2 group hover:bg-navy-700";
-						btnBad.innerHTML = `<span class="block text-lg">🐢 ${t('problem')}</span>`;
+						btnBad.className = "btn-press bg-navy-800 border border-red-900/50 rounded-lg p-3 hover:bg-navy-700";
 					}
 				}
 
@@ -4544,7 +4734,12 @@
 
         function updateStrategy(sTime) {
 			if (state.mode === 'normal') {
-				recalculateTargetStint();
+				// New Logic: Get target from the specific array index for the current stint
+				// globalStintNumber starts at 1, array at 0
+				const currentTarget = state.stintTargets[state.globalStintNumber - 1] || state.targetStintMs;
+				
+				// Ensure within limits (safety fallback)
+				state.targetStintMs = Math.min(Math.max(currentTarget, config.minStintMs), config.maxStintMs);
 			}
 			
 			document.getElementById('strategyTargetStint').innerText = fmtHMS(state.targetStintMs);
@@ -4670,6 +4865,39 @@
 			if (state.mode !== 'bad' && sTime < config.minStintMs) {
 				if (!confirm(t('confirmEarlyPit'))) return;
 			}
+
+			// --- Strategy Delta Calculation ---
+			// 1. Calculate actual duration of the stint we just finished
+			const actualDuration = sTime;
+			
+			// 2. Get what was planned for this stint
+			const plannedDuration = state.stintTargets[state.globalStintNumber - 1] || state.targetStintMs;
+			
+			// 3. Calculate Delta (Positive = drove longer than planned, Negative = pitted early)
+			const delta = actualDuration - plannedDuration;
+			
+			state.deltaHistory.push({ 
+				stint: state.globalStintNumber, 
+				planned: plannedDuration,
+				actual: actualDuration,
+				delta: delta 
+			});
+			
+			console.log(`Stint #${state.globalStintNumber} Finish. Plan: ${fmtHMS(plannedDuration)}, Actual: ${fmtHMS(actualDuration)}, Delta: ${(delta/1000).toFixed(1)}s`);
+
+			// 4. Update Future Targets ("Burn" or "Save" time)
+			const stintsRemaining = state.stintTargets.length - state.globalStintNumber;
+			if (stintsRemaining > 0) {
+				// Distribute the delta across remaining stints
+				// If we drove 2 mins EXTRA (delta > 0), we can drive LESS in future stints (subtract positive delta)
+				const correctionPerStint = Math.floor(delta / stintsRemaining);
+				
+				for (let i = state.globalStintNumber; i < state.stintTargets.length; i++) {
+					state.stintTargets[i] -= correctionPerStint;
+				}
+				console.log(`Updated future targets by subtracting ${(correctionPerStint/1000).toFixed(1)}s per stint`);
+			}
+			// ----------------------------------
 
 			state.isInPit = true;
 			state.pendingPitEntry = false;
@@ -4817,14 +5045,45 @@
 
         // ==================== CONTROLS ====================
 		function copyHostCode() {
-			const code = document.getElementById('dashboardHostId').innerText;
+			const codeEl = document.getElementById('dashboardHostId');
+			const code = codeEl?.innerText || codeEl?.textContent;
 			if (!code || code === '---') return;
 			
-			navigator.clipboard.writeText(code).then(() => {
-				const el = document.getElementById('dashboardHostId');
-				el.classList.add('text-white');
-				setTimeout(() => el.classList.remove('text-white'), 1000);
-			});
+			if (navigator.clipboard && navigator.clipboard.writeText) {
+				navigator.clipboard.writeText(code).then(() => {
+					codeEl.classList.add('text-white');
+					setTimeout(() => codeEl.classList.remove('text-white'), 1000);
+				}).catch(() => fallbackCopy(code));
+			} else {
+				fallbackCopy(code);
+			}
+		}
+
+		// Fallback for older browsers / iOS
+		function fallbackCopy(text) {
+			const textArea = document.createElement('textarea');
+			textArea.value = text;
+			textArea.style.position = 'fixed';
+			textArea.style.left = '-9999px';
+			textArea.style.top = '0';
+			document.body.appendChild(textArea);
+			textArea.focus();
+			textArea.select();
+			
+			try {
+				document.execCommand('copy');
+				const codeEl = document.getElementById('dashboardHostId');
+				if (codeEl) {
+					codeEl.classList.add('text-white');
+					setTimeout(() => codeEl.classList.remove('text-white'), 1000);
+				}
+				console.log('✅ Code copied:', text);
+			} catch (err) {
+				console.error('Copy failed:', err);
+				alert('Copy code: ' + text);
+			}
+			
+			document.body.removeChild(textArea);
 		}
 		
         function adjustStint(ms) { 
@@ -4858,9 +5117,11 @@
         function toggleNightMode() { 
             if (role === 'host') { 
                 state.squadsActive = !state.squadsActive; 
+                
+                updateButtonVisibility(); // <--- Update Visibility Here
+                
                 broadcast(); 
                 renderFrame(); 
-				updateControlGrid();
             } 
         }
         
@@ -4878,31 +5139,26 @@
 				renderFrame();
 			}
 		}
-		
-		function updateControlGrid() {
-			const grid = document.getElementById('controlButtonsGrid');
-			if (grid) {
-				if (state.squadsActive) {
-					grid.classList.remove('no-night');
-				} else {
-					grid.classList.add('no-night');
-				}
-			}
-		}
         
-        function setMode(m) { 
-			state.mode = m; 
-			document.getElementById('btnResetMode').classList.toggle('hidden', m === 'normal'); 
-			
-			// Smart recalculation based on mode
-			if (m === 'bad') {
-				// Problem mode - suggest minimum stint for quick pit
-				state.targetStintMs = config.minStintMs + 30000; // min + 30 seconds buffer
-				beep(400, 'sine', 0.3); // Alert sound
-			} else {
-				recalculateTargetStint();
+		function setMode(m) { 
+			// Toggle mode instead of replacing
+			if (m === 'push') {
+				state.pushMode = !state.pushMode;
+				if (state.pushMode) state.badMode = false; // Push cancels Problem
+			} else if (m === 'bad') {
+				state.badMode = !state.badMode;
+				if (state.badMode) state.pushMode = false; // Problem cancels Push
+			} else if (m === 'normal') {
+				state.pushMode = false;
+				state.badMode = false;
 			}
 			
+			// Legacy compatibility
+			state.mode = state.badMode ? 'bad' : (state.pushMode ? 'push' : 'normal');
+			
+			updateButtonVisibility(); // <--- Update Visibility Here
+			
+			recalculateTargetStint();
 			broadcast(); 
 			renderFrame();
 		}
@@ -4944,12 +5200,13 @@
         // ==================== UI INITIALIZATION ====================
         function startHostUI() { 
 			document.getElementById('setupScreen').classList.add('hidden'); 
+			document.getElementById('btnResetMode').classList.add('hidden');
 			document.getElementById('raceDashboard').classList.remove('hidden'); 
 			document.getElementById('syncControls').classList.remove('hidden');
 			document.getElementById('hostCodeDisplay').classList.remove('hidden');
 			document.getElementById('dashboardHostId').innerText = myId || '---';
 			document.getElementById('zoneForbidden').style.width = ((config.minStintMs / config.maxStintMs) * 100) + '%'; 
-			
+
 			if (liveTimingConfig.enabled) {
 				document.getElementById('liveTimingPanel').classList.remove('hidden');
 				document.getElementById('liveIndicator').classList.remove('hidden');
@@ -5011,6 +5268,139 @@
 			updateStats(syncedTimes ? syncedTimes.stintElapsed : 0);
 		}
 
+		// ==================== GOOGLE INTEGRATION ====================
+		const GOOGLE_CLIENT_ID = '944328539678-cm1ao0asklck15o9rpneh48nbdtpdstk.apps.googleusercontent.com'; 
+		let googleUser = null;
+		let googleAccessToken = null;
+
+		// Initialize Google Sign-In
+		function initGoogleAuth() {
+			if (typeof google === 'undefined') {
+				console.log('Google API not loaded yet');
+				setTimeout(initGoogleAuth, 1000);
+				return;
+			}
+			
+			// Check for existing session
+			const savedUser = localStorage.getItem('strateger_google_user');
+			if (savedUser) {
+				try {
+					googleUser = JSON.parse(savedUser);
+					updateGoogleUI(true);
+				} catch (e) {
+					localStorage.removeItem('strateger_google_user');
+				}
+			}
+			
+			console.log('✅ Google Auth initialized');
+		}
+
+		// Google Sign In - Request token with scopes
+		function googleSignIn() {
+			if (typeof google === 'undefined') {
+				alert('Google API not loaded. Please refresh the page.');
+				return;
+			}
+			
+			const client = google.accounts.oauth2.initTokenClient({
+				client_id: GOOGLE_CLIENT_ID,
+				scope: 'https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
+				callback: async (tokenResponse) => {
+					if (tokenResponse.error) {
+						console.error('Auth error:', tokenResponse.error);
+						alert('Sign in failed: ' + tokenResponse.error);
+						return;
+					}
+					
+					googleAccessToken = tokenResponse.access_token;
+					console.log('✅ Got access token');
+					
+					// Fetch user info
+					await fetchGoogleUserInfo(tokenResponse.access_token);
+				}
+			});
+			
+			client.requestAccessToken();
+		}
+
+		// Fetch user info with access token
+		async function fetchGoogleUserInfo(accessToken) {
+			try {
+				const response = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+					headers: { Authorization: `Bearer ${accessToken}` }
+				});
+				
+				if (!response.ok) throw new Error('Failed to fetch user info');
+				
+				const data = await response.json();
+				
+				googleUser = {
+					name: data.name,
+					email: data.email,
+					picture: data.picture,
+					id: data.id
+				};
+				
+				localStorage.setItem('strateger_google_user', JSON.stringify(googleUser));
+				updateGoogleUI(true);
+				console.log('✅ Signed in as:', googleUser.name);
+				
+			} catch (error) {
+				console.error('Error fetching user info:', error);
+				alert('Error getting user info: ' + error.message);
+			}
+		}
+
+		// Google Sign Out
+		function googleSignOut() {
+			if (googleAccessToken) {
+				// Revoke the token
+				google.accounts.oauth2.revoke(googleAccessToken, () => {
+					console.log('Token revoked');
+				});
+			}
+			
+			googleUser = null;
+			googleAccessToken = null;
+			localStorage.removeItem('strateger_google_user');
+			updateGoogleUI(false);
+			console.log('✅ Signed out');
+		}
+
+		// Update UI based on sign-in state
+		function updateGoogleUI(signedIn) {
+			const signInContainer = document.getElementById('googleSignInContainer');
+			const signedInView = document.getElementById('googleSignedIn');
+			const statusEl = document.getElementById('googleStatus');
+			
+			if (!signInContainer || !signedInView || !statusEl) return;
+			
+			if (signedIn && googleUser) {
+				signInContainer.classList.add('hidden');
+				signedInView.classList.remove('hidden');
+				statusEl.innerText = '✅ Connected';
+				statusEl.className = 'text-[10px] text-green-400';
+				
+				const avatarEl = document.getElementById('googleAvatar');
+				const nameEl = document.getElementById('googleName');
+				const emailEl = document.getElementById('googleEmail');
+				
+				if (avatarEl) avatarEl.src = googleUser.picture || '';
+				if (nameEl) nameEl.innerText = googleUser.name || 'User';
+				if (emailEl) emailEl.innerText = googleUser.email || '';
+			} else {
+				signInContainer.classList.remove('hidden');
+				signedInView.classList.add('hidden');
+				statusEl.innerText = 'Not connected';
+				statusEl.className = 'text-[10px] text-gray-500';
+			}
+		}
+
+		// Initialize when page loads
+		document.addEventListener('DOMContentLoaded', () => {
+			setTimeout(initGoogleAuth, 1500);
+		});
+
     </script>
 	<!-- Hide preview when dashboard is active -->
 	<script>
@@ -5028,5 +5418,417 @@
 		}
 	})();
 	</script>
+	<!-- Email Team Modal -->
+	<div id="emailTeamModal" class="hidden fixed inset-0 bg-navy-950/95 z-50 flex items-center justify-center p-4">
+		<div class="bg-navy-900 rounded-lg border border-gray-700 w-full max-w-md p-4">
+			<div class="flex items-center justify-between mb-4">
+				<h3 class="text-ice text-lg font-bold">
+					<i class="fas fa-envelope mr-2"></i>
+					<span data-i18n="emailTeam">Email Team</span>
+				</h3>
+				<button onclick="closeEmailModal()" class="text-gray-400 hover:text-white">&times;</button>
+			</div>
+			
+			<div class="space-y-3">
+				<div>
+					<label class="text-[10px] text-gray-400" data-i18n="recipients">Recipients (comma separated)</label>
+					<input type="text" id="emailRecipients" placeholder="driver1@email.com, driver2@email.com" 
+						class="w-full bg-navy-950 border border-gray-600 rounded p-2 text-white text-sm">
+				</div>
+				
+				<div>
+					<label class="text-[10px] text-gray-400" data-i18n="emailSubject">Subject</label>
+					<input type="text" id="emailSubject" value="🏁 Race Strategy Update" 
+						class="w-full bg-navy-950 border border-gray-600 rounded p-2 text-white text-sm">
+				</div>
+				
+				<div>
+					<label class="text-[10px] text-gray-400" data-i18n="message">Message</label>
+					<textarea id="emailMessage" rows="4" placeholder="Race details and strategy..."
+							class="w-full bg-navy-950 border border-gray-600 rounded p-2 text-white text-sm resize-none"></textarea>
+				</div>
+				
+				<div class="flex items-center gap-2 bg-navy-800 p-2 rounded">
+					<input type="checkbox" id="attachStrategy" checked class="w-4 h-4 accent-ice">
+					<label class="text-sm text-gray-300" data-i18n="attachStrategy">Attach current strategy</label>
+				</div>
+				
+				<button onclick="sendTeamEmail()" class="w-full bg-ice text-navy-950 font-bold py-3 rounded-lg">
+					<i class="fas fa-paper-plane mr-2"></i>
+					<span data-i18n="sendEmail">Send Email</span>
+				</button>
+			</div>
+		</div>
+	</div>
+
+	<!-- Calendar Event Modal -->
+	<div id="calendarModal" class="hidden fixed inset-0 bg-navy-950/95 z-50 flex items-center justify-center p-4">
+		<div class="bg-navy-900 rounded-lg border border-gray-700 w-full max-w-md p-4">
+			<div class="flex items-center justify-between mb-4">
+				<h3 class="text-neon text-lg font-bold">
+					<i class="fas fa-calendar-plus mr-2"></i>
+					<span data-i18n="addToCalendar">Add to Google Calendar</span>
+				</h3>
+				<button onclick="closeCalendarModal()" class="text-gray-400 hover:text-white">&times;</button>
+			</div>
+			
+			<div class="space-y-3">
+				<div>
+					<label class="text-[10px] text-gray-400" data-i18n="eventTitle">Event Title</label>
+					<input type="text" id="calendarTitle" value="🏎️ Endurance Race" 
+						class="w-full bg-navy-950 border border-gray-600 rounded p-2 text-white text-sm">
+				</div>
+				
+				<div class="grid grid-cols-2 gap-2">
+					<div>
+						<label class="text-[10px] text-gray-400" data-i18n="startDate">Start Date</label>
+						<input type="date" id="calendarDate" 
+							class="w-full bg-navy-950 border border-gray-600 rounded p-2 text-white text-sm">
+					</div>
+					<div>
+						<label class="text-[10px] text-gray-400" data-i18n="startTime">Start Time</label>
+						<input type="time" id="calendarTime" 
+							class="w-full bg-navy-950 border border-gray-600 rounded p-2 text-white text-sm">
+					</div>
+				</div>
+				
+				<div>
+					<label class="text-[10px] text-gray-400" data-i18n="location">Location</label>
+					<input type="text" id="calendarLocation" placeholder="Track name..." 
+						class="w-full bg-navy-950 border border-gray-600 rounded p-2 text-white text-sm">
+				</div>
+				
+				<div>
+					<label class="text-[10px] text-gray-400" data-i18n="inviteDrivers">Invite Drivers (emails)</label>
+					<input type="text" id="calendarInvites" placeholder="driver1@email.com, driver2@email.com" 
+						class="w-full bg-navy-950 border border-gray-600 rounded p-2 text-white text-sm">
+				</div>
+				
+				<div class="flex items-center gap-2 bg-navy-800 p-2 rounded">
+					<input type="checkbox" id="addReminder" checked class="w-4 h-4 accent-neon">
+					<label class="text-sm text-gray-300" data-i18n="addReminder">Add reminder (1 day before)</label>
+				</div>
+				
+				<<button onclick="createCalendarEvent()" class="w-full bg-neon text-navy-950 font-bold py-3 rounded-lg">
+					<i class="fas fa-calendar-check mr-2"></i>
+					<span data-i18n="createEvent">Create Event</span>
+				</button>
+			</div>
+		</div>
+	</div>
+
+	<script>
+	// ==================== EMAIL FUNCTIONS ====================
+	function showTeamEmailModal() {
+		if (!googleUser) {
+			alert('Please sign in with Google first');
+			return;
+		}
+		
+		// Pre-fill message with race info
+		const raceDur = document.getElementById('raceDuration')?.value || '12';
+		const driverInputs = document.querySelectorAll('.driver-input');
+		const driverNames = Array.from(driverInputs).map(d => d.value).join(', ');
+		
+		document.getElementById('emailMessage').value = 
+			`Race Details:\n` +
+			`📍 Duration: ${raceDur} hours\n` +
+			`👥 Drivers: ${driverNames}\n\n` +
+			`Please confirm your availability and review the strategy.`;
+		
+		document.getElementById('emailTeamModal').classList.remove('hidden');
+	}
+
+	function closeEmailModal() {
+		document.getElementById('emailTeamModal').classList.add('hidden');
+	}
+
+	async function sendTeamEmail() {
+		if (!googleAccessToken) {
+			alert('Please sign in with Google first');
+			return;
+		}
+		
+		const recipients = document.getElementById('emailRecipients').value;
+		const subject = document.getElementById('emailSubject').value;
+		let message = document.getElementById('emailMessage').value;
+		const attachStrategy = document.getElementById('attachStrategy').checked;
+		
+		if (!recipients || !subject) {
+			alert('Please fill in recipients and subject');
+			return;
+		}
+		
+		// Add strategy summary if checkbox is checked
+		if (attachStrategy) {
+			message += '\n\n';
+			message += '═══════════════════════════════════════\n';
+			message += '🏁 RACE STRATEGY SUMMARY\n';
+			message += '═══════════════════════════════════════\n\n';
+			
+			// Basic race info from config
+			if (config && config.raceMs) {
+				const raceDurHours = (config.raceMs / 3600000).toFixed(1);
+				message += `⏱️ Race Duration: ${raceDurHours} hours\n`;
+				message += `🔧 Required Pit Stops: ${config.reqStops || 0}\n`;
+				message += `📊 Stint Range: ${(config.minStintMs/60000).toFixed(0)}-${(config.maxStintMs/60000).toFixed(0)} minutes\n`;
+				message += `⏰ Min Pit Time: ${config.minPitSec || 0} seconds\n\n`;
+			}
+			
+			// Driver info from preview or current drivers
+			if (previewData && previewData.driverSchedule && previewData.driverSchedule.length > 0) {
+				message += '👥 DRIVER SCHEDULE:\n';
+				message += '───────────────────────────────────────\n';
+				previewData.driverSchedule.forEach((d, idx) => {
+					const avgStint = d.totalTime / d.stints.length;
+					message += `${idx + 1}. ${d.name}\n`;
+					message += `   • Stints: ${d.stints.length}\n`;
+					message += `   • Total Time: ${formatTime(d.totalTime)}\n`;
+					message += `   • Avg Stint: ${formatTime(avgStint)}\n`;
+					if (d.stints && d.stints.length > 0) {
+						message += `   • Stint Numbers: ${d.stints.map(s => '#' + s.globalNumber).join(', ')}\n`;
+					}
+					message += '\n';
+				});
+			} else if (drivers && drivers.length > 0) {
+				// Fallback to drivers array
+				message += '👥 DRIVERS:\n';
+				message += '───────────────────────────────────────\n';
+				drivers.forEach((d, idx) => {
+					message += `${idx + 1}. ${d.name}`;
+					if (config.useSquads) message += ` (Squad ${d.squad})`;
+					message += '\n';
+				});
+				message += '\n';
+			}
+			
+			// Timeline info
+			if (previewData && previewData.timeline && previewData.timeline.length > 0) {
+				const stints = previewData.timeline.filter(t => t.type === 'stint');
+				const pits = previewData.timeline.filter(t => t.type === 'pit');
+				
+				message += '📋 STINT TIMELINE:\n';
+				message += '───────────────────────────────────────\n';
+				stints.forEach(stint => {
+					const startTime = stint.startTime ? new Date(stint.startTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--';
+					const endTime = stint.endTime ? new Date(stint.endTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--';
+					message += `#${stint.stintNumber} | ${stint.driverName} | ${startTime} → ${endTime} | ${formatTime(stint.duration)}\n`;
+				});
+				message += '\n';
+				
+				message += `📊 Total Stints: ${stints.length}\n`;
+				message += `🔧 Total Pit Stops: ${pits.length}\n`;
+			}
+			
+			message += '\n═══════════════════════════════════════\n';
+			message += '📱 Powered by Strateger\n';
+			message += '═══════════════════════════════════════\n';
+		}
+		
+		try {
+			// Create email in RFC 2822 format
+			const email = [
+				`To: ${recipients}`,
+				`Subject: ${subject}`,
+				`Content-Type: text/plain; charset=utf-8`,
+				'',
+				message
+			].join('\r\n');
+			
+			// Encode for Gmail API
+			const encodedEmail = btoa(unescape(encodeURIComponent(email)))
+				.replace(/\+/g, '-')
+				.replace(/\//g, '_')
+				.replace(/=+$/, '');
+			
+			console.log('📧 Sending email to:', recipients);
+			console.log('📧 Subject:', subject);
+			console.log('📧 Message length:', message.length);
+			
+			const response = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+				method: 'POST',
+				headers: {
+					'Authorization': `Bearer ${googleAccessToken}`,
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({ raw: encodedEmail })
+			});
+			
+			if (response.ok) {
+				const result = await response.json();
+				console.log('✅ Email sent! ID:', result.id);
+				alert('✅ Email sent successfully!');
+				closeEmailModal();
+			} else {
+				const error = await response.json();
+				console.error('❌ Gmail API error:', error);
+				throw new Error(error.error?.message || 'Failed to send email');
+			}
+		} catch (error) {
+			console.error('Email error:', error);
+			alert(`❌ Error sending email: ${error.message}`);
+		}
+	}
+
+	function shareStrategyEmail() {
+		if (!previewData) {
+			alert('Please generate a strategy preview first');
+			return;
+		}
+		showTeamEmailModal();
+		document.getElementById('emailSubject').value = '🏎️ Race Strategy - Please Review';
+	}
+
+	// ==================== CALENDAR FUNCTIONS ====================
+	function showCalendarModal() {
+		if (!googleUser) {
+			alert('Please sign in with Google first');
+			return;
+		}
+		
+		// Set default date to today
+		const today = new Date().toISOString().split('T')[0];
+		document.getElementById('calendarDate').value = today;
+		
+		// Set default time
+		document.getElementById('calendarTime').value = '09:00';
+		
+		// Pre-fill with race duration
+		const raceDur = document.getElementById('raceDuration')?.value || '12';
+		document.getElementById('calendarTitle').value = `🏎️ ${raceDur}h Endurance Race`;
+		
+		document.getElementById('calendarModal').classList.remove('hidden');
+	}
+
+	function closeCalendarModal() {
+		document.getElementById('calendarModal').classList.add('hidden');
+	}
+
+	async function createCalendarEvent() {
+		if (!googleAccessToken) {
+			alert('Please sign in with Google first');
+			return;
+		}
+		
+		const title = document.getElementById('calendarTitle').value;
+		const date = document.getElementById('calendarDate').value;
+		const time = document.getElementById('calendarTime').value;
+		const location = document.getElementById('calendarLocation').value;
+		const invites = document.getElementById('calendarInvites').value;
+		const addReminder = document.getElementById('addReminder').checked;
+		
+		if (!title || !date || !time) {
+			alert('Please fill in title, date and time');
+			return;
+		}
+		
+		const raceDurHours = parseFloat(document.getElementById('raceDuration')?.value || 12);
+		const startDateTime = new Date(`${date}T${time}`);
+		const endDateTime = new Date(startDateTime.getTime() + raceDurHours * 60 * 60 * 1000);
+		
+		// Build description
+		let description = 'Race managed by Strateger\n\n';
+		if (previewData?.driverSchedule) {
+			description += 'Driver Schedule:\n';
+			previewData.driverSchedule.forEach(d => {
+				description += `• ${d.name}: ${d.stints.length} stints\n`;
+			});
+		}
+		
+		// Build attendees list
+		const attendees = invites.split(',')
+			.map(e => e.trim())
+			.filter(e => e.includes('@'))
+			.map(email => ({ email }));
+		
+		const event = {
+			summary: title,
+			location: location,
+			description: description,
+			start: {
+				dateTime: startDateTime.toISOString(),
+				timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+			},
+			end: {
+				dateTime: endDateTime.toISOString(),
+				timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+			},
+			attendees: attendees.length > 0 ? attendees : undefined,
+			reminders: addReminder ? {
+				useDefault: false,
+				overrides: [
+					{ method: 'email', minutes: 24 * 60 },
+					{ method: 'popup', minutes: 60 }
+				]
+			} : { useDefault: true }
+		};
+		
+		try {
+			const response = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events?sendUpdates=all', {
+				method: 'POST',
+				headers: {
+					'Authorization': `Bearer ${googleAccessToken}`,
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify(event)
+			});
+			
+			if (response.ok) {
+				const result = await response.json();
+				alert(`✅ Event created!\n\nOpen in Calendar: ${result.htmlLink}`);
+				closeCalendarModal();
+			} else {
+				const error = await response.json();
+				throw new Error(error.error?.message || 'Failed to create event');
+			}
+		} catch (error) {
+			console.error('Calendar error:', error);
+			alert(`❌ Error creating event: ${error.message}`);
+		}
+	}
+
+	// ==================== TEAM AVAILABILITY ====================
+	async function checkTeamAvailability() {
+		if (!googleAccessToken) {
+			alert('Please sign in with Google first');
+			return;
+		}
+		
+		const date = prompt('Check availability for date (YYYY-MM-DD):', new Date().toISOString().split('T')[0]);
+		if (!date) return;
+		
+		try {
+			const timeMin = new Date(`${date}T00:00:00`).toISOString();
+			const timeMax = new Date(`${date}T23:59:59`).toISOString();
+			
+			const response = await fetch(
+				`https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${timeMin}&timeMax=${timeMax}&singleEvents=true`,
+				{
+					headers: { 'Authorization': `Bearer ${googleAccessToken}` }
+				}
+			);
+			
+			if (response.ok) {
+				const data = await response.json();
+				const events = data.items || [];
+				
+				if (events.length === 0) {
+					alert(`✅ You're free on ${date}!\nNo events scheduled.`);
+				} else {
+					let msg = `📅 Events on ${date}:\n\n`;
+					events.forEach(e => {
+						const start = new Date(e.start.dateTime || e.start.date);
+						msg += `• ${start.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - ${e.summary}\n`;
+					});
+					alert(msg);
+				}
+			}
+		} catch (error) {
+			console.error('Availability check error:', error);
+			alert(`❌ Error: ${error.message}`);
+		}
+	}
+	</script>
+
 </body>
 </html>

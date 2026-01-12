@@ -21,7 +21,7 @@ class LiveTimingManager {
      */
     detectProvider(url) {
         if (url.includes('racefacer')) return 'racefacer';
-        if (url.includes('apex')) return 'apex';
+        if (url.includes('apex-timing') || url.includes('apex_timing') || url.includes('apextiming')) return 'apex';
         return 'unknown';
     }
 
@@ -129,19 +129,49 @@ class LiveTimingManager {
     }
 
     /**
-     * התחל APEX scraper (עתידי)
+     * התחל APEX scraper)
      */
     startApexScraper(url) {
-        console.warn('[LiveTimingManager] APEX scraper not implemented yet');
-        
+    if (typeof ApexTimingScraper === 'undefined') {
+        console.error('[LiveTimingManager] ApexTimingScraper not loaded!');
         if (this.config.onError) {
-            this.config.onError(new Error('APEX scraper coming soon'));
+            this.config.onError(new Error('ApexTimingScraper not available'));
         }
-
-        // TODO: כשנוסיף APEX:
-        // this.currentScraper = new ApexScraper({ ... });
-        // this.currentScraper.start();
+        return;
     }
+
+    console.log(`[LiveTimingManager] Starting Apex scraper with URL: ${url}`);
+
+    this.currentScraper = new ApexTimingScraper({
+        raceUrl: url,
+        searchTerm: this.config.searchTerm,
+        updateInterval: this.config.updateInterval,
+        debug: false,
+
+        onUpdate: (data) => {
+            const strategerData = this.convertToStrategerFormat(data, 'apex');
+            
+            if (this.config.onUpdate) {
+                this.config.onUpdate(strategerData);
+            }
+        },
+
+        onError: (error, consecutiveErrors) => {
+            console.error(`[LiveTimingManager] Apex error (${consecutiveErrors}):`, error);
+            
+            if (this.config.onError) {
+                this.config.onError(error, consecutiveErrors);
+            }
+
+            if (consecutiveErrors >= 5 && this.config.onFatalError) {
+                this.config.onFatalError(error);
+            }
+        }
+    });
+
+    this.currentScraper.start();
+    console.log('[LiveTimingManager] Apex scraper started');
+}
 
     /**
      * עצירת scraper

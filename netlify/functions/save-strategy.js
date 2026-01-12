@@ -29,7 +29,7 @@ exports.handler = async (event, context) => {
         
         const sql = neon(process.env.NETLIFY_DATABASE_URL);
         
-        // Create table if not exists
+        // Create table with visibility columns
         await sql`
             CREATE TABLE IF NOT EXISTS strategies (
                 id SERIAL PRIMARY KEY,
@@ -41,14 +41,16 @@ exports.handler = async (event, context) => {
                 driver_schedule JSONB,
                 config JSONB,
                 created_at TIMESTAMP DEFAULT NOW(),
-                user_id VARCHAR(255)
+                user_id VARCHAR(255),
+                is_public BOOLEAN DEFAULT false,
+                device_id VARCHAR(255)
             )
         `;
         
         const result = await sql`
             INSERT INTO strategies (
                 name, race_duration_ms, required_stops, drivers,
-                timeline, driver_schedule, config, user_id
+                timeline, driver_schedule, config, user_id, is_public, device_id
             ) VALUES (
                 ${data.name},
                 ${data.config.raceMs},
@@ -57,7 +59,9 @@ exports.handler = async (event, context) => {
                 ${JSON.stringify(data.timeline)},
                 ${JSON.stringify(data.driverSchedule)},
                 ${JSON.stringify(data.config)},
-                ${data.userId || 'anonymous'}
+                ${data.userId || 'anonymous'},
+                ${data.isPublic || false},
+                ${data.deviceId || null}
             )
             RETURNING id, name, created_at
         `;
