@@ -11,6 +11,7 @@
     <title>Strateger - Race Strategy Manager</title>
 	<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%2322d3ee' width='100' height='100' rx='15'/><text x='50' y='70' text-anchor='middle' font-size='60' fill='black' font-weight='bold'>S</text></svg>">
     <script src="https://cdn.tailwindcss.com"></script>
+	<script src="https://bernardo-castilho.github.io/DragDropTouch/DragDropTouch.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 	<style>
 		/* Fallback icons if Font Awesome blocked */
@@ -418,11 +419,13 @@
 			<div id="liveIndicator" class="hidden sync-dot live-dot"></div>
 			
 			<!-- Host Code - RIGHT -->
-			<div id="hostCodeDisplay" class="hidden flex items-center gap-1 bg-navy-800 px-2 py-1 rounded border border-ice/50">
-				<span class="text-[9px] text-gray-400" data-i18n="code">Code:</span>
-				<code id="dashboardHostId" class="text-ice font-mono font-bold text-xs">---</code>
-				<button onclick="copyHostCode()" class="text-gray-400 hover:text-white ml-0.5 p-1" title="Copy code">
-					<i class="fas fa-copy text-[10px]"></i>
+			<div class="flex justify-between items-center bg-navy-900 px-2 py-0 rounded-lg shadow-md">
+				<button id="hostCodeDisplay" onclick="copyHostCode()" class="hidden flex items-center gap-2 bg-navy-800 hover:bg-navy-700 border border-navy-600 px-3 py-1 rounded-full transition group">
+					<div class="flex flex-col items-end leading-none">
+						<span class="text-[9px] text-gray-400 uppercase" data-i18n="code">Code</span>
+						<code id="dashboardHostId" class="text-sm font-mono text-white font-bold group-hover:text-neon transition">---</code>
+					</div>
+					<i class="fas fa-copy text-gray-500 group-hover:text-white text-xs"></i>
 				</button>
 			</div>
 		</div>
@@ -2970,7 +2973,6 @@
 			const actualDrivingTime = actualStints.reduce((sum, s) => sum + s.duration, 0);
 			const actualAvgStint = actualDrivingTime / actualStints.length;
 			
-			// Get elements
 			const scheduleEl = document.getElementById('driverScheduleList');
 			const summaryEl = document.getElementById('strategySummary');
 			const timeStartEl = document.getElementById('timelineStart');
@@ -2978,7 +2980,7 @@
 			
 			if (!scheduleEl || !summaryEl || !timeStartEl || !timeEndEl) return;
 			
-			// Time markers
+			// Time markers update
 			const startTime = previewData.startTime instanceof Date 
 				? previewData.startTime 
 				: new Date(previewData.startTime);
@@ -2987,43 +2989,50 @@
 			timeStartEl.innerText = formatTimeOfDay(startTime);
 			timeEndEl.innerText = formatTimeOfDay(endTime);
 			
-			// --- FIX: RTL Arrow Direction ---
-			// אם הממשק ב-RTL, החץ צריך להצביע שמאלה (מההתחלה לסוף)
+			// RTL Arrow Logic
 			const isRTL = document.documentElement.dir === 'rtl';
 			const arrowIcon = isRTL ? '←' : '→'; 
 
-			// Stint-by-stint schedule
+			// --- Stint List with DRAG & DROP ---
 			scheduleEl.innerHTML = `
 				<div class="mb-6">
-					<h4 class="text-sm font-bold text-gray-400 mb-2 flex items-center gap-2">
-						<i class="fas fa-list-ol"></i> Stint-by-Stint Schedule
+					<h4 class="text-sm font-bold text-gray-400 mb-2 flex items-center gap-2 justify-between">
+						<span><i class="fas fa-list-ol"></i> Stint Schedule</span>
+						<span class="text-[10px] text-gray-500 font-normal">(Drag rows to reorder)</span>
 					</h4>
-					<div class="space-y-1">
+					<div class="space-y-1" id="stintListContainer">
 						${actualStints.map((stint, index) => {
 							const pitAfter = timeline.find(t => t.type === 'pit' && t.pitNumber === stint.stintNumber);
 							const stintStart = stint.startTime instanceof Date ? stint.startTime : new Date(stint.startTime);
 							const stintEnd = stint.endTime instanceof Date ? stint.endTime : new Date(stint.endTime);
 							const durationMin = (stint.duration / 60000).toFixed(0);
 
+							// שים לב ל-Attributes החדשים ב-div הראשי
 							return `
-								<div class="flex items-center gap-2 bg-navy-950 p-2 rounded border-l-4 hover:bg-navy-900 transition" style="border-color: ${stint.color}">
+								<div class="stint-row flex items-center gap-2 bg-navy-950 p-2 rounded border-l-4 hover:bg-navy-900 border border-transparent" 
+									style="border-left-color: ${stint.color}"
+									draggable="true"
+									data-index="${index}"
+									ondragstart="handleDragStart(event)"
+									ondragover="handleDragOver(event)"
+									ondragleave="handleDragLeave(event)"
+									ondrop="handleDrop(event)">
 									
-									<div class="flex flex-col gap-0.5 mr-1">
-										<button onclick="moveStint(${index}, -1)" class="text-[8px] bg-navy-800 hover:bg-navy-700 px-1 rounded text-ice ${index === 0 ? 'opacity-30 pointer-events-none' : ''}">▲</button>
-										<button onclick="moveStint(${index}, 1)" class="text-[8px] bg-navy-800 hover:bg-navy-700 px-1 rounded text-ice ${index === actualStints.length - 1 ? 'opacity-30 pointer-events-none' : ''}">▼</button>
+									<div class="cursor-grab text-gray-600 hover:text-white px-1">
+										<i class="fas fa-grip-vertical text-xs"></i>
 									</div>
 
 									<span class="text-xs text-gray-500 w-6">#${stint.stintNumber}</span>
 									
-									<div class="flex-1 min-w-0">
-										<span class="font-bold text-white block truncate">${stint.driverName}</span>
+									<div class="flex-1 min-w-0 pointer-events-none"> <span class="font-bold text-white block truncate">${stint.driverName}</span>
 										<div class="flex items-center gap-1 text-[10px] text-gray-400">
 											<span>${formatTimeOfDay(stintStart)}</span>
-											<span class="text-gray-600 font-bold">${arrowIcon}</span> <span>${formatTimeOfDay(stintEnd)}</span>
+											<span class="text-gray-600 font-bold">${arrowIcon}</span>
+											<span>${formatTimeOfDay(stintEnd)}</span>
 										</div>
 									</div>
 
-									<div class="text-right whitespace-nowrap">
+									<div class="text-right whitespace-nowrap pointer-events-none">
 										<span class="text-xs text-neon font-mono block">${durationMin}m</span>
 										<span class="text-[10px] text-gray-500">${stint.note || ''}</span>
 									</div>
@@ -3050,16 +3059,13 @@
 									<span>${driver.stints.length} stints</span>
 									<span>Avg: ${(driver.totalTime / driver.stints.length / 60000).toFixed(0)}m</span>
 								</div>
-								<div class="mt-1 text-[9px] text-gray-600 truncate">
-									${driver.stints.map(s => `#${s.globalNumber}`).join(', ')}
-								</div>
 							</div>
 						`).join('')}
 					</div>
 				</div>
 			`;
 			
-			// Strategy summary
+			// Strategy summary (נשאר ללא שינוי)
 			summaryEl.innerHTML = `
 				<div class="bg-navy-800 rounded p-3">
 					<div class="text-xs text-gray-400 mb-1">Race Duration</div>
@@ -3121,6 +3127,108 @@
 			
 			// Re-render
 			renderPreview();
+		}
+
+		// ==================== DRAG AND DROP LOGIC ====================
+		let draggedStintIndex = null;
+
+		function handleDragStart(e) {
+			// שומרים את האינדקס של האלמנט שנגרר
+			draggedStintIndex = parseInt(e.currentTarget.getAttribute('data-index'));
+			e.dataTransfer.effectAllowed = 'move';
+			e.dataTransfer.setData('text/plain', draggedStintIndex);
+			
+			// עיצוב לאלמנט שנגרר
+			e.currentTarget.classList.add('draggable-source');
+		}
+
+		function handleDragOver(e) {
+			// חובה כדי לאפשר Drop
+			e.preventDefault();
+			e.dataTransfer.dropEffect = 'move';
+			
+			// הוספת עיצוב לאלמנט שעליו עומדים
+			const row = e.currentTarget;
+			if (!row.classList.contains('drag-over')) {
+				row.classList.add('drag-over');
+			}
+		}
+
+		function handleDragLeave(e) {
+			// הסרת העיצוב כשיוצאים מהאלמנט
+			e.currentTarget.classList.remove('drag-over');
+		}
+
+		function handleDrop(e) {
+			e.preventDefault();
+			e.stopPropagation(); // מונע בעיות בדפדפנים מסוימים
+
+			const targetRow = e.currentTarget;
+			targetRow.classList.remove('drag-over');
+			
+			// הסרת עיצוב מהמקור
+			const sourceRow = document.querySelector('.draggable-source');
+			if (sourceRow) sourceRow.classList.remove('draggable-source');
+
+			const targetIndex = parseInt(targetRow.getAttribute('data-index'));
+
+			// אם גררנו לאותו מקום, לא עושים כלום
+			if (draggedStintIndex === null || draggedStintIndex === targetIndex) {
+				return;
+			}
+
+			// ביצוע ההחלפה (Swap)
+			swapStints(draggedStintIndex, targetIndex);
+			
+			draggedStintIndex = null;
+		}
+
+		function swapStints(fromIndex, toIndex) {
+			if (!previewData || !previewData.timeline) return;
+
+			// אנחנו עובדים רק על סטינטים (מסננים את הפיטס)
+			const allEvents = previewData.timeline;
+			const stintIndices = [];
+			
+			// מיפוי אינדקסים אמיתיים ב-timeline
+			allEvents.forEach((evt, idx) => {
+				if (evt.type === 'stint') stintIndices.push(idx);
+			});
+
+			const realFromIdx = stintIndices[fromIndex];
+			const realToIdx = stintIndices[toIndex];
+
+			if (realFromIdx === undefined || realToIdx === undefined) return;
+
+			// החלפת נתוני הנהג והצבע (שומרים את הזמנים במקומם)
+			const sourceStint = allEvents[realFromIdx];
+			const targetStint = allEvents[realToIdx];
+
+			const temp = {
+				driverIdx: sourceStint.driverIdx,
+				driverName: sourceStint.driverName,
+				color: sourceStint.color,
+				note: sourceStint.note
+			};
+
+			sourceStint.driverIdx = targetStint.driverIdx;
+			sourceStint.driverName = targetStint.driverName;
+			sourceStint.color = targetStint.color;
+			sourceStint.note = targetStint.note;
+
+			targetStint.driverIdx = temp.driverIdx;
+			targetStint.driverName = temp.driverName;
+			targetStint.color = temp.color;
+			targetStint.note = temp.note;
+
+			// חישוב מחדש של סטטיסטיקות
+			recalculateDriverStatsFromTimeline();
+			
+			// רינדור מחדש
+			renderPreview();
+			
+			// בונוס: הפעלת רטט במובייל (אם נתמך) לאישור
+			if (navigator.vibrate) navigator.vibrate(50);
 		}
 
 		function recalculateDriverStatsFromTimeline() {
@@ -4733,51 +4841,57 @@
 		}
 
         function updateStrategy(sTime) {
+			// 1. ניהול כפתור ה-RESET (התיקון)
+			const btnReset = document.getElementById('btnResetMode');
+			if (btnReset) {
+				if (state.mode === 'push' || state.mode === 'bad') {
+					btnReset.classList.remove('hidden'); // תראה רק אם יש מצב מיוחד
+				} else {
+					btnReset.classList.add('hidden'); // בכל מצב אחר - תסתיר!
+				}
+			}
+
+			// 2. שאר הלוגיקה של האסטרטגיה (נשארת אותו דבר)
 			if (state.mode === 'normal') {
-				// New Logic: Get target from the specific array index for the current stint
-				// globalStintNumber starts at 1, array at 0
 				const currentTarget = state.stintTargets[state.globalStintNumber - 1] || state.targetStintMs;
-				
-				// Ensure within limits (safety fallback)
 				state.targetStintMs = Math.min(Math.max(currentTarget, config.minStintMs), config.maxStintMs);
 			}
 			
-			document.getElementById('strategyTargetStint').innerText = fmtHMS(state.targetStintMs);
+			// עדכון טקסטים
+			const targetEl = document.getElementById('strategyTargetStint');
+			if (targetEl) targetEl.innerText = fmtHMS(state.targetStintMs);
 
 			const diff = state.targetStintMs - sTime;
 			const dEl = document.getElementById('strategyDelta');
-			dEl.innerText = diff > 0 ? `-${Math.ceil(diff / 60000)}m` : `+${Math.floor(Math.abs(diff) / 60000)}m`;
-			dEl.className = diff > 0 ? "text-lg font-bold text-gray-400" : "text-lg font-bold text-neon";
 			
-			const advice = document.getElementById('strategyAdvice');
-			const timeToMax = config.maxStintMs - sTime;
-			
-			if (timeToMax < 0) { 
-				advice.innerText = t('timeExceeded');
-				advice.className = "text-xs text-red-500 animate-pulse font-bold"; 
-			} 
-			else if (state.mode === 'bad') {
-				advice.innerText = t('problemQuick');
-				advice.className = "text-xs text-red-400 font-bold";
+			if (dEl) {
+				dEl.innerText = diff > 0 ? `-${Math.ceil(diff / 60000)}m` : `+${Math.floor(Math.abs(diff) / 60000)}m`;
+				dEl.className = diff > 0 ? "text-lg font-bold text-gray-400" : "text-lg font-bold text-neon";
 			}
-			else if (state.mode === 'push') {
-				if (timeToMax < 120000) {
-					advice.innerText = t('nearLimit');
-					advice.className = "text-xs text-yellow-400 font-bold";
-				} else {
+			
+			// Advice Text logic... (אין צורך לשנות את זה, רק תוודא שזה קיים)
+			const advice = document.getElementById('strategyAdvice');
+			if (advice) {
+				const timeToMax = config.maxStintMs - sTime;
+				if (timeToMax < 0) { 
+					advice.innerText = t('timeExceeded');
+					advice.className = "text-xs text-red-500 animate-pulse font-bold"; 
+				} else if (state.mode === 'bad') {
+					advice.innerText = t('problemQuick');
+					advice.className = "text-xs text-red-400 font-bold";
+				} else if (state.mode === 'push') {
 					advice.innerText = t('pushExtend');
 					advice.className = "text-xs text-green-400 font-bold";
+				} else if (diff < 300000 && diff > -300000) {
+					advice.innerText = t('targetWindow');
+					advice.className = "text-xs text-ice font-bold";
+				} else if (diff > 0) {
+					advice.innerText = t('buildTime');
+					advice.className = "text-xs text-gray-400";
+				} else {
+					advice.innerText = t('overExtend');
+					advice.className = "text-xs text-yellow-400 font-bold";
 				}
-			}
-			else if (diff < 300000 && diff > -300000) {
-				advice.innerText = t('targetWindow');
-				advice.className = "text-xs text-ice font-bold";
-			} else if (diff > 0) {
-				advice.innerText = t('buildTime');
-				advice.className = "text-xs text-gray-400";
-			} else {
-				advice.innerText = t('overExtend');
-				advice.className = "text-xs text-yellow-400 font-bold";
 			}
 		}
 
