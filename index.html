@@ -530,70 +530,68 @@
             
             <!-- Config Panel -->
             <div id="configPanel" class="space-y-3 hidden transition-opacity duration-300">
-                
-                <!-- Live Timing Section -->
-                <div class="bg-gradient-to-r from-red-900/30 to-navy-800 p-3 rounded-lg border border-red-500/50">
-                    <div class="flex items-center gap-2 mb-2">
-                        <span class="sync-dot live-dot"></span>
-                        <span class="text-sm font-bold text-white" data-i18n="liveTiming">Live Timing (Optional)</span>
-                    </div>
-                    <div class="space-y-2">
-                        <div>
-                            <label class="text-[10px] text-gray-400" data-i18n="liveTimingUrl">Live Timing URL (APEX/RaceFacer)</label>
-                            <input type="url" id="liveTimingUrl" placeholder="https://live.racefacer.com/... or https://apex-timing.com/..." 
-       							class="w-full bg-navy-950 border border-gray-600 rounded p-2 text-white text-sm">
-                        </div>
-                        
-                        <div>
-                            <label class="text-[10px] text-gray-400 mb-1 block" data-i18n="searchBy">Search by:</label>
-                            <div class="grid grid-cols-3 gap-1 mb-2">
-                                <label class="flex items-center justify-center gap-1 bg-navy-950 p-2 rounded border border-gray-600 cursor-pointer has-[:checked]:border-ice has-[:checked]:bg-ice/20">
-                                    <input type="radio" name="searchType" value="team" checked class="hidden">
-                                    <span class="text-[10px] text-gray-300">🏎️ <span data-i18n="team">Team</span></span>
-                                </label>
-                                <label class="flex items-center justify-center gap-1 bg-navy-950 p-2 rounded border border-gray-600 cursor-pointer has-[:checked]:border-ice has-[:checked]:bg-ice/20">
-                                    <input type="radio" name="searchType" value="kart" class="hidden">
-                                    <span class="text-[10px] text-gray-300">🔢 <span data-i18n="kart">Kart</span></span>
-                                </label>
-                                <label class="flex items-center justify-center gap-1 bg-navy-950 p-2 rounded border border-gray-600 cursor-pointer has-[:checked]:border-ice has-[:checked]:bg-ice/20">
-                                    <input type="radio" name="searchType" value="driver" class="hidden">
-                                    <span class="text-[10px] text-gray-300">👤 <span data-i18n="driver">Driver</span></span>
-                                </label>
-                            </div>
-                            <input type="text" id="searchValue" placeholder="Enter team name..." class="w-full bg-navy-950 border border-gray-600 rounded p-2 text-white text-sm">
-                        </div>
-                        
-                        <div class="flex gap-2">
-                            <button onclick="testLiveTiming()" class="flex-1 bg-red-900/50 border border-red-500/50 text-red-300 text-xs py-2 rounded hover:bg-red-900">🔴 <span data-i18n="testConnection">Test</span></button>
-                            <button onclick="startDemoMode()" class="flex-1 bg-neon/20 border border-neon/50 text-neon text-xs py-2 rounded hover:bg-neon/30">🎮 <span data-i18n="demo">Demo</span></button>
+				<div class="bg-gradient-to-r from-red-900/30 to-navy-800 p-3 rounded-lg border border-red-500/50">
+					<div class="flex items-center gap-2 mb-2">
+						<span class="sync-dot live-dot"></span>
+						<span class="text-sm font-bold text-white" data-i18n="liveTiming">Live Timing (Optional)</span>
+					</div>
+					<div class="space-y-2">
+						<div>
+							<label class="text-[10px] text-gray-400" data-i18n="liveTimingUrl">Live Timing URL (APEX/RaceFacer)</label>
+							<input type="url" id="liveTimingUrl" placeholder="https://live.racefacer.com/... or https://apex-timing.com/..." 
+								class="w-full bg-navy-950 border border-gray-600 rounded p-2 text-white text-sm">
+						</div>
+						
+						<div>
+							<label class="text-[10px] text-gray-400 mb-1 block" data-i18n="searchBy">Search by:</label>
+							<div class="grid grid-cols-3 gap-1 mb-2">
+								<label class="flex items-center justify-center gap-1 bg-navy-950 p-2 rounded border border-gray-600 cursor-pointer has-[:checked]:border-ice has-[:checked]:bg-ice/20">
+									<input type="radio" name="searchType" value="team" checked class="hidden">
+									<span class="text-[10px] text-gray-300">🏎️ <span data-i18n="team">Team</span></span>
+								</label>
+								<label class="flex items-center justify-center gap-1 bg-navy-950 p-2 rounded border border-gray-600 cursor-pointer has-[:checked]:border-ice has-[:checked]:bg-ice/20">
+									<input type="radio" name="searchType" value="kart" class="hidden">
+									<span class="text-[10px] text-gray-300">🔢 <span data-i18n="kart">Kart</span></span>
+								</label>
+								<label class="flex items-center justify-center gap-1 bg-navy-950 p-2 rounded border border-gray-600 cursor-pointer has-[:checked]:border-ice has-[:checked]:bg-ice/20">
+									<input type="radio" name="searchType" value="driver" class="hidden">
+									<span class="text-[10px] text-gray-300">👤 <span data-i18n="driver">Driver</span></span>
+								</label>
+							</div>
+							<input type="text" id="searchValue" placeholder="Enter team name..." class="w-full bg-navy-950 border border-gray-600 rounded p-2 text-white text-sm">
+						</div>
+						
+						<div class="flex gap-2">
+							<button onclick="testLiveTiming()" class="flex-1 bg-red-900/50 border border-red-500/50 text-red-300 text-xs py-2 rounded hover:bg-red-900">🔴 <span data-i18n="testConnection">Test</span></button>
+							<button onclick="startDemoMode()" class="flex-1 bg-neon/20 border border-neon/50 text-neon text-xs py-2 rounded hover:bg-neon/30">🎮 <span data-i18n="demo">Demo</span></button>
 							<button onclick="openManualInput()" class="flex-1 bg-fuel/20 border border-fuel/50 text-fuel text-xs py-2 rounded hover:bg-fuel/30">✏️ <span data-i18n="manual">Manual</span></button>
-                        </div>
-                        <div id="liveTimingStatus" class="text-[10px] text-gray-500 text-center"></div>
-                    </div>
-                </div>
+						</div>
+						<div id="liveTimingStatus" class="text-[10px] text-gray-500 text-center"></div>
+					</div>
+				</div>
 
-                <div id="simResult" class="bg-navy-950 p-2 rounded text-xs text-ice border border-navy-700 font-mono text-center whitespace-pre-line">...</div>
+				<div id="simResult" class="bg-navy-950 p-2 rounded text-xs text-ice border border-navy-700 font-mono text-center whitespace-pre-line">...</div>
 
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="text-[10px] text-gray-400" data-i18n="duration">Duration (hours)</label>
-                        <input type="number" id="raceDuration" value="12" oninput="runSim()" class="w-full bg-navy-950 border border-gray-700 rounded p-2 text-white text-sm">
-                    </div>
-                    <div>
-                        <label class="text-[10px] text-gray-400" data-i18n="reqStops">Required Stops</label>
-                        <input type="number" id="reqPitStops" value="13" oninput="runSim()" class="w-full bg-navy-950 border border-gray-700 rounded p-2 text-neon font-bold text-sm">
-                    </div>
-                </div>
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="text-[10px] text-gray-400" data-i18n="minStint">Min Stint (min)</label>
-                        <input type="number" id="minStint" value="10" oninput="runSim()" class="w-full bg-navy-950 border border-gray-700 rounded p-2 text-white text-sm">
-                    </div>
-                    <div>
-                        <label class="text-[10px] text-gray-400" data-i18n="maxStint">Max Stint (min)</label>
-                        <input type="number" id="maxStint" value="60" oninput="runSim()" class="w-full bg-navy-950 border border-gray-700 rounded p-2 text-white text-sm">
-                    </div>
-					<!-- Pit Window Restrictions -->
+				<div class="grid grid-cols-2 gap-3">
+					<div>
+						<label class="text-[10px] text-gray-400" data-i18n="duration">Duration (hours)</label>
+						<input type="number" id="raceDuration" value="12" oninput="runSim()" class="w-full bg-navy-950 border border-gray-700 rounded p-2 text-white text-sm">
+					</div>
+					<div>
+						<label class="text-[10px] text-gray-400" data-i18n="reqStops">Required Stops</label>
+						<input type="number" id="reqPitStops" value="13" oninput="runSim()" class="w-full bg-navy-950 border border-gray-700 rounded p-2 text-neon font-bold text-sm">
+					</div>
+				</div>
+
+				<div class="grid grid-cols-2 gap-3">
+					<div>
+						<label class="text-[10px] text-gray-400" data-i18n="minStint">Min Stint (min)</label>
+						<input type="number" id="minStint" value="10" oninput="runSim()" class="w-full bg-navy-950 border border-gray-700 rounded p-2 text-white text-sm">
+					</div>
+					<div>
+						<label class="text-[10px] text-gray-400" data-i18n="maxStint">Max Stint (min)</label>
+						<input type="number" id="maxStint" value="60" oninput="runSim()" class="w-full bg-navy-950 border border-gray-700 rounded p-2 text-white text-sm">
+					</div>
 					<div>
 						<label class="text-[10px] text-gray-400" data-i18n="pitClosedStart">🚫 Pit Closed Start (min)</label>
 						<input type="number" id="pitClosedStart" min="0" max="120" value="0" oninput="runSim()" class="w-full bg-navy-950 border border-gray-700 rounded p-2 text-white text-sm">
@@ -602,73 +600,83 @@
 						<label class="text-[10px] text-gray-400" data-i18n="pitClosedEnd">🚫 Pit Closed End (min)</label>
 						<input type="number" id="pitClosedEnd" min="0" max="120" value="0" oninput="runSim()" class="w-full bg-navy-950 border border-gray-700 rounded p-2 text-white text-sm">
 					</div>
-                </div>
-                
-                <div class="bg-navy-800 p-2 rounded border border-gray-700">
-                    <p class="text-[10px] text-gray-400 text-center mb-1 font-bold" data-i18n="driverLimits">Driver Limits (0 = no limit)</p>
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label class="text-[10px] text-gray-400" data-i18n="minDrive">Min Drive</label>
-                            <input type="number" id="minDriverTime" placeholder="0" class="w-full bg-navy-950 border border-gray-600 rounded p-2 text-white text-sm font-mono">
-                        </div>
-                        <div>
-                            <label class="text-[10px] text-gray-400" data-i18n="maxDrive">Max Drive</label>
-                            <input type="number" id="maxDriverTime" placeholder="0" class="w-full bg-navy-950 border border-gray-600 rounded p-2 text-white text-sm font-mono">
-                        </div>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="text-[10px] text-gray-400" data-i18n="pitTime">Pit Time (sec)</label>
-                        <input type="number" id="minPitTime" value="120" class="w-full bg-navy-950 border border-gray-700 rounded p-2 text-white text-sm">
-                    </div>
-                    <div>
-                        <label class="text-[10px] text-gray-400" data-i18n="releaseBuffer">Release Buffer (sec)</label>
-                        <input type="number" id="releaseBuffer" value="0" class="w-full bg-navy-950 border border-gray-700 rounded p-2 text-fuel text-sm">
-                    </div>
-                </div>
-                
-                <div class="grid grid-cols-3 gap-2 border-t border-gray-700 pt-2 mt-2">
-					<label class="flex items-center gap-2 bg-navy-950 p-2 rounded border border-gray-700 cursor-pointer">
-						<input type="checkbox" id="allowDouble" class="w-4 h-4 accent-ice">
-						<span class="text-[10px] text-gray-300" data-i18n="doubleStint">Double</span>
-					</label>
-					<label class="flex items-center gap-2 bg-navy-950 p-2 rounded border border-gray-700 cursor-pointer">
-						<input type="checkbox" id="trackFuel" onchange="toggleFuelInput()" class="w-4 h-4 accent-fuel">
-						<span class="text-[10px] text-gray-300" data-i18n="fuel">Fuel</span>
-					</label>
-					<label class="flex items-center gap-2 bg-navy-950 p-2 rounded border border-gray-700 cursor-pointer">
-						<input type="checkbox" id="useSquads" onchange="toggleSquadsInput()" class="w-4 h-4 accent-squadB">
-						<span class="text-[10px] text-gray-300" data-i18n="squads">Squads</span>
-					</label>
 				</div>
-                
-                <div id="fuelInputDiv" class="hidden">
-                    <label class="text-[10px] text-fuel" data-i18n="fuelTankTime">Fuel Tank Time (min)</label>
-                    <input type="number" id="maxFuelTime" value="60" class="w-full bg-navy-950 border border-fuel/50 rounded p-2 text-white text-sm">
-                </div>
-
-                <div class="pt-2">
-                    <div class="flex justify-between items-center mb-1">
-                        <label class="text-xs text-gray-400 font-bold" data-i18n="driversSetup">Drivers (mark starter)</label>
-                        <div class="space-x-1">
-                            <button onclick="addDriverField()" class="text-xs bg-navy-700 px-2 py-1 rounded hover:bg-navy-600">+</button>
-                            <button onclick="removeDriverField()" class="text-xs bg-navy-700 px-2 py-1 rounded hover:bg-navy-600">-</button>
-                        </div>
-                    </div>
-                    <div id="driversList" class="space-y-2 transition-all duration-300"></div>
-                </div>
 				
-				<button onclick="generatePreview()" 
-						class="w-full mt-4 bg-gradient-to-r from-purple-600 to-fuchsia-500 hover:from-fuchsia-500 hover:to-purple-600 text-white font-bold py-4 rounded-lg shadow-[0_0_20px_rgba(168,85,247,0.4)] transition-all">
+				<div class="bg-navy-800 p-2 rounded border border-gray-700">
+					<p class="text-[10px] text-gray-400 text-center mb-1 font-bold" data-i18n="driverLimits">Driver Limits (0 = no limit)</p>
+					<div class="grid grid-cols-2 gap-3">
+						<div>
+							<label class="text-[10px] text-gray-400" data-i18n="minDrive">Min Drive</label>
+							<input type="number" id="minDriverTime" placeholder="0" oninput="runSim()" class="w-full bg-navy-950 border border-gray-700 rounded p-2 text-white text-sm">
+						</div>
+						<div>
+							<label class="text-[10px] text-gray-400" data-i18n="maxDrive">Max Drive</label>
+							<input type="number" id="maxDriverTime" placeholder="0" oninput="runSim()" class="w-full bg-navy-950 border border-gray-700 rounded p-2 text-white text-sm">
+						</div>
+					</div>
+				</div>
+
+				<div class="bg-navy-800 p-2 rounded border border-gray-700 mt-2">
+					<p class="text-[10px] text-gray-400 text-center mb-1 font-bold" data-i18n="advancedSettings">Advanced Settings</p>
+					
+					<div class="grid grid-cols-2 gap-3">
+						<div>
+							<label class="text-[10px] text-gray-400" data-i18n="pitTime">Pit Time (sec)</label>
+							<input type="number" id="minPitTime" value="120" oninput="runSim()" class="w-full bg-navy-950 border border-gray-700 rounded p-2 text-white text-sm">
+						</div>
+						<div>
+							<label class="text-[10px] text-gray-400" data-i18n="releaseBuffer">Release Buffer (sec)</label>
+							<input type="number" id="releaseBuffer" value="0" class="w-full bg-navy-950 border border-gray-700 rounded p-2 text-fuel text-sm">
+						</div>
+					</div>
+					
+					<div class="grid grid-cols-3 gap-2 border-t border-gray-700 pt-2 mt-2">
+						<label class="flex items-center gap-2 bg-navy-950 p-2 rounded border border-gray-700 cursor-pointer">
+							<input type="checkbox" id="allowDouble" onchange="runSim()" class="w-4 h-4 accent-ice">
+							<span class="text-[10px] text-gray-300" data-i18n="doubleStint">Double</span>
+						</label>
+						
+						<label class="flex items-center gap-2 bg-navy-950 p-2 rounded border border-gray-700 cursor-pointer">
+							<input type="checkbox" id="trackFuel" onchange="toggleFuelInput()" class="w-4 h-4 accent-fuel">
+							<span class="text-[10px] text-gray-300" data-i18n="fuel">Fuel</span>
+						</label>
+						
+						<label class="flex items-center gap-2 bg-navy-950 p-2 rounded border border-gray-700 cursor-pointer">
+							<input type="checkbox" id="useSquads" onchange="toggleSquadsInput(); runSim()" class="w-4 h-4 accent-squadB">
+							<span class="text-[10px] text-gray-300" data-i18n="squads">Squads</span>
+						</label>
+					</div>
+					
+					<div id="fuelInputDiv" class="hidden mt-2">
+						<label class="text-[10px] text-fuel" data-i18n="fuelTankTime">Fuel Tank Time (min)</label>
+						<input type="number" id="maxFuelTime" value="60" class="w-full bg-navy-950 border border-fuel/50 rounded p-2 text-white text-sm">
+					</div>
+				</div>
+
+				<div class="pt-2">
+					<div class="flex justify-between items-center mb-1">
+						<label class="text-xs text-gray-400 font-bold" data-i18n="driversSetup">Drivers (mark starter)</label>
+						<div class="space-x-1">
+							<button onclick="addDriverField()" class="text-xs bg-navy-700 px-2 py-1 rounded hover:bg-navy-600">+</button>
+							<button onclick="removeDriverField()" class="text-xs bg-navy-700 px-2 py-1 rounded hover:bg-navy-600">-</button>
+						</div>
+					</div>
+					<div id="driversList" class="space-y-2 transition-all duration-300"></div>
+				</div>
+				
+				<button onclick="callAIStrategy()" class="w-full mt-4 bg-gradient-to-r from-indigo-600 to-blue-500 hover:from-blue-500 hover:to-indigo-600 text-white font-bold py-3 rounded-lg shadow-lg border border-indigo-400/30">
+					✨ Ask AI to Optimize
+				</button>
+
+				<button onclick="generatePreview(false, true)" 
+						class="w-full mt-2 bg-gradient-to-r from-purple-600 to-fuchsia-500 hover:from-fuchsia-500 hover:to-purple-600 text-white font-bold py-4 rounded-lg shadow-[0_0_20px_rgba(168,85,247,0.4)] transition-all">
 					<i class="fas fa-chart-gantt mr-2"></i>
 					<span data-i18n="previewStrategy">Preview Strategy</span>
 				</button>
-                <button id="startRaceBtn" onclick="initRace()" class="w-full bg-ice hover:bg-cyan-300 text-navy-950 font-bold py-3 rounded-lg text-lg mt-2 shadow-[0_0_15px_rgba(34,211,238,0.3)] transition btn-press" data-i18n="startRace">
-                    Start Race (Host)
-                </button>
-            </div>
+				<button id="startRaceBtn" onclick="initRace()" class="w-full bg-ice hover:bg-cyan-300 text-navy-950 font-bold py-3 rounded-lg text-lg mt-2 shadow-[0_0_15px_rgba(34,211,238,0.3)] transition btn-press" data-i18n="startRace">
+					Start Race (Host)
+				</button>
+			</div>
 
             <!-- Client Section -->
             <div id="clientSection" class="hidden">
@@ -1117,6 +1125,59 @@
 			</div>
 		</div>
 	</div>
+
+	<div id="saveStrategyModal" class="hidden fixed inset-0 bg-black/90 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-fade-in">
+		<div class="bg-navy-900 border border-navy-600 rounded-xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all scale-100">
+			
+			<div class="bg-navy-950 p-4 border-b border-navy-700 flex justify-between items-center">
+				<h3 class="text-xl font-bold text-white flex items-center gap-2">
+					<i class="fas fa-save text-neon"></i> שמירת אסטרטגיה
+				</h3>
+				<button onclick="closeSaveStrategyModal()" class="text-gray-400 hover:text-white transition">
+					<i class="fas fa-times text-lg"></i>
+				</button>
+			</div>
+
+			<div class="p-6 space-y-6">
+				
+				<div>
+					<label class="block text-xs text-gray-400 uppercase font-bold mb-2">שם האסטרטגיה</label>
+					<input type="text" id="saveStrategyName" class="w-full bg-navy-800 border border-navy-600 rounded-lg p-3 text-white placeholder-gray-500 focus:outline-none focus:border-neon focus:ring-1 focus:ring-neon transition" placeholder="לדוגמה: אסטרטגיה מהירה לקיץ...">
+				</div>
+
+				<div>
+					<label class="block text-xs text-gray-400 uppercase font-bold mb-3">מי יכול לראות את זה?</label>
+					<div class="grid grid-cols-2 gap-3">
+						<label class="cursor-pointer relative">
+							<input type="radio" name="strategyVisibility" value="private" class="peer sr-only" checked>
+							<div class="bg-navy-800 border border-navy-600 rounded-lg p-3 text-center hover:bg-navy-750 peer-checked:border-neon peer-checked:bg-navy-800/50 transition h-full flex flex-col justify-center items-center gap-2">
+								<i class="fas fa-lock text-xl text-gray-400 peer-checked:text-neon"></i>
+								<span class="text-sm font-bold text-gray-300 peer-checked:text-white">פרטי</span>
+								<span class="text-[9px] text-gray-500">רק במכשיר הזה</span>
+							</div>
+						</label>
+
+						<label class="cursor-pointer relative">
+							<input type="radio" name="strategyVisibility" value="public" class="peer sr-only">
+							<div class="bg-navy-800 border border-navy-600 rounded-lg p-3 text-center hover:bg-navy-750 peer-checked:border-gold peer-checked:bg-navy-800/50 transition h-full flex flex-col justify-center items-center gap-2">
+								<i class="fas fa-globe text-xl text-gray-400 peer-checked:text-gold"></i>
+								<span class="text-sm font-bold text-gray-300 peer-checked:text-white">ציבורי</span>
+								<span class="text-[9px] text-gray-500">כולם רואים</span>
+							</div>
+						</label>
+					</div>
+				</div>
+
+			</div>
+
+			<div class="bg-navy-950 p-4 border-t border-navy-700 flex gap-3">
+				<button onclick="closeSaveStrategyModal()" class="flex-1 py-3 rounded-lg border border-navy-600 text-gray-400 hover:bg-navy-800 transition font-bold text-sm">ביטול</button>
+				<button onclick="performStrategySave()" class="flex-1 py-3 rounded-lg bg-neon text-black font-bold hover:bg-cyan-400 transition shadow-[0_0_15px_rgba(34,211,238,0.3)] text-sm flex items-center justify-center gap-2">
+					<i class="fas fa-check"></i> שמור כעת
+				</button>
+			</div>
+		</div>
+	</div>
 	
 	<!-- Manual Input Modal -->
 	<div id="manualInputModal" class="hidden fixed inset-0 bg-navy-950/95 z-50 flex flex-col items-center justify-center p-4 backdrop-blur-sm">
@@ -1307,6 +1368,11 @@
 				disconnect: 'Disconnect',
 				code: 'Code:',
 				synced: 'Synced',
+				simResultPattern: "✅ {stints} stints × ~{avg}min = {totalDrive}min drive\n🏁 Pit stops: {stops} × {pitTime}s = {totalPit}min\n{note}",
+				stdStrategy: "Standard strategy - maximize stint length",
+				shortStrategy: "Short strategy - minimize stops",
+				longStrategy: "Long strategy - save fuel/tires",
+				aiStrategyPrefix: "🤖 AI Plan: ",
 				raceTime: 'Race Time',
 				pitStops: 'Pit Stops',
 				dry: 'Dry',
@@ -1469,6 +1535,11 @@
 				disconnect: 'התנתק',
 				code: 'קוד:',
 				synced: 'מסונכרן',
+				simResultPattern: "✅ {stints} סטינטים × ~{avg} דק' = {totalDrive} דק' נהיגה\n🏁 עצירות פיט: {stops} × {pitTime} שניות = {totalPit} דק'\n{note}",
+				stdStrategy: "אסטרטגיה סטנדרטית - מקסום אורך סטינט",
+				shortStrategy: "אסטרטגיה קצרה - מינימום עצירות",
+				longStrategy: "אסטרטגיה ארוכה - חיסכון בדלק/צמיגים",
+				aiStrategyPrefix: "🤖 תוכנית AI: ",
 				raceTime: 'זמן מירוץ',
 				pitStops: 'עצירות פיטס',
 				dry: 'יבש',
@@ -1631,6 +1702,10 @@
 				disconnect: 'Déconnecter',
 				code: 'Code:',
 				synced: 'Synchronisé',
+				simResultPattern: "✅ {stints} relais × ~{avg}min = {totalDrive}min conduite\n🏁 Arrêts: {stops} × {pitTime}s = {totalPit}min\n{note}",
+				stdStrategy: "Stratégie standard - maximiser les relais",
+				shortStrategy: "Stratégie courte - minimiser les arrêts",
+				longStrategy: "Stratégie longue - économiser carburant/pneus",
 				raceTime: 'Temps Course',
 				pitStops: 'Arrêts Pit',
 				dry: 'Sec',
@@ -1793,6 +1868,10 @@
 				disconnect: 'Desconectar',
 				code: 'Código:',
 				synced: 'Sincronizado',
+				simResultPattern: "✅ {stints} turnos × ~{avg}min = {totalDrive}min condução\n🏁 Paradas: {stops} × {pitTime}s = {totalPit}min\n{note}",
+				stdStrategy: "Estratégia padrão - maximizar turnos",
+				shortStrategy: "Estratégia curta - minimizar paradas",
+				longStrategy: "Estratégia longa - economizar combustível/pneus",
 				raceTime: 'Tempo Corrida',
 				pitStops: 'Paragens Pit',
 				dry: 'Seco',
@@ -1920,6 +1999,15 @@
 		
 		function t(key) {
 			return translations[currentLang][key] || translations['en'][key] || key;
+		}
+
+		function tFormat(key, replacements) {
+			let text = t(key);
+			for (const [placeholder, value] of Object.entries(replacements)) {
+				// מחליף את {placeholder} בערך האמיתי
+				text = text.replace(`{${placeholder}}`, value);
+			}
+			return text;
 		}
 		
 		function setLanguage(lang) {
@@ -2118,98 +2206,51 @@
 
         // ==================== SIMULATION ====================
         function runSim() {
-			// Store last calculation time to prevent infinite loops
-			const now = Date.now();
-			if (window.lastRunSimTime && now - window.lastRunSimTime < 100) return;
-			window.lastRunSimTime = now;
-			
-			const raceDur = parseFloat(document.getElementById('raceDuration').value);
-			const reqStops = parseInt(document.getElementById('reqPitStops').value);
-			const minStint = parseFloat(document.getElementById('minStint').value);
-			const maxStint = parseFloat(document.getElementById('maxStint').value);
-			const allowDouble = document.getElementById('allowDouble').checked;
-			const useSquads = document.getElementById('useSquads').checked;
-			const minPit = parseInt(document.getElementById('minPitTime').value) || 0;
-			
-			// Get weather condition
-			const weatherRadio = document.querySelector('input[name="weatherCondition"]:checked');
-			aiStrategyConfig.weatherCondition = weatherRadio ? weatherRadio.value : 'dry';
-			aiStrategyConfig.instructions = document.getElementById('strategyInstructions')?.value || '';
-			
-			// Get starter driver
-			const starterRadio = document.querySelector('.starter-radio:checked');
-			const allRadios = document.querySelectorAll('.starter-radio');
-			aiStrategyConfig.starterDriverIdx = Array.from(allRadios).indexOf(starterRadio);
-			
-			if (!raceDur || !reqStops || !minStint || !maxStint) {
-				document.getElementById('simResult').innerText = '⚠️ Please fill all fields';
+			// הרצה שקטה: חישוב נתונים בלבד, ללא ציור, ללא התראות קופצות
+			const success = generatePreview(true, false);
+
+			const resEl = document.getElementById('simResult');
+			if (!resEl) return;
+
+			if (!success || !previewData || !previewData.timeline) {
+				resEl.innerText = "Calculating...";
 				return;
 			}
+
+			// ניתוח הנתונים שחושבו
+			const actualStints = previewData.timeline.filter(t => t.type === 'stint');
+			const actualStops = previewData.timeline.filter(t => t.type === 'pit').length;
 			
-			const raceMs = raceDur * 3600000;
-			const minStintMs = minStint * 60000;
-			const maxStintMs = maxStint * 60000;
+			const totalDriveMs = actualStints.reduce((sum, s) => sum + s.duration, 0);
+			const avgStintMs = actualStints.length > 0 ? totalDriveMs / actualStints.length : 0;
 			
-			// Apply weather penalty
-			const weatherPrefs = strategyPreferences[aiStrategyConfig.weatherCondition];
-			const effectiveMaxStintMs = Math.max(minStintMs, maxStintMs - weatherPrefs.stintPenalty - 60000); // Always -1min for safety
-			
-			const pitTimeMs = (minPit * 1000) * reqStops;
-			const drivingMs = raceMs - pitTimeMs;
-			const totalStints = reqStops + 1;
-			
-			let avgStintMs = Math.floor(drivingMs / totalStints);
-			avgStintMs = Math.max(minStintMs, Math.min(effectiveMaxStintMs, avgStintMs));
-			
-			const drivers = Array.from(document.querySelectorAll('.driver-input')).map((input, i) => {
-				const squadToggle = document.querySelectorAll('.squad-toggle')[i];
-				return {
-					name: input.value,
-					squad: squadToggle?.checked ? 'B' : 'A',
-					isStarter: i === aiStrategyConfig.starterDriverIdx
-				};
-			});
-			
-			// Generate strategy with AI considerations
-			const strategy = generateSmartStrategy({
-				totalStints,
-				avgStintMs,
-				minStintMs,
-				maxStintMs: effectiveMaxStintMs,
-				drivers,
-				allowDouble,
-				useSquads,
-				weatherCondition: aiStrategyConfig.weatherCondition,
-				instructions: aiStrategyConfig.instructions
-			});
-			
-			// Save for later use
-			window.generatedStrategy = strategy;
-			
-			// Display results
-			const avgStintMin = (avgStintMs / 60000).toFixed(1);
-			const totalDriveMin = (drivingMs / 60000).toFixed(0);
-			
-			let result = `✅ ${totalStints} stints × ~${avgStintMin}min = ${totalDriveMin}min drive\n`;
-			result += `🏁 Pit stops: ${reqStops} × ${minPit}s = ${(reqStops * minPit / 60).toFixed(1)}min\n`;
-			result += `${weatherPrefs.description}\n`;
-			
-			if (strategy.doubleStints && strategy.doubleStints.length > 0) {
-				result += `\n💪 ${strategy.doubleStints.length} double stints planned`;
+			// המרה לתצוגה (דקות)
+			const avgMins = (avgStintMs / 60000).toFixed(1);
+			const totalDriveMins = (totalDriveMs / 60000).toFixed(0);
+			const pitTimeSec = parseInt(document.getElementById('minPitTime').value) || 0;
+			const totalPitMins = ((actualStops * pitTimeSec) / 60).toFixed(1);
+
+			// בניית הטקסט באנגלית (יתורגם אם יש מערכת תרגום, אבל הטקסט הבסיסי הוא זה)
+			let text = `Strategy: Greedy (Max First)\n`;
+			text += `Stints: ${actualStints.length} | Avg: ${avgMins}m\n`;
+			text += `Drive: ${totalDriveMins}m | Stops: ${actualStops} (${totalPitMins}m)`;
+
+			// בדיקת התאמה לזמן המירוץ (Sanity Check)
+			const raceInputMs = (parseFloat(document.getElementById('raceDuration').value) || 0) * 60 * 60000;
+			const calculatedTotalMs = totalDriveMs + (actualStops * pitTimeSec * 1000);
+			const deltaMins = Math.round((calculatedTotalMs - raceInputMs) / 60000);
+
+			// חיווי ויזואלי אם החישוב תקין
+			if (Math.abs(deltaMins) > 2) {
+				resEl.style.color = '#ef4444'; // אדום - שגיאה בזמנים
+				text += `\n⚠️ Time Mismatch: ${deltaMins > 0 ? '+' : ''}${deltaMins}m`;
+			} else {
+				resEl.style.color = '#a3e635'; // ירוק - תקין
+				text += `\n✅ Valid Strategy`;
 			}
-			
-			if (useSquads && strategy.nightShifts) {
-				result += `\n🌙 Night mode: ${strategy.nightShifts} shift rotations`;
-			}
-			
-			document.getElementById('simResult').innerText = result;
-			
-			// Update preview if it's showing
-			if (!document.getElementById('previewScreen').classList.contains('hidden')) {
-				updatePreview();
-			}
-			
-			saveHostState();
+
+			resEl.innerText = text;
+			resEl.classList.remove('hidden');
 		}
 
 		function checkGoogleSession() {
@@ -2228,101 +2269,66 @@
 		// Add listener once
 		window.addEventListener('load', checkGoogleSession);
 
-		function generateSmartStrategy(params) {
-			const {
-				totalStints,
-				avgStintMs,
-				minStintMs,
-				maxStintMs,
-				drivers,
-				allowDouble,
-				useSquads,
-				weatherCondition,
-				instructions
-			} = params;
-			
-			const stints = [];
-			const doubleStints = [];
-			let nightShifts = 0;
-			
-			// Find starter
-			const starterIdx = drivers.findIndex(d => d.isStarter);
-			let currentDriverIdx = starterIdx >= 0 ? starterIdx : 0;
-			
-			// Separate squads if needed
-			const squadA = drivers.filter(d => d.squad === 'A');
-			const squadB = drivers.filter(d => d.squad === 'B');
-			
-			// Calculate rough night period (assuming ~8-12 hours into race)
-			const nightStartStint = Math.floor(totalStints * 0.4);
-			const nightEndStint = Math.floor(totalStints * 0.7);
-			
-			let remainingMs = totalStints * avgStintMs;
-			let stintNumber = 1;
-			
-			for (let i = 0; i < totalStints; i++) {
-				const isNightPeriod = useSquads && i >= nightStartStint && i < nightEndStint;
-				const isEndGame = i >= totalStints - 3; // Last 3 stints
-				const isStarting = i === 0;
-				
-				let stintDuration = avgStintMs;
-				let isDouble = false;
-				
-				// Strategy logic
-				if (allowDouble && isNightPeriod && Math.random() > 0.5) {
-					// Double stint during night to finish faster
-					stintDuration = Math.min(maxStintMs, avgStintMs * 1.8);
-					isDouble = true;
-					doubleStints.push(i);
-				} else if (isEndGame && allowDouble) {
-					// Consider double in endgame
-					stintDuration = Math.min(maxStintMs, avgStintMs * 1.5);
-				} else if (weatherCondition === 'wet') {
-					// Shorter, safer stints in wet
-					stintDuration = Math.max(minStintMs, avgStintMs * 0.85);
-				}
-				
-				// Select driver
-				let driver;
-				if (isStarting) {
-					driver = drivers[currentDriverIdx];
-				} else if (useSquads && isNightPeriod) {
-					// Rotate within active squad
-					const activeSquad = Math.floor((i - nightStartStint) / 2) % 2 === 0 ? squadA : squadB;
-					if (i === nightStartStint || i === nightEndStint - Math.floor((nightEndStint - nightStartStint) / 2)) {
-						nightShifts++;
-					}
-					const squadDrivers = activeSquad.map((d, idx) => drivers.findIndex(dr => dr.name === d.name));
-					currentDriverIdx = squadDrivers[Math.floor(Math.random() * squadDrivers.length)];
-					driver = drivers[currentDriverIdx];
-				} else {
-					// Normal rotation
-					currentDriverIdx = (currentDriverIdx + 1) % drivers.length;
-					driver = drivers[currentDriverIdx];
-				}
-				
-				stints.push({
-					number: stintNumber++,
-					driver: driver.name,
-					durationMs: stintDuration,
-					isDouble: isDouble,
-					isNight: isNightPeriod,
-					squad: driver.squad
-				});
-				
-				remainingMs -= stintDuration;
-			}
-			
-			return {
-				stints,
-				avgStintMs,
-				totalStints,
-				doubleStints,
-				nightShifts,
-				weatherCondition,
-				starterDriver: drivers[starterIdx >= 0 ? starterIdx : 0].name,
-				timestamp: Date.now()
+		// ==================== AI STRATEGY CLIENT ====================
+
+		async function callAIStrategy() {
+			updateDriversFromUI(); // וודא שיש לנו את הנהגים העדכניים
+
+			// 1. איסוף הנתונים לשליחה
+			const config = {
+				raceDuration: document.getElementById('raceDuration').value,
+				reqPitStops: document.getElementById('reqPitStops').value,
+				minStint: document.getElementById('minStint').value,
+				maxStint: document.getElementById('maxStint').value,
+				pitTime: document.getElementById('minPitTime').value,
+				drivers: drivers.map(d => d.name)
 			};
+
+			const btn = document.querySelector('button[onclick="callAIStrategy()"]');
+			const originalText = btn.innerHTML;
+			btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Thinking...';
+			btn.disabled = true;
+
+			try {
+				// 2. בניית הפרומפט
+				const prompt = `
+					Act as a race strategist. 
+					Race Duration: ${config.raceDuration} hours.
+					Required Stops: ${config.reqPitStops}.
+					Drivers: ${config.drivers.join(', ')}.
+					Min Stint: ${config.minStint} min, Max Stint: ${config.maxStint} min.
+					Pit Stop Time: ${config.pitTime} seconds.
+					
+					Analyze the best way to distribute the stints among these drivers.
+					Consider fatigue and optimal rotation.
+					Return a short summary and a recommendation in JSON format describing the schedule concept.
+				`;
+
+				// 3. קריאה ל-Netlify Function (ולא ל-Gemini ישירות)
+				const response = await fetch('/.netlify/functions/ai-strategy', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ prompt: prompt })
+				});
+
+				const data = await response.json();
+
+				if (!data.success) {
+					throw new Error(data.error || 'Failed to generate strategy');
+				}
+
+				// 4. הצגת התשובה (החלק הזה תלוי איך ה-Server מחזיר את המידע)
+				// בהנחה שהשרת מחזיר { success: true, content: [{ text: "..." }] }
+				const aiText = data.content[0].text;
+				alert("🤖 AI Recommendation:\n" + aiText);
+
+			} catch (error) {
+				console.error("AI Error:", error);
+				alert("⚠️ AI Error: " + error.message);
+			} finally {
+				btn.innerHTML = originalText;
+				btn.disabled = false;
+			}
 		}
 
 		async function generateAIStrategy() {
@@ -2687,62 +2693,196 @@
 		// ==================== PRE-RACE SIMULATION ====================
 		let previewData = null;
 
-		function generatePreview() {
-			const inputs = document.querySelectorAll('.driver-input');
-			
-			if (inputs.length < 2) {
-				alert('Minimum 2 drivers required');
-				return;
+		/**
+		 * מייצר את האסטרטגיה.
+		 * @param {boolean} silentMode - אם true, לא מקפיץ הודעות שגיאה (לשימוש בזמן הקלדה).
+		 * @param {boolean} shouldRender - אם true, מצייר את הגרף. אם false, רק מחשב נתונים.
+		 */
+		/**
+		 * מייצר את האסטרטגיה כולל חלוקה לחוליות במירוצים ארוכים
+		 */
+		function generatePreview(silentMode = false, shouldRender = true) {
+			updateDriversFromUI();
+
+			if (!drivers || drivers.length === 0) {
+				if (!silentMode) alert("⚠️ Warning: No drivers defined.");
+				return false;
 			}
 			
-			// Read from form
-			config = {
-				raceMs: parseFloat(document.getElementById('raceDuration').value) * 3600000,
-				reqStops: parseInt(document.getElementById('reqPitStops').value) || 0,
-				minPitSec: parseInt(document.getElementById('minPitTime').value) || 120,
-				minStintMs: parseFloat(document.getElementById('minStint').value) * 60000,
-				maxStintMs: parseFloat(document.getElementById('maxStint').value) * 60000,
-				trackFuel: document.getElementById('trackFuel').checked,
-				useSquads: document.getElementById('useSquads').checked,
-				pitClosedStartMs: (parseInt(document.getElementById('pitClosedStart').value) || 0) * 60000,
-				pitClosedEndMs: (parseInt(document.getElementById('pitClosedEnd').value) || 0) * 60000
+			// קריאת נתונים
+			const raceHours = parseFloat(document.getElementById('raceDuration').value) || 0;
+			const raceMs = raceHours * 60 * 60000;
+			
+			const reqStops = parseInt(document.getElementById('reqPitStops').value) || 0;
+			const pitSec = parseInt(document.getElementById('minPitTime').value) || 0;
+			const pitTimeMs = pitSec * 1000;
+			
+			const minStintMs = Math.max(60000, (parseFloat(document.getElementById('minStint').value) || 1) * 60000);
+			const maxStintInput = parseFloat(document.getElementById('maxStint').value) || 0;
+			const maxStintMs = (maxStintInput > 0) ? (maxStintInput * 60000) - 60000 : raceMs; // באפר דקה
+
+			// הגדרות מתקדמות
+			const allowDouble = document.getElementById('allowDouble')?.checked || false;
+			const useSquads = document.getElementById('useSquads')?.checked || false;
+			
+			// חלונות פיטס
+			const pitClosedStartMs = (parseFloat(document.getElementById('pitClosedStart')?.value) || 0) * 60000;
+			const pitClosedEndMs = (parseFloat(document.getElementById('pitClosedEnd')?.value) || 0) * 60000;
+
+			// חישוב זמן נטו
+			const totalPitMs = reqStops * pitTimeMs;
+			let driveTimeLeft = raceMs - totalPitMs;
+			
+			if (driveTimeLeft <= 0) {
+				if (!silentMode) alert("❌ Error: Pit stops take longer than the race!");
+				return false;
+			}
+
+			const totalStints = reqStops + 1;
+			
+			// זמן התחלה
+			let startTimeObj = new Date();
+			if (window.raceStartTime && !isNaN(new Date(window.raceStartTime).getTime())) {
+				startTimeObj = new Date(window.raceStartTime);
+			}
+
+			let currentTime = new Date(startTimeObj);
+			const timeline = [];
+			const driverStats = drivers.map(d => ({ ...d, totalTime: 0, stints: 0 })); 
+			
+			// נהג פותח
+			let lastDriverIdx = drivers.findIndex(d => d.isStarter);
+			if (lastDriverIdx === -1) lastDriverIdx = 0;
+			lastDriverIdx = (lastDriverIdx - 1 + drivers.length) % drivers.length;
+
+			// === הגדרת משך סבב חוליה (Squad Rotation) ===
+			// אם המירוץ ארוך מ-15 שעות, נחליף חוליות כל 6 שעות (360 דקות) כדי לאפשר שינה
+			// במירוץ קצר, פשוט נחליף כל סטינט או לפי הצורך
+			const isLongRace = raceHours >= 15;
+			const squadRotationMs = 6 * 60 * 60000; // 6 שעות במילישניות
+
+			// === לולאת האסטרטגיה ===
+			for (let i = 0; i < totalStints; i++) {
+				const isFirstStint = (i === 0);
+				const isLastStint = (i === totalStints - 1);
+				
+				// 1. חישוב זמן חמדן (Greedy)
+				const stintsRemainingAfter = totalStints - 1 - i;
+				let timeToReserve = stintsRemainingAfter * minStintMs;
+
+				if (!isLastStint && pitClosedEndMs > 0 && i === totalStints - 2) {
+					timeToReserve = Math.max(timeToReserve, pitClosedEndMs + 60000);
+				}
+
+				let currentStintDuration = driveTimeLeft - timeToReserve;
+
+				if (currentStintDuration > maxStintMs) currentStintDuration = maxStintMs;
+
+				if (isFirstStint && pitClosedStartMs > 0) {
+					if (currentStintDuration < pitClosedStartMs + 60000) {
+						currentStintDuration = Math.min(driveTimeLeft, pitClosedStartMs + 60000);
+					}
+				}
+
+				if (currentStintDuration < minStintMs && !isLastStint) currentStintDuration = minStintMs;
+				if (isLastStint) currentStintDuration = Math.max(0, driveTimeLeft);
+
+				// 2. בחירת נהג - לוגיקת חוליות (Squads Logic)
+				let selectedDriverIdx = -1;
+				
+				// קביעת החוליה הפעילה הנוכחית
+				let targetSquad = null;
+				if (useSquads) {
+					if (isLongRace) {
+						// במירוץ ארוך: לפי זמן שחלף מתחילת המירוץ
+						const elapsedTime = currentTime - startTimeObj;
+						// חלוקה לבלוקים של 6 שעות: זוגי = A, אי זוגי = B
+						const blockIndex = Math.floor(elapsedTime / squadRotationMs);
+						targetSquad = (blockIndex % 2 === 0) ? 'A' : 'B';
+					} else {
+						// במירוץ קצר: נשארים עם לוגיקה פשוטה יותר או לפי בחירה ידנית
+						// כאן נניח שרוצים רוטציה פשוטה יותר, אבל נשאיר זאת גמיש
+						targetSquad = null; // מאפשר ערבוב
+					}
+				}
+
+				for (let attempt = 0; attempt < drivers.length; attempt++) {
+					const checkIdx = (lastDriverIdx + 1 + attempt) % drivers.length;
+					const driverData = drivers[checkIdx];
+
+					// בדיקת חוליה (אם מופעלת)
+					if (targetSquad && driverData.squad !== targetSquad) continue;
+
+					// בדיקת דאבל סטינט
+					if (!allowDouble && checkIdx === lastDriverIdx && drivers.length > 1) continue;
+					
+					selectedDriverIdx = checkIdx;
+					break;
+				}
+				
+				// Fallback: אם לא נמצא נהג בחוליה (או כולם עייפים), לוקחים את הבא בתור
+				if (selectedDriverIdx === -1) {
+					selectedDriverIdx = (lastDriverIdx + 1) % drivers.length;
+				}
+
+				// עדכון נתונים
+				const driver = drivers[selectedDriverIdx];
+				driverStats[selectedDriverIdx].totalTime += currentStintDuration;
+				driverStats[selectedDriverIdx].stints += 1;
+				lastDriverIdx = selectedDriverIdx;
+
+				const stintStart = new Date(currentTime);
+				const stintEnd = new Date(currentTime.getTime() + currentStintDuration);
+				
+				timeline.push({
+					type: 'stint',
+					stintNumber: i + 1,
+					driverName: driver.name,
+					driverIdx: selectedDriverIdx, 
+					color: driver.color,
+					squad: driver.squad, // שומרים את החוליה בנתונים
+					startTime: stintStart,
+					endTime: stintEnd,
+					duration: currentStintDuration
+				});
+
+				driveTimeLeft -= currentStintDuration;
+				currentTime = stintEnd;
+
+				if (!isLastStint) {
+					const pitStart = new Date(currentTime);
+					const pitEnd = new Date(currentTime.getTime() + pitTimeMs);
+					timeline.push({
+						type: 'pit',
+						pitNumber: i + 1,
+						duration: pitTimeMs,
+						startTime: pitStart,
+						endTime: pitEnd
+					});
+					currentTime = pitEnd;
+				}
+			}
+
+			cachedStrategyData = {
+				timeline: timeline,
+				driverSchedule: driverStats,
+				startTime: startTimeObj,
+				generatedAt: new Date()
 			};
 			
-			// ✅ Debug: verify what was read
-			console.log('Config reqStops:', config.reqStops);
-			console.log('Form value:', document.getElementById('reqPitStops').value);
+			previewData = cachedStrategyData; 
+
+			if (shouldRender) {
+				if (typeof renderPreview === 'function') {
+					try {
+						renderPreview(); 
+						document.getElementById('previewScreen')?.classList.remove('hidden');
+						document.getElementById('setupScreen')?.classList.add('hidden');
+					} catch (e) { console.error("Render failed", e); }
+				}
+			}
 			
-			// Build drivers from form
-			const squads = document.querySelectorAll('.squad-toggle');
-			drivers = Array.from(inputs).map((d, i) => ({ 
-				name: d.value, 
-				totalMs: 0, 
-				stints: 0, 
-				squad: squads[i]?.checked ? 'B' : 'A',
-				color: `hsl(${(i * 360 / inputs.length)}, 70%, 50%)`,
-				logs: []
-			}));
-			
-			// Calculate preview data
-			previewData = {
-				startTime: null,
-				drivers: [],
-				totalRaceTime: config.raceMs,
-				totalStops: config.reqStops,
-				stints: []
-			};
-			
-			// Set default start time to now
-			const now = new Date();
-			document.getElementById('raceStartTime').value = 
-				now.getHours().toString().padStart(2, '0') + ':' + 
-				now.getMinutes().toString().padStart(2, '0');
-			
-			updatePreview();
-			
-			// Show preview screen
-			document.getElementById('setupScreen').classList.add('hidden');
-			document.getElementById('previewScreen').classList.remove('hidden');
+			return true;
 		}
 
 		function showStrategyModal(strategies) {
@@ -2962,114 +3102,175 @@
 		}
 
 		function renderPreview() {
+			// בדיקת תקינות ראשונית - אם אין נתונים, לא עושים כלום
 			if (!previewData || !previewData.timeline) return;
 
 			const timeline = previewData.timeline;
-			const totalTime = config.raceMs;
 			
-			// Calculate ACTUAL values
+			// קריאת אורך המירוץ מההגדרות (בשביל חישוב ה"בנק")
+			const raceInput = document.getElementById('raceDuration');
+			const raceMs = raceInput ? parseFloat(raceInput.value) * 60000 : config.raceMs;
+			
+			// חישוב הזמן המתוכנן בפועל (סכום כל הסטינטים והעצירות בטיימליין)
+			const plannedTotalMs = timeline.reduce((sum, t) => sum + t.duration, 0);
+			
+			// חישוב ההפרש ("בנק דקות")
+			const timeDiffMs = raceMs - plannedTotalMs; 
+			const diffMin = Math.round(timeDiffMs / 60000);
+
+			// סינון סטינטים בלבד (בלי עצירות) לצורך התצוגה והחישובים
 			const actualStints = timeline.filter(t => t.type === 'stint');
 			const actualStops = timeline.filter(t => t.type === 'pit').length;
 			const actualDrivingTime = actualStints.reduce((sum, s) => sum + s.duration, 0);
-			const actualAvgStint = actualDrivingTime / actualStints.length;
-			
+			const actualAvgStint = actualStints.length > 0 ? actualDrivingTime / actualStints.length : 0;
+
+			// קבלת אלמנטים מה-DOM
 			const scheduleEl = document.getElementById('driverScheduleList');
 			const summaryEl = document.getElementById('strategySummary');
 			const timeStartEl = document.getElementById('timelineStart');
 			const timeEndEl = document.getElementById('timelineEnd');
 			
+			// אם אחד האלמנטים חסר בדף, עוצרים כדי למנוע שגיאות
 			if (!scheduleEl || !summaryEl || !timeStartEl || !timeEndEl) return;
-			
-			// Time markers update
+
+			// עדכון תצוגת זמני התחלה וסיום
 			const startTime = previewData.startTime instanceof Date 
 				? previewData.startTime 
 				: new Date(previewData.startTime);
-			const endTime = new Date(startTime.getTime() + totalTime);
+			const endTime = new Date(startTime.getTime() + plannedTotalMs);
 			
 			timeStartEl.innerText = formatTimeOfDay(startTime);
 			timeEndEl.innerText = formatTimeOfDay(endTime);
-			
-			// RTL Arrow Logic
+
+			// לוגיקה לכיוון החץ (תמיכה בעברית/RTL)
 			const isRTL = document.documentElement.dir === 'rtl';
 			const arrowIcon = isRTL ? '←' : '→'; 
 
-			// --- Stint List with DRAG & DROP ---
+			// קריאת הגדרות לצורך אימות (Validation)
+			const allowDouble = document.getElementById('allowDoubleStints')?.checked || false;
+			const minStintInput = document.getElementById('minStint');
+			const maxStintInput = document.getElementById('maxStint');
+			const minStintMs = minStintInput ? parseFloat(minStintInput.value) * 60000 : 0;
+			const maxStintMs = maxStintInput ? parseFloat(maxStintInput.value) * 60000 : Infinity;
+
+			// --- 1. יצירת התראת "בנק דקות" ---
+			let bankHtml = '';
+			if (Math.abs(diffMin) > 1) { // מציג התראה רק אם הסטייה גדולה מדקה
+				const colorClass = diffMin > 0 ? 'text-red-400' : 'text-yellow-400';
+				const msg = diffMin > 0 
+					? `⚠️ חסרים ${diffMin} דקות להשלמת המירוץ!` 
+					: `⚠️ חריגה של ${Math.abs(diffMin)} דקות מעבר לזמן המירוץ!`;
+				
+				bankHtml = `<div class="bg-navy-800 border border-navy-600 p-2 rounded mb-4 text-center text-sm font-bold animate-pulse ${colorClass}">${msg}</div>`;
+			}
+
+			// --- 2. יצירת רשימת הסטינטים (HTML) ---
+			const listHtml = actualStints.map((stint, index) => {
+				// בדיקה אם יש עצירה אחרי הסטינט הזה
+				const pitAfter = timeline.find(t => t.type === 'pit' && t.pitNumber === stint.stintNumber);
+				const stintStart = stint.startTime instanceof Date ? stint.startTime : new Date(stint.startTime);
+				const stintEnd = stint.endTime instanceof Date ? stint.endTime : new Date(stint.endTime);
+				const durationMin = Math.round(stint.duration / 60000);
+
+				// בדיקה 1: האם יש דאבל סטינט לא חוקי?
+				let warningBorder = '';
+				if (index > 0 && !allowDouble) {
+					const prevStint = actualStints[index - 1];
+					// אם הנהג הנוכחי הוא אותו נהג כמו מקודם, והדאבל אסור
+					if (prevStint.driverIdx === stint.driverIdx || prevStint.driverName === stint.driverName) {
+						warningBorder = 'border-2 border-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]'; 
+					}
+				}
+
+				// בדיקה 2: חריגה ממינימום/מקסימום זמן סטינט
+				let timeColor = 'text-neon';
+				if (stint.duration < minStintMs || stint.duration > maxStintMs) {
+					timeColor = 'text-red-500 font-bold'; // צובע את המספר באדום
+				}
+
+				// בניית השורה
+				return `
+					<div class="stint-row flex items-center gap-2 bg-navy-950 p-2 rounded border-l-4 hover:bg-navy-900 transition mb-1 ${warningBorder}" 
+						style="border-left-color: ${stint.color}"
+						draggable="true"
+						data-index="${index}"
+						ondragstart="handleDragStart(event)"
+						ondragover="handleDragOver(event)"
+						ondragleave="handleDragLeave(event)"
+						ondrop="handleDrop(event)">
+						
+						<div class="cursor-grab text-gray-600 hover:text-white px-1">
+							<i class="fas fa-grip-vertical text-xs"></i>
+						</div>
+
+						<span class="text-xs text-gray-500 w-6">#${stint.stintNumber}</span>
+						
+						<div class="flex-1 min-w-0 pointer-events-none"> <span class="font-bold text-white block truncate">${stint.driverName}</span>
+							<div class="flex items-center gap-1 text-[10px] text-gray-400">
+								<span>${formatTimeOfDay(stintStart)}</span>
+								<span class="text-gray-600 font-bold">${arrowIcon}</span>
+								<span>${formatTimeOfDay(stintEnd)}</span>
+							</div>
+						</div>
+
+						<div class="flex items-center gap-1">
+							<input type="number" 
+								value="${durationMin}" 
+								class="w-12 bg-navy-800 border border-navy-600 rounded text-center text-sm font-mono focus:border-neon focus:outline-none ${timeColor}"
+								onchange="updateStintDuration(${index}, this.value)">
+							<span class="text-[10px] text-gray-500">min</span>
+						</div>
+						
+						${pitAfter ? '<span class="text-xs text-gold ml-1" title="Pit Stop">🔧</span>' : '<span class="text-xs text-gray-600 ml-1">🏁</span>'}
+					</div>
+				`;
+			}).join('');
+
+			// הזרקת ה-HTML של הרשימה והבנק
 			scheduleEl.innerHTML = `
 				<div class="mb-6">
 					<h4 class="text-sm font-bold text-gray-400 mb-2 flex items-center gap-2 justify-between">
-						<span><i class="fas fa-list-ol"></i> Stint Schedule</span>
-						<span class="text-[10px] text-gray-500 font-normal">(Drag rows to reorder)</span>
+						<span><i class="fas fa-list-ol"></i> ${typeof t === 'function' ? t('scheduleTitle') : 'Schedule'}</span>
 					</h4>
+					${bankHtml}
 					<div class="space-y-1" id="stintListContainer">
-						${actualStints.map((stint, index) => {
-							const pitAfter = timeline.find(t => t.type === 'pit' && t.pitNumber === stint.stintNumber);
-							const stintStart = stint.startTime instanceof Date ? stint.startTime : new Date(stint.startTime);
-							const stintEnd = stint.endTime instanceof Date ? stint.endTime : new Date(stint.endTime);
-							const durationMin = (stint.duration / 60000).toFixed(0);
-
-							// שים לב ל-Attributes החדשים ב-div הראשי
-							return `
-								<div class="stint-row flex items-center gap-2 bg-navy-950 p-2 rounded border-l-4 hover:bg-navy-900 border border-transparent" 
-									style="border-left-color: ${stint.color}"
-									draggable="true"
-									data-index="${index}"
-									ondragstart="handleDragStart(event)"
-									ondragover="handleDragOver(event)"
-									ondragleave="handleDragLeave(event)"
-									ondrop="handleDrop(event)">
-									
-									<div class="cursor-grab text-gray-600 hover:text-white px-1">
-										<i class="fas fa-grip-vertical text-xs"></i>
-									</div>
-
-									<span class="text-xs text-gray-500 w-6">#${stint.stintNumber}</span>
-									
-									<div class="flex-1 min-w-0 pointer-events-none"> <span class="font-bold text-white block truncate">${stint.driverName}</span>
-										<div class="flex items-center gap-1 text-[10px] text-gray-400">
-											<span>${formatTimeOfDay(stintStart)}</span>
-											<span class="text-gray-600 font-bold">${arrowIcon}</span>
-											<span>${formatTimeOfDay(stintEnd)}</span>
-										</div>
-									</div>
-
-									<div class="text-right whitespace-nowrap pointer-events-none">
-										<span class="text-xs text-neon font-mono block">${durationMin}m</span>
-										<span class="text-[10px] text-gray-500">${stint.note || ''}</span>
-									</div>
-									
-									${pitAfter ? '<span class="text-xs text-gold ml-1" title="Pit Stop">🔧</span>' : '<span class="text-xs text-gray-600 ml-1">🏁</span>'}
-								</div>
-							`;
-						}).join('')}
+						${listHtml}
 					</div>
 				</div>
 				
 				<div>
 					<h4 class="text-sm font-bold text-gray-400 mb-2 flex items-center gap-2">
-						<i class="fas fa-users"></i> Driver Summary
+						<i class="fas fa-users"></i> ${typeof t === 'function' ? t('summaryTitle') : 'Driver Summary'}
 					</h4>
 					<div class="grid grid-cols-2 gap-2">
-						${previewData.driverSchedule.map((driver) => `
+						${previewData.driverSchedule.map((driver) => {
+							// חישוב דינמי של כמות הסטינטים לנהג מהרשימה הנוכחית
+							const drvStints = actualStints.filter(s => s.driverName === driver.name);
+							const stintCount = drvStints.length;
+							const avgMin = stintCount > 0 ? (driver.totalTime / stintCount / 60000).toFixed(0) : 0;
+
+							return `
 							<div class="bg-navy-800 p-2 rounded border-l-2" style="border-color: ${driver.color}">
 								<div class="flex justify-between items-center">
 									<span class="text-xs text-white font-bold truncate pr-2">${driver.name}</span>
 									<span class="text-xs text-ice font-mono">${formatTime(driver.totalTime)}</span>
 								</div>
 								<div class="flex justify-between mt-1 text-[10px] text-gray-500">
-									<span>${driver.stints.length} stints</span>
-									<span>Avg: ${(driver.totalTime / driver.stints.length / 60000).toFixed(0)}m</span>
+									<span>${stintCount} stints</span>
+									<span>Avg: ${avgMin}m</span>
 								</div>
 							</div>
-						`).join('')}
+							`;
+						}).join('')}
 					</div>
 				</div>
 			`;
 			
-			// Strategy summary (נשאר ללא שינוי)
+			// --- 3. עדכון קוביות הסיכום למטה (Strategy Summary) ---
 			summaryEl.innerHTML = `
 				<div class="bg-navy-800 rounded p-3">
 					<div class="text-xs text-gray-400 mb-1">Race Duration</div>
-					<div class="text-xl font-bold text-ice">${formatTime(config.raceMs)}</div>
+					<div class="text-xl font-bold text-ice">${formatTime(raceMs)}</div>
 				</div>
 				<div class="bg-navy-800 rounded p-3">
 					<div class="text-xs text-gray-400 mb-1">Pit Stops</div>
@@ -3231,25 +3432,52 @@
 			if (navigator.vibrate) navigator.vibrate(50);
 		}
 
-		function recalculateDriverStatsFromTimeline() {
-			// Reset stats
-			previewData.driverSchedule = drivers.map((d, i) => ({
-				name: d.name,
-				color: d.color || `hsl(${(i * 360 / drivers.length)}, 70%, 50%)`,
-				stints: [],
-				totalTime: 0
-			}));
+		// פונקציה לעדכון משך סטינט (מופעלת מה-Input)
+		function updateStintDuration(stintIndex, newDurationMin) {
+			if (!previewData || !previewData.timeline) return;
 
-			// Rebuild from timeline
+			const newDurationMs = parseInt(newDurationMin) * 60000;
+			if (isNaN(newDurationMs) || newDurationMs <= 0) return;
+
+			// מציאת הסטינט הנכון במערך המלא (כולל פיטים)
+			const stintsOnly = previewData.timeline.filter(t => t.type === 'stint');
+			const targetStint = stintsOnly[stintIndex];
+			
+			if (targetStint) {
+				targetStint.duration = newDurationMs;
+				
+				// חישוב מחדש של כל הזמנים במערכת
+				recalculateTimelineTimes();
+				
+				// רינדור מחדש (כדי לעדכן את הבנק ואת זמני ההתחלה/סיום)
+				renderPreview();
+			}
+		}
+
+		// פונקציה לחישוב מחדש של זמני התחלה וסיום לפי המשכים החדשים
+		function recalculateTimelineTimes() {
+			let currentTime = new Date(previewData.startTime);
+			
 			previewData.timeline.forEach(item => {
-				if (item.type === 'stint') {
-					const d = previewData.driverSchedule[item.driverIdx];
-					if (d) {
-						d.stints.push({
-							globalNumber: item.stintNumber,
-							duration: item.duration
-						});
-						d.totalTime += item.duration;
+				item.startTime = new Date(currentTime);
+				item.endTime = new Date(currentTime.getTime() + item.duration);
+				currentTime = item.endTime;
+			});
+
+			// עדכון סטטיסטיקות נהגים מחדש
+			recalculateDriverStatsFromTimeline();
+		}
+
+		function recalculateDriverStatsFromTimeline() {
+			// איפוס מונים
+			previewData.driverSchedule.forEach(d => d.totalTime = 0);
+			
+			// סכימה מחדש
+			previewData.timeline.forEach(t => {
+				if (t.type === 'stint') {
+					const driver = previewData.driverSchedule.find(d => d.name === t.driverName); // או לפי ID אם יש
+					if (driver) {
+						driver.totalTime += t.duration;
 					}
 				}
 			});
@@ -3433,6 +3661,39 @@
 			
 			updateCompetitorsTable();
 		}
+
+		// משתנה עזר גלובלי לשמירת זמן ההתחלה כדי למנוע קפיצות
+		let cachedRaceStartTime = null;
+
+		/**
+		 * מעדכן את מערך הנהגים מהנתונים שעל המסך
+		 */
+		// עדכון רשימת הנהגים מה-DOM למשתנה הגלובלי
+		function updateDriversFromUI() {
+			const inputs = document.querySelectorAll('.driver-input');
+			const squads = document.querySelectorAll('.squad-toggle');
+			const radios = document.querySelectorAll('.starter-radio');
+			
+			if (!inputs || inputs.length === 0) return;
+
+			let starterIdx = 0;
+			radios.forEach((r, i) => { if (r.checked) starterIdx = i; });
+
+			// בניית המערך מחדש
+			drivers = Array.from(inputs).map((input, i) => {
+				// שמירת צבע קיים אם יש, אחרת יצירת חדש
+				const existingColor = (drivers && drivers[i]) ? drivers[i].color : `hsl(${(i * 360 / inputs.length)}, 70%, 50%)`;
+				
+				return {
+					name: input.value || `Driver ${i+1}`,
+					isStarter: i === starterIdx,
+					squad: squads[i]?.checked ? 'B' : 'A',
+					color: existingColor,
+					totalTime: 0,
+					stints: 0
+				};
+			});
+		}
 		
 		function updateCompetitorsTable() {
 			const tableEl = document.getElementById('competitorsTable');
@@ -3611,48 +3872,92 @@
 			stopProxyLiveTiming();
 		}
 
-		// ==================== STRATEGY PERSISTENCE ====================
-		async function saveStrategy() {
-			if (!previewData || !config) {
-				alert('Generate a preview first!');
+		// ==================== NEW SAVE STRATEGY LOGIC ====================
+
+		// 1. פתיחת המודאל (מחליף את ה-Prompt הישן)
+		function saveStrategy() {
+			if (!previewData || !previewData.timeline) {
+				alert("⚠️ יש לייצר תחזית (Generate Preview) לפני השמירה.");
 				return;
 			}
 			
-			const name = prompt('Strategy name:', `${formatTime(config.raceMs)} - ${drivers.length} drivers`);
-			if (!name) return;
+			// איפוס שדות
+			document.getElementById('saveStrategyName').value = '';
 			
-			const isPublic = confirm('Make this strategy public?\n\nOK = Public (visible to all)\nCancel = Private (only you)');
+			// ברירת מחדל לפרטי
+			const radios = document.getElementsByName('strategyVisibility');
+			for(let r of radios) { 
+				if(r.value === 'private') r.checked = true; 
+			}
+
+			// הצגת המודאל
+			document.getElementById('saveStrategyModal').classList.remove('hidden');
+			document.getElementById('saveStrategyName').focus();
+		}
+
+		// 2. סגירת המודאל
+		function closeSaveStrategyModal() {
+			document.getElementById('saveStrategyModal').classList.add('hidden');
+		}
+
+		// 3. ביצוע השמירה בפועל (נקרא מכפתור "שמור כעת")
+		async function performStrategySave() {
+			const name = document.getElementById('saveStrategyName').value.trim();
+			if (!name) {
+				alert("נא להזין שם לאסטרטגיה");
+				return;
+			}
+
+			const isPublic = document.querySelector('input[name="strategyVisibility"]:checked').value === 'public';
 			
-			// Generate device ID for private strategies
+			// סגירת המודאל והצגת לואדר (אופציונלי)
+			closeSaveStrategyModal();
+			
+			// קבלת מזהה מכשיר ייחודי (לשמירה פרטית)
 			let deviceId = localStorage.getItem('strateger_device_id');
 			if (!deviceId) {
-				deviceId = 'device_' + Math.random().toString(36).substr(2, 16);
+				deviceId = 'dev_' + Math.random().toString(36).substr(2, 9);
 				localStorage.setItem('strateger_device_id', deviceId);
 			}
-			
+
+			// עדכון כפתור לשמירה...
+			const saveBtn = document.querySelector('button[onclick="saveStrategy()"]'); // הנחה שזה הכפתור
+			const originalText = saveBtn ? saveBtn.innerHTML : '';
+			if(saveBtn) saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+
+			const payload = {
+				name: name,
+				config: config,
+				timeline: previewData.timeline,
+				drivers: drivers,
+				driverSchedule: previewData.driverSchedule,
+				isPublic: isPublic,
+				deviceId: deviceId, // חובה עבור אסטרטגיות פרטיות
+				userId: googleAccessToken ? 'google_user' : 'anonymous'
+			};
+
 			try {
 				const response = await fetch('/.netlify/functions/save-strategy', {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({
-						name,
-						config,
-						drivers: drivers.map(d => ({ name: d.name, squad: d.squad, color: d.color })),
-						timeline: previewData.timeline,
-						driverSchedule: previewData.driverSchedule,
-						isPublic: isPublic,
-						deviceId: deviceId
-					})
+					body: JSON.stringify(payload)
 				});
-				
-				const result = await response.json();
-				if (result.success) {
-					alert(`✅ Strategy saved: ${result.name}\n${isPublic ? '🌐 Public' : '🔒 Private'}`);
+
+				const data = await response.json();
+
+				if (data.success) {
+					// הודעת הצלחה יפה (Toast או Alert)
+					alert(`✅ האסטרטגיה "${name}" נשמרה בהצלחה!`);
+					// רענון רשימת האסטרטגיות אם פתוחה
+					if (typeof loadStrategies === 'function') loadStrategies();
 				} else {
-					alert(`❌ Error: ${result.error}`);
+					throw new Error(data.error || 'Unknown error');
 				}
-			} catch (e) {
-				alert(`❌ Failed to save: ${e.message}`);
+			} catch (error) {
+				console.error('Save Error:', error);
+				alert(`❌ שגיאה בשמירה: ${error.message}`);
+			} finally {
+				if(saveBtn) saveBtn.innerHTML = originalText;
 			}
 		}
 
@@ -4479,6 +4784,13 @@
 
         // ==================== RACE INITIALIZATION ====================
         function initRace() {
+			// --- 🛡️ אבטחה: רק מורשי גוגל יכולים לפתוח מירוץ ---
+			if (!googleAccessToken) {
+				alert("🔒 גישה למנהלים בלבד\n\nרק משתמשים המחוברים לחשבון Google מורשה יכולים לנהל מירוץ.\nאנא התחבר למעלה מצד שמאל.");
+				return; // עוצר את הפונקציה כאן
+			}
+			// ----------------------------------------------------
+
 			if (role === 'client') return;
 			
 			const inputs = document.querySelectorAll('.driver-input');
@@ -5160,17 +5472,26 @@
         // ==================== CONTROLS ====================
 		function copyHostCode() {
 			const codeEl = document.getElementById('dashboardHostId');
-			const code = codeEl?.innerText || codeEl?.textContent;
-			if (!code || code === '---') return;
+			const code = codeEl.innerText;
 			
-			if (navigator.clipboard && navigator.clipboard.writeText) {
-				navigator.clipboard.writeText(code).then(() => {
-					codeEl.classList.add('text-white');
-					setTimeout(() => codeEl.classList.remove('text-white'), 1000);
-				}).catch(() => fallbackCopy(code));
-			} else {
-				fallbackCopy(code);
-			}
+			if (!code || code === '---') return;
+
+			// יצירת קישור חכם שכולל את הקוד
+			const magicLink = `${window.location.origin}${window.location.pathname}?join=${code}`;
+
+			navigator.clipboard.writeText(magicLink).then(() => {
+				// פידבק מגניב למשתמש
+				const originalText = codeEl.innerText;
+				codeEl.innerText = "Link Copied! 🔗";
+				codeEl.classList.add('text-green-400');
+				
+				setTimeout(() => {
+					codeEl.innerText = originalText;
+					codeEl.classList.remove('text-green-400');
+				}, 2000);
+			}).catch(err => {
+				console.error('Failed to copy: ', err);
+			});
 		}
 
 		// Fallback for older browsers / iOS
@@ -5942,6 +6263,40 @@
 			alert(`❌ Error: ${error.message}`);
 		}
 	}
+
+	// ==================== AUTO JOIN LOGIC ====================
+	window.addEventListener('load', () => {
+		const urlParams = new URLSearchParams(window.location.search);
+		const joinCode = urlParams.get('join');
+
+		if (joinCode) {
+			console.log("🔗 זוהה קישור הצטרפות:", joinCode);
+			
+			// 1. הסתרת מסכי ניהול (אופציונלי, למען הסדר הטוב)
+			// document.getElementById('hostControls').classList.add('hidden'); // אם יש לך ID כזה
+			
+			// 2. מילוי הקוד בשדה (אם קיים שדה כזה ב-UI של הקליינט)
+			const codeInput = document.getElementById('joinCodeInput'); // וודא שזה ה-ID הנכון אצלך
+			if (codeInput) codeInput.value = joinCode;
+
+			// 3. ביצוע הצטרפות בפועל
+			// הנחה: יש לך פונקציה שמחברת לקוח, למשל joinGame() או connectToHost()
+			// אם הלוגיקה שלך נמצאת בתוך כפתור, נלחץ עליו וירטואלית:
+			
+			if (typeof joinGame === 'function') {
+				joinGame(joinCode);
+			} else {
+				// אם אין פונקציה ישירה, נחפש את כפתור ההצטרפות
+				const joinBtn = document.getElementById('btnJoinGame'); // וודא שזה ה-ID
+				if (joinBtn && codeInput) {
+					joinBtn.click();
+				}
+			}
+			
+			// נקה את ה-URL כדי שזה לא יראה מלוכלך (אופציונלי)
+			window.history.replaceState({}, document.title, window.location.pathname);
+		}
+	});
 	</script>
 
 </body>

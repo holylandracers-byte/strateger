@@ -16,15 +16,29 @@ exports.handler = async (event, context) => {
         const sql = neon(process.env.NETLIFY_DATABASE_URL);
         
         // Get public strategies OR private strategies matching device ID
-        const strategies = await sql`
-            SELECT id, name, race_duration_ms, required_stops, 
-                   drivers, config, created_at, is_public, device_id
-            FROM strategies 
-            WHERE is_public = true 
-               OR device_id = ${deviceId}
-            ORDER BY created_at DESC 
-            LIMIT 50
-        `;
+        // אם אין מזהה מכשיר, נחפש רק ציבוריים (מונע שגיאות על מחרוזת ריקה)
+        let strategies;
+
+        if (deviceId) {
+            strategies = await sql`
+                SELECT id, name, race_duration_ms, required_stops, 
+                    drivers, config, created_at, is_public, device_id
+                FROM strategies 
+                WHERE is_public = true 
+                OR device_id = ${deviceId}
+                ORDER BY created_at DESC 
+                LIMIT 50
+            `;
+        } else {
+            strategies = await sql`
+                SELECT id, name, race_duration_ms, required_stops, 
+                    drivers, config, created_at, is_public, device_id
+                FROM strategies 
+                WHERE is_public = true
+                ORDER BY created_at DESC 
+                LIMIT 50
+            `;
+        }
         
         return {
             statusCode: 200,
