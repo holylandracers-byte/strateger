@@ -351,26 +351,34 @@ window.calculateStrategyLogic = function(config) {
 };
 
 // ============================================================
-// 🎮 RUN SIMULATION
+// 🎮 RUN SIMULATION - FIXED VERSION
 // ============================================================
 
 window.runSim = function() {
+    // 1. קריאת נתונים מהממשק
+    const durationHours = parseFloat(document.getElementById('raceDuration').value) || 12;
+    const reqStops = parseInt(document.getElementById('reqPitStops').value) || 15;
+    const minStintMin = parseFloat(document.getElementById('minStint').value) || 10;
+    const maxStintMin = parseFloat(document.getElementById('maxStint').value) || 45;
+    const pitTimeSec = parseInt(document.getElementById('minPitTime').value) || 120;
+    const fuelMin = parseFloat(document.getElementById('fuelTime').value) || 0;
+    const closedStartMin = parseFloat(document.getElementById('pitClosedStart').value) || 0;
+    const closedEndMin = parseFloat(document.getElementById('pitClosedEnd').value) || 0;
+    const useSquads = document.getElementById('useSquads')?.checked || false;
+    const allowDouble = document.getElementById('allowDouble')?.checked || false;
+    const minDriverMin = parseFloat(document.getElementById('minDriverTime').value) || 0;
+    const maxDriverMin = parseFloat(document.getElementById('maxDriverTime').value) || 0;
+
+    // 2. עדכון נהגים
     window.updateDriversFromUI();
     if (!window.drivers || window.drivers.length === 0) return;
 
-    const durationHours = parseFloat(document.getElementById('raceDuration').value) || 0;
-
+    // 3. קביעת זמן התחלה
     const startTimeInput = document.getElementById('raceStartTime');
-    if (startTimeInput && window.previewData && window.previewData.startTime) {
-        const dt = new Date(window.previewData.startTime);
-        // פורמט HH:MM לאינפוט
-        const timeStr = dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-        // עדכון רק אם האינפוט ריק או שונה מהותית (למניעת לופ)
-        if (!startTimeInput.value) { 
-            startTimeInput.value = timeStr;
-        }
+    if (startTimeInput && !startTimeInput.value) {
+        const now = new Date();
+        startTimeInput.value = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
     }
-
     if (startTimeInput && startTimeInput.value) {
         const [h, m] = startTimeInput.value.split(':');
         const startDate = new Date();
@@ -378,39 +386,81 @@ window.runSim = function() {
         window.raceStartTime = startDate.toISOString();
     }
 
+    // 4. בניית אובייקט Config
+    const raceMs = durationHours * 3600000;
+    const pitTimeMs = pitTimeSec * 1000;
+    const totalPitTimeMs = reqStops * pitTimeMs;
+    const totalNetDriveTime = raceMs - totalPitTimeMs; // ⚠️ זמן נהיגה נקי!
+
     const config = {
         duration: durationHours,
-        raceMs: durationHours * 3600000,
-        reqStops: parseInt(document.getElementById('reqPitStops').value) || 0,
-        stops: parseInt(document.getElementById('reqPitStops').value) || 0,
-        minStint: parseFloat(document.getElementById('minStint').value) || 0,
-        maxStint: parseFloat(document.getElementById('maxStint').value) || 0,
-        pitTime: parseInt(document.getElementById('minPitTime').value) || 0,
-        fuel: parseFloat(document.getElementById('fuelTime').value) || 0,
-        closedStart: parseFloat(document.getElementById('pitClosedStart').value) || 0,
-        closedEnd: parseFloat(document.getElementById('pitClosedEnd').value) || 0,
-        minDriverTotal: parseFloat(document.getElementById('minDriverTime').value) || 0,
-        maxDriverTotal: parseFloat(document.getElementById('maxDriverTime').value) || 0,
-        allowDouble: document.getElementById('allowDouble').checked,
-        useSquads: document.getElementById('useSquads').checked,
-        maxStintMs: (parseFloat(document.getElementById('maxStint').value) || 0) * 60000,
-        minStintMs: (parseFloat(document.getElementById('minStint').value) || 0) * 60000,
-        minPitSec: parseInt(document.getElementById('minPitTime').value) || 0
+        raceMs: raceMs,
+        stops: reqStops,
+        reqStops: reqStops,
+        minStint: minStintMin,
+        maxStint: maxStintMin,
+        pitTime: pitTimeSec,
+        fuel: fuelMin,
+        closedStart: closedStartMin,
+        closedEnd: closedEndMin,
+        useSquads: useSquads,
+        allowDouble: allowDouble,
+        minDriverTotal: minDriverMin,
+        maxDriverTotal: maxDriverMin,
+        // מחושבים
+        totalNetDriveTime: totalNetDriveTime,
+        totalPitTime: totalPitTimeMs
     };
 
     window.config = config;
-    const result = window.calculateStrategyLogic(config);
-    const resEl = document.getElementById('simResult');
 
-    if (result.error) {
-        resEl.innerText = "⚠️ " + result.error;
-        resEl.classList.remove('hidden');
-        resEl.style.borderColor = 'red';
-        resEl.style.color = '#ef4444';
+    // 5. חישוב משכי הסטינטים (Greedy + Pit Constraints)
+    const durationResult = window.calculateStintDurations(config);
+
+    if (durationResult.error) {
+        const resEl = document.getElementById('simResult');
+        if (resEl) {
+            resEl.innerText = "⚠️ " + durationResult.error;
+            resEl.classList.remove('hidden');
+            resEl.style.borderColor = 'red';
+            resEl.style.color = '#ef4444';
+        }
         window.cachedStrategy = null;
         return;
     }
 
+    const stintDurations = durationResult.durations;
+
+    // 6. אימות: סכום הסטינטים = זמן נהיגה נקי
+    const totalStintTime = stintDurations.reduce((a, b) => a + b, 0);
+    const timeDiff = Math.abs(totalStintTime - totalNetDriveTime);
+    
+    if (timeDiff > 60000) { // יותר מדקה הפרש
+        console.warn(`⚠️ Time mismatch: Stints=${(totalStintTime/60000).toFixed(1)}min, Expected=${(totalNetDriveTime/60000).toFixed(1)}min`);
+    }
+
+    console.log(`📊 Race Planning:`);
+    console.log(`   Race Duration: ${durationHours}h (${(raceMs/60000).toFixed(0)}min)`);
+    console.log(`   Total Pit Time: ${reqStops} stops × ${pitTimeSec}s = ${(totalPitTimeMs/60000).toFixed(1)}min`);
+    console.log(`   Net Drive Time: ${(totalNetDriveTime/60000).toFixed(1)}min`);
+    console.log(`   Stint Durations: ${stintDurations.map(d => (d/60000).toFixed(1) + 'm').join(', ')}`);
+
+    // 7. בניית Timeline עם נהגים
+    const result = window.calculateStrategyLogic(config);
+
+    if (result.error) {
+        const resEl = document.getElementById('simResult');
+        if (resEl) {
+            resEl.innerText = "⚠️ " + result.error;
+            resEl.classList.remove('hidden');
+            resEl.style.borderColor = 'red';
+            resEl.style.color = '#ef4444';
+        }
+        window.cachedStrategy = null;
+        return;
+    }
+
+    // 8. שמירת התוצאות
     window.cachedStrategy = result;
     window.previewData = {
         timeline: result.timeline,
@@ -420,25 +470,37 @@ window.runSim = function() {
             totalTime: d.driven,
             stints: []
         })),
-        startTime: result.timeline[0].startTime
+        startTime: result.timeline[0]?.startTime || new Date()
     };
 
+    window.recalculateDriverStatsFromTimeline();
+
+    // 9. חישוב סטטיסטיקות לתצוגה
     const stints = result.timeline.filter(t => t.type === 'stint');
     const pits = result.timeline.filter(t => t.type === 'pit');
-    const avg = stints.length ? (result.driverStats.reduce((a, b) => a + b.driven, 0) / stints.length / 60000).toFixed(1) : 0;
-    
-    // Calculate last pit info
-    let pitInfo = '';
-    if (config.closedEnd > 0 && pits.length > 0) {
+    const actualDriveTime = stints.reduce((a, s) => a + s.duration, 0);
+    const actualPitTime = pits.reduce((a, p) => a + p.duration, 0);
+    const totalRaceTime = actualDriveTime + actualPitTime;
+    const avgStint = stints.length > 0 ? (actualDriveTime / stints.length / 60000).toFixed(1) : 0;
+
+    // 10. בדיקת תקינות Pit Closed End
+    let pitClosedInfo = '';
+    if (closedEndMin > 0 && pits.length > 0) {
         const lastPit = pits[pits.length - 1];
-        const deadline = (config.duration * 60) - config.closedEnd;
-        const lastPitMin = (lastPit.raceTimeAtEntry / 60000).toFixed(0);
-        const margin = deadline - lastPitMin;
-        pitInfo = ` | ⏱️ Last pit: ${lastPitMin}m (${margin > 0 ? '+' : ''}${margin}m)`;
+        const deadlineMs = raceMs - (closedEndMin * 60000);
+        const lastPitTime = lastPit.raceTimeAtEntry || 0;
+        const marginMin = ((deadlineMs - lastPitTime) / 60000).toFixed(0);
+        
+        if (lastPitTime <= deadlineMs) {
+            pitClosedInfo = ` | ✅ Last pit ${marginMin}m before close`;
+        } else {
+            pitClosedInfo = ` | ❌ Last pit ${Math.abs(marginMin)}m AFTER close!`;
+        }
     }
 
+    // 11. מידע על חוליות
     let squadInfo = '';
-    if (config.useSquads) {
+    if (useSquads) {
         const nightStints = stints.filter(s => s.isNightPhase);
         if (nightStints.length > 0) {
             const squadANight = nightStints.filter(s => s.squad === 'A').length;
@@ -447,10 +509,28 @@ window.runSim = function() {
         }
     }
 
-    resEl.innerText = `✅ ${stints.length} Stints | ~${avg}m${pitInfo}${squadInfo}`;
-    resEl.style.borderColor = '#22d3ee';
-    resEl.style.color = '#22d3ee';
-    resEl.classList.remove('hidden');
+    // 12. הצגת התוצאה
+    const resEl = document.getElementById('simResult');
+    if (resEl) {
+        resEl.classList.remove('hidden');
+        resEl.style.borderColor = '#22d3ee';
+        resEl.style.color = '#22d3ee';
+        resEl.innerHTML = `
+            ✅ <b>${stints.length} Stints</b> | Avg: ${avgStint}m<br>
+            🏁 Drive: ${(actualDriveTime/60000).toFixed(0)}m + Pit: ${(actualPitTime/60000).toFixed(0)}m = <b>${(totalRaceTime/60000).toFixed(0)}m</b> (${(totalRaceTime/3600000).toFixed(2)}h)
+            ${pitClosedInfo}${squadInfo}
+        `;
+    }
+
+    // 13. אימות סופי
+    const expectedTotal = raceMs;
+    const actualTotal = totalRaceTime;
+    
+    if (Math.abs(actualTotal - expectedTotal) > 60000) {
+        console.error(`❌ VALIDATION FAILED: Expected ${(expectedTotal/60000).toFixed(0)}min, Got ${(actualTotal/60000).toFixed(0)}min`);
+    } else {
+        console.log(`✅ VALIDATION PASSED: Total race time = ${(actualTotal/60000).toFixed(0)}min`);
+    }
 };
 
 window.generatePreview = function(silent, render) {
@@ -468,32 +548,33 @@ window.generatePreview = function(silent, render) {
 };
 
 window.initRace = function() {
-    // 1. וידוא שיש אסטרטגיה
+    // 1. וידוא שיש אסטרטגיה מוכנה
     if (!window.cachedStrategy) {
         // מנסים להריץ סימולציה אם לא הורצה
         window.runSim();
         if (!window.cachedStrategy) return alert("Please generate a strategy first!");
     }
 
-    // 2. בדיקת דאבל סטינט (Safety Check)
+    // 2. בדיקת בטיחות: דאבל סטינט (Double Stint)
     const allowDouble = document.getElementById('allowDouble')?.checked;
-    // בודקים אם יש דאבל סטינט באסטרטגיה אבל האופציה כבויה
+    // אם יש דאבל סטינט באסטרטגיה אבל האופציה כבויה בממשק -> מתריעים ועוצרים
     if (!allowDouble && window.previewData && window.previewData.timeline) {
         const stints = window.previewData.timeline.filter(t => t.type === 'stint');
         for (let i = 1; i < stints.length; i++) {
             if (stints[i].driverName === stints[i-1].driverName) {
                 alert(`⚠️ Safety Check:\nDouble Stint detected for "${stints[i].driverName}" but option is disabled.\nPlease enable 'Double Stint' or fix strategy.`);
-                return; // עוצרים הכל
+                return; // עוצרים את ההתחלה
             }
         }
     }
 
     console.log("🏁 Starting Race...");
 
-    // === תיקון סנכרון זמנים ===
-    // לוקחים את הזמן פעם אחת בדיוק עבור כל המשתנים
+    // === סנכרון זמנים (Time Sync) ===
+    // לוקחים את הזמן פעם אחת בדיוק עבור כל המשתנים כדי למנוע פערים
     const now = Date.now();
 
+    // אתחול ה-State
     window.state.isRunning = true;
     window.state.startTime = now;      // זמן התחלת מירוץ
     window.state.stintStart = now;     // זמן התחלת סטינט (זהים לחלוטין!)
@@ -503,15 +584,13 @@ window.initRace = function() {
     window.state.mode = 'normal';
     window.state.currentDriverIdx = window.cachedStrategy.timeline[0].driverIdx;
     
-    // חישוב נהג הבא
+    // חישוב נהג הבא (Next Driver)
     window.state.nextDriverIdx = (window.state.currentDriverIdx + 1) % window.drivers.length;
     
-    // אם יש חוליות (Squads), מוצאים את הבא שמתאים לחוליה אחרת או לפי הלוגיקה
+    // לוגיקת חוליות (Squads) - אם פעיל, מחפשים את הנהג הבא שמתאים לחוליה
     if (window.config.useSquads) {
         let attempts = 0;
         let candidate = window.state.nextDriverIdx;
-        // לולאה למציאת נהג מחוליה מתאימה (אם צריך)
-        // כרגע פשוט לוקחים את הבא, אלא אם תרצה לוגיקה מורכבת יותר של החלפת חוליות
         while (window.drivers[candidate].squad !== window.drivers[window.state.currentDriverIdx].squad && attempts < window.drivers.length) {
             candidate = (candidate + 1) % window.drivers.length;
             attempts++;
@@ -521,7 +600,7 @@ window.initRace = function() {
 
     window.state.globalStintNumber = 1;
 
-    // הגדרת יעדים (Targets) לכל סטינט
+    // הגדרת יעדים (Targets) לכל סטינט מתוך האסטרטגיה
     if (window.cachedStrategy && window.cachedStrategy.timeline) {
         window.state.stintTargets = window.cachedStrategy.timeline
             .filter(t => t.type === 'stint')
@@ -530,17 +609,18 @@ window.initRace = function() {
         window.state.stintTargets = [];
     }
     
-    // יעד לסטינט הראשון
+    // הגדרת יעד לסטינט הראשון
     window.state.targetStintMs = window.state.stintTargets[0] || (window.config.maxStint * 60000);
 
-    // עדכון ממשק (מעבר מסך)
-    const setupScreen = document.getElementById('setupScreen');
-    const raceDashboard = document.getElementById('raceDashboard');
+    // === עדכון ממשק (מעבר מסך) ===
+    // מסתירים את כל מסכי ההכנה
+    document.getElementById('setupScreen').classList.add('hidden');
+    document.getElementById('previewScreen').classList.add('hidden'); 
     
-    if (setupScreen) setupScreen.classList.add('hidden');
-    if (raceDashboard) raceDashboard.classList.remove('hidden');
+    // מציגים את הדשבורד
+    document.getElementById('raceDashboard').classList.remove('hidden');
     
-    // אם אנחנו Host, נאתחל את ה-Peer (תקשורת)
+    // אם אנחנו Host, נאתחל את ה-Peer (תקשורת P2P)
     if (typeof window.initHostPeer === 'function') window.initHostPeer();
     
     // מניעת כיבוי מסך (Wake Lock)
@@ -548,27 +628,27 @@ window.initRace = function() {
         navigator.wakeLock.request('screen').catch(err => console.log("Wake Lock error:", err));
     }
 
-    // איפוס והתחלת אינטרוול ראשי
+    // איפוס והתחלת אינטרוול ראשי (הלולאה של המירוץ)
     if (window.raceInterval) clearInterval(window.raceInterval);
     
     window.raceInterval = setInterval(() => {
-        // בדיקה אם הפונקציה tick קיימת (בדרך כלל ב-main.js)
+        // בדיקה אם הפונקציה tick קיימת (נמצאת ב-main.js)
         if (typeof window.tick === 'function') window.tick();
         
-        // שידור ללקוחות
+        // שידור ללקוחות (אם יש)
         if (typeof window.broadcast === 'function') window.broadcast();
         
-        // רינדור (אם לא נעשה ב-tick)
+        // רינדור (גיבוי, אם לא נעשה ב-tick)
         if (typeof window.renderFrame === 'function') window.renderFrame();
     }, 1000);
 
-    // שמירה אוטומטית כל 10 שניות
+    // שמירה אוטומטית ל-LocalStorage כל 10 שניות
     if (typeof window.saveRaceState === 'function') {
         setInterval(window.saveRaceState, 10000);
     }
     
-    // === קריאה מיידית לרינדור (התיקון לדיליי) ===
-    // זה גורם למספרים להופיע מיד, בלי לחכות שנייה
+    // === קריאה מיידית לרינדור ===
+    // זה קריטי כדי שהמספרים יופיעו מיד ולא נחכה שנייה עד שהאינטרוול יתחיל
     if (typeof window.renderFrame === 'function') window.renderFrame(); 
     if (typeof window.broadcast === 'function') window.broadcast();
 };

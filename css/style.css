@@ -118,3 +118,39 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     filter: invert(1) brightness(100%);
     cursor: pointer;
 }
+
+/* ==================== WIDE SCREEN SUPPORT ==================== */
+@media (min-width: 1025px) {
+    body {
+        /* רקע טכנולוגי יפה לשוליים */
+        background-color: #020617;
+        background-image: 
+            radial-gradient(circle at 10% 20%, rgba(34, 211, 238, 0.05) 0%, transparent 20%),
+            radial-gradient(circle at 90% 80%, rgba(163, 230, 53, 0.05) 0%, transparent 20%),
+            linear-gradient(#1e293b 1px, transparent 1px),
+            linear-gradient(90deg, #1e293b 1px, transparent 1px);
+        background-size: 100% 100%, 100% 100%, 40px 40px, 40px 40px;
+    }
+
+    #setupScreen, #raceDashboard {
+        max-width: 600px; /* רוחב מקסימלי לתוכן */
+        margin: 0 auto;   /* מרכוז */
+        background-color: var(--navy-950); /* רקע כהה לתוכן עצמו */
+        box-shadow: 0 0 50px rgba(0, 0, 0, 0.8); /* צל עמוק להפרדה */
+        border-left: 1px solid #1e293b;
+        border-right: 1px solid #1e293b;
+    }
+
+    /* תיקון למיקום ה-Header שיהיה תואם */
+    header {
+        max-width: 600px;
+        margin: 0 auto;
+        left: 0;
+        right: 0;
+    }
+}
+
+/* הגדלת הכותרת */
+.header-title {
+    font-size: 1.5rem !important; /* גדול יותר ממה שהיה */
+}

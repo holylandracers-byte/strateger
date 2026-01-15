@@ -135,87 +135,100 @@ window.renderPreview = function() {
     if (!window.previewData || !window.previewData.timeline) return;
 
     const timeline = window.previewData.timeline;
-    
-    // קביעת זמן התחלה תקין
-    let startRef = new Date();
+    const t = window.t || ((k) => k);
+
+    // === 1. קביעת זמן התחלה ===
+    let startRef;
     const timeInput = document.getElementById('raceStartTime');
-    if (timeInput && timeInput.value) {
+    
+    if (timeInput && !timeInput.value && window.previewData.startTime) {
+        const dt = new Date(window.previewData.startTime);
+        const timeStr = dt.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', hour12: false});
+        timeInput.value = timeStr;
+        startRef = dt;
+    } else if (timeInput && timeInput.value) {
+        startRef = new Date();
         const [h, m] = timeInput.value.split(':');
-        startRef.setHours(h, m, 0, 0);
-    } else if (window.previewData.startTime && !isNaN(new Date(window.previewData.startTime).getTime())) {
-        startRef = new Date(window.previewData.startTime);
+        startRef.setHours(parseInt(h), parseInt(m), 0, 0);
+    } else {
+        startRef = new Date();
     }
+
+    // === 2. בדיקת כיוון שפה ===
+    const isRtl = document.documentElement.dir === 'rtl';
+    const arrow = isRtl ? '⬅' : '➜';
+
+    // === 3. עדכון חץ הכותרת ===
+    const timelineArrow = document.getElementById('timelineArrow');
+    if (timelineArrow) {
+        timelineArrow.innerText = arrow;
+    }
+
+    // === 4. חישוב טיימליין עם זמנים מדויקים ===
+    const stints = timeline.filter(t => t.type === 'stint');
+    const pits = timeline.filter(t => t.type === 'pit');
     
     let currentTimeMs = startRef.getTime();
+
+    // === 5. עדכון כותרות זמן התחלה/סיום ===
+    const startEl = document.getElementById('timelineStart');
+    if (startEl) startEl.innerText = startRef.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+
+    // חישוב זמן סיום כולל (כל הסטינטים + כל הפיטים)
+    const totalDriveTime = stints.reduce((a, s) => a + s.duration, 0);
+    const totalPitTime = pits.reduce((a, p) => a + p.duration, 0);
+    const raceEndTime = new Date(startRef.getTime() + totalDriveTime + totalPitTime);
     
-    // מיפוי הסטינטים
-    const actualStints = timeline.filter(t => t.type === 'stint').map(stint => {
-        const start = new Date(currentTimeMs);
-        const end = new Date(currentTimeMs + stint.duration);
+    const endEl = document.getElementById('timelineEnd');
+    if (endEl) endEl.innerText = raceEndTime.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+
+    // === 6. רינדור רשימת הסטינטים ===
+    const listHtml = stints.map((stint, index) => {
+        const startTime = new Date(currentTimeMs);
+        const endTime = new Date(currentTimeMs + stint.duration);
+        const durationMin = Math.round(stint.duration / 60000);
+        
+        const startTimeStr = startTime.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+        const endTimeStr = endTime.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+        
+        // קידום הזמן
         currentTimeMs += stint.duration;
         
-        const pit = timeline.find(p => p.type === 'pit' && p.pitNumber === stint.stintNumber);
-        if (pit) currentTimeMs += pit.duration;
+        // בדיקה אם יש פיט אחרי הסטינט הזה
+        const pit = pits[index];
+        const isLast = index === stints.length - 1;
         
-        return { ...stint, startTime: start, endTime: end, hasPit: !!pit };
-    });
-
-    const endTime = new Date(currentTimeMs);
-    
-    // עדכון טקסטים
-    const startEl = document.getElementById('timelineStart');
-    const endEl = document.getElementById('timelineEnd');
-    if (startEl) startEl.innerText = startRef.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-    if (endEl) endEl.innerText = endTime.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-
-    // בניית הרשימה
-    const listHtml = actualStints.map((stint, index) => {
-        const durationMin = Math.round(stint.duration / 60000);
-        const isLast = index === actualStints.length - 1;
+        let pitIndicator = '';
+        if (pit && !isLast) {
+            const pitSec = Math.round(pit.duration / 1000);
+            pitIndicator = `<span class="text-gold text-[10px] ml-1">🔧+${pitSec}s</span>`;
+            currentTimeMs += pit.duration;
+        }
         
-        let endIcon = '';
-        if (stint.hasPit) endIcon = '<span class="text-xs text-gold ml-1">🔧</span>';
-        else if (isLast) endIcon = '<span class="text-lg ml-1" title="Finish">🏁</span>';
-
-        const isRtl = document.documentElement.dir === 'rtl';
-        const arrow = isRtl ? '←' : '→';
-
         return `
-            <div class="stint-row flex items-center gap-2 bg-navy-950 p-2 rounded border-l-4 hover:bg-navy-900 transition mb-1" 
-                style="border-left-color: ${stint.color}"
-                draggable="true" data-index="${index}"
-                ondragstart="window.handleDragStart(event)" ondragover="window.handleDragOver(event)"
-                ondragleave="window.handleDragLeave(event)" ondrop="window.handleDrop(event)">
-                
-                <div class="cursor-grab text-gray-600 px-1">⋮</div>
-                <span class="text-xs text-gray-500 w-5">#${stint.stintNumber}</span>
-                
-                <div class="flex-1 min-w-0 pointer-events-none">
-                    <span class="font-bold text-white block truncate text-sm">${stint.driverName}</span>
-                    <div class="flex items-center gap-1 text-[10px] text-gray-400">
-                        <span>${stint.startTime.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span>
-                        <span class="text-gray-600 font-bold mx-1">${arrow}</span>
-                        <span>${stint.endTime.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span>
+            <div class="flex items-center gap-2 bg-navy-950 p-2 rounded border-l-4 mb-1 text-xs" style="border-left-color: ${stint.color}">
+                <span class="text-gray-500 w-5 text-center font-mono">#${index + 1}</span>
+                <div class="flex-1">
+                    <div class="font-bold text-white">${stint.driverName}</div>
+                    <div class="flex items-center gap-2 text-gray-400 text-[10px]">
+                        <span>${startTimeStr}</span>
+                        <span class="text-ice">${arrow}</span>
+                        <span>${endTimeStr}</span>
+                        ${pitIndicator}
                     </div>
                 </div>
-
-                <div class="flex items-center gap-1">
-                    <input type="number" value="${durationMin}" 
-                        class="w-12 bg-navy-800 border border-navy-600 rounded text-center text-xs text-white"
-                        onchange="window.updateStintDuration(${index}, this.value)">
-                    <span class="text-[10px] text-gray-500">m</span>
-                </div>
-                ${endIcon}
+                <div class="text-gray-300 font-mono">${durationMin}m</div>
+                ${isLast ? '🏁' : ''}
             </div>
         `;
     }).join('');
-
+    
     const scheduleEl = document.getElementById('driverScheduleList');
     if (scheduleEl) scheduleEl.innerHTML = listHtml;
 
-    // סיכום נהגים (עם הפורמט החדש)
+    // === 7. סיכום נהגים ===
     const summary = {};
-    actualStints.forEach(s => {
+    stints.forEach(s => {
         if (!summary[s.driverName]) summary[s.driverName] = { time: 0, stints: 0, color: s.color };
         summary[s.driverName].time += s.duration;
         summary[s.driverName].stints += 1;
@@ -223,31 +236,18 @@ window.renderPreview = function() {
 
     const summaryHtml = Object.entries(summary).map(([name, data]) => {
         return `
-            <div class="bg-navy-800 p-2 rounded border-l-2 text-center" style="border-color: ${data.color}">
-                <div class="text-xs font-bold text-white truncate">${name}</div>
-                <div class="text-lg text-neon font-mono">${formatHours(data.time)}</div>
-                <div class="text-[10px] text-gray-400">${data.stints} stints</div>
+            <div class="bg-navy-950 p-2 rounded border-t-2 flex flex-col items-center justify-center text-center shadow-md h-20" style="border-color: ${data.color}">
+                <div class="text-[10px] font-bold text-gray-300 truncate w-full">${name}</div>
+                <div class="text-sm text-white font-mono font-bold my-1">${window.formatTimeHMS(data.time)}</div>
+                <div class="text-[9px] text-gray-500 bg-navy-900 px-2 rounded-full">${data.stints} stints</div>
             </div>
         `;
     }).join('');
     
     const summaryEl = document.getElementById('strategySummary');
-    if (summaryEl) summaryEl.innerHTML = summaryHtml;
-
-    // עדכון כפתורים עם תרגום
-    const btnContainer = document.querySelector('#previewScreen .flex.gap-3');
-    if (btnContainer) {
-        btnContainer.innerHTML = `
-            <button onclick="window.closePreview()" class="flex-1 bg-navy-700 hover:bg-navy-600 text-white font-bold py-3 rounded">
-                ${window.t('editStrategy') || 'Edit'}
-            </button>
-            <button onclick="window.saveStrategy()" class="flex-1 bg-gold/20 hover:bg-gold/30 text-gold font-bold py-3 rounded border border-gold/50">
-                ${window.t('saveStrategy') || 'Save'}
-            </button>
-            <button onclick="window.initRace()" class="flex-1 bg-gradient-to-r from-neon to-green-400 text-black font-bold py-3 rounded shadow-lg">
-                ${window.t('startRace') || 'Start Race'}
-            </button>
-        `;
+    if (summaryEl) {
+        summaryEl.className = "grid grid-cols-3 sm:grid-cols-4 gap-2 p-2 max-h-40 overflow-y-auto";
+        summaryEl.innerHTML = summaryHtml;
     }
 };
 
@@ -440,4 +440,155 @@ window.performStrategySave = function() {
         console.error("Save failed:", e);
         alert("Save failed: " + e.message);
     }
+};
+
+// ==========================================
+// 📚 STRATEGY LIBRARY (Load & Manage)
+// ==========================================
+
+window.loadStrategyLibrary = function() {
+    const modal = document.getElementById('strategyModal');
+    const list = document.getElementById('strategyList');
+    
+    if (modal) modal.classList.remove('hidden');
+    if (list) list.innerHTML = '<div class="text-center text-gray-500 p-4">Loading...</div>';
+
+    // 1. שליפה מ-LocalStorage
+    let strategies = [];
+    try {
+        strategies = JSON.parse(localStorage.getItem('strateger_strategies') || '[]');
+    } catch (e) {
+        console.error("Error loading strategies:", e);
+        strategies = [];
+    }
+
+    // (בעתיד: כאן אפשר להוסיף fetch לשרת אם תרצה לשמור בענן)
+    
+    window.renderStrategyList(strategies);
+};
+
+window.renderStrategyList = function(strategies) {
+    const list = document.getElementById('strategyList');
+    if (!list) return;
+
+    if (strategies.length === 0) {
+        list.innerHTML = `
+            <div class="text-center py-8 opacity-50">
+                <div class="text-4xl mb-2">📂</div>
+                <div class="text-sm">No saved strategies found.</div>
+            </div>`;
+        return;
+    }
+
+    // מיון לפי תאריך (החדש ביותר למעלה)
+    strategies.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+    list.innerHTML = strategies.map((s, index) => `
+        <div class="bg-navy-800 p-3 rounded border border-gray-700 flex justify-between items-center mb-2 hover:border-ice transition group">
+            <div class="flex-1 cursor-pointer" onclick="window.applyStrategy(${index})">
+                <div class="font-bold text-white text-sm flex items-center gap-2">
+                    ${s.name}
+                    ${s.type === 'public' ? '<span class="text-[9px] bg-green-900 text-green-300 px-1 rounded">PUB</span>' : ''}
+                </div>
+                <div class="text-[10px] text-gray-400 mt-1">
+                    📅 ${new Date(s.timestamp).toLocaleString()} | 
+                    ⏱️ ${(s.config.duration || 0)}h | 
+                    🛑 ${s.config.reqStops || 0} Stops
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="window.applyStrategy(${index})" class="bg-ice/20 text-ice px-3 py-1.5 rounded text-xs font-bold hover:bg-ice/40 transition">Load</button>
+                <button onclick="window.deleteStrategy(${index})" class="text-gray-600 hover:text-red-400 text-xs px-2 transition"><i class="fas fa-trash"></i></button>
+            </div>
+        </div>
+    `).join('');
+};
+
+window.applyStrategy = function(index) {
+    try {
+        const strategies = JSON.parse(localStorage.getItem('strateger_strategies') || '[]');
+        const strategy = strategies[index];
+        
+        if (!strategy) return;
+
+        // 1. שחזור נתונים לזיכרון
+        window.config = strategy.config;
+        window.drivers = strategy.drivers;
+        window.cachedStrategy = { 
+            timeline: strategy.timeline,
+            // שחזור מבנה ה-SimResult אם חסר
+            driverStats: [], 
+            config: strategy.config 
+        };
+        
+        // בניית נתונים לתצוגה מקדימה
+        window.previewData = {
+            timeline: strategy.timeline,
+            driverSchedule: [], // יחושב מחדש ע"י recalculateDriverStatsFromTimeline
+            startTime: new Date() // מתאפס לזמן הנוכחי
+        };
+        
+        // 2. עדכון ה-UI (אינפוטים)
+        if (strategy.config) {
+            const setVal = (id, val) => { 
+                const el = document.getElementById(id); 
+                if (el) el.value = val; 
+            };
+            
+            setVal('raceDuration', strategy.config.duration);
+            setVal('reqPitStops', strategy.config.reqStops);
+            setVal('minStint', strategy.config.minStint);
+            setVal('maxStint', strategy.config.maxStint);
+            setVal('minPitTime', strategy.config.pitTime);
+            
+            // עדכון צ'קבוקסים
+            const setCheck = (id, val) => {
+                const el = document.getElementById(id);
+                if (el) el.checked = !!val;
+            };
+            setCheck('allowDouble', strategy.config.allowDouble);
+            setCheck('useSquads', strategy.config.useSquads);
+        }
+
+        // 3. בניית רשימת הנהגים מחדש ב-UI
+        const driversList = document.getElementById('driversList');
+        if (driversList) {
+            driversList.innerHTML = ''; // ניקוי
+            strategy.drivers.forEach((d, i) => {
+                // שימוש בפונקציה הקיימת ליצירת שדה
+                window.createDriverInput(d.name, d.isStarter, d.squad);
+            });
+        }
+
+        // 4. חישוב מחדש והצגה
+        window.recalculateDriverStatsFromTimeline(); // פונקציה מ-strategy.js
+        window.closeStrategyModal();
+        
+        // הקפצת Preview
+        window.generatePreview(false, true); 
+        
+        alert(`Strategy "${strategy.name}" loaded successfully!`);
+
+    } catch (e) {
+        console.error("Error applying strategy:", e);
+        alert("Failed to load strategy.");
+    }
+};
+
+window.deleteStrategy = function(index) {
+    if (!confirm("Delete this strategy permanently?")) return;
+    
+    try {
+        const strategies = JSON.parse(localStorage.getItem('strateger_strategies') || '[]');
+        strategies.splice(index, 1);
+        localStorage.setItem('strateger_strategies', JSON.stringify(strategies));
+        window.loadStrategyLibrary(); // רענון הרשימה
+    } catch (e) {
+        console.error(e);
+    }
+};
+
+window.closeStrategyModal = function() {
+    const modal = document.getElementById('strategyModal');
+    if (modal) modal.classList.add('hidden');
 };
