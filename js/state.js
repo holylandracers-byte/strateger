@@ -148,7 +148,39 @@ window.translations = {
         thEnd: "End",
         thType: "Type",
         thDriver: "Driver",
-        thDuration: "Duration"
+        thDuration: "Duration",
+
+        liveTiming: "Live Timing",
+        liveTimingUrl: "Live Timing URL...",
+        connectLive: "Connect",
+        disconnectLive: "Disconnect",
+        searchTeam: "Search team...",
+        searchDriver: "Search driver...",
+        searchKart: "Search kart #...",
+        demoMode: "Demo Mode",
+        
+        // Modals
+        sendEmail: "Send",
+        cancel: "Cancel",
+        create: "Create",
+        save: "Save",
+        load: "Load",
+        delete: "Delete",
+        
+        // Saved Race Modal
+        activeRaceFound: "Active Race Found",
+        continueRace: "Continue Race",
+        discardRace: "Discard",
+        
+        // Confirm Modal
+        areYouSure: "Are you sure?",
+        deleteWarning: "This will delete the active race data permanently.",
+        yesDelete: "Yes, Delete",
+        noKeep: "No, Keep",
+        
+        // Buttons
+        invite: "Invite",
+        synced: "Synced",
     },
     he: {
         // --- Live Timing ---
@@ -240,7 +272,40 @@ window.translations = {
         thEnd: "סיום",
         thType: "סוג",
         thDriver: "נהג",
-        thDuration: "משך"
+        thDuration: "משך",
+
+        // === תרגומים חסרים ===
+        liveTiming: "תזמון חי",
+        liveTimingUrl: "כתובת Live Timing...",
+        connectLive: "התחבר",
+        disconnectLive: "התנתק",
+        searchTeam: "חפש קבוצה...",
+        searchDriver: "חפש נהג...",
+        searchKart: "חפש קארט #...",
+        demoMode: "מצב דמו",
+        
+        // מודלים
+        sendEmail: "שלח",
+        cancel: "ביטול",
+        create: "צור",
+        save: "שמור",
+        load: "טען",
+        delete: "מחק",
+        
+        // מירוץ שמור
+        activeRaceFound: "נמצא מירוץ פעיל",
+        continueRace: "המשך מירוץ",
+        discardRace: "מחק",
+        
+        // אישור
+        areYouSure: "האם אתה בטוח?",
+        deleteWarning: "פעולה זו תמחק את נתוני המירוץ לצמיתות.",
+        yesDelete: "כן, מחק",
+        noKeep: "לא, שמור",
+        
+        // כפתורים
+        invite: "הזמן",
+        synced: "מסונכרן",
     },
     fr: {
         ltSearchType: "Filtrer par:",
@@ -261,8 +326,6 @@ window.translations = {
         errImpossible: "Stratégie Impossible!",
         errAvgHigh: "Moyenne > Max. Ajoutez des arrêts.",
         errAvgLow: "Moyenne < Min. Réduisez les arrêts.",
-        
-        // ... (קודם)
         appSubtitle: "Gestionnaire de Stratégie",
         generalInfo: "Info Générale",
         advancedConstraints: "Contraintes Avancées",
@@ -322,7 +385,30 @@ window.translations = {
         thEnd: "Fin",
         thType: "Type",
         thDriver: "Pilote",
-        thDuration: "Durée"
+        thDuration: "Durée",
+        liveTiming: "Chronométrage Live",
+        liveTimingUrl: "URL Chronométrage...",
+        connectLive: "Connecter",
+        disconnectLive: "Déconnecter",
+        searchTeam: "Rechercher équipe...",
+        searchDriver: "Rechercher pilote...",
+        searchKart: "Rechercher kart #...",
+        demoMode: "Mode Démo",
+        sendEmail: "Envoyer",
+        cancel: "Annuler",
+        create: "Créer",
+        save: "Sauver",
+        load: "Charger",
+        delete: "Supprimer",
+        activeRaceFound: "Course Active Trouvée",
+        continueRace: "Continuer",
+        discardRace: "Abandonner",
+        areYouSure: "Êtes-vous sûr?",
+        deleteWarning: "Ceci supprimera les données définitivement.",
+        yesDelete: "Oui, Supprimer",
+        noKeep: "Non, Garder",
+        invite: "Inviter",
+        synced: "Synchronisé",
     },
     pt: {
         ltSearchType: "Filtrar por:",
@@ -343,8 +429,6 @@ window.translations = {
         errImpossible: "Estratégia Impossível!",
         errAvgHigh: "Média > Máx. Aumente paradas.",
         errAvgLow: "Média < Mín. Reduza paradas.",
-
-        // ... (קודם)
         appSubtitle: "Gestor de Estratégia",
         generalInfo: "Info Geral",
         advancedConstraints: "Restrições Avançadas",
@@ -404,7 +488,30 @@ window.translations = {
         thEnd: "Fim",
         thType: "Tipo",
         thDriver: "Piloto",
-        thDuration: "Duração"
+        thDuration: "Duração",
+        liveTiming: "Cronometragem Ao Vivo",
+        liveTimingUrl: "URL Cronometragem...",
+        connectLive: "Conectar",
+        disconnectLive: "Desconectar",
+        searchTeam: "Buscar equipe...",
+        searchDriver: "Buscar piloto...",
+        searchKart: "Buscar kart #...",
+        demoMode: "Modo Demo",
+        sendEmail: "Enviar",
+        cancel: "Cancelar",
+        create: "Criar",
+        save: "Salvar",
+        load: "Carregar",
+        delete: "Excluir",
+        activeRaceFound: "Corrida Ativa Encontrada",
+        continueRace: "Continuar",
+        discardRace: "Descartar",
+        areYouSure: "Tem certeza?",
+        deleteWarning: "Isso excluirá os dados permanentemente.",
+        yesDelete: "Sim, Excluir",
+        noKeep: "Não, Manter",
+        invite: "Convidar",
+        synced: "Sincronizado",
     }
 };
 
@@ -416,9 +523,17 @@ window.t = function(key) {
 
 window.setLanguage = function(lang) {
     localStorage.setItem('strateger_lang', lang);
+    window.currentLang = lang; // עדכון המשתנה הגלובלי
     document.documentElement.lang = lang;
     document.documentElement.dir = (lang === 'he') ? 'rtl' : 'ltr';
 
+    // === תיקון: סנכרון ה-dropdown ===
+    const langSelect = document.getElementById('langSelect');
+    if (langSelect && langSelect.value !== lang) {
+        langSelect.value = lang;
+    }
+
+    // תרגום אלמנטים
     document.querySelectorAll('[data-i18n]').forEach(el => {
         const key = el.getAttribute('data-i18n');
         if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
@@ -428,7 +543,9 @@ window.setLanguage = function(lang) {
         }
     });
 
+    // עדכון UI
     if (typeof window.updateModeUI === 'function') window.updateModeUI();
     if (typeof window.updateWeatherUI === 'function') window.updateWeatherUI();
     if (typeof window.renderFrame === 'function') window.renderFrame();
+    if (typeof window.renderPreview === 'function' && window.previewData) window.renderPreview();
 };
