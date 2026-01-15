@@ -614,34 +614,75 @@ window.cycleNextDriver = function(forceValidation = false) {
 const originalConfirmPitExit = window.confirmPitExit;
 
 window.confirmPitExit = function() {
-    // שמירת הנהג שהיה לפני ההחלפה
+    // 1. שמירת הנהג הנוכחי (לפני ההחלפה) לבדיקת דאבל סטינט בהמשך
     const prevDriverIdx = window.state.currentDriverIdx;
+
+    // === 2. הלוגיקה המקורית (שוחזרה מה-ELSE החסר) ===
+    const now = Date.now();
+    const pitDuration = now - window.state.pitStart;
+    const driveDuration = window.state.pitStart - window.state.stintStart;
+
+    // עצירת טיימר הפיטס וסגירת המודאל
+    if (window.pitInterval) clearInterval(window.pitInterval);
+    const pitModal = document.getElementById('pitModal');
+    if (pitModal) pitModal.classList.add('hidden');
     
-    // קריאה לפונקציה המקורית שמבצעת את ההחלפה
-    if (originalConfirmPitExit) originalConfirmPitExit();
-    else {
-        // (fallback במקרה שהפונקציה המקורית לא הוגדרה כמשתנה - העתק את הלוגיקה המקורית לכאן אם צריך)
-        // אבל בהנחה שהקוד הקודם נטען, זה יעבוד. אם לא, הנה הלוגיקה החשובה:
-        // ... (לוגיקה רגילה של יציאה מהפיט) ...
+    // שמירת נתונים ביומן של הנהג המסיים (זה שיוצא מהרכב)
+    if (window.drivers[prevDriverIdx]) {
+        const driver = window.drivers[prevDriverIdx];
+        if (!driver.logs) driver.logs = [];
+        
+        driver.totalTime = (driver.totalTime || 0) + driveDuration;
+        
+        driver.logs.push({
+            drive: driveDuration,
+            pit: pitDuration,
+            timestamp: now
+        });
+        driver.stints = (driver.stints || 0) + 1;
     }
 
-    // בדיקה: מי הנהג עכשיו?
+    // ביצוע החלפת הנהג בפועל (בזיכרון)
+    window.state.currentDriverIdx = window.state.nextDriverIdx;
+    
+    // קידום הנהג *הבא* בתור (הכנה לסטינט הבא)
+    if (typeof window.cycleNextDriver === 'function') window.cycleNextDriver();
+
+    // איפוס מצב מירוץ ליציאה למסלול
+    window.state.isInPit = false;
+    window.state.stintStart = now;
+    window.state.stintOffset = 0;
+    window.state.globalStintNumber++;
+    
+    // איפוס התאמות זמן פיטס (אם היו)
+    if (typeof window.adjustPitTime === 'function') {
+        window.adjustPitTime(-window.currentPitAdjustment); 
+    }
+
+    // === 3. לוגיקה חדשה: בדיקת דאבל סטינט ועדכון חוליות ===
     const newDriverIdx = window.state.currentDriverIdx;
 
-    // עדכון מונה סטינטים רצופים
     if (newDriverIdx === prevDriverIdx) {
+        // אם הנהג נשאר אותו דבר -> דאבל סטינט
         window.state.consecutiveStints = (window.state.consecutiveStints || 1) + 1;
         console.log(`🔄 Double Stint! Count: ${window.state.consecutiveStints}`);
     } else {
-        window.state.consecutiveStints = 1; // איפוס לנהג חדש
-        // עדכון חוליה פעילה אם השתנה הנהג (רלוונטי למצב לילה אוטומטי)
+        // נהג התחלף -> איפוס מונה
+        window.state.consecutiveStints = 1; 
+        
+        // עדכון חוליה פעילה (אם עובדים עם חוליות)
         if (window.config.useSquads && window.drivers[newDriverIdx]) {
-            // אם אנחנו לא במצב לילה נעול, עדכן את ה-Active Squad לפי הנהג החדש
+            // אם אנחנו לא במצב לילה "נעול" ידנית, עדכן את החוליה לפי הנהג החדש
             if (!window.state.isNightMode) {
                 window.state.activeSquad = window.drivers[newDriverIdx].squad;
             }
         }
     }
+
+    // 4. שמירה ועדכון תצוגה
+    if (typeof window.saveRaceState === 'function') window.saveRaceState();
+    if (typeof window.broadcast === 'function') window.broadcast();
+    if (typeof window.renderFrame === 'function') window.renderFrame();
 };
 
 // ודא שקוראים לעדכון ה-UI בטעינה
