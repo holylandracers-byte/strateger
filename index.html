@@ -39,7 +39,7 @@
         }
     </script>
 </head>
-<body class="bg-navy-950 text-gray-200 h-screen flex flex-col overflow-hidden">
+<body class="bg-navy-950 text-gray-200 flex flex-col">
     <header class="bg-navy-900 border-b border-gray-800 p-2 flex justify-between items-center shadow-md sticky top-0 z-20">
         <div class="flex items-center gap-2">
             <select id="langSelect" onchange="window.setLanguage(this.value)" 
@@ -84,7 +84,7 @@
         </div>
     </header>
 
-    <div id="setupScreen" class="flex-1 overflow-y-auto w-full bg-navy-950 relative p-2">
+    <div id="setupScreen" class="w-full bg-navy-950 relative p-2">
         
         <div class="max-w-lg mx-auto text-center mb-2">
             <div class="header-title font-bold tracking-widest text-white ml-2 sm:block">
@@ -339,7 +339,7 @@
         </div>
     </div>
 
-    <div id="raceDashboard" class="hidden flex-1 flex flex-col h-full min-h-0 bg-navy-950 w-full relative overflow-hidden">
+    <div id="raceDashboard" class="hidden flex flex-col h-full min-h-0 bg-navy-950 w-full relative">
 
         <div class="bg-navy-900 border-b border-gray-800 shrink-0 p-2 flex justify-between items-center z-10 shadow-md">
             <button id="btnRain" onclick="window.toggleRain()" class="bg-navy-800 border border-blue-500/50 rounded px-3 py-1 hover:bg-navy-700 transition">
@@ -460,35 +460,34 @@
                 </table>
             </div>
             
-            <div class="h-4"></div>
-        </div>
-
-        <div class="bg-navy-900 border-t border-gray-800 p-3 shrink-0 space-y-3 z-20 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.3)]">
+            <div class="h-2"></div>
+            <div class="bg-navy-900 border-t border-gray-800 p-3 shrink-0 space-y-3 z-20 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.3)]">
             
-            <div class="flex justify-between items-center">
-                <div class="text-xs text-gray-400 flex flex-col">
-                    <span class="font-bold text-[9px] uppercase tracking-wider">Next Driver</span>
-                    <span id="nextDriverName" class="text-lg font-bold text-neon cursor-pointer hover:text-white transition truncate max-w-[120px]" onclick="window.cycleNextDriver()">---</span>
-                </div>
-
-                <div class="flex items-center gap-2 bg-navy-950 p-1.5 rounded border border-gray-700">
-                    <span class="text-[9px] text-gray-500 uppercase font-bold px-1">Penalty</span>
-                    <div class="flex gap-1">
-                        <button onclick="window.adjustPitTime(-5)" class="bg-green-900/30 hover:bg-green-800 text-green-400 border border-green-600/30 px-2 py-1 rounded text-xs font-bold transition">-5</button>
-                        <button onclick="window.adjustPitTime(5)" class="bg-red-900/30 hover:bg-red-800 text-red-400 border border-red-600/30 px-2 py-1 rounded text-xs font-bold transition">+5</button>
-                        <button onclick="window.adjustPitTime(10)" class="bg-red-900/30 hover:bg-red-800 text-red-400 border border-red-600/30 px-2 py-1 rounded text-xs font-bold transition">+10</button>
+                <div class="flex justify-between items-center">
+                    <div class="text-xs text-gray-400 flex flex-col">
+                        <span class="font-bold text-[9px] uppercase tracking-wider">Next Driver</span>
+                        <span id="nextDriverName" class="text-lg font-bold text-neon cursor-pointer hover:text-white transition truncate max-w-[120px]" onclick="window.cycleNextDriver()">---</span>
                     </div>
-                    <div id="dashboardPitAdjDisplay" class="bg-black/30 px-2 py-1 rounded text-ice font-mono font-bold text-xs min-w-[30px] text-center">0</div>
-                </div>
-            </div>
 
-            <button id="pitEntryBtn" onclick="window.confirmPitEntry()" class="w-full bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white font-bold py-4 rounded-xl text-xl shadow-lg transition transform active:scale-95 flex justify-between px-6 items-center border border-red-400/30">
-                <span class="flex items-center gap-3">
-                    <i class="fas fa-flag-checkered text-2xl"></i> 
-                    <span class="tracking-wider">ENTER PIT</span>
-                </span>
-                <span id="btnPitAdjBadge" class="hidden text-sm bg-black/40 px-2 py-1 rounded text-yellow-300 font-mono border border-yellow-500/50"></span>
-            </button>
+                    <div class="flex items-center gap-2 bg-navy-950 p-1.5 rounded border border-gray-700">
+                        <span class="text-[9px] text-gray-500 uppercase font-bold px-1">Penalty</span>
+                        <div class="flex gap-1">
+                            <button onclick="window.adjustPitTime(-5)" class="bg-green-900/30 hover:bg-green-800 text-green-400 border border-green-600/30 px-2 py-1 rounded text-xs font-bold transition">-5</button>
+                            <button onclick="window.adjustPitTime(5)" class="bg-red-900/30 hover:bg-red-800 text-red-400 border border-red-600/30 px-2 py-1 rounded text-xs font-bold transition">+5</button>
+                            <button onclick="window.adjustPitTime(10)" class="bg-red-900/30 hover:bg-red-800 text-red-400 border border-red-600/30 px-2 py-1 rounded text-xs font-bold transition">+10</button>
+                        </div>
+                        <div id="dashboardPitAdjDisplay" class="bg-black/30 px-2 py-1 rounded text-ice font-mono font-bold text-xs min-w-[30px] text-center">0</div>
+                    </div>
+                </div>
+
+                <button id="pitEntryBtn" onclick="window.confirmPitEntry()" class="w-full bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white font-bold py-4 rounded-xl text-xl shadow-lg transition transform active:scale-95 flex justify-between px-6 items-center border border-red-400/30">
+                    <span class="flex items-center gap-3">
+                        <i class="fas fa-flag-checkered text-2xl"></i> 
+                        <span class="tracking-wider">ENTER PIT</span>
+                    </span>
+                    <span id="btnPitAdjBadge" class="hidden text-sm bg-black/40 px-2 py-1 rounded text-yellow-300 font-mono border border-yellow-500/50"></span>
+                </button>
+            </div>
         </div>
     </div>
 
