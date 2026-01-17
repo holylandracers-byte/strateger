@@ -158,18 +158,24 @@ class RaceFacerScraper {
     }
 
     findOurTeam(competitors) {
-        const searchTerm = this.config.searchTerm.toUpperCase().trim();
+        const searchTerm = (this.config.searchTerm || '').toUpperCase().trim();
         
         if (!searchTerm) {
             return competitors[0];
         }
 
-        const found = competitors.find(c => 
-            c.team.toUpperCase().includes(searchTerm) ||
-            c.name.toUpperCase().includes(searchTerm) ||
-            c.kart.toUpperCase() === searchTerm ||
-            c.kart.replace(/\D/g, '') === searchTerm.replace(/\D/g, '')
-        );
+        const found = competitors.find(c => {
+            // בדיקת תקינות (Safety Check) לפני המרה לאותיות גדולות
+            // זה מונע את השגיאה Cannot read properties of null
+            const team = (c.team || '').toString().toUpperCase();
+            const name = (c.name || '').toString().toUpperCase();
+            const kart = (c.kart || '').toString().toUpperCase();
+            
+            return team.includes(searchTerm) ||
+                   name.includes(searchTerm) ||
+                   kart === searchTerm ||
+                   kart.replace(/\D/g, '') === searchTerm.replace(/\D/g, '');
+        });
 
         if (!found) {
             this.log(`⚠️ Team/driver not found with search: "${searchTerm}"`, 'warn');

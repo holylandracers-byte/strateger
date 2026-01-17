@@ -5,60 +5,40 @@
 document.addEventListener('DOMContentLoaded', () => {
     console.log("🚀 Strateger Initializing...");
 
-    // === תיקון באג שפה ===
-    // 1. נסה לשלוף מהזיכרון, אם אין - בדוק את שפת הדפדפן, ברירת מחדל אנגלית
     let savedLang = localStorage.getItem('strateger_lang');
     if (!savedLang) {
         const browserLang = navigator.language.split('-')[0];
         savedLang = (['he', 'fr', 'pt'].includes(browserLang)) ? browserLang : 'en';
     }
-    
-    // 2. הפעלת תרגום מיידית
-    if (typeof window.setLanguage === 'function') {
-        window.setLanguage(savedLang);
-    }
+    if (typeof window.setLanguage === 'function') window.setLanguage(savedLang);
 
-    // ... (שאר האתחולים: נהגים, חיבור, וכו') ...
     if (typeof window.addDriverField === 'function') {
         window.addDriverField();
         window.addDriverField();
     }
     
-    // 3. בדיקת קישור הזמנה (Client Mode)
     const urlParams = new URLSearchParams(window.location.search);
     const joinCode = urlParams.get('join');
 
     if (joinCode) {
-        console.log("🔗 Joining race:", joinCode);
         window.role = 'client';
-        
-        const setup = document.getElementById('setupScreen');
-        if(setup) setup.classList.add('hidden');
-        
-        const wait = document.getElementById('clientWaitScreen');
-        if(wait) wait.classList.remove('hidden');
-        
-        if (typeof window.connectToHost === 'function') {
-            window.connectToHost(joinCode);
-        }
+        document.getElementById('setupScreen').classList.add('hidden');
+        document.getElementById('clientWaitScreen').classList.remove('hidden');
+        if (typeof window.connectToHost === 'function') window.connectToHost(joinCode);
     } else {
         window.role = 'host';
-        // בדיקה אם יש מירוץ שמור
-        if (typeof window.checkForSavedRace === 'function') {
-            window.checkForSavedRace();
-        }
+        if (typeof window.checkForSavedRace === 'function') window.checkForSavedRace();
     }
     
-    // 4. אתחול UI
-    updateModeUI();
-    updateWeatherUI();
-    
-    // 5. האזנה לשינויים בהגדרות
-    attachConfigListeners();
+    if(typeof updateModeUI === 'function') updateModeUI();
+    if(typeof updateWeatherUI === 'function') updateWeatherUI();
+    if(typeof attachConfigListeners === 'function') attachConfigListeners();
+
+    document.getElementById('chatToggleBtn').classList.remove('hidden');
 });
 
 // ==========================================
-// 🎮 MODE CONTROL (Push / Problem)
+// 🎮 MODE CONTROL
 // ==========================================
 
 window.setMode = function(mode) {
@@ -73,11 +53,7 @@ window.setMode = function(mode) {
     }
 
     updateModeUI();
-    
-    if (typeof window.recalculateTargetStint === 'function') {
-        window.recalculateTargetStint();
-    }
-    
+    if (typeof window.recalculateTargetStint === 'function') window.recalculateTargetStint();
     if (typeof window.broadcast === 'function') window.broadcast();
     window.renderFrame();
 };
@@ -106,11 +82,7 @@ function updateModeUI() {
     }
 
     if (btnReset) {
-        if (window.state.mode !== 'normal') {
-            btnReset.classList.remove('hidden');
-        } else {
-            btnReset.classList.add('hidden');
-        }
+        btnReset.classList.toggle('hidden', window.state.mode === 'normal');
     }
 
     if (adviceText) {
@@ -127,7 +99,6 @@ function updateModeUI() {
     }
 }
 
-// פונקציית עזר לחישוב יעד סטינט בזמן אמת
 window.recalculateTargetStint = function() {
     if (!window.config || !window.state) return;
     
@@ -147,20 +118,14 @@ window.recalculateTargetStint = function() {
 // 🌦️ WEATHER CONTROL
 // ==========================================
 
-// ==========================================
-// 🌦️ WEATHER CONTROL (Tri-State: Dry -> Wet -> Drying -> Dry)
-// ==========================================
-
 window.toggleRain = function() {
-    // אתחול ראשוני אם לא קיים
     if (!window.state.trackCondition) window.state.trackCondition = 'dry';
 
-    // מעגל המצבים
     if (window.state.trackCondition === 'dry') {
         window.state.trackCondition = 'wet';
-        window.state.isRain = true; // תאימות לאחור
+        window.state.isRain = true;
     } else if (window.state.trackCondition === 'wet') {
-        window.state.trackCondition = 'drying'; // המצב החדש
+        window.state.trackCondition = 'drying';
         window.state.isRain = false;
     } else {
         window.state.trackCondition = 'dry';
@@ -176,61 +141,38 @@ function updateWeatherUI() {
     const icon = document.getElementById('rainIcon');
     const text = document.getElementById('rainText');
     const t = window.t || ((k) => k);
-
-    // ודא שיש ערך התחלתי
-    const condition = window.state.trackCondition || (window.state.isRain ? 'wet' : 'dry');
+    const condition = window.state.trackCondition || 'dry';
 
     if (condition === 'wet') {
-        // מצב גשם (כחול)
         if(icon) icon.innerText = "🌧️";
-        if(text) {
-            text.innerText = t('wet'); 
-            text.className = "text-xs font-bold text-blue-300";
-        }
+        if(text) { text.innerText = t('wet'); text.className = "text-xs font-bold text-blue-300"; }
         if(btn) btn.className = "bg-blue-900/50 border border-blue-400 rounded px-3 py-1 hover:bg-blue-800 transition";
-    } 
-    else if (condition === 'drying') {
-        // מצב מתייבש (כתום/סגול - משהו שמסמל מעבר)
-        if(icon) icon.innerText = "⛅"; // שמש עם ענן
-        if(text) {
-            text.innerText = t('drying');
-            text.className = "text-xs font-bold text-orange-400";
-        }
+    } else if (condition === 'drying') {
+        if(icon) icon.innerText = "⛅";
+        if(text) { text.innerText = t('drying'); text.className = "text-xs font-bold text-orange-400"; }
         if(btn) btn.className = "bg-navy-800 border border-orange-500/50 rounded px-3 py-1 hover:bg-navy-700 transition";
-    } 
-    else {
-        // מצב יבש (צהוב)
+    } else {
         if(icon) icon.innerText = "☀️";
-        if(text) {
-            text.innerText = t('dry');
-            text.className = "text-xs font-bold text-yellow-400";
-        }
+        if(text) { text.innerText = t('dry'); text.className = "text-xs font-bold text-yellow-400"; }
         if(btn) btn.className = "bg-navy-800 border border-yellow-500/50 rounded px-3 py-1 hover:bg-navy-700 transition";
     }
 }
 
 // ==========================================
-// 🌙 NIGHT MODE & SQUAD LOGIC
+// 🌙 NIGHT MODE
 // ==========================================
 
 window.toggleNightMode = function() {
     if (!window.config.useSquads) return;
-    
     window.state.isNightMode = !window.state.isNightMode;
     
-    // זיהוי חוליה פעילה לפי הנהג הנוכחי
     const currentDriver = window.drivers[window.state.currentDriverIdx];
     if (window.state.isNightMode && currentDriver) {
-        window.state.activeSquad = currentDriver.squad; // מקבע את החוליה הפעילה ללילה
+        window.state.activeSquad = currentDriver.squad;
     }
     
     updateNightModeUI();
-    
-    // אם הנהג הבא המתוכנן שייך לחוליה שישנה, נחליף אותו מיד
-    if (window.state.isNightMode) {
-        window.cycleNextDriver(true); // true = force validation check
-    }
-    
+    if (window.state.isNightMode) window.cycleNextDriver(true);
     if (typeof window.broadcast === 'function') window.broadcast();
 };
 
@@ -240,49 +182,39 @@ function updateNightModeUI() {
     const text = document.getElementById('nightModeText');
     const t = window.t || ((k) => k);
 
-    // הצגה רק אם יש חוליות
-    if (window.config.useSquads) {
-        container.classList.remove('hidden');
-    } else {
-        container.classList.add('hidden');
-        return;
-    }
+    if (window.config.useSquads) container.classList.remove('hidden');
+    else { container.classList.add('hidden'); return; }
 
     if (window.state.isNightMode) {
-        // מצב לילה פעיל
         const activeSquad = window.state.activeSquad || 'A';
         const sleepingSquad = activeSquad === 'A' ? 'B' : 'A';
-        
         btn.className = "w-full bg-indigo-600 hover:bg-indigo-500 border border-indigo-300 text-white text-xs font-bold py-3 rounded transition flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(99,102,241,0.5)] animate-pulse";
         text.innerHTML = `${t('squadSleeping')} <span class="text-yellow-300 text-lg font-black px-1">${sleepingSquad}</span>`;
     } else {
-        // מצב רגיל
         btn.className = "w-full bg-navy-800 hover:bg-navy-700 border border-indigo-500/30 text-indigo-300 text-xs font-bold py-3 rounded transition flex items-center justify-center gap-2";
         text.innerText = t('nightMode');
     }
 }
 
 // ==========================================
-// ⏱️ CORE LOOP & RENDERING
+// ⏱️ CORE LOOP
 // ==========================================
 
 window.tick = function() {
     if (!window.state.isRunning) return;
-    
     const now = Date.now();
     const raceMs = window.config.raceMs || (parseFloat(window.config.duration) * 3600000);
-    
     if (now - window.state.startTime >= raceMs) {
         window.state.isRunning = false;
         alert("🏁 RACE FINISHED! 🏁");
     }
-    
     window.renderFrame();
 };
 
 window.renderFrame = function() {
     if (!window.state || !window.state.isRunning) return;
     
+    // בודק שפה כל פריים לוודא סינכרון
     const currentLang = localStorage.getItem('strateger_lang') || 'en';
     if (document.documentElement.lang !== currentLang && typeof window.setLanguage === 'function') {
         window.setLanguage(currentLang);
@@ -296,7 +228,6 @@ window.renderFrame = function() {
         const raceElapsed = now - window.state.startTime;
         const raceRemaining = raceMs - raceElapsed;
         
-        // 1. שעון מירוץ
         const timerEl = document.getElementById('raceTimerDisplay');
         if (raceRemaining <= 0) {
             timerEl.innerText = "FINISH";
@@ -305,12 +236,10 @@ window.renderFrame = function() {
         }
         timerEl.innerText = window.formatTimeHMS(raceRemaining);
 
-        // 2. פיטס
         const totalPlannedStops = window.config.reqStops || 0;
         document.getElementById('pitCountDisplay').innerHTML = 
             `<span class="text-neon text-xl">${window.state.pitCount}</span><span class="text-gray-500 text-xs">/${totalPlannedStops}</span>`;
 
-        // 3. נהגים
         const curr = window.drivers[window.state.currentDriverIdx];
         const next = window.drivers[window.state.nextDriverIdx];
         if (curr) document.getElementById('currentDriverName').innerText = curr.name;
@@ -319,7 +248,6 @@ window.renderFrame = function() {
             nextEls.forEach(el => { if(el) el.innerText = next.name; });
         }
 
-        // 4. Stint Bar Logic
         if (!window.state.isInPit) {
             let currentStintTime = (now - window.state.stintStart) + (window.state.stintOffset || 0);
             document.getElementById('stintTimerDisplay').innerText = window.formatTimeHMS(Math.max(0, currentStintTime));
@@ -355,30 +283,13 @@ window.renderFrame = function() {
             }
         }
 
-        // 5. Target Delta
-        const targetEl = document.getElementById('strategyTargetStint');
-        const deltaEl = document.getElementById('strategyDelta');
-        let currentTargetMs = window.state.targetStintMs || (window.config.maxStint * 60000);
-        
-        if (targetEl) targetEl.innerText = window.formatTimeHMS(currentTargetMs);
-        if (deltaEl && !window.state.isInPit) {
-            let currentStintTime = (now - window.state.stintStart) + (window.state.stintOffset || 0);
-            const diff = currentTargetMs - currentStintTime;
-            const sign = diff >= 0 ? '-' : '+';
-            deltaEl.innerText = `${sign}${window.formatTimeHMS(Math.abs(diff))}`;
-            deltaEl.className = diff >= 0 ? "text-sm font-bold text-gray-400" : "text-sm font-bold text-red-500 animate-pulse";
-        }
-
-        // 6. אסטרטגיה דינמית
         updateRemainingStrategyLogic(raceRemaining);
 
-        // 7. טבלה
         if (typeof window.updateStats === 'function' && !window.state.isInPit) {
             let t = (now - window.state.stintStart) + (window.state.stintOffset || 0);
             window.updateStats(t);
         }
 
-        // 8. עדכוני UI
         updateWeatherUI();
         updateModeUI();
 
@@ -431,14 +342,13 @@ function updateRemainingStrategyLogic(raceRemainingMs) {
 }
 
 // ==========================================
-// 🛑 PIT STOP LOGIC (With Penalties)
+// 🛑 PIT STOP LOGIC
 // ==========================================
 
 window.currentPitAdjustment = 0;
 
 window.adjustPitTime = function(seconds) {
     window.currentPitAdjustment += seconds;
-    
     const dashDisplay = document.getElementById('dashboardPitAdjDisplay');
     const btnBadge = document.getElementById('btnPitAdjBadge');
     
@@ -475,14 +385,13 @@ window.confirmPitEntry = function() {
 
     if (minStintMs > 0 && currentStintMs < minStintMs) {
         const missingSec = Math.ceil((minStintMs - currentStintMs) / 1000);
-        const confirmShort = confirm(`⚠️ Short Stint Warning!\nMissing ${missingSec} seconds.\nProceed to Pit?`);
-        if (!confirmShort) return;
+        if (!confirm(`⚠️ Short Stint Warning!\nMissing ${missingSec} seconds.\nProceed to Pit?`)) return;
         isShortStint = true;
     }
 
     window.state.isInPit = true;
     window.state.pitStart = now;
-    window.state.pitCount++;
+    window.state.pitCount++; // === UP COUNT ===
 
     const modal = document.getElementById('pitModal');
     const warningEl = document.getElementById('pitStintWarning');
@@ -520,18 +429,13 @@ window.confirmPitEntry = function() {
 window.updatePitModalLogic = function() {
     const now = Date.now();
     const elapsedSec = (now - window.state.pitStart) / 1000;
-    
     const basePitTime = parseInt(window.config.minPitTime || window.config.pitTime) || 0;
     const totalRequiredTime = Math.max(0, basePitTime + window.currentPitAdjustment); 
-    
     const buffer = parseInt(document.getElementById('releaseBuffer')?.value) || 5;
     const timeRemaining = totalRequiredTime - elapsedSec;
 
     const timerDisplay = document.getElementById('pitTimerDisplay');
-    if (timerDisplay) {
-        const displayTime = Math.max(0, timeRemaining);
-        timerDisplay.innerText = displayTime.toFixed(1);
-    }
+    if (timerDisplay) timerDisplay.innerText = Math.max(0, timeRemaining).toFixed(1);
 
     const releaseBtn = document.getElementById('confirmExitBtn');
     if (!releaseBtn) return;
@@ -541,14 +445,12 @@ window.updatePitModalLogic = function() {
         releaseBtn.innerText = "WAIT";
         releaseBtn.disabled = true;
         releaseBtn.className = "w-full max-w-xs bg-gray-800 text-gray-500 font-bold py-4 rounded-lg text-2xl border border-gray-700 cursor-not-allowed";
-    } 
-    else if (timeRemaining <= buffer && timeRemaining > 0) {
+    } else if (timeRemaining <= buffer && timeRemaining > 0) {
         if (timerDisplay) timerDisplay.className = "text-6xl font-bold font-mono text-yellow-400 animate-pulse";
         releaseBtn.innerText = "GET READY";
         releaseBtn.disabled = false;
         releaseBtn.className = "w-full max-w-xs bg-yellow-600 hover:bg-yellow-500 text-black font-bold py-4 rounded-lg text-2xl border border-yellow-400 animate-pulse cursor-pointer";
-    } 
-    else {
+    } else {
         if (timerDisplay) timerDisplay.className = "text-6xl font-bold font-mono text-green-500";
         releaseBtn.innerText = "GO! GO! GO!";
         releaseBtn.disabled = false;
@@ -556,37 +458,47 @@ window.updatePitModalLogic = function() {
     }
 };
 
+window.cancelPitStop = function() {
+    if (window.pitInterval) clearInterval(window.pitInterval);
+    
+    window.state.isInPit = false;
+    window.state.pendingPitEntry = false;
+    
+    // === FIX: Decrement count on cancel ===
+    if (window.state.pitCount > 0) {
+        window.state.pitCount--;
+    }
+    
+    if (typeof window.adjustPitTime === 'function' && window.currentPitAdjustment !== 0) {
+        window.adjustPitTime(-window.currentPitAdjustment);
+    }
+    
+    document.getElementById('pitModal').classList.add('hidden');
+    if (typeof window.broadcast === 'function') window.broadcast();
+    window.renderFrame();
+};
+
 window.cycleNextDriver = function(forceValidation = false) {
     if (!window.drivers || window.drivers.length === 0) return;
 
     let candidate = window.state.nextDriverIdx;
-    
-    // אם זו לחיצה ידנית (לא forceValidation), אנחנו רוצים לקדם ב-1
-    // אלא אם כן אנחנו במצב מיוחד של דאבל סטינט שטרם נוצל
     if (!forceValidation) {
         candidate = (candidate + 1) % window.drivers.length;
     }
 
-    // --- לוגיקת סינון חכמה ---
     let attempts = 0;
     while (attempts < window.drivers.length) {
         const driver = window.drivers[candidate];
         let isValid = true;
 
-        // 1. בדיקת חוליות ומצב לילה
         if (window.config.useSquads) {
-            // אם מצב לילה פעיל: מתירים רק נהגים מהחוליה הפעילה
             if (window.state.isNightMode && driver.squad !== window.state.activeSquad) {
                 isValid = false;
             }
-            // אם מצב לילה כבוי: מנסים לשמור על רוטציה (אופציונלי, כאן אנחנו גמישים)
         }
 
-        // 2. בדיקת דאבל סטינט (Double Stint)
-        // אם המועמד הוא הנהג הנוכחי
         if (candidate === window.state.currentDriverIdx) {
             const allowDouble = window.config.allowDouble || document.getElementById('allowDouble')?.checked;
-            // מותר רק אם: מופעל בהגדרות AND טרם עשה 2 סטינטים רצופים
             if (!allowDouble || window.state.consecutiveStints >= 2) {
                 isValid = false;
             }
@@ -594,15 +506,12 @@ window.cycleNextDriver = function(forceValidation = false) {
 
         if (isValid) {
             window.state.nextDriverIdx = candidate;
-            break; // מצאנו נהג תקין
+            break;
         }
-
-        // נסה את הבא בתור
         candidate = (candidate + 1) % window.drivers.length;
         attempts++;
     }
 
-    // עדכון תצוגה
     const nextDriver = window.drivers[window.state.nextDriverIdx];
     const nextEls = [document.getElementById('nextDriverName'), document.getElementById('modalNextDriverName')];
     nextEls.forEach(el => { if(el && nextDriver) el.innerText = nextDriver.name; });
@@ -610,215 +519,46 @@ window.cycleNextDriver = function(forceValidation = false) {
     if (typeof window.broadcast === 'function') window.broadcast();
 };
 
-// עדכון פונקציית היציאה מהפיטס (כדי לספור סטינטים רצופים)
-const originalConfirmPitExit = window.confirmPitExit;
-
 window.confirmPitExit = function() {
-    // 1. שמירת הנהג הנוכחי (לפני ההחלפה) לבדיקת דאבל סטינט בהמשך
     const prevDriverIdx = window.state.currentDriverIdx;
-
-    // === 2. הלוגיקה המקורית (שוחזרה מה-ELSE החסר) ===
     const now = Date.now();
     const pitDuration = now - window.state.pitStart;
     const driveDuration = window.state.pitStart - window.state.stintStart;
 
-    // עצירת טיימר הפיטס וסגירת המודאל
     if (window.pitInterval) clearInterval(window.pitInterval);
-    const pitModal = document.getElementById('pitModal');
-    if (pitModal) pitModal.classList.add('hidden');
+    document.getElementById('pitModal').classList.add('hidden');
     
-    // שמירת נתונים ביומן של הנהג המסיים (זה שיוצא מהרכב)
     if (window.drivers[prevDriverIdx]) {
         const driver = window.drivers[prevDriverIdx];
         if (!driver.logs) driver.logs = [];
-        
         driver.totalTime = (driver.totalTime || 0) + driveDuration;
-        
-        driver.logs.push({
-            drive: driveDuration,
-            pit: pitDuration,
-            timestamp: now
-        });
+        driver.logs.push({ drive: driveDuration, pit: pitDuration, timestamp: now });
         driver.stints = (driver.stints || 0) + 1;
     }
 
-    // ביצוע החלפת הנהג בפועל (בזיכרון)
     window.state.currentDriverIdx = window.state.nextDriverIdx;
-    
-    // קידום הנהג *הבא* בתור (הכנה לסטינט הבא)
     if (typeof window.cycleNextDriver === 'function') window.cycleNextDriver();
 
-    // איפוס מצב מירוץ ליציאה למסלול
     window.state.isInPit = false;
     window.state.stintStart = now;
     window.state.stintOffset = 0;
     window.state.globalStintNumber++;
     
-    // איפוס התאמות זמן פיטס (אם היו)
     if (typeof window.adjustPitTime === 'function') {
         window.adjustPitTime(-window.currentPitAdjustment); 
     }
 
-    // === 3. לוגיקה חדשה: בדיקת דאבל סטינט ועדכון חוליות ===
     const newDriverIdx = window.state.currentDriverIdx;
-
     if (newDriverIdx === prevDriverIdx) {
-        // אם הנהג נשאר אותו דבר -> דאבל סטינט
         window.state.consecutiveStints = (window.state.consecutiveStints || 1) + 1;
-        console.log(`🔄 Double Stint! Count: ${window.state.consecutiveStints}`);
     } else {
-        // נהג התחלף -> איפוס מונה
         window.state.consecutiveStints = 1; 
-        
-        // עדכון חוליה פעילה (אם עובדים עם חוליות)
-        if (window.config.useSquads && window.drivers[newDriverIdx]) {
-            // אם אנחנו לא במצב לילה "נעול" ידנית, עדכן את החוליה לפי הנהג החדש
-            if (!window.state.isNightMode) {
-                window.state.activeSquad = window.drivers[newDriverIdx].squad;
-            }
+        if (window.config.useSquads && window.drivers[newDriverIdx] && !window.state.isNightMode) {
+            window.state.activeSquad = window.drivers[newDriverIdx].squad;
         }
     }
 
-    // 4. שמירה ועדכון תצוגה
     if (typeof window.saveRaceState === 'function') window.saveRaceState();
     if (typeof window.broadcast === 'function') window.broadcast();
     if (typeof window.renderFrame === 'function') window.renderFrame();
-};
-
-// ודא שקוראים לעדכון ה-UI בטעינה
-document.addEventListener('DOMContentLoaded', () => {
-    updateNightModeUI();
-});
-
-// ==========================================
-// 🛠️ HELPERS & PERSISTENCE
-// ==========================================
-
-window.formatTimeHMS = function(ms) {
-    if (ms < 0) ms = 0;
-    const totalSec = Math.floor(ms / 1000);
-    const h = Math.floor(totalSec / 3600);
-    const m = Math.floor((totalSec % 3600) / 60);
-    const s = totalSec % 60;
-    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-};
-
-window.saveHostState = function() {
-    if (window.role === 'host') {
-        window.savedHostConfig = {
-            config: window.config,
-            drivers: window.drivers,
-            state: window.state
-        };
-    }
-};
-
-function attachConfigListeners() {
-    const inputs = document.querySelectorAll('input, select');
-    inputs.forEach(el => {
-        el.addEventListener('change', window.saveHostState);
-    });
-}
-
-// ==========================================
-// 💾 SAVED RACE LOGIC
-// ==========================================
-
-window.saveRaceState = function() {
-    if (window.role !== 'host' || !window.state.isRunning) return;
-    const snapshot = {
-        config: window.config,
-        state: window.state,
-        drivers: window.drivers,
-        timestamp: Date.now()
-    };
-    localStorage.setItem(window.RACE_STATE_KEY, JSON.stringify(snapshot));
-};
-
-window.checkForSavedRace = function() {
-    const savedData = localStorage.getItem(window.RACE_STATE_KEY);
-    if (!savedData) return;
-
-    try {
-        const data = JSON.parse(savedData);
-        if (Date.now() - new Date(data.timestamp).getTime() > 24 * 60 * 60 * 1000) {
-            localStorage.removeItem(window.RACE_STATE_KEY);
-            return;
-        }
-
-        document.getElementById('setupScreen').classList.add('hidden');
-        const modal = document.getElementById('savedRaceModal');
-        if (modal) {
-            modal.classList.remove('hidden');
-            const currentIdx = data.state.currentDriverIdx || 0;
-            const driverName = data.drivers[currentIdx] ? data.drivers[currentIdx].name : 'Unknown';
-            const driverEl = document.getElementById('savedRaceDriver');
-            if(driverEl) driverEl.innerText = driverName;
-            
-            const raceMs = data.config.raceMs || (data.config.duration * 3600000);
-            const elapsed = Date.now() - data.state.startTime;
-            const remaining = Math.max(0, raceMs - elapsed);
-            
-            const timeEl = document.getElementById('savedRaceTime');
-            if (timeEl) timeEl.innerText = window.formatTimeHMS(remaining);
-        }
-    } catch (e) {
-        console.error("Error parsing saved race:", e);
-        localStorage.removeItem(window.RACE_STATE_KEY);
-        document.getElementById('setupScreen').classList.remove('hidden');
-    }
-};
-
-window.continueRace = function() {
-    const savedData = localStorage.getItem(window.RACE_STATE_KEY);
-    if (!savedData) return window.finalDiscardRace();
-
-    try {
-        const data = JSON.parse(savedData);
-        
-        window.state = data.state;
-        window.config = data.config;
-        window.drivers = data.drivers;
-        window.cachedStrategy = data.strategy;
-
-        document.getElementById('savedRaceModal').classList.add('hidden');
-        document.getElementById('raceDashboard').classList.remove('hidden');
-
-        window.state.isRunning = true;
-        
-        if (window.raceInterval) clearInterval(window.raceInterval);
-        window.raceInterval = setInterval(() => {
-            if (typeof window.tick === 'function') window.tick();
-            if (typeof window.broadcast === 'function') window.broadcast();
-            if (typeof window.renderFrame === 'function') window.renderFrame();
-        }, 1000);
-
-        setInterval(window.saveRaceState, 10000);
-        
-        if (typeof window.renderFrame === 'function') window.renderFrame();
-        if (typeof window.updateDriversList === 'function') window.updateDriversList();
-
-        console.log("✅ Race Resumed!");
-
-    } catch (e) {
-        alert("Failed to resume race: " + e.message);
-        window.finalDiscardRace();
-    }
-};
-
-window.confirmDiscardRace = function() {
-    document.getElementById('savedRaceModal').classList.add('hidden');
-    document.getElementById('confirmDiscardModal').classList.remove('hidden');
-};
-
-window.cancelDiscard = function() {
-    document.getElementById('confirmDiscardModal').classList.add('hidden');
-    document.getElementById('savedRaceModal').classList.remove('hidden');
-};
-
-window.finalDiscardRace = function() {
-    localStorage.removeItem(window.RACE_STATE_KEY);
-    document.getElementById('confirmDiscardModal').classList.add('hidden');
-    document.getElementById('savedRaceModal').classList.add('hidden');
-    document.getElementById('setupScreen').classList.remove('hidden');
 };

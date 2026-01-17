@@ -12,9 +12,7 @@ const PEER_CONFIG = {
     }
 };
 
-// --- Role Selection (Logic Only) ---
 window.selectRole = function(r) {
-    // איפוס חיבורים קודמים
     if (window.peer) {
         window.peer.destroy();
         window.peer = null;
@@ -23,9 +21,6 @@ window.selectRole = function(r) {
     window.connections = [];
     window.role = r;
 
-    // כאן הסרנו את כל ה-DOM Manipulations שגרמו לקריסה
-    // הממשק כבר מסודר ב-HTML
-
     if (r === 'host') {
         window.initHostPeer();
     } else {
@@ -33,38 +28,70 @@ window.selectRole = function(r) {
     }
 };
 
-// --- Host Logic ---
+// === Helper: Update Share UI ===
+window.updateShareUI = function() {
+    const shareBtn = document.getElementById('shareRaceBtn');
+    
+    // מציג את הכפתור רק אם יש ID והמשתמש הוא HOST
+    if (window.myId && window.role === 'host') {
+        if (shareBtn) {
+            shareBtn.classList.remove('hidden');
+            shareBtn.innerHTML = '<i class="fas fa-link"></i> <span class="hidden sm:inline">Invite</span>';
+        }
+        
+        const idEl = document.getElementById('myHostId');
+        if (idEl) idEl.innerText = window.myId;
+        
+        const dashIdEl = document.getElementById('dashboardHostId');
+        if (dashIdEl) {
+            dashIdEl.innerText = window.myId;
+            dashIdEl.classList.remove('hidden');
+        }
+    }
+};
+
 window.initHostPeer = function() {
-    // אם כבר קיים, לא ניצור שוב
-    if (window.peer && !window.peer.destroyed) return;
+    // אם כבר קיים חיבור
+    if (window.peer && !window.peer.destroyed) {
+        // === תיקון: עדכון ה-UI גם אם החיבור כבר קיים ===
+        if (window.myId) window.updateShareUI();
+        return;
+    }
 
     try {
-        window.myId = String(Math.floor(1000000 + Math.random() * 9000000));
+        const hasSavedRace = localStorage.getItem('strateger_race_state');
+        let storedId = localStorage.getItem('strateger_host_id');
+        
+        if (!hasSavedRace) {
+            // מירוץ חדש -> ID חדש
+            storedId = String(Math.floor(1000000 + Math.random() * 9000000));
+            localStorage.setItem('strateger_host_id', storedId);
+        } else if (!storedId) {
+            // הגנה
+            storedId = String(Math.floor(1000000 + Math.random() * 9000000));
+            localStorage.setItem('strateger_host_id', storedId);
+        }
+        
+        window.myId = storedId;
         window.peer = new Peer(window.myId, PEER_CONFIG);
         
         window.peer.on('open', (id) => {
-            console.log("Host ID created:", id);
-            
-            // עדכון המזהה הנסתר (להעתקה)
-            const idEl = document.getElementById('myHostId');
-            if (idEl) idEl.innerText = id;
-            
-            // חשיפת כפתור השיתוף (רק כשיש חיבור)
-            const shareBtn = document.getElementById('shareRaceBtn');
-            if (shareBtn) {
-                shareBtn.classList.remove('hidden');
-                shareBtn.innerHTML = '<i class="fas fa-link"></i> <span class="hidden sm:inline">Invite</span>';
-            }
+            console.log("Host ID initialized:", id);
+            window.updateShareUI();
         });
         
         window.peer.on('connection', (c) => {
-            console.log("New Viewer:", c.peer);
             window.connections.push(c);
             window.updateSyncStatus();
             
             c.on('open', () => {
-                if (window.state.isRunning && typeof window.broadcast === 'function') {
+                if (window.state && window.state.isRunning && typeof window.broadcast === 'function') {
                     window.broadcast();
+                }
+                // שליחת היסטוריית צ'אט למצטרף החדש
+                const chatHistory = JSON.parse(localStorage.getItem('strateger_chat_history') || '[]');
+                if(chatHistory.length) {
+                    chatHistory.forEach(msg => c.send(msg));
                 }
             });
             
@@ -72,11 +99,21 @@ window.initHostPeer = function() {
                 window.connections = window.connections.filter(x => x !== c);
                 window.updateSyncStatus();
             });
+
+            c.on('data', (data) => {
+                if (data.type === 'CHAT') {
+                    window.renderChatMessage(data); 
+                    window.broadcast(data); 
+                }
+            });
         });
         
         window.peer.on('error', (err) => {
             console.error("Peer Error:", err);
-            // אפשר להוסיף חיווי ויזואלי עדין אם תרצה
+             if (err.type === 'unavailable-id') {
+                localStorage.removeItem('strateger_host_id');
+                window.initHostPeer(); 
+             }
         });
         
     } catch (e) {
@@ -85,8 +122,8 @@ window.initHostPeer = function() {
 };
 
 window.copyInviteLink = function() {
-    const id = document.getElementById('myHostId').innerText;
-    if (!id || id === '---') return alert("No connection ID yet");
+    const id = window.myId; // שימוש במשתנה ולא ב-DOM
+    if (!id) return alert("No connection ID yet");
     
     const link = `${window.location.origin}${window.location.pathname}?join=${id}`;
     
@@ -123,60 +160,42 @@ window.updateSyncStatus = function() {
     }
 };
 
-// --- Client Logic ---
+// ... (Client Logic נשאר ללא שינוי) ...
 window.initClientPeer = function() {
     return new Promise((resolve) => {
         const clientId = 'viewer_' + Math.random().toString(36).substr(2, 9);
         window.peer = new Peer(clientId, PEER_CONFIG);
-        
-        window.peer.on('open', (id) => {
-            resolve(id);
-        });
-        
-        window.peer.on('error', (err) => console.error("Client Error:", err));
+        window.peer.on('open', (id) => resolve(id));
     });
 };
 
 window.connectToHost = function(hostId) {
     if (!hostId) return;
-    
     const startConn = () => {
         if (window.conn) window.conn.close();
         window.conn = window.peer.connect(hostId, { reliable: true });
-        
         window.conn.on('open', () => {
             console.log("Connected to Host");
             window.conn.send('REQUEST_INIT');
-            
-            // עדכון מסך המתנה
-            const waitScreen = document.getElementById('clientWaitScreen');
-            if (waitScreen) waitScreen.innerHTML = '<div class="text-2xl text-green-400">Connected!</div><div class="text-sm text-gray-500">Loading data...</div>';
+            document.getElementById('clientWaitScreen').innerHTML = '<div class="text-2xl text-green-400">Connected!</div>';
         });
-
         window.conn.on('data', (data) => {
-            // הסתרת מסך המתנה וכניסה לדשבורד
-            const waitScreen = document.getElementById('clientWaitScreen');
-            if (waitScreen) waitScreen.classList.add('hidden');
-            
+            document.getElementById('clientWaitScreen').classList.add('hidden');
             if (data.type === 'UPDATE' || data.type === 'INIT') {
                 if (data.state) window.state = data.state;
                 if (data.config) window.config = data.config;
                 if (data.drivers) window.drivers = data.drivers;
                 if (data.liveData) window.liveData = data.liveData;
                 
-                // הפעלת מצב צפייה
+                window.enforceViewerMode();
                 document.getElementById('setupScreen').classList.add('hidden');
                 document.getElementById('raceDashboard').classList.remove('hidden');
                 if (typeof window.renderFrame === 'function') window.renderFrame();
             }
+            if (data.type === 'CHAT') window.renderChatMessage(data);
         });
-
-        window.conn.on('close', () => {
-            alert("Connection lost");
-            window.location.reload();
-        });
+        window.conn.on('close', () => { alert("Connection lost"); window.location.reload(); });
     };
-
     if (!window.peer || window.peer.destroyed) {
         window.initClientPeer().then(startConn);
     } else {
@@ -184,11 +203,9 @@ window.connectToHost = function(hostId) {
     }
 };
 
-// --- Broadcast ---
-window.broadcast = function() {
+window.broadcast = function(specificPayload = null) {
     if (window.role !== 'host' || !window.peer) return;
-    
-    const payload = {
+    const payload = specificPayload || {
         type: 'UPDATE',
         state: window.state,
         config: window.config,
@@ -196,6 +213,5 @@ window.broadcast = function() {
         liveData: window.liveData,
         timestamp: Date.now()
     };
-    
     window.connections.forEach(c => { if (c.open) c.send(payload); });
 };

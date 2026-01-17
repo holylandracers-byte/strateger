@@ -461,8 +461,6 @@ window.loadStrategyLibrary = function() {
         console.error("Error loading strategies:", e);
         strategies = [];
     }
-
-    // (בעתיד: כאן אפשר להוסיף fetch לשרת אם תרצה לשמור בענן)
     
     window.renderStrategyList(strategies);
 };
@@ -591,4 +589,187 @@ window.deleteStrategy = function(index) {
 window.closeStrategyModal = function() {
     const modal = document.getElementById('strategyModal');
     if (modal) modal.classList.add('hidden');
+};
+
+// ==========================================
+// 🛡️ VIEWER RESTRICTIONS
+// ==========================================
+window.enforceViewerMode = function() {
+    if (window.role !== 'client') return;
+
+    console.log("🔒 Enforcing Viewer Read-Only Mode");
+
+    // רשימת אלמנטים שאסור ל-Viewer לגעת בהם
+    const hideSelectors = [
+        '#btnPush', 
+        '#btnBad', 
+        '#btnResetMode', 
+        '#pitEntryBtn', 
+        '#btnRain', // מזג אוויר
+        '#nextDriverName', // לחיצה להחלפת נהג
+        '.starter-radio', // בחירת נהג התחלתי
+        '#addDriverBtn', // אם קיים
+        'input', // חוסם את כל האינפוטים
+        'select',
+        'button.btn-press' // כפתורי שליטה
+    ];
+
+    hideSelectors.forEach(sel => {
+        document.querySelectorAll(sel).forEach(el => {
+            // לא מסתירים את הצ'אט והלוגין
+            if (el.closest('#chatPanel') || el.closest('#chatToggleBtn') || el.id === 'googleSignInBtn') return;
+            
+            // או שמסתירים לגמרי או שמנטרלים
+            if (el.tagName === 'INPUT' || el.tagName === 'SELECT') {
+                el.disabled = true;
+                el.classList.add('opacity-50', 'cursor-not-allowed');
+            } else {
+                el.classList.add('hidden'); // עדיף להסתיר כדי שלא יבלבל
+            }
+        });
+    });
+
+    // וידוא שהצ'אט זמין
+    document.getElementById('chatToggleBtn').classList.remove('hidden');
+};
+
+// ==========================================
+// 💬 CHAT SYSTEM
+// ==========================================
+window.chatUnread = 0;
+
+// === FIX: Consolidated toggleChat function (removes originalToggleChat dependency) ===
+window.toggleChat = function() {
+    const panel = document.getElementById('chatPanel');
+    const badge = document.getElementById('chatUnreadBadge');
+    const feed = document.getElementById('chatFeed');
+
+    // 1. Load history if empty (First open)
+    if (panel.classList.contains('hidden') && feed.children.length === 0) {
+        try {
+            const history = JSON.parse(localStorage.getItem('strateger_chat_history') || '[]');
+            history.forEach(msg => window.renderChatMessage(msg));
+        } catch(e) { console.error("Error loading chat history:", e); }
+    }
+
+    // 2. Toggle Visibility
+    panel.classList.toggle('hidden');
+
+    // 3. Handle Unread Badge & View State
+    if (!panel.classList.contains('hidden')) {
+        window.chatUnread = 0;
+        if (badge) {
+            badge.innerText = '0';
+            badge.classList.add('hidden');
+        }
+        
+        // If user already entered name, go straight to messages
+        const savedName = localStorage.getItem('strateger_chat_name');
+        if (savedName) {
+            document.getElementById('chatLoginView').classList.add('hidden');
+            document.getElementById('chatMessagesView').classList.remove('hidden');
+            document.getElementById('chatMessagesView').classList.add('flex');
+        }
+    }
+};
+
+window.joinChat = function() {
+    const name = document.getElementById('chatUserName').value.trim();
+    if (!name) return alert("Name required");
+    
+    localStorage.setItem('strateger_chat_name', name);
+    document.getElementById('chatLoginView').classList.add('hidden');
+    document.getElementById('chatMessagesView').classList.remove('hidden');
+    document.getElementById('chatMessagesView').classList.add('flex');
+};
+
+window.sendChatMessage = function() {
+    const input = document.getElementById('chatInput');
+    const text = input.value.trim();
+    const name = localStorage.getItem('strateger_chat_name') || 'Viewer';
+    
+    if (!text) return;
+
+    const msgData = {
+        type: 'CHAT',
+        sender: name,
+        text: text,
+        role: window.role, // 'host' or 'client'
+        timestamp: Date.now()
+    };
+
+    // 1. שליחה לרשת
+    if (window.role === 'host') {
+        window.broadcast(msgData); // Host מפיץ לכולם
+    } else {
+        if (window.conn && window.conn.open) {
+            window.conn.send(msgData); // Client שולח ל-Host
+        }
+    }
+
+    // 2. הצגה מקומית
+    window.renderChatMessage(msgData);
+    input.value = '';
+};
+
+window.renderChatMessage = function(msg) {
+    const feed = document.getElementById('chatFeed');
+    
+    // Prevent duplicate rendering if reloading history
+    const lastMsg = feed.lastElementChild;
+    if (lastMsg && lastMsg.dataset.ts == msg.timestamp && lastMsg.innerText.includes(msg.text)) {
+        return;
+    }
+
+    const div = document.createElement('div');
+    div.dataset.ts = msg.timestamp; 
+    
+    const isMe = msg.sender === (localStorage.getItem('strateger_chat_name') || 'Viewer');
+    const isHost = msg.role === 'host';
+    
+    let bgClass = 'bg-navy-800';
+    let alignClass = 'items-start';
+    
+    if (isHost) {
+        bgClass = 'bg-red-900/40 border border-red-500/30';
+    } else if (isMe) {
+        bgClass = 'bg-blue-900/40 border border-blue-500/30';
+        alignClass = 'items-end';
+    }
+
+    div.className = `flex flex-col ${alignClass} mb-2`;
+    div.innerHTML = `
+        <div class="${bgClass} p-2 rounded-lg max-w-[90%]">
+            <div class="flex justify-between items-baseline gap-2 mb-1">
+                <span class="font-bold ${isHost ? 'text-red-400' : 'text-ice'} text-[10px]">
+                    ${isHost ? '👑 ' : ''}${msg.sender}
+                </span>
+                <span class="text-[9px] text-gray-500">${new Date(msg.timestamp).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span>
+            </div>
+            <div class="text-white break-words">${msg.text}</div>
+        </div>
+    `;
+    
+    feed.appendChild(div);
+    feed.scrollTop = feed.scrollHeight;
+
+    // --- Save to LocalStorage ---
+    try {
+        let history = JSON.parse(localStorage.getItem('strateger_chat_history') || '[]');
+        const exists = history.some(m => m.timestamp === msg.timestamp && m.text === msg.text);
+        if (!exists) {
+            history.push(msg);
+            if (history.length > 50) history.shift(); 
+            localStorage.setItem('strateger_chat_history', JSON.stringify(history));
+        }
+    } catch(e) { console.error("Chat save error", e); }
+
+    // Unread badge logic
+    const panel = document.getElementById('chatPanel');
+    if (panel.classList.contains('hidden')) {
+        window.chatUnread++;
+        const badge = document.getElementById('chatUnreadBadge');
+        badge.innerText = window.chatUnread;
+        badge.classList.remove('hidden');
+    }
 };
