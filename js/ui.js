@@ -411,57 +411,102 @@ window.closeSaveStrategyModal = function() {
     if (modal) modal.classList.add('hidden');
 };
 
-// ביצוע השמירה בפועל (ל-LocalStorage)
-window.performStrategySave = function() {
+// החלף את הפונקציה performStrategySave ב-js/ui.js בקוד הזה:
+window.performStrategySave = async function() {
     const name = document.getElementById('saveStrategyName').value || 'Untitled';
     const visibility = document.querySelector('input[name="strategyVisibility"]:checked')?.value || 'private';
     
     if (!window.cachedStrategy) return alert("No strategy generated yet!");
 
-    const strategyData = {
-        id: Date.now().toString(),
+    // הכנת הנתונים לשליחה לשרת
+    const payload = {
         name: name,
-        type: visibility,
-        config: window.config, // ההגדרות שיצרו את האסטרטגיה
-        drivers: window.drivers, // הנהגים
-        timeline: window.cachedStrategy.timeline, // התוצאה
-        timestamp: new Date().toISOString()
+        isPublic: visibility === 'public',
+        config: window.config,
+        drivers: window.drivers,
+        timeline: window.cachedStrategy.timeline,
+        driverSchedule: window.previewData.driverSchedule, // חשוב לתצוגה
+        userId: window.myId || 'anonymous', // מזהה משתמש אם קיים
+        deviceId: localStorage.getItem('strateger_host_id') // מזהה מכשיר
     };
 
-    // שליפה, הוספה ושמירה מחדש ל-LocalStorage
+    const btn = document.querySelector('#saveStrategyModal button.bg-ice');
+    const originalText = btn ? btn.innerText : 'Save';
+    if (btn) { btn.innerText = "Saving..."; btn.disabled = true; }
+
     try {
-        const saved = JSON.parse(localStorage.getItem('strateger_strategies') || '[]');
-        saved.push(strategyData);
-        localStorage.setItem('strateger_strategies', JSON.stringify(saved));
+        // שליחה לקובץ save-strategy.js דרך השרת
+        const response = await fetch('/.netlify/functions/save-strategy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        const result = await response.json();
+
+        if (!result.success) {
+            throw new Error(result.error || 'Server error');
+        }
         
-        alert(window.t('strategySaved') || 'Strategy Saved Successfully!');
+        alert("Strategy Saved to Cloud Database! ☁️");
         window.closeSaveStrategyModal();
+
     } catch (e) {
         console.error("Save failed:", e);
-        alert("Save failed: " + e.message);
+        alert("Cloud Save Failed: " + e.message);
+        
+        // אופציונלי: גיבוי ל-LocalStorage אם השרת נכשל
+        // const saved = JSON.parse(localStorage.getItem('strateger_strategies') || '[]');
+        // saved.push(payload);
+        // localStorage.setItem('strateger_strategies', JSON.stringify(saved));
+    } finally {
+        if (btn) { btn.innerText = originalText; btn.disabled = false; }
     }
 };
 
 // ==========================================
-// 📚 STRATEGY LIBRARY (Load & Manage)
+// 📚 STRATEGY LIBRARY (DB Loaded)
 // ==========================================
 
-window.loadStrategyLibrary = function() {
+window.loadStrategyLibrary = async function() {
     const modal = document.getElementById('strategyModal');
     const list = document.getElementById('strategyList');
     
     if (modal) modal.classList.remove('hidden');
-    if (list) list.innerHTML = '<div class="text-center text-gray-500 p-4">Loading...</div>';
+    if (list) list.innerHTML = '<div class="text-center text-gray-500 p-4">Loading strategies from Cloud... <span class="animate-spin inline-block">⏳</span></div>';
 
-    // 1. שליפה מ-LocalStorage
     let strategies = [];
+
+    // 1. נסה לטעון מהשרת (DB)
     try {
-        strategies = JSON.parse(localStorage.getItem('strateger_strategies') || '[]');
+        const userId = window.myId || 'anonymous'; // שליחת מזהה המשתמש
+        // וודא שקובץ get-strategies.js קיים ב-netlify/functions
+        const response = await fetch(`/.netlify/functions/get-strategies?userId=${userId}`); 
+        const result = await response.json();
+
+        if (result.success && Array.isArray(result.strategies)) {
+            strategies = result.strategies;
+            console.log("Loaded from Cloud:", strategies.length);
+        } else {
+            console.warn("Cloud load returned empty or error, falling back to local.");
+            throw new Error(result.error || "Unknown error");
+        }
+
     } catch (e) {
-        console.error("Error loading strategies:", e);
-        strategies = [];
+        console.error("Could not load from DB:", e);
+        
+        // 2. במקרה של שגיאה או אם אין אינטרנט - טען מה-LocalStorage
+        if (list) list.innerHTML = '<div class="text-center text-yellow-500 p-2 text-xs">Offline / DB Error - Showing Local Files</div>';
+        try {
+            const localData = JSON.parse(localStorage.getItem('strateger_strategies') || '[]');
+            // אופציונלי: אפשר למזג את הרשימות אם רוצים
+            strategies = localData; 
+        } catch (localErr) {
+            console.error("Local load error:", localErr);
+        }
     }
     
+    // שליחה לפונקציית הרינדור (אין צורך לשנות אותה, היא יודעת להציג רשימה)
     window.renderStrategyList(strategies);
 };
 

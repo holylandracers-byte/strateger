@@ -256,6 +256,31 @@ window.renderFrame = function() {
             const minStintMs = (window.config.minStint * 60000) || 0;
             const targetMs = window.state.targetStintMs || maxStintMs;
 
+            // === ⬇️ התיקון מתחיל כאן: עדכון תצוגת יעד ודלתא ⬇️ ===
+            const targetEl = document.getElementById('strategyTargetStint');
+            if (targetEl) {
+                let tStr = window.formatTimeHMS(targetMs);
+                // מסיר את השעות (00:) אם הן 0, לתצוגה נקייה יותר
+                if (tStr.startsWith("00:")) tStr = tStr.substring(3);
+                targetEl.innerText = tStr;
+            }
+
+            const deltaEl = document.getElementById('strategyDelta');
+            if (deltaEl) {
+                const diff = currentStintTime - targetMs;
+                const sign = diff >= 0 ? '+' : '-';
+                const absDiff = Math.abs(diff);
+                const dm = Math.floor(absDiff / 60000);
+                const ds = Math.floor((absDiff % 60000) / 1000);
+                
+                deltaEl.innerText = `${sign}${dm}:${ds.toString().padStart(2, '0')}`;
+                
+                // צבעים: אדום אם חרגנו מהיעד, ירוק אם אנחנו מתחתיו
+                if (diff > 0) deltaEl.className = "text-sm font-bold text-red-500 animate-pulse";
+                else deltaEl.className = "text-sm font-bold text-green-500";
+            }
+            // === ⬆️ סוף התיקון ⬆️ ===
+
             const currentPct = Math.min(100, (currentStintTime / maxStintMs) * 100);
             const minPct = Math.min(100, (minStintMs / maxStintMs) * 100);
             const targetPct = Math.min(100, (targetMs / maxStintMs) * 100);
@@ -307,39 +332,144 @@ function updateRemainingStrategyLogic(raceRemainingMs) {
     if (!panel || window.role !== 'host') return;
     panel.classList.remove('hidden');
 
-    const maxStintMs = (window.config.maxStintMs) || 60 * 60000;
-    const minStintMs = (window.config.minStintMs) || 15 * 60000;
-    const pitTimeMs = (window.config.minPitSec || 60) * 1000;
+    // קריאת הגדרות - המרה למספרים למניעת שגיאות
+    const maxStintVal = parseFloat(window.config.maxStint) || 60;
+    const minStintVal = parseFloat(window.config.minStint) || 15; // הערך שהגדרת (למשל 30)
     
+    const maxStintMs = maxStintVal * 60000;
+    const minStintMs = minStintVal * 60000;
+    const pitTimeMs = (parseFloat(window.config.minPitSec) || 60) * 1000;
+    
+    // חישוב סטינטים עתידיים
     const stopsDone = window.state.pitCount;
-    const totalStops = window.config.reqStops || 0;
-    const stopsLeft = Math.max(0, totalStops - stopsDone);
+    const totalStopsRequired = parseInt(window.config.reqStops) || 0;
+    const futureStints = Math.max(0, totalStopsRequired - stopsDone);
     
-    const futurePitTimeLoss = stopsLeft * pitTimeMs;
-    const netDriveTimeLeft = raceRemainingMs - futurePitTimeLoss;
+    // חישוב זמן נטו שנשאר לנהיגה בעתיד
+    const now = Date.now();
+    const currentStintElapsed = (now - window.state.stintStart) + (window.state.stintOffset || 0);
+    const targetStintMs = window.state.targetStintMs || maxStintMs;
+    // הזמן שנשאר לנהוג בסטינט הנוכחי עד ליעד שלו
+    const timeToFinishCurrent = Math.max(0, targetStintMs - currentStintElapsed);
     
-    if (netDriveTimeLeft <= 0) {
+    const futurePitTimeLoss = futureStints * pitTimeMs;
+    // ה"בריכה" של הזמן שנשאר לחלק בין הסטינטים העתידיים
+    const futurePoolMs = raceRemainingMs - timeToFinishCurrent - futurePitTimeLoss;
+
+    if (raceRemainingMs <= 0) {
         textField.innerText = t('finalLap');
         return;
     }
 
-    const maxStintsCount = netDriveTimeLeft / maxStintMs;
-    const fullMaxStints = Math.floor(maxStintsCount);
-    const remainderMs = netDriveTimeLeft - (fullMaxStints * maxStintMs);
-    
-    let text = "";
-    if (fullMaxStints > 0) {
-        text += `${fullMaxStints}x <span class="text-neon">MAX</span> `;
+    // אם אין יותר עצירות (אנחנו בסטינט האחרון)
+    if (futureStints === 0) {
+        textField.innerHTML = `<span class="text-ice font-bold">${t('finalLap')} / ${t('rest')}</span>`;
+        timeField.innerText = window.formatTimeHMS(raceRemainingMs);
+        return;
     }
-    if (remainderMs > 0) {
-        const remMin = Math.ceil(remainderMs / 60000);
-        const color = remainderMs < minStintMs ? "text-red-400" : "text-yellow-400";
-        text += `+ <span class="${color}">${remMin}m</span>`;
+
+    // --- חישוב החלוקה ---
+    const minTotalTime = futureStints * minStintMs;
+    const maxTotalTime = futureStints * maxStintMs;
+    const bufferMs = futurePoolMs - minTotalTime;
+    const bufferMin = Math.floor(bufferMs / 60000);
+
+    let html = "";
+
+    // כותרת קטנה: כמה סטינטים נשארו
+    html += `<div class="text-[10px] text-gray-400 mb-1 border-b border-gray-700 pb-1">
+                ${t('future')}: <span class="text-white font-bold">${futureStints} ${t('stopsHeader')}</span>
+             </div>`;
+
+    if (bufferMs < 0) {
+        // המצב שתיארת: גם אם ניסע מינימום בכל הסטינטים, חסר זמן!
+        const missingMin = Math.abs(Math.ceil(bufferMs / 60000));
+        html += `<span class="text-red-500 font-bold animate-pulse">${t('impossible')} (-${missingMin}m)</span>`;
+    } 
+    else if (futurePoolMs > maxTotalTime) {
+        // נשאר יותר מדי זמן -> חייבים להוסיף עצירה
+        const extraMin = Math.ceil((futurePoolMs - maxTotalTime) / 60000);
+        html += `<span class="text-red-500 font-bold">${t('addStop')} (+${extraMin}m)</span>`;
+    } 
+    else {
+        // חישוב אופטימלי (Greedy): כמה שיותר MAX, והשארית בסוף
+        const fullMaxStints = Math.floor(futurePoolMs / maxStintMs);
+        const greedyCount = Math.min(futureStints - 1, fullMaxStints);
+        
+        const timeUsedByMax = greedyCount * maxStintMs;
+        const remainingTime = futurePoolMs - timeUsedByMax;
+        
+        const restStintsCount = futureStints - greedyCount;
+        const avgRestMin = Math.floor((remainingTime / restStintsCount) / 60000);
+
+        // הצגת סטינטים של MAX
+        if (greedyCount > 0) {
+            html += `${greedyCount}x <span class="text-neon font-bold">${t('max')}</span> `;
+        }
+        
+        // הצגת השארית (REST)
+        if (restStintsCount > 0) {
+            let color = "text-white";
+            let note = `(${t('rest')})`;
+            
+            // בדיקה קריטית: האם השארית קטנה מהמינימום המותר?
+            if (avgRestMin < minStintVal) {
+                color = "text-red-500 animate-pulse font-bold";
+                // מציג בבירור שזה קצר מדי ומה המינימום הנדרש
+                note = `(< ${minStintVal}m!)`; 
+            }
+            else if (avgRestMin > (maxStintVal - 5)) {
+                color = "text-neon"; 
+            }
+            else {
+                color = "text-yellow-400"; 
+            }
+
+            html += `+ ${restStintsCount}x <span class="${color} font-bold">${avgRestMin}m ${note}</span>`;
+        }
+
+        // שורת ה-Buffer (כמה "ספייר" יש מעל המינימום)
+        html += `<div class="text-[9px] text-gray-500 mt-1">
+                    ${t('buffer')}: ${bufferMin}m
+                 </div>`;
     }
     
-    textField.innerHTML = text || t('calculating');
+    textField.innerHTML = html;
     timeField.innerText = window.formatTimeHMS(raceRemainingMs);
 }
+
+window.updatePitModalLogic = function() {
+    const now = Date.now();
+    const elapsedSec = (now - window.state.pitStart) / 1000;
+    const basePitTime = parseInt(window.config.minPitTime || window.config.pitTime) || 0;
+    const totalRequiredTime = Math.max(0, basePitTime + window.currentPitAdjustment); 
+    const buffer = parseInt(document.getElementById('releaseBuffer')?.value) || 5;
+    const timeRemaining = totalRequiredTime - elapsedSec;
+    const t = window.t || ((k) => k); // פונקציית התרגום
+
+    const timerDisplay = document.getElementById('pitTimerDisplay');
+    if (timerDisplay) timerDisplay.innerText = Math.max(0, timeRemaining).toFixed(1);
+
+    const releaseBtn = document.getElementById('confirmExitBtn');
+    if (!releaseBtn) return;
+
+    if (timeRemaining > buffer) {
+        if (timerDisplay) timerDisplay.className = "text-6xl font-bold font-mono text-red-500";
+        releaseBtn.innerText = t('wait'); // תרגום: "המתן..."
+        releaseBtn.disabled = true;
+        releaseBtn.className = "w-full max-w-xs bg-gray-800 text-gray-500 font-bold py-4 rounded-lg text-2xl border border-gray-700 cursor-not-allowed";
+    } else if (timeRemaining <= buffer && timeRemaining > 0) {
+        if (timerDisplay) timerDisplay.className = "text-6xl font-bold font-mono text-yellow-400 animate-pulse";
+        releaseBtn.innerText = t('getReady'); // תרגום: "היכון..."
+        releaseBtn.disabled = false;
+        releaseBtn.className = "w-full max-w-xs bg-yellow-600 hover:bg-yellow-500 text-black font-bold py-4 rounded-lg text-2xl border border-yellow-400 animate-pulse cursor-pointer";
+    } else {
+        if (timerDisplay) timerDisplay.className = "text-6xl font-bold font-mono text-green-500";
+        releaseBtn.innerText = t('go'); // תרגום: "סע!"
+        releaseBtn.disabled = false;
+        releaseBtn.className = "w-full max-w-xs bg-green-600 hover:bg-green-500 text-white font-bold py-4 rounded-lg text-3xl border border-green-400 shadow-[0_0_20px_rgba(34,197,94,0.6)] cursor-pointer";
+    }
+};
 
 // ==========================================
 // 🛑 PIT STOP LOGIC
@@ -424,38 +554,6 @@ window.confirmPitEntry = function() {
     
     if (typeof window.broadcast === 'function') window.broadcast();
     window.renderFrame();
-};
-
-window.updatePitModalLogic = function() {
-    const now = Date.now();
-    const elapsedSec = (now - window.state.pitStart) / 1000;
-    const basePitTime = parseInt(window.config.minPitTime || window.config.pitTime) || 0;
-    const totalRequiredTime = Math.max(0, basePitTime + window.currentPitAdjustment); 
-    const buffer = parseInt(document.getElementById('releaseBuffer')?.value) || 5;
-    const timeRemaining = totalRequiredTime - elapsedSec;
-
-    const timerDisplay = document.getElementById('pitTimerDisplay');
-    if (timerDisplay) timerDisplay.innerText = Math.max(0, timeRemaining).toFixed(1);
-
-    const releaseBtn = document.getElementById('confirmExitBtn');
-    if (!releaseBtn) return;
-
-    if (timeRemaining > buffer) {
-        if (timerDisplay) timerDisplay.className = "text-6xl font-bold font-mono text-red-500";
-        releaseBtn.innerText = "WAIT";
-        releaseBtn.disabled = true;
-        releaseBtn.className = "w-full max-w-xs bg-gray-800 text-gray-500 font-bold py-4 rounded-lg text-2xl border border-gray-700 cursor-not-allowed";
-    } else if (timeRemaining <= buffer && timeRemaining > 0) {
-        if (timerDisplay) timerDisplay.className = "text-6xl font-bold font-mono text-yellow-400 animate-pulse";
-        releaseBtn.innerText = "GET READY";
-        releaseBtn.disabled = false;
-        releaseBtn.className = "w-full max-w-xs bg-yellow-600 hover:bg-yellow-500 text-black font-bold py-4 rounded-lg text-2xl border border-yellow-400 animate-pulse cursor-pointer";
-    } else {
-        if (timerDisplay) timerDisplay.className = "text-6xl font-bold font-mono text-green-500";
-        releaseBtn.innerText = "GO! GO! GO!";
-        releaseBtn.disabled = false;
-        releaseBtn.className = "w-full max-w-xs bg-green-600 hover:bg-green-500 text-white font-bold py-4 rounded-lg text-3xl border border-green-400 shadow-[0_0_20px_rgba(34,197,94,0.6)] cursor-pointer";
-    }
 };
 
 window.cancelPitStop = function() {

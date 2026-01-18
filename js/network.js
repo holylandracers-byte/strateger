@@ -29,6 +29,7 @@ window.selectRole = function(r) {
 };
 
 // === Helper: Update Share UI ===
+// זה מופיע כאן כי זה קשור ישירות לסטטוס הרשת
 window.updateShareUI = function() {
     const shareBtn = document.getElementById('shareRaceBtn');
     
@@ -53,7 +54,6 @@ window.updateShareUI = function() {
 window.initHostPeer = function() {
     // אם כבר קיים חיבור
     if (window.peer && !window.peer.destroyed) {
-        // === תיקון: עדכון ה-UI גם אם החיבור כבר קיים ===
         if (window.myId) window.updateShareUI();
         return;
     }
@@ -62,12 +62,12 @@ window.initHostPeer = function() {
         const hasSavedRace = localStorage.getItem('strateger_race_state');
         let storedId = localStorage.getItem('strateger_host_id');
         
+        // יצירת ID חדש אם אין מירוץ שמור
         if (!hasSavedRace) {
-            // מירוץ חדש -> ID חדש
             storedId = String(Math.floor(1000000 + Math.random() * 9000000));
             localStorage.setItem('strateger_host_id', storedId);
+            console.log("🆕 New Race Setup: Generated New Host ID");
         } else if (!storedId) {
-            // הגנה
             storedId = String(Math.floor(1000000 + Math.random() * 9000000));
             localStorage.setItem('strateger_host_id', storedId);
         }
@@ -88,7 +88,6 @@ window.initHostPeer = function() {
                 if (window.state && window.state.isRunning && typeof window.broadcast === 'function') {
                     window.broadcast();
                 }
-                // שליחת היסטוריית צ'אט למצטרף החדש
                 const chatHistory = JSON.parse(localStorage.getItem('strateger_chat_history') || '[]');
                 if(chatHistory.length) {
                     chatHistory.forEach(msg => c.send(msg));
@@ -122,7 +121,7 @@ window.initHostPeer = function() {
 };
 
 window.copyInviteLink = function() {
-    const id = window.myId; // שימוש במשתנה ולא ב-DOM
+    const id = window.myId; 
     if (!id) return alert("No connection ID yet");
     
     const link = `${window.location.origin}${window.location.pathname}?join=${id}`;
@@ -160,7 +159,7 @@ window.updateSyncStatus = function() {
     }
 };
 
-// ... (Client Logic נשאר ללא שינוי) ...
+// --- Client Logic ---
 window.initClientPeer = function() {
     return new Promise((resolve) => {
         const clientId = 'viewer_' + Math.random().toString(36).substr(2, 9);
