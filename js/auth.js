@@ -268,7 +268,24 @@ window.showCalendarModal = function() {
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('calendarDate').value = today;
     document.getElementById('calendarTime').value = '09:00';
+    document.getElementById('calendarUseRange').checked = false;
+    document.getElementById('calendarEndDateContainer').classList.add('hidden');
     document.getElementById('calendarModal').classList.remove('hidden');
+};
+
+window.toggleCalendarRange = function() {
+    const useRange = document.getElementById('calendarUseRange').checked;
+    const endContainer = document.getElementById('calendarEndDateContainer');
+    if (useRange) {
+        endContainer.classList.remove('hidden');
+        const startDate = document.getElementById('calendarDate').value;
+        if (startDate) {
+            document.getElementById('calendarEndDate').value = startDate;
+        }
+        document.getElementById('calendarEndTime').value = '18:00';
+    } else {
+        endContainer.classList.add('hidden');
+    }
 };
 
 window.closeCalendarModal = function() {
@@ -327,17 +344,29 @@ window.createCalendarEvent = async function() {
     const date = document.getElementById('calendarDate').value;
     const time = document.getElementById('calendarTime').value;
     const location = document.getElementById('calendarLocation').value;
+    const useRange = document.getElementById('calendarUseRange').checked;
     
     if (!title || !date || !time) return alert('Missing required fields');
     
     const startDateTime = new Date(`${date}T${time}`);
-    const raceDur = parseFloat(document.getElementById('raceDuration')?.value || 12);
-    const endDateTime = new Date(startDateTime.getTime() + raceDur * 60 * 60 * 1000);
+    let endDateTime;
+    
+    if (useRange) {
+        const endDate = document.getElementById('calendarEndDate').value;
+        const endTime = document.getElementById('calendarEndTime').value;
+        if (!endDate || !endTime) return alert('Please fill in end date and time for date range');
+        endDateTime = new Date(`${endDate}T${endTime}`);
+        if (endDateTime <= startDateTime) return alert('End date/time must be after start date/time');
+    } else {
+        // Single day event - use race duration or default to same day end
+        const raceDur = parseFloat(document.getElementById('raceDuration')?.value || 12);
+        endDateTime = new Date(startDateTime.getTime() + raceDur * 60 * 60 * 1000);
+    }
     
     const event = {
         summary: title,
         location: location,
-        description: 'Race event managed by Strateger',
+        description: 'Race event managed by Strateger' + (useRange ? ' (Date Range)' : ''),
         start: { dateTime: startDateTime.toISOString() },
         end: { dateTime: endDateTime.toISOString() }
     };

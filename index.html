@@ -472,9 +472,9 @@
                     <div class="flex items-center gap-2 bg-navy-950 p-1.5 rounded border border-gray-700">
                         <span class="text-[9px] text-gray-500 uppercase font-bold px-1" data-i18n="penalty">Penalty</span>
                         <div class="flex gap-1">
-                            <button onclick="window.adjustPitTime(-5)" class="bg-green-900/30 hover:bg-green-800 text-green-400 border border-green-600/30 px-2 py-1 rounded text-xs font-bold transition">-5</button>
-                            <button onclick="window.adjustPitTime(5)" class="bg-red-900/30 hover:bg-red-800 text-red-400 border border-red-600/30 px-2 py-1 rounded text-xs font-bold transition">+5</button>
-                            <button onclick="window.adjustPitTime(10)" class="bg-red-900/30 hover:bg-red-800 text-red-400 border border-red-600/30 px-2 py-1 rounded text-xs font-bold transition">+10</button>
+                            <button id="penaltyBtnMinus5" onclick="window.adjustPitTime(-5)" class="penalty-btn bg-green-900/30 hover:bg-green-800 text-green-400 border border-green-600/30 px-2 py-1 rounded text-xs font-bold transition">-5</button>
+                            <button id="penaltyBtnPlus5" onclick="window.adjustPitTime(5)" class="penalty-btn bg-red-900/30 hover:bg-red-800 text-red-400 border border-red-600/30 px-2 py-1 rounded text-xs font-bold transition">+5</button>
+                            <button id="penaltyBtnPlus10" onclick="window.adjustPitTime(10)" class="penalty-btn bg-red-900/30 hover:bg-red-800 text-red-400 border border-red-600/30 px-2 py-1 rounded text-xs font-bold transition">+10</button>
                         </div>
                         <div id="dashboardPitAdjDisplay" class="bg-black/30 px-2 py-1 rounded text-ice font-mono font-bold text-xs min-w-[30px] text-center">0</div>
                     </div>
@@ -529,8 +529,26 @@
         <div class="bg-navy-900 border border-gray-700 p-4 rounded w-full max-w-md">
             <h3 class="text-neon font-bold mb-2">Add to Calendar</h3>
             <input type="text" id="calendarTitle" placeholder="Title" class="input-field mb-2">
-            <input type="date" id="calendarDate" class="input-field mb-2">
-            <input type="time" id="calendarTime" class="input-field mb-2">
+            <div class="mb-2">
+                <label class="text-xs text-gray-400 mb-1 block">Start</label>
+                <div class="flex gap-2">
+                    <input type="date" id="calendarDate" class="input-field flex-1">
+                    <input type="time" id="calendarTime" class="input-field flex-1">
+                </div>
+            </div>
+            <div class="mb-2">
+                <label class="text-xs text-gray-400 mb-1 flex items-center gap-2">
+                    <input type="checkbox" id="calendarUseRange" onchange="window.toggleCalendarRange()" class="rounded">
+                    <span>Date Range (e.g., vacation/trip)</span>
+                </label>
+                <div id="calendarEndDateContainer" class="hidden mt-1">
+                    <label class="text-xs text-gray-400 mb-1 block">End</label>
+                    <div class="flex gap-2">
+                        <input type="date" id="calendarEndDate" class="input-field flex-1">
+                        <input type="time" id="calendarEndTime" class="input-field flex-1">
+                    </div>
+                </div>
+            </div>
             <input type="text" id="calendarLocation" placeholder="Location" class="input-field mb-2">
             <div class="flex gap-2">
                 <button onclick="window.createCalendarEvent()" class="flex-1 bg-neon text-navy-950 font-bold py-2 rounded">Create</button>

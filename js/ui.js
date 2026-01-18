@@ -479,13 +479,31 @@ window.loadStrategyLibrary = async function() {
 
     // 1. נסה לטעון מהשרת (DB)
     try {
-        const userId = window.myId || 'anonymous'; // שליחת מזהה המשתמש
-        // וודא שקובץ get-strategies.js קיים ב-netlify/functions
-        const response = await fetch(`/.netlify/functions/get-strategies?userId=${userId}`); 
+        const deviceId = localStorage.getItem('strateger_host_id') || '';
+        const response = await fetch(`/.netlify/functions/get-strategies?deviceId=${deviceId}`); 
         const result = await response.json();
 
         if (result.success && Array.isArray(result.strategies)) {
-            strategies = result.strategies;
+            // המרת הנתונים מהפורמט של DB לפורמט המקומי
+            strategies = result.strategies.map(s => ({
+                name: s.name,
+                config: s.config || {
+                    duration: (s.race_duration_ms || 0) / 3600000,
+                    reqStops: s.required_stops || 0,
+                    minStint: s.config?.minStint || 0,
+                    maxStint: s.config?.maxStint || 0,
+                    pitTime: s.config?.pitTime || 0,
+                    allowDouble: s.config?.allowDouble || false,
+                    useSquads: s.config?.useSquads || false,
+                    ...s.config
+                },
+                drivers: s.drivers || [],
+                timeline: s.timeline || [],
+                driverSchedule: s.driver_schedule || [],
+                timestamp: s.created_at || new Date().toISOString(),
+                type: s.is_public ? 'public' : 'private',
+                id: s.id
+            }));
             console.log("Loaded from Cloud:", strategies.length);
         } else {
             console.warn("Cloud load returned empty or error, falling back to local.");
@@ -499,14 +517,16 @@ window.loadStrategyLibrary = async function() {
         if (list) list.innerHTML = '<div class="text-center text-yellow-500 p-2 text-xs">Offline / DB Error - Showing Local Files</div>';
         try {
             const localData = JSON.parse(localStorage.getItem('strateger_strategies') || '[]');
-            // אופציונלי: אפשר למזג את הרשימות אם רוצים
             strategies = localData; 
         } catch (localErr) {
             console.error("Local load error:", localErr);
         }
     }
     
-    // שליחה לפונקציית הרינדור (אין צורך לשנות אותה, היא יודעת להציג רשימה)
+    // שמירת האסטרטגיות במשתנה גלובלי לשימוש ב-applyStrategy
+    window.currentStrategies = strategies;
+    
+    // שליחה לפונקציית הרינדור
     window.renderStrategyList(strategies);
 };
 
@@ -549,33 +569,40 @@ window.renderStrategyList = function(strategies) {
 
 window.applyStrategy = function(index) {
     try {
-        const strategies = JSON.parse(localStorage.getItem('strateger_strategies') || '[]');
+        // שימוש באסטרטגיות שנטענו (מהשרת או מ-localStorage)
+        const strategies = window.currentStrategies || JSON.parse(localStorage.getItem('strateger_strategies') || '[]');
         const strategy = strategies[index];
         
-        if (!strategy) return;
+        if (!strategy) {
+            alert("Strategy not found!");
+            return;
+        }
 
-        // 1. שחזור נתונים לזיכרון
-        window.config = strategy.config;
-        window.drivers = strategy.drivers;
+        console.log("Loading strategy:", strategy.name, strategy);
+
+        // 1. שחזור נתונים לזיכרון - כולל כל הנתונים שנשמרו
+        window.config = strategy.config || {};
+        window.drivers = strategy.drivers || [];
+        
+        // שחזור ה-timeline המלא
         window.cachedStrategy = { 
-            timeline: strategy.timeline,
-            // שחזור מבנה ה-SimResult אם חסר
-            driverStats: [], 
-            config: strategy.config 
+            timeline: strategy.timeline || [],
+            driverStats: strategy.driverStats || [], 
+            config: strategy.config || {}
         };
         
-        // בניית נתונים לתצוגה מקדימה
+        // בניית נתונים לתצוגה מקדימה - שימוש ב-driverSchedule שנשמר אם קיים
         window.previewData = {
-            timeline: strategy.timeline,
-            driverSchedule: [], // יחושב מחדש ע"י recalculateDriverStatsFromTimeline
+            timeline: strategy.timeline || [],
+            driverSchedule: strategy.driverSchedule || [], // שימוש ב-driverSchedule שנשמר
             startTime: new Date() // מתאפס לזמן הנוכחי
         };
         
-        // 2. עדכון ה-UI (אינפוטים)
+        // 2. עדכון ה-UI (אינפוטים) - כל השדות
         if (strategy.config) {
             const setVal = (id, val) => { 
                 const el = document.getElementById(id); 
-                if (el) el.value = val; 
+                if (el && val !== undefined && val !== null) el.value = val; 
             };
             
             setVal('raceDuration', strategy.config.duration);
@@ -583,6 +610,12 @@ window.applyStrategy = function(index) {
             setVal('minStint', strategy.config.minStint);
             setVal('maxStint', strategy.config.maxStint);
             setVal('minPitTime', strategy.config.pitTime);
+            setVal('releaseBuffer', strategy.config.buffer);
+            setVal('closedStart', strategy.config.closedStart);
+            setVal('closedEnd', strategy.config.closedEnd);
+            setVal('minDriverTotal', strategy.config.minDriverTotal);
+            setVal('maxDriverTotal', strategy.config.maxDriverTotal);
+            setVal('fuelTime', strategy.config.fuel);
             
             // עדכון צ'קבוקסים
             const setCheck = (id, val) => {
@@ -597,14 +630,23 @@ window.applyStrategy = function(index) {
         const driversList = document.getElementById('driversList');
         if (driversList) {
             driversList.innerHTML = ''; // ניקוי
-            strategy.drivers.forEach((d, i) => {
-                // שימוש בפונקציה הקיימת ליצירת שדה
-                window.createDriverInput(d.name, d.isStarter, d.squad);
-            });
+            if (strategy.drivers && strategy.drivers.length > 0) {
+                strategy.drivers.forEach((d, i) => {
+                    // שימוש בפונקציה הקיימת ליצירת שדה
+                    window.createDriverInput(d.name, d.isStarter, d.squad);
+                });
+            }
         }
 
-        // 4. חישוב מחדש והצגה
-        window.recalculateDriverStatsFromTimeline(); // פונקציה מ-strategy.js
+        // 4. אם יש driverSchedule שנשמר, נשתמש בו; אחרת נחשב מחדש
+        if (strategy.driverSchedule && strategy.driverSchedule.length > 0) {
+            // יש לנו driverSchedule שנשמר - נשתמש בו
+            window.previewData.driverSchedule = strategy.driverSchedule;
+        } else if (strategy.timeline && strategy.timeline.length > 0) {
+            // אין driverSchedule שנשמר - נחשב מחדש מה-timeline
+            window.recalculateDriverStatsFromTimeline();
+        }
+        
         window.closeStrategyModal();
         
         // הקפצת Preview
@@ -614,7 +656,7 @@ window.applyStrategy = function(index) {
 
     } catch (e) {
         console.error("Error applying strategy:", e);
-        alert("Failed to load strategy.");
+        alert("Failed to load strategy: " + e.message);
     }
 };
 
@@ -654,6 +696,10 @@ window.enforceViewerMode = function() {
         '#nextDriverName', // לחיצה להחלפת נהג
         '.starter-radio', // בחירת נהג התחלתי
         '#addDriverBtn', // אם קיים
+        '.penalty-btn', // כפתורי PENALTY
+        '#penaltyBtnMinus5',
+        '#penaltyBtnPlus5',
+        '#penaltyBtnPlus10',
         'input', // חוסם את כל האינפוטים
         'select',
         'button.btn-press' // כפתורי שליטה

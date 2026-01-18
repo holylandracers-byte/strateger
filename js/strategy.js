@@ -554,6 +554,16 @@ window.callAIStrategy = async function(btn) {
         drivers: window.drivers.map(d => d.name)
     };
 
+    // קבלת הטקסט מהמשתמש
+    const userInstructions = document.getElementById('strategyInstructions')?.value || '';
+    
+    // בניית ה-prompt עם הנתונים וההוראות
+    let promptText = `Analyze this endurance race strategy configuration:\n${JSON.stringify(cfg, null, 2)}`;
+    if (userInstructions.trim()) {
+        promptText += `\n\nAdditional instructions from the user:\n${userInstructions}`;
+    }
+    promptText += `\n\nPlease provide strategic recommendations for this race, considering the configuration and any specific instructions provided.`;
+
     const buttonEl = btn || document.querySelector('button[onclick*="callAIStrategy"]');
     let originalText = "✨ Ask AI";
     if (buttonEl) { originalText = buttonEl.innerText; buttonEl.innerText = "..."; buttonEl.disabled = true; }
@@ -562,7 +572,7 @@ window.callAIStrategy = async function(btn) {
         const response = await fetch('/.netlify/functions/ai-strategy', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt: `Analyze: ${JSON.stringify(cfg)}` })
+            body: JSON.stringify({ prompt: promptText })
         });
         const data = await response.json();
         if (data.error) throw new Error(data.error);
