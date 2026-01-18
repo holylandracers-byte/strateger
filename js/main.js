@@ -63,10 +63,12 @@ function updateModeUI() {
     const btnBad = document.getElementById('btnBad');
     const btnReset = document.getElementById('btnResetMode');
     const adviceText = document.getElementById('strategyAdvice');
-    const t = window.t || ((k) => k); 
+    const pitEntryBtn = document.getElementById('pitEntryBtn');
+    const pitEntryBtnLabel = document.getElementById('pitEntryBtnLabel');
+    const t = window.t || ((k) => k);
 
     const baseClass = "btn-press bg-navy-800 border rounded-lg text-sm text-gray-300 font-bold shadow-md transition flex flex-col items-center justify-center";
-    
+
     if (btnPush) {
         btnPush.className = baseClass + " border-green-500/30 hover:bg-navy-700";
         if (window.state.mode === 'push') {
@@ -85,9 +87,15 @@ function updateModeUI() {
         btnReset.classList.toggle('hidden', window.state.mode === 'normal');
     }
 
+    // In problem mode: if min stint not reached, show "stay on track" instead of "box now"
+    const minStintMs = (window.config?.minStintMs) || ((window.config?.minStint || 0) * 60000);
+    const now = Date.now();
+    const currentStintMs = (now - (window.state.stintStart || now)) + (window.state.stintOffset || 0);
+    const belowMinStint = !window.state.isInPit && minStintMs > 0 && currentStintMs < minStintMs;
+
     if (adviceText) {
         if (window.state.mode === 'bad') {
-            adviceText.innerText = "⚠️ " + t('boxNow');
+            adviceText.innerText = "⚠️ " + (belowMinStint ? t('stayOnTrackUntilFurther') : t('boxNow'));
             adviceText.className = "text-xs font-bold text-red-500 animate-pulse uppercase tracking-widest";
         } else if (window.state.mode === 'push') {
             adviceText.innerText = "🔥 " + t('pushMode');
@@ -97,15 +105,29 @@ function updateModeUI() {
             adviceText.className = "text-[10px] text-gray-500 font-bold uppercase tracking-widest";
         }
     }
+
+    if (pitEntryBtn && pitEntryBtnLabel) {
+        if (window.state.mode === 'bad' && belowMinStint) {
+            pitEntryBtnLabel.innerText = t('stayOnTrackUntilFurther');
+            pitEntryBtn.disabled = true;
+            pitEntryBtn.classList.add('opacity-60', 'cursor-not-allowed');
+        } else {
+            pitEntryBtnLabel.innerText = t('enterPit');
+            pitEntryBtn.disabled = false;
+            pitEntryBtn.classList.remove('opacity-60', 'cursor-not-allowed');
+        }
+    }
 }
 
 window.recalculateTargetStint = function() {
     if (!window.config || !window.state) return;
     
     if (window.state.mode === 'push') {
-        window.state.targetStintMs = (window.config.maxStintMs || 65 * 60000) - 60000;
+        const maxStintMs = (window.config.maxStintMs) || (window.config.maxStint * 60000) || (60 * 60000);
+        window.state.targetStintMs = maxStintMs - 60000;
     } else if (window.state.mode === 'bad') {
-        window.state.targetStintMs = window.config.minStintMs || 30 * 60000;
+        const minStintMs = (window.config.minStintMs) || (window.config.minStint * 60000) || (30 * 60000);
+        window.state.targetStintMs = minStintMs;
     } else {
         const currentStintIdx = window.state.globalStintNumber - 1;
         if (window.state.stintTargets && window.state.stintTargets[currentStintIdx]) {
@@ -515,7 +537,8 @@ window.confirmPitEntry = function() {
 
     if (minStintMs > 0 && currentStintMs < minStintMs) {
         const missingSec = Math.ceil((minStintMs - currentStintMs) / 1000);
-        if (!confirm(`⚠️ Short Stint Warning!\nMissing ${missingSec} seconds.\nProceed to Pit?`)) return;
+        const t = window.t || ((k) => k);
+        if (!confirm(`⚠️ ${t('shortStintMsg')}\n${t('missingSeconds') || 'Missing'}: ${missingSec}s\n${t('proceedToPit') || 'Proceed to Pit?'}`)) return;
         isShortStint = true;
     }
 
@@ -543,8 +566,9 @@ window.confirmPitEntry = function() {
         
         const releaseBtn = document.getElementById('confirmExitBtn');
         if (releaseBtn) {
+            const t = window.t || ((k) => k);
             releaseBtn.disabled = true;
-            releaseBtn.innerText = "WAIT...";
+            releaseBtn.innerText = t('wait');
             releaseBtn.className = "w-full max-w-xs bg-gray-800 text-gray-500 font-bold py-4 rounded-lg text-2xl border border-gray-700 cursor-not-allowed";
         }
     }
