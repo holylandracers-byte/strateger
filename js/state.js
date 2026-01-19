@@ -271,13 +271,22 @@ window.translations = {
 };
 
 window.t = function(key) {
-    const lang = localStorage.getItem('strateger_lang') || 'en';
+    // 🟢 Use viewer's own language preference if set
+    const lang = window.role === 'viewer' 
+        ? localStorage.getItem('strateger_viewer_lang') || localStorage.getItem('strateger_lang') || 'en'
+        : localStorage.getItem('strateger_lang') || 'en';
     const dict = window.translations[lang] || window.translations['en'];
     return dict[key] || key;
 };
 
 window.setLanguage = function(lang) {
-    localStorage.setItem('strateger_lang', lang);
+    // 🟢 Viewers save their language choice independently, doesn't affect host
+    if (window.role === 'viewer') {
+        localStorage.setItem('strateger_viewer_lang', lang);
+    } else {
+        localStorage.setItem('strateger_lang', lang);
+    }
+    
     window.currentLang = lang;
     document.documentElement.lang = lang;
     document.documentElement.dir = (lang === 'he') ? 'rtl' : 'ltr';
@@ -439,6 +448,21 @@ window.continueRace = function() {
         // הבטחת מצב HOST
         window.state.isRunning = true;
         window.role = 'host';
+        
+        // === Show chat button for host when continuing race ===
+        const chatBtn = document.getElementById('chatToggleBtn');
+        if (chatBtn) chatBtn.style.display = 'block';
+        
+        // === Restore night mode UI based on saved state ===
+        if (window.state.isNightMode && typeof window.updateNightModeUI === 'function') {
+            window.updateNightModeUI();
+        }
+        
+        // === Show night mode button if squads are enabled ===
+        const btnNightMode = document.getElementById('btnNightMode');
+        if (btnNightMode && window.config.useSquads) {
+            btnNightMode.classList.remove('hidden');
+        }
         
         // 1. שחזור רשת
         if (typeof window.initHostPeer === 'function') {

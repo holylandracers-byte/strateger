@@ -82,9 +82,14 @@ window.initHostPeer = function() {
         
         window.peer.on('connection', (c) => {
             window.connections.push(c);
-            window.updateSyncStatus();
+            c.viewerId = c.peer; // Store viewer's peer ID
+            c.viewerName = null; // Will be set when first chat message received
+            window.updateViewerDropdown(); // Update dropdown when new connection
             
             c.on('open', () => {
+                // 🟢 Update sync status when connection actually opens
+                window.updateSyncStatus();
+                
                 if (window.state && window.state.isRunning && typeof window.broadcast === 'function') {
                     window.broadcast();
                 }
@@ -97,10 +102,16 @@ window.initHostPeer = function() {
             c.on('close', () => {
                 window.connections = window.connections.filter(x => x !== c);
                 window.updateSyncStatus();
+                window.updateViewerDropdown(); // Update dropdown when viewer disconnects
             });
 
             c.on('data', (data) => {
                 if (data.type === 'CHAT') {
+                    // Store viewer name from first chat message
+                    if (!c.viewerName && data.sender) {
+                        c.viewerName = data.sender;
+                        window.updateViewerDropdown();
+                    }
                     window.renderChatMessage(data); 
                     window.broadcast(data); 
                 }
@@ -176,7 +187,11 @@ window.connectToHost = function(hostId) {
         window.conn.on('open', () => {
             console.log("Connected to Host");
             window.conn.send('REQUEST_INIT');
-            document.getElementById('clientWaitScreen').innerHTML = '<div class="text-2xl text-green-400">Connected!</div>';
+            // 🟢 Update wait screen to show connected status
+            const waitScreen = document.getElementById('clientWaitScreen');
+            if (waitScreen) {
+                waitScreen.innerHTML = '<div class="flex flex-col items-center justify-center gap-2"><div class="text-2xl text-green-400 font-bold">✅ Connected!</div><div class="text-xs text-gray-400 mt-1">Receiving race data...</div></div>';
+            }
         });
         window.conn.on('data', (data) => {
             document.getElementById('clientWaitScreen').classList.add('hidden');
@@ -186,9 +201,19 @@ window.connectToHost = function(hostId) {
                 if (data.drivers) window.drivers = data.drivers;
                 if (data.liveData) window.liveData = data.liveData;
                 
+                // 🟢 Update pit adjustment from host
+                if (data.currentPitAdjustment !== undefined) {
+                    window.currentPitAdjustment = data.currentPitAdjustment;
+                }
+                
                 window.enforceViewerMode();
                 document.getElementById('setupScreen').classList.add('hidden');
                 document.getElementById('raceDashboard').classList.remove('hidden');
+                
+                // 🟢 Show chat button for viewers
+                const chatBtn = document.getElementById('chatToggleBtn');
+                if (chatBtn) chatBtn.style.display = 'block';
+                
                 if (typeof window.renderFrame === 'function') window.renderFrame();
             }
             if (data.type === 'CHAT') window.renderChatMessage(data);
@@ -210,7 +235,45 @@ window.broadcast = function(specificPayload = null) {
         config: window.config,
         drivers: window.drivers,
         liveData: window.liveData,
+        currentPitAdjustment: window.currentPitAdjustment || 0, // 🟢 Include pit adjustment so viewers see it
         timestamp: Date.now()
     };
-    window.connections.forEach(c => { if (c.open) c.send(payload); });
+    
+    // Handle private messages separately
+    if (payload.type === 'CHAT' && payload.recipient && payload.recipient !== 'broadcast') {
+        // Send only to specific viewer
+        const targetConn = window.connections.find(c => c.peer === payload.recipient || c.viewerId === payload.recipient);
+        if (targetConn && targetConn.open) {
+            targetConn.send(payload);
+        }
+    } else {
+        // Broadcast to all viewers
+        window.connections.forEach(c => { if (c.open) c.send(payload); });
+    }
+};
+
+// 🟢 Update viewer dropdown with connected viewers
+window.updateViewerDropdown = function() {
+    const select = document.getElementById('chatRecipientSelect');
+    if (!select || window.role !== 'host') return;
+    
+    // Keep "All Viewers" option
+    const currentVal = select.value;
+    select.innerHTML = '<option value="broadcast">All Viewers</option>';
+    
+    // Add connected viewers
+    window.connections.forEach(c => {
+        if (c.open && c.viewerId) {
+            const name = c.viewerName || `Viewer ${c.viewerId.substring(0, 5)}`;
+            const option = document.createElement('option');
+            option.value = c.viewerId;
+            option.textContent = `👁️ ${name}`;
+            select.appendChild(option);
+        }
+    });
+    
+    // Restore previous selection if still valid
+    if (select.querySelector(`option[value="${currentVal}"]`)) {
+        select.value = currentVal;
+    }
 };

@@ -156,6 +156,10 @@
                 calculating...
             </div>
 
+            <div id="invalidStrategyWarning" class="hidden bg-red-900/40 border border-red-500 p-3 rounded text-xs text-red-300 text-center font-bold">
+                ⚠️ Invalid Strategy: Average stint <span id="averageStintValue">--</span> is outside bounds [<span id="minStintBound">30</span>-<span id="maxStintBound">65</span>] min
+            </div>
+
             <div>
                 <h2 class="text-ice text-lg font-bold mb-3 flex items-center gap-2">
                     <i class="fas fa-cog"></i> <span data-i18n="generalInfo">General Info</span>
@@ -183,19 +187,28 @@
                     </div>
                 </div>
                 
-                <div class="flex flex-wrap gap-4 mt-3 p-2 bg-navy-800 rounded border border-gray-700">
-                    <label class="flex items-center gap-2 cursor-pointer">
-                        <input type="checkbox" id="allowDouble" onchange="window.runSim()" class="accent-ice w-4 h-4">
-                        <span class="text-sm text-gray-300" data-i18n="lblDoubles">Allow Doubles</span>
-                    </label>
-                    <label class="flex items-center gap-2 cursor-pointer">
-                        <input type="checkbox" id="useSquads" onchange="window.toggleSquadsInput(); window.runSim()" class="accent-squadB w-4 h-4">
-                        <span class="text-sm text-gray-300" data-i18n="lblSquads">Use Squads</span>
-                    </label>
-                    <label class="flex items-center gap-2 cursor-pointer">
-                        <input type="checkbox" id="trackFuel" onchange="window.toggleFuelInput(); window.runSim()" class="accent-fuel w-4 h-4">
-                        <span class="text-sm text-gray-300" data-i18n="lblFuel">Fuel</span>
-                    </label>
+                <div class="flex flex-col gap-3 mt-3 p-3 bg-navy-800 rounded border border-gray-700">
+                    <div class="border-b border-gray-600 pb-2">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" id="allowDouble" onchange="window.runSim()" class="accent-ice w-4 h-4">
+                            <span class="text-sm text-gray-300" data-i18n="lblDoubles">Allow Double Stints</span>
+                        </label>
+                        <span class="text-xs text-gray-500 ml-6 block mt-1">Same driver back-to-back</span>
+                    </div>
+                    <div class="border-b border-gray-600 pb-2">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" id="useSquads" onchange="window.toggleSquadsInput(); window.runSim()" class="accent-squadB w-4 h-4">
+                            <span class="text-sm text-gray-300" data-i18n="lblSquads">Use Squads</span>
+                        </label>
+                        <span class="text-xs text-gray-500 ml-6 block mt-1">Separate drivers into two teams</span>
+                    </div>
+                    <div>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" id="trackFuel" onchange="window.toggleFuelInput(); window.runSim()" class="accent-fuel w-4 h-4">
+                            <span class="text-sm text-gray-300" data-i18n="lblFuel">Fuel Constraints</span>
+                        </label>
+                        <span class="text-xs text-gray-500 ml-6 block mt-1">Track fuel tank capacity</span>
+                    </div>
                 </div>
             </div>
 
@@ -353,6 +366,10 @@
                 <div class="text-[10px] text-gray-500 uppercase font-bold" data-i18n="stops">Stops</div>
                 <div id="pitCountDisplay" class="text-base font-bold"><span class="text-neon">0</span>/<span>0</span></div>
             </div>
+            <div id="pitStatusDisplay" class="text-center">
+                <div class="text-[10px] text-gray-500 uppercase font-bold">STATUS</div>
+                <div id="pitStatusIndicator" class="text-sm font-bold text-green-400">🏁 ON TRACK</div>
+            </div>
         </div>
 
         <div id="dashboardScrollArea" class="flex-1 overflow-y-auto overflow-x-hidden p-2 space-y-2">
@@ -391,7 +408,7 @@
 
             <div class="p-3 bg-navy-900 border border-gray-700 rounded-lg">
                 <div class="flex justify-between items-center mb-2">
-                    <div class="text-center w-1/2 border-r border-gray-700">
+                    <div class="text-center w-1/2">
                         <div class="text-[9px] text-gray-500 uppercase" data-i18n="current">Current</div>
                         <div id="currentDriverName" class="text-lg font-bold text-ice truncate px-1">---</div>
                     </div>
@@ -414,20 +431,25 @@
             </div>
             
             <div class="p-1">
-                <div class="grid grid-cols-2 gap-3 mb-2">
+                <div class="grid gap-3 mb-2" id="modeButtonsContainer" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr));">
                     <button id="btnPush" onclick="window.setMode('push')" class="btn-press bg-navy-800 border border-green-500/30 rounded-lg py-3 px-2 text-sm text-gray-300 font-bold shadow-md hover:bg-navy-700 transition flex flex-row items-center justify-center gap-2">
-                        <span class="text-lg">🔥</span> <span data-i18n="push">PUSH</span>
+                        <span class="text-lg">🔥</span> 
+                        <span data-i18n="push">PUSH</span>
                     </button>
                     
                     <button id="btnBad" onclick="window.setMode('bad')" class="btn-press bg-navy-800 border border-red-500/30 rounded-lg py-3 px-2 text-sm text-gray-300 font-bold shadow-md hover:bg-navy-700 transition flex flex-row items-center justify-center gap-2">
-                        <span class="text-lg">🐢</span> <span data-i18n="problem">PROBLEM</span>
+                        <span class="text-lg">🐢</span> 
+                        <span data-i18n="problem">PROBLEM</span>
                     </button>
-                </div>
 
-                <div id="nightModeContainer" class="hidden mb-2">
-                    <button id="btnNightMode" onclick="window.toggleNightMode()" class="w-full bg-indigo-900/50 hover:bg-indigo-800 border border-indigo-500/50 text-indigo-200 text-xs font-bold py-3 rounded transition flex items-center justify-center gap-2 shadow-lg">
+                    <button id="btnNightMode" onclick="window.toggleNightMode()" class="hidden bg-navy-800 hover:bg-indigo-800 border border-indigo-500/50 text-indigo-200 text-xs font-bold py-3 px-2 rounded transition flex flex-row items-center justify-center gap-2 shadow-lg">
                         <span class="text-lg">🌙</span> 
-                        <span id="nightModeText" data-i18n="nightMode">NIGHT MODE</span>
+                        <span id="nightModeText" data-i18n="nightMode">NIGHT</span>
+                    </button>
+                    
+                    <button id="btnSwitchSquad" onclick="window.switchNightSquad()" class="hidden bg-navy-800 hover:bg-squadA border border-squadB/50 text-squadB text-xs font-bold py-3 px-2 rounded transition flex flex-row items-center justify-center gap-2 shadow-lg" title="Switch active squad">
+                        <span class="text-lg">🔄</span> 
+                        <span id="switchSquadText">SQUAD</span>
                     </button>
                 </div>
                 
@@ -506,7 +528,9 @@
         <button id="notifyBtn" class="hidden w-full max-w-xs bg-fuel text-black font-bold py-3 rounded-lg text-lg mb-2" data-i18n="notifyDriver">📢 Notify Driver</button>
         <div id="notifiedMsg" class="hidden text-fuel font-bold mb-4" data-i18n="driverNotified">✓ Driver Notified</div>
 
-        <button id="confirmExitBtn" disabled onclick="window.confirmPitExit()" class="w-full max-w-xs bg-gray-800 text-gray-500 font-bold py-4 rounded-lg text-2xl border border-gray-700 transition-all" data-i18n="wait">Wait...</button>
+        <div id="pitWarningBox" class="hidden w-full max-w-xs bg-orange-600/50 border border-orange-500 text-white font-bold py-3 rounded-lg mb-2 text-center text-sm">⚠️ Orange zone - NOTIFY only</div>
+
+        <button id="confirmExitBtn" disabled onclick="window.confirmPitExit()" class="w-full max-w-xs bg-gray-800 text-gray-500 font-bold py-4 rounded-lg text-2xl border border-gray-700 transition-all">Wait...</button>
         
         <button onclick="window.cancelPitStop()" class="text-red-400 mt-6 text-sm underline hover:text-red-300" data-i18n="cancelEntry">Cancel Entry</button>
     </div>
@@ -621,15 +645,15 @@
     
     <div id="clientWaitScreen" class="hidden fixed inset-0 bg-navy-950 z-[100] flex flex-col items-center justify-center text-ice">
         <div class="text-3xl animate-pulse font-bold">Connecting to Race...</div>
-        <div class="text-sm text-gray-500 mt-2">Waiting for host data</div>
+        <div class="text-sm text-gray-500 mt-2">Waiting for host to start race</div>
     </div>
 
-    <button id="chatToggleBtn" onclick="window.toggleChat()" class="hidden fixed bottom-4 left-4 z-50 bg-blue-600 hover:bg-blue-500 text-white p-3 rounded-full shadow-lg border border-blue-400">
+    <button id="chatToggleBtn" onclick="window.toggleChat()" class="fixed bottom-4 right-4 z-50 bg-blue-600 hover:bg-blue-500 text-white p-3 rounded-full shadow-lg border border-blue-400" style="display: none;">
         <i class="fas fa-comment-dots text-xl"></i>
-        <span id="chatUnreadBadge" class="hidden absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">0</span>
+        <span id="chatUnreadBadge" class="hidden absolute -top-1 -left-1 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">0</span>
     </button>
 
-    <div id="chatPanel" class="hidden fixed bottom-16 left-4 z-50 w-72 h-80 bg-navy-900 border border-gray-700 rounded-lg shadow-2xl flex flex-col overflow-hidden">
+    <div id="chatPanel" class="hidden fixed bottom-16 right-4 z-50 w-72 h-80 bg-navy-900 border border-gray-700 rounded-lg shadow-2xl flex flex-col overflow-hidden">
         <div class="bg-navy-800 p-2 border-b border-gray-700 flex justify-between items-center">
             <h3 class="text-xs font-bold text-ice" data-i18n="chatTitle">Race Chat</h3>
             <button onclick="window.toggleChat()" class="text-gray-400 hover:text-white">&times;</button>
@@ -641,6 +665,14 @@
         </div>
 
         <div id="chatMessagesView" class="hidden flex-1 flex flex-col min-h-0">
+            <!-- Viewer selector (host only) -->
+            <div id="chatViewerSelector" class="hidden bg-navy-950 border-b border-gray-700 p-2">
+                <label class="text-[9px] text-gray-400 font-bold block mb-1">Send to:</label>
+                <select id="chatRecipientSelect" class="w-full bg-navy-800 border border-gray-600 text-white rounded px-2 py-1 text-xs">
+                    <option value="broadcast">All Viewers</option>
+                </select>
+            </div>
+            
             <div id="chatFeed" class="flex-1 overflow-y-auto p-2 space-y-2 text-xs">
                 </div>
             <div class="p-2 bg-navy-800 border-t border-gray-700 flex gap-1">

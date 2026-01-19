@@ -5,7 +5,11 @@
 document.addEventListener('DOMContentLoaded', () => {
     console.log("🚀 Strateger Initializing...");
 
-    let savedLang = localStorage.getItem('strateger_lang');
+    // 🟢 Load viewer's own language preference if available
+    let savedLang = window.role === 'viewer' 
+        ? localStorage.getItem('strateger_viewer_lang') || localStorage.getItem('strateger_lang')
+        : localStorage.getItem('strateger_lang');
+    
     if (!savedLang) {
         const browserLang = navigator.language.split('-')[0];
         savedLang = (['he', 'fr', 'pt'].includes(browserLang)) ? browserLang : 'en';
@@ -33,8 +37,15 @@ document.addEventListener('DOMContentLoaded', () => {
     if(typeof updateModeUI === 'function') updateModeUI();
     if(typeof updateWeatherUI === 'function') updateWeatherUI();
     if(typeof attachConfigListeners === 'function') attachConfigListeners();
-
-    document.getElementById('chatToggleBtn').classList.remove('hidden');
+    
+    // Initialize night mode button visibility
+    const useSquadsCheckbox = document.getElementById('useSquads');
+    if (useSquadsCheckbox) {
+        const btnNightMode = document.getElementById('btnNightMode');
+        if (btnNightMode && !useSquadsCheckbox.checked) {
+            btnNightMode.classList.add('hidden');
+        }
+    }
 });
 
 // ==========================================
@@ -184,6 +195,27 @@ function updateWeatherUI() {
 // 🌙 NIGHT MODE
 // ==========================================
 
+window.getActiveStintInfo = function() {
+    const currentDriver = window.drivers[window.state.currentDriverIdx];
+    if (!currentDriver) return null;
+    
+    if (window.state.isNightMode) {
+        const activeSquad = window.state.activeSquad;
+        const sleepingSquad = activeSquad === 'A' ? 'B' : 'A';
+        return {
+            driverName: currentDriver.name,
+            activeSquad: activeSquad,
+            sleepingSquad: sleepingSquad,
+            stintNumber: window.state.globalStintNumber || 1
+        };
+    }
+    
+    return {
+        driverName: currentDriver.name,
+        stintNumber: window.state.globalStintNumber || 1
+    };
+};
+
 window.toggleNightMode = function() {
     if (!window.config.useSquads) return;
     window.state.isNightMode = !window.state.isNightMode;
@@ -196,25 +228,65 @@ window.toggleNightMode = function() {
     updateNightModeUI();
     if (window.state.isNightMode) window.cycleNextDriver(true);
     if (typeof window.broadcast === 'function') window.broadcast();
+    
+    // Display current stint information
+    const stintInfo = getActiveStintInfo();
+    if (stintInfo) {
+        console.log(`🌙 Night Mode: Squad ${window.state.activeSquad} active, Squad ${stintInfo.sleepingSquad} sleeping. Stint ${window.state.globalStintNumber}: ${stintInfo.driverName}`);
+    }
+};
+
+window.switchNightSquad = function() {
+    if (!window.state.isNightMode || !window.config.useSquads) return;
+    
+    // Switch to other squad
+    window.state.activeSquad = window.state.activeSquad === 'A' ? 'B' : 'A';
+    
+    // Force cycle to next driver from the new active squad
+    if (typeof window.cycleNextDriver === 'function') {
+        window.cycleNextDriver(true);
+    }
+    
+    updateNightModeUI();
+    if (typeof window.broadcast === 'function') window.broadcast();
+    if (typeof window.renderFrame === 'function') window.renderFrame();
+    
+    console.log(`🔄 Squad switched to ${window.state.activeSquad}`);
 };
 
 function updateNightModeUI() {
-    const container = document.getElementById('nightModeContainer');
     const btn = document.getElementById('btnNightMode');
     const text = document.getElementById('nightModeText');
+    const switchSquadBtn = document.getElementById('btnSwitchSquad');
     const t = window.t || ((k) => k);
 
-    if (window.config.useSquads) container.classList.remove('hidden');
-    else { container.classList.add('hidden'); return; }
+    // Show night button and switch squad button only if squads are enabled
+    if (btn) {
+        if (window.config.useSquads) {
+            btn.classList.remove('hidden');
+        } else {
+            btn.classList.add('hidden');
+            return;
+        }
+    }
+    
+    // Show/hide squad switch button based on night mode
+    if (switchSquadBtn) {
+        if (window.state.isNightMode && window.config.useSquads) {
+            switchSquadBtn.classList.remove('hidden');
+        } else {
+            switchSquadBtn.classList.add('hidden');
+        }
+    }
 
     if (window.state.isNightMode) {
         const activeSquad = window.state.activeSquad || 'A';
         const sleepingSquad = activeSquad === 'A' ? 'B' : 'A';
-        btn.className = "w-full bg-indigo-600 hover:bg-indigo-500 border border-indigo-300 text-white text-xs font-bold py-3 rounded transition flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(99,102,241,0.5)] animate-pulse";
-        text.innerHTML = `${t('squadSleeping')} <span class="text-yellow-300 text-lg font-black px-1">${sleepingSquad}</span>`;
+        if (btn) btn.className = "bg-indigo-600 hover:bg-indigo-500 border border-indigo-300 text-white text-xs font-bold py-3 px-2 rounded transition flex flex-row items-center justify-center gap-2 shadow-[0_0_15px_rgba(99,102,241,0.5)] animate-pulse";
+        if (text) text.innerHTML = `${t('squadSleeping')} <span class="text-yellow-300 text-lg font-black px-1">${sleepingSquad}</span>`;
     } else {
-        btn.className = "w-full bg-navy-800 hover:bg-navy-700 border border-indigo-500/30 text-indigo-300 text-xs font-bold py-3 rounded transition flex items-center justify-center gap-2";
-        text.innerText = t('nightMode');
+        if (btn) btn.className = "bg-navy-800 hover:bg-indigo-800 border border-indigo-500/50 text-indigo-200 text-xs font-bold py-3 px-2 rounded transition flex flex-row items-center justify-center gap-2 shadow-lg";
+        if (text) text.innerText = t('nightMode');
     }
 }
 
@@ -261,6 +333,28 @@ window.renderFrame = function() {
         const totalPlannedStops = window.config.reqStops || 0;
         document.getElementById('pitCountDisplay').innerHTML = 
             `<span class="text-neon text-xl">${window.state.pitCount}</span><span class="text-gray-500 text-xs">/${totalPlannedStops}</span>`;
+
+        // === Update pit status indicator ===
+        const statusDisplay = document.getElementById('pitStatusIndicator');
+        if (statusDisplay) {
+            if (window.state.isInPit) {
+                statusDisplay.innerHTML = '🛑 IN PITS';
+                statusDisplay.className = 'text-sm font-bold text-red-400';
+            } else {
+                statusDisplay.innerHTML = '🏁 ON TRACK';
+                statusDisplay.className = 'text-sm font-bold text-green-400';
+            }
+        }
+
+        // === Update pit adjustment display for viewers ===
+        const dashDisplay = document.getElementById('dashboardPitAdjDisplay');
+        if (dashDisplay) {
+            const sign = window.currentPitAdjustment >= 0 ? '+' : '';
+            dashDisplay.innerText = `${sign}${window.currentPitAdjustment || 0}s`;
+            dashDisplay.className = `bg-black/30 px-2 py-1 rounded font-mono font-bold text-xs min-w-[30px] text-center ${
+                window.currentPitAdjustment > 0 ? 'text-red-400' : (window.currentPitAdjustment < 0 ? 'text-green-400' : 'text-ice')
+            }`;
+        }
 
         const curr = window.drivers[window.state.currentDriverIdx];
         const next = window.drivers[window.state.nextDriverIdx];
@@ -480,16 +574,28 @@ window.updatePitModalLogic = function() {
         releaseBtn.innerText = t('wait'); // תרגום: "המתן..."
         releaseBtn.disabled = true;
         releaseBtn.className = "w-full max-w-xs bg-gray-800 text-gray-500 font-bold py-4 rounded-lg text-2xl border border-gray-700 cursor-not-allowed";
+        
+        // Hide pit warning box when not in orange zone
+        const pitWarningBox = document.getElementById('pitWarningBox');
+        if (pitWarningBox) pitWarningBox.classList.add('hidden');
     } else if (timeRemaining <= buffer && timeRemaining > 0) {
         if (timerDisplay) timerDisplay.className = "text-6xl font-bold font-mono text-yellow-400 animate-pulse";
         releaseBtn.innerText = t('getReady'); // תרגום: "היכון..."
         releaseBtn.disabled = false;
         releaseBtn.className = "w-full max-w-xs bg-yellow-600 hover:bg-yellow-500 text-black font-bold py-4 rounded-lg text-2xl border border-yellow-400 animate-pulse cursor-pointer";
+        
+        // Show pit warning box in orange zone
+        const pitWarningBox = document.getElementById('pitWarningBox');
+        if (pitWarningBox) pitWarningBox.classList.remove('hidden');
     } else {
         if (timerDisplay) timerDisplay.className = "text-6xl font-bold font-mono text-green-500";
         releaseBtn.innerText = t('go'); // תרגום: "סע!"
         releaseBtn.disabled = false;
         releaseBtn.className = "w-full max-w-xs bg-green-600 hover:bg-green-500 text-white font-bold py-4 rounded-lg text-3xl border border-green-400 shadow-[0_0_20px_rgba(34,197,94,0.6)] cursor-pointer";
+        
+        // Hide pit warning box when ready to go
+        const pitWarningBox = document.getElementById('pitWarningBox');
+        if (pitWarningBox) pitWarningBox.classList.add('hidden');
     }
 };
 
@@ -641,7 +747,46 @@ window.cycleNextDriver = function(forceValidation = false) {
     if (typeof window.broadcast === 'function') window.broadcast();
 };
 
+window.playReleaseSound = function() {
+    try {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        
+        // First beep: 900Hz
+        const osc1 = audioContext.createOscillator();
+        const gain1 = audioContext.createGain();
+        osc1.connect(gain1);
+        gain1.connect(audioContext.destination);
+        
+        osc1.frequency.value = 900;
+        osc1.type = 'sine';
+        gain1.gain.setValueAtTime(0.3, audioContext.currentTime);
+        gain1.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+        
+        osc1.start(audioContext.currentTime);
+        osc1.stop(audioContext.currentTime + 0.1);
+        
+        // Second beep: 1200Hz
+        const osc2 = audioContext.createOscillator();
+        const gain2 = audioContext.createGain();
+        osc2.connect(gain2);
+        gain2.connect(audioContext.destination);
+        
+        osc2.frequency.value = 1200;
+        osc2.type = 'sine';
+        gain2.gain.setValueAtTime(0.3, audioContext.currentTime + 0.15);
+        gain2.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.25);
+        
+        osc2.start(audioContext.currentTime + 0.15);
+        osc2.stop(audioContext.currentTime + 0.25);
+    } catch (e) {
+        console.warn("Release sound not available:", e);
+    }
+};
+
 window.confirmPitExit = function() {
+    // Play release sound
+    if (typeof window.playReleaseSound === 'function') window.playReleaseSound();
+    
     const prevDriverIdx = window.state.currentDriverIdx;
     const now = Date.now();
     const pitDuration = now - window.state.pitStart;

@@ -406,6 +406,21 @@ window.runSim = function() {
     const totalRaceTime = actualDriveTime + actualPitTime;
     const avgStint = stints.length > 0 ? (actualDriveTime / stints.length / 60000).toFixed(1) : 0;
 
+    // === Check if average stint is within bounds ===
+    const isAverageStintValid = avgStint >= minStintMin && avgStint <= maxStintMin;
+    const invalidStrategyWarning = document.getElementById('invalidStrategyWarning');
+    
+    if (invalidStrategyWarning) {
+        if (!isAverageStintValid) {
+            invalidStrategyWarning.classList.remove('hidden');
+            document.getElementById('averageStintValue').innerText = avgStint;
+            document.getElementById('minStintBound').innerText = minStintMin;
+            document.getElementById('maxStintBound').innerText = maxStintMin;
+        } else {
+            invalidStrategyWarning.classList.add('hidden');
+        }
+    }
+
     let pitClosedInfo = '';
     if (closedEndMin > 0 && pits.length > 0) {
         const lastPit = pits[pits.length - 1];
@@ -468,7 +483,7 @@ window.initRace = function() {
         const stints = window.previewData.timeline.filter(t => t.type === 'stint');
         for (let i = 1; i < stints.length; i++) {
             if (stints[i].driverName === stints[i-1].driverName) {
-                alert(`⚠️ Safety Check:\nDouble Stint detected for "${stints[i].driverName}" but option is disabled.\nPlease enable 'Double Stint' or fix strategy.`);
+                alert(`⚠️ Safety Check:\nDouble Stint detected for "${stints[i].driverName}" but option is disabled.\nPlease enable 'Allow Double Stints' or fix strategy.`);
                 return; 
             }
         }
@@ -485,6 +500,7 @@ window.initRace = function() {
     window.state.isInPit = false;
     window.state.stintOffset = 0;
     window.state.mode = 'normal';
+    window.state.isNightMode = false; // Reset night mode on race start
     window.state.currentDriverIdx = window.cachedStrategy.timeline[0].driverIdx;
     
     window.state.nextDriverIdx = (window.state.currentDriverIdx + 1) % window.drivers.length;
@@ -514,6 +530,16 @@ window.initRace = function() {
     document.getElementById('setupScreen').classList.add('hidden');
     document.getElementById('previewScreen').classList.add('hidden'); 
     document.getElementById('raceDashboard').classList.remove('hidden');
+    
+    // === Show chat button only in race dashboard ===
+    const chatBtn = document.getElementById('chatToggleBtn');
+    if (chatBtn) chatBtn.style.display = 'block';
+    
+    // === Show night mode button if squads are enabled ===
+    const btnNightMode = document.getElementById('btnNightMode');
+    if (btnNightMode && window.config.useSquads) {
+        btnNightMode.classList.remove('hidden');
+    }
     
     if (typeof window.initHostPeer === 'function') window.initHostPeer();
     

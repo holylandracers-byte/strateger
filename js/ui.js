@@ -114,6 +114,16 @@ window.toggleSquadsInput = function() {
     document.querySelectorAll('.squad-toggle-container').forEach(el => 
         el.classList.toggle('hidden', !useSquads)
     );
+    
+    // Show/hide night mode button based on squads
+    const btnNightMode = document.getElementById('btnNightMode');
+    if (btnNightMode) {
+        if (useSquads) {
+            btnNightMode.classList.remove('hidden');
+        } else {
+            btnNightMode.classList.add('hidden');
+        }
+    }
 };
 
 window.toggleFuelInput = function() {
@@ -272,9 +282,20 @@ window.updateStats = function(currentStintMs) {
         const isCurrent = (i === window.state.currentDriverIdx);
         mainRow.className = isCurrent ? "bg-white/10 font-bold text-white border-b border-gray-600" : "border-b border-gray-700 text-gray-300";
         
+        // Show squad info if night mode is active and squads are enabled
+        let squadBadge = '';
+        if (window.config.useSquads && window.state.isNightMode) {
+            const driverSquad = d.squad || 'A';
+            const activeSquad = window.state.activeSquad || 'A';
+            const isActive = driverSquad === activeSquad;
+            const squadColor = driverSquad === 'A' ? 'squadA' : 'squadB';
+            const squadStatus = isActive ? '🟢' : '😴';
+            squadBadge = `<span class="text-xs font-bold px-2 py-0.5 rounded ml-1 ${isActive ? 'bg-green-900/50 text-green-300' : 'bg-gray-700/50 text-gray-400'}">${driverSquad} ${squadStatus}</span>`;
+        }
+        
         mainRow.innerHTML = `
             <td class="text-center cursor-pointer p-2 hover:text-ice" onclick="window.toggleLog(${i})">${d.isExpanded ? '▲' : '▼'}</td>
-            <td class="py-2 pr-2">${d.name} ${isCurrent ? '🏎️' : ''}</td>
+            <td class="py-2 pr-2">${d.name} ${isCurrent ? '🏎️' : ''}${squadBadge}</td>
             <td class="py-2 text-center">${d.stints || 0}</td> <td class="py-2 text-right font-mono">${window.formatTimeHMS(displayTotalTime)}</td>
         `;
         tb.appendChild(mainRow);
@@ -693,7 +714,6 @@ window.enforceViewerMode = function() {
         '#btnResetMode', 
         '#pitEntryBtn', 
         '#btnRain', // מזג אוויר
-        '#nextDriverName', // לחיצה להחלפת נהג
         '.starter-radio', // בחירת נהג התחלתי
         '#addDriverBtn', // אם קיים
         '.penalty-btn', // כפתורי PENALTY
@@ -719,6 +739,13 @@ window.enforceViewerMode = function() {
             }
         });
     });
+
+    // 🟢 Show penalty display and next driver info for viewers (read-only)
+    const nextDriver = document.getElementById('nextDriverName');
+    if (nextDriver) nextDriver.classList.remove('hidden');
+    
+    const penaltyDisplay = document.getElementById('dashboardPitAdjDisplay');
+    if (penaltyDisplay) penaltyDisplay.classList.remove('hidden');
 
     // וידוא שהצ'אט זמין
     document.getElementById('chatToggleBtn').classList.remove('hidden');
@@ -760,6 +787,14 @@ window.toggleChat = function() {
             document.getElementById('chatLoginView').classList.add('hidden');
             document.getElementById('chatMessagesView').classList.remove('hidden');
             document.getElementById('chatMessagesView').classList.add('flex');
+            
+            // 🟢 Load chat history for continuing races
+            if (feed.children.length === 0) {
+                try {
+                    const history = JSON.parse(localStorage.getItem('strateger_chat_history') || '[]');
+                    history.forEach(msg => window.renderChatMessage(msg));
+                } catch(e) { console.error("Error loading chat history:", e); }
+            }
         }
     }
 };
@@ -772,6 +807,25 @@ window.joinChat = function() {
     document.getElementById('chatLoginView').classList.add('hidden');
     document.getElementById('chatMessagesView').classList.remove('hidden');
     document.getElementById('chatMessagesView').classList.add('flex');
+    
+    // Show viewer selector only for host
+    if (window.role === 'host') {
+        document.getElementById('chatViewerSelector').classList.remove('hidden');
+    }
+    
+    // 🟢 Ensure chat panel is visible
+    const panel = document.getElementById('chatPanel');
+    if (panel.classList.contains('hidden')) {
+        panel.classList.remove('hidden');
+        // Load chat history
+        const feed = document.getElementById('chatFeed');
+        if (feed.children.length === 0) {
+            try {
+                const history = JSON.parse(localStorage.getItem('strateger_chat_history') || '[]');
+                history.forEach(msg => window.renderChatMessage(msg));
+            } catch(e) { console.error("Error loading chat history:", e); }
+        }
+    }
 };
 
 window.sendChatMessage = function() {
@@ -781,20 +835,31 @@ window.sendChatMessage = function() {
     
     if (!text) return;
 
+    // Get recipient if host is sending
+    let recipient = null;
+    if (window.role === 'host') {
+        const select = document.getElementById('chatRecipientSelect');
+        recipient = select ? select.value : 'broadcast';
+        if (recipient === 'broadcast') recipient = null; // null means broadcast to all
+    }
+
     const msgData = {
         type: 'CHAT',
         sender: name,
         text: text,
-        role: window.role, // 'host' or 'client'
+        role: window.role, // 'host' or 'viewer'
+        recipient: recipient, // null = broadcast to all, or specific viewer ID
         timestamp: Date.now()
     };
 
     // 1. שליחה לרשת
     if (window.role === 'host') {
-        window.broadcast(msgData); // Host מפיץ לכולם
+        // Host sends - route based on recipient
+        window.broadcast(msgData); // broadcast() handles private routing
     } else {
+        // Viewers can only send to host
         if (window.conn && window.conn.open) {
-            window.conn.send(msgData); // Client שולח ל-Host
+            window.conn.send(msgData);
         }
     }
 
@@ -805,6 +870,24 @@ window.sendChatMessage = function() {
 
 window.renderChatMessage = function(msg) {
     const feed = document.getElementById('chatFeed');
+    
+    // 🟢 MESSAGE FILTERING: Check if this message should be displayed
+    // Broadcast messages (recipient = null or 'broadcast'): show to all
+    // Private messages (recipient = specific ID): 
+    //   - Show if I'm the host (see everything)
+    //   - Show if I'm the recipient
+    //   - Hide if I'm a viewer and message is for someone else
+    if (msg.recipient && msg.recipient !== 'broadcast') {
+        if (window.role === 'host') {
+            // Host sees all messages
+        } else if (window.role === 'viewer') {
+            // Viewers only see messages sent to them or broadcasts
+            if (msg.recipient !== window.myId) {
+                // Don't display this message - it's for someone else
+                return;
+            }
+        }
+    }
     
     // Prevent duplicate rendering if reloading history
     const lastMsg = feed.lastElementChild;
@@ -817,24 +900,29 @@ window.renderChatMessage = function(msg) {
     
     const isMe = msg.sender === (localStorage.getItem('strateger_chat_name') || 'Viewer');
     const isHost = msg.role === 'host';
+    const isPrivate = msg.recipient && msg.recipient !== 'broadcast';
     
     let bgClass = 'bg-navy-800';
     let alignClass = 'items-start';
     
     if (isHost) {
-        bgClass = 'bg-red-900/40 border border-red-500/30';
+        bgClass = isPrivate ? 'bg-yellow-900/40 border border-yellow-500/30' : 'bg-red-900/40 border border-red-500/30';
     } else if (isMe) {
         bgClass = 'bg-blue-900/40 border border-blue-500/30';
         alignClass = 'items-end';
     }
 
+    // 🟢 Visual Indicator for Private Messages
+    const privateIndicator = isPrivate ? '<span class="text-yellow-400 font-bold text-[10px]">🔒 PRIVATE</span>' : '';
+
     div.className = `flex flex-col ${alignClass} mb-2`;
     div.innerHTML = `
         <div class="${bgClass} p-2 rounded-lg max-w-[90%]">
             <div class="flex justify-between items-baseline gap-2 mb-1">
-                <span class="font-bold ${isHost ? 'text-red-400' : 'text-ice'} text-[10px]">
+                <span class="font-bold ${isHost ? (isPrivate ? 'text-yellow-400' : 'text-red-400') : 'text-ice'} text-[10px]">
                     ${isHost ? '👑 ' : ''}${msg.sender}
                 </span>
+                ${privateIndicator}
                 <span class="text-[9px] text-gray-500">${new Date(msg.timestamp).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span>
             </div>
             <div class="text-white break-words">${msg.text}</div>
