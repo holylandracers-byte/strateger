@@ -16,7 +16,7 @@ window.addDriverField = function() {
     const list = document.getElementById('driversList');
     if (!list) return;
     const count = list.children.length + 1;
-    window.createDriverInput(`Driver ${count}`, count === 1, 'A');
+    window.createDriverInput(`${window.t('ltDriver')} ${count}`, count === 1, 'A');
     window.toggleSquadsInput();
 };
 

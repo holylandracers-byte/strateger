@@ -43,15 +43,22 @@
     <header class="bg-navy-900 border-b border-gray-800 p-2 flex justify-between items-center shadow-md sticky top-0 z-20">
         <div class="flex items-center gap-2">
             <select id="langSelect" onchange="window.setLanguage(this.value)" 
-                    class="text-xs bg-navy-800 px-1 py-0.5 rounded border border-gray-700 text-white cursor-pointer w-12">
-                <option value="en">EN</option>
-                <option value="he">HE</option>
-                <option value="fr">FR</option>
-                <option value="pt">PT</option>
+                    class="text-xs bg-navy-800 px-1 py-0.5 rounded border border-gray-700 text-white cursor-pointer">
+                <option value="en">🇬🇧 EN</option>
+                <option value="he">🇮🇱 HE</option>
+                <option value="fr">🇫🇷 FR</option>
+                <option value="pt">🇵🇹 PT</option>
+                <option value="ru">🇷🇺 RU</option>
+                <option value="ar">🇸🇦 AR</option>
+                <option value="es">🇪🇸 ES</option>
+                <option value="it">🇮🇹 IT</option>
+                <option value="ka">🇬🇪 KA</option>
+                <option value="de">🇩🇪 DE</option>
+                <option value="ja">🇯🇵 JA</option>
             </select>
             
             <div id="googleAuthCompact" class="flex items-center ml-2">
-                <button id="googleSignInBtn" onclick="window.googleSignIn()" class="flex items-center gap-2 bg-white text-gray-700 hover:bg-gray-100 border border-gray-300 px-2 py-1 rounded text-[10px] font-bold transition">
+                <button id="googleSignInBtn" onclick="window.googleSignIn()" class="flex items-center gap-2 bg-white text-gray-700 hover:bg-gray-100 border border-gray-300 px-2 py-1 rounded text-[10px] font-bold transition" data-i18n="googleLoginBtn">
                     <img src="https://www.google.com/favicon.ico" class="w-3 h-3">
                     Login
                 </button>
@@ -145,8 +152,8 @@
                 </div>
 
                 <div class="flex gap-2">
-                    <button onclick="window.testLiveTiming()" class="flex-1 bg-red-900/50 border border-red-500/50 text-red-300 text-xs py-1.5 rounded hover:bg-red-900">Test</button>
-                    <button onclick="window.startDemoMode()" class="flex-1 bg-neon/20 border border-neon/50 text-neon text-xs py-1.5 rounded hover:bg-neon/30">Demo</button>
+                    <button onclick="window.testLiveTiming()" class="flex-1 bg-red-900/50 border border-red-500/50 text-red-300 text-xs py-1.5 rounded hover:bg-red-900" data-i18n="testBtn">Test</button>
+                    <button onclick="window.startDemoMode()" class="flex-1 bg-neon/20 border border-neon/50 text-neon text-xs py-1.5 rounded hover:bg-neon/30" data-i18n="demoBtn">Demo</button>
                     <button onclick="window.openManualInput()" class="flex-1 bg-fuel/20 border border-fuel/50 text-fuel text-xs py-1.5 rounded hover:bg-fuel/30" data-i18n="manualInput">Manual</button>
                 </div>
                 <div id="liveTimingStatus" class="text-[10px] text-gray-500 text-center mt-1"></div>
@@ -193,21 +200,21 @@
                             <input type="checkbox" id="allowDouble" onchange="window.runSim()" class="accent-ice w-4 h-4">
                             <span class="text-sm text-gray-300" data-i18n="lblDoubles">Allow Double Stints</span>
                         </label>
-                        <span class="text-xs text-gray-500 ml-6 block mt-1">Same driver back-to-back</span>
+                        <span class="text-xs text-gray-500 ml-6 block mt-1" data-i18n="lblDoublesHint">Same driver back-to-back</span>
                     </div>
                     <div class="border-b border-gray-600 pb-2">
                         <label class="flex items-center gap-2 cursor-pointer">
                             <input type="checkbox" id="useSquads" onchange="window.toggleSquadsInput(); window.runSim()" class="accent-squadB w-4 h-4">
                             <span class="text-sm text-gray-300" data-i18n="lblSquads">Use Squads</span>
                         </label>
-                        <span class="text-xs text-gray-500 ml-6 block mt-1">Separate drivers into two teams</span>
+                        <span class="text-xs text-gray-500 ml-6 block mt-1" data-i18n="lblSquadsHint">Separate drivers into two teams</span>
                     </div>
                     <div>
                         <label class="flex items-center gap-2 cursor-pointer">
                             <input type="checkbox" id="trackFuel" onchange="window.toggleFuelInput(); window.runSim()" class="accent-fuel w-4 h-4">
                             <span class="text-sm text-gray-300" data-i18n="lblFuel">Fuel Constraints</span>
                         </label>
-                        <span class="text-xs text-gray-500 ml-6 block mt-1">Track fuel tank capacity</span>
+                        <span class="text-xs text-gray-500 ml-6 block mt-1" data-i18n="lblFuelHint">Track fuel tank capacity</span>
                     </div>
                 </div>
             </div>
@@ -367,7 +374,7 @@
                 <div id="pitCountDisplay" class="text-base font-bold"><span class="text-neon">0</span>/<span>0</span></div>
             </div>
             <div id="pitStatusDisplay" class="text-center">
-                <div class="text-[10px] text-gray-500 uppercase font-bold">STATUS</div>
+                <div class="text-[10px] text-gray-500 uppercase font-bold" data-i18n="statusHeader">STATUS</div>
                 <div id="pitStatusIndicator" class="text-sm font-bold text-green-400">🏁 ON TRACK</div>
             </div>
         </div>

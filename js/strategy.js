@@ -14,7 +14,7 @@ window.updateDriversFromUI = function() {
     window.drivers = Array.from(inputs).map((input, i) => {
         const existingColor = (window.drivers && window.drivers[i]) ? window.drivers[i].color : `hsl(${(i * 360 / inputs.length)}, 70%, 50%)`;
         return {
-            name: input.value || `Driver ${i+1}`,
+            name: input.value || `${window.t('ltDriver')} ${i+1}`,
             isStarter: i === starterIdx,
             squad: squads[i]?.checked ? 'B' : 'A',
             color: existingColor,

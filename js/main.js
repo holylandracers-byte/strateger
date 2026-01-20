@@ -338,10 +338,10 @@ window.renderFrame = function() {
         const statusDisplay = document.getElementById('pitStatusIndicator');
         if (statusDisplay) {
             if (window.state.isInPit) {
-                statusDisplay.innerHTML = '🛑 IN PITS';
+                statusDisplay.innerHTML = '🛑 ' + window.t('inPits');
                 statusDisplay.className = 'text-sm font-bold text-red-400';
             } else {
-                statusDisplay.innerHTML = '🏁 ON TRACK';
+                statusDisplay.innerHTML = '🏁 ' + window.t('onTrack');
                 statusDisplay.className = 'text-sm font-bold text-green-400';
             }
         }
