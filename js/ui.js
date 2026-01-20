@@ -803,6 +803,26 @@ window.joinChat = function() {
     const name = document.getElementById('chatUserName').value.trim();
     if (!name) return alert("Name required");
     
+    // Clear previous join errors
+    const joinErr = document.getElementById('chatJoinError');
+    if (joinErr) { joinErr.classList.add('hidden'); joinErr.innerText = ''; }
+
+    // For viewers, send name to host and wait for acceptance
+    if (window.role === 'viewer') {
+        // Store temporarily so we can retry if connection opens later
+        window.pendingChatName = name;
+        // If connected to host, send SET_NAME now
+        if (window.conn && window.conn.open) {
+            try { window.conn.send({ type: 'SET_NAME', name }); } catch(e) { console.error('Failed to send SET_NAME', e); }
+            // Show waiting message
+            if (joinErr) { joinErr.classList.remove('hidden'); joinErr.innerText = 'Waiting for host to accept your name...'; }
+        } else {
+            if (joinErr) { joinErr.classList.remove('hidden'); joinErr.innerText = 'Waiting to connect to host...'; }
+        }
+        return;
+    }
+
+    // Hosts don't need name acceptance
     localStorage.setItem('strateger_chat_name', name);
     document.getElementById('chatLoginView').classList.add('hidden');
     document.getElementById('chatMessagesView').classList.remove('hidden');
@@ -826,6 +846,110 @@ window.joinChat = function() {
             } catch(e) { console.error("Error loading chat history:", e); }
         }
     }
+
+    // Send name to host if connected
+    if (window.role === 'viewer' && window.conn && window.conn.open) {
+        try { window.conn.send({ type: 'SET_NAME', name }); } catch(e) { console.error('Failed to send name to host', e); }
+    }
+};
+
+// Called when the host accepts the viewer's name
+window.onNameAccepted = function(name) {
+    try { localStorage.setItem('strateger_chat_name', name); } catch (e) { console.error('failed storing name', e); }
+    window.pendingChatName = null;
+    const joinErr = document.getElementById('chatJoinError');
+    if (joinErr) { joinErr.classList.add('hidden'); joinErr.innerText = ''; }
+
+    document.getElementById('chatLoginView').classList.add('hidden');
+    document.getElementById('chatMessagesView').classList.remove('hidden');
+    document.getElementById('chatMessagesView').classList.add('flex');
+
+    // Update host's dropdown to include this viewer
+    if (typeof window.updateViewerDropdown === 'function') {
+        window.updateViewerDropdown();
+    }
+
+    // Show chat panel and load history
+    const panel = document.getElementById('chatPanel');
+    if (panel.classList.contains('hidden')) panel.classList.remove('hidden');
+    const feed = document.getElementById('chatFeed');
+    if (feed.children.length === 0) {
+        try {
+            const history = JSON.parse(localStorage.getItem('strateger_chat_history') || '[]');
+            history.forEach(msg => window.renderChatMessage(msg));
+        } catch(e) { console.error('Error loading chat history:', e); }
+    }
+};
+
+// Called when the host rejects the viewer's name
+window.onNameRejected = function(message) {
+    const joinErr = document.getElementById('chatJoinError');
+    if (joinErr) { joinErr.classList.remove('hidden'); joinErr.innerText = message || 'Name rejected by host'; }
+    // Keep the login view visible so the user can choose a new name
+    document.getElementById('chatLoginView').classList.remove('hidden');
+    if (window.role === 'viewer') {
+        // Allow user to try again
+        window.pendingChatName = null;
+    }
+};
+
+// Auto-join chat with Google name if available
+window.autoJoinChatWithGoogle = function() {
+    // Check if Google user is logged in and has a name
+    const googleUser = window.googleUser || JSON.parse(localStorage.getItem('strateger_google_user') || 'null');
+    if (googleUser && googleUser.name) {
+        const chatInput = document.getElementById('chatUserName');
+        if (chatInput) {
+            chatInput.value = googleUser.name;
+        }
+        // Auto-join if viewer is already connected
+        if (window.role === 'viewer' && window.conn && window.conn.open) {
+            console.log(`Auto-joining chat as ${googleUser.name}`);
+            window.joinChat();
+        }
+    }
+};
+
+// Skip chat and just watch race
+window.skipChat = function() {
+    // Hide the chat login view
+    document.getElementById('chatLoginView').classList.add('hidden');
+    document.getElementById('chatMessagesView').classList.remove('hidden');
+    document.getElementById('chatMessagesView').classList.add('flex');
+    
+    // Hide the chat input/message areas for watchers-only
+    const chatInput = document.querySelector('.p-2.bg-navy-800.border-t.border-gray-700');
+    const chatReplyContext = document.getElementById('chatReplyContext');
+    const chatViewerSelector = document.getElementById('chatViewerSelector');
+    
+    if (chatInput) chatInput.classList.add('hidden');
+    if (chatReplyContext) chatReplyContext.classList.add('hidden');
+    if (chatViewerSelector) chatViewerSelector.classList.add('hidden');
+    
+    // Show a watcher indicator
+    const feed = document.getElementById('chatFeed');
+    const indicator = document.createElement('div');
+    indicator.className = 'text-center text-gray-500 text-[10px] py-4';
+    indicator.innerHTML = '👁️ You are watching (Chat disabled)';
+    feed.appendChild(indicator);
+};
+
+window.replyToMessageId = null;
+
+window.setReplyContext = function(msgTimestamp, sender, text) {
+    window.replyToMessageId = msgTimestamp;
+    const ctxEl = document.getElementById('chatReplyContext');
+    if (ctxEl) {
+        document.getElementById('replyContextSender').innerText = sender;
+        document.getElementById('replyContextText').innerText = text.substring(0, 80) + (text.length > 80 ? '...' : '');
+        ctxEl.classList.remove('hidden');
+    }
+};
+
+window.clearReplyContext = function() {
+    window.replyToMessageId = null;
+    const ctxEl = document.getElementById('chatReplyContext');
+    if (ctxEl) ctxEl.classList.add('hidden');
 };
 
 window.sendChatMessage = function() {
@@ -849,6 +973,7 @@ window.sendChatMessage = function() {
         text: text,
         role: window.role, // 'host' or 'viewer'
         recipient: recipient, // null = broadcast to all, or specific viewer ID
+        replyTo: window.replyToMessageId || null, // Reference to the message being replied to
         timestamp: Date.now()
     };
 
@@ -866,6 +991,7 @@ window.sendChatMessage = function() {
     // 2. הצגה מקומית
     window.renderChatMessage(msgData);
     input.value = '';
+    window.clearReplyContext();
 };
 
 window.renderChatMessage = function(msg) {
@@ -915,9 +1041,23 @@ window.renderChatMessage = function(msg) {
     // 🟢 Visual Indicator for Private Messages
     const privateIndicator = isPrivate ? '<span class="text-yellow-400 font-bold text-[10px]">🔒 PRIVATE</span>' : '';
 
+    // Build reply context if this message is a reply
+    let replyHTML = '';
+    if (msg.replyTo) {
+        const history = JSON.parse(localStorage.getItem('strateger_chat_history') || '[]');
+        const original = history.find(m => m.timestamp === msg.replyTo);
+        if (original) {
+            replyHTML = `<div class="bg-navy-900/60 border-l-2 border-blue-400 pl-2 mb-2 text-[9px] text-gray-300">
+                <div class="font-bold text-blue-400">${original.sender}</div>
+                <div>${original.text.substring(0, 60)}${original.text.length > 60 ? '...' : ''}</div>
+            </div>`;
+        }
+    }
+
     div.className = `flex flex-col ${alignClass} mb-2`;
     div.innerHTML = `
         <div class="${bgClass} p-2 rounded-lg max-w-[90%]">
+            ${replyHTML}
             <div class="flex justify-between items-baseline gap-2 mb-1">
                 <span class="font-bold ${isHost ? (isPrivate ? 'text-yellow-400' : 'text-red-400') : 'text-ice'} text-[10px]">
                     ${isHost ? '👑 ' : ''}${msg.sender}
@@ -926,6 +1066,7 @@ window.renderChatMessage = function(msg) {
                 <span class="text-[9px] text-gray-500">${new Date(msg.timestamp).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span>
             </div>
             <div class="text-white break-words">${msg.text}</div>
+            <button onclick="window.setReplyContext(${msg.timestamp}, '${msg.sender.replace(/'/g, '\\\'')}', '${msg.text.replace(/'/g, '\\\'').replace(/\n/g, ' ')}\')" class="text-[9px] text-blue-400 hover:text-blue-300 mt-1 text-left">↳ Reply</button>
         </div>
     `;
     
