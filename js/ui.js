@@ -807,22 +807,22 @@ window.joinChat = function() {
     const joinErr = document.getElementById('chatJoinError');
     if (joinErr) { joinErr.classList.add('hidden'); joinErr.innerText = ''; }
 
-    // For viewers, send name to host and wait for acceptance
+    // For viewers, request approval from host
     if (window.role === 'viewer') {
         // Store temporarily so we can retry if connection opens later
         window.pendingChatName = name;
-        // If connected to host, send SET_NAME now
-        if (window.conn && window.conn.open) {
-            try { window.conn.send({ type: 'SET_NAME', name }); } catch(e) { console.error('Failed to send SET_NAME', e); }
-            // Show waiting message
-            if (joinErr) { joinErr.classList.remove('hidden'); joinErr.innerText = 'Waiting for host to accept your name...'; }
-        } else {
-            if (joinErr) { joinErr.classList.remove('hidden'); joinErr.innerText = 'Waiting to connect to host...'; }
+        // Request approval
+        window.requestViewerApproval(name);
+        
+        // Show waiting message
+        if (joinErr) { 
+            joinErr.classList.remove('hidden'); 
+            joinErr.innerText = 'Requesting approval from host...'; 
         }
         return;
     }
 
-    // Hosts don't need name acceptance
+    // Hosts don't need approval
     localStorage.setItem('strateger_chat_name', name);
     document.getElementById('chatLoginView').classList.add('hidden');
     document.getElementById('chatMessagesView').classList.remove('hidden');
@@ -885,6 +885,21 @@ window.onNameAccepted = function(name) {
 window.onNameRejected = function(message) {
     const joinErr = document.getElementById('chatJoinError');
     if (joinErr) { joinErr.classList.remove('hidden'); joinErr.innerText = message || 'Name rejected by host'; }
+    // Keep the login view visible so the user can choose a new name
+    document.getElementById('chatLoginView').classList.remove('hidden');
+    if (window.role === 'viewer') {
+        // Allow user to try again
+        window.pendingChatName = null;
+    }
+};
+
+// Called when the host rejects the viewer's approval request
+window.onApprovalRejected = function(message) {
+    const joinErr = document.getElementById('chatJoinError');
+    if (joinErr) { 
+        joinErr.classList.remove('hidden'); 
+        joinErr.innerText = message || window.t('approvalRejected'); 
+    }
     // Keep the login view visible so the user can choose a new name
     document.getElementById('chatLoginView').classList.remove('hidden');
     if (window.role === 'viewer') {

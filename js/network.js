@@ -32,12 +32,17 @@ window.selectRole = function(r) {
 // זה מופיע כאן כי זה קשור ישירות לסטטוס הרשת
 window.updateShareUI = function() {
     const shareBtn = document.getElementById('shareRaceBtn');
+    const manageBtn = document.getElementById('viewerManageBtn');
     
     // מציג את הכפתור רק אם יש ID והמשתמש הוא HOST
     if (window.myId && window.role === 'host') {
         if (shareBtn) {
             shareBtn.classList.remove('hidden');
             shareBtn.innerHTML = '<i class="fas fa-link"></i> <span class="hidden sm:inline">Invite</span>';
+        }
+        
+        if (manageBtn) {
+            manageBtn.classList.remove('hidden');
         }
         
         const idEl = document.getElementById('myHostId');
@@ -57,8 +62,181 @@ window.connectedViewers = new Map();
 // Add a set to track used viewer names
 window.usedViewerNames = new Set();
 
+// Add a map to track connected viewers by their peer ID
+window.connectedViewers = new Map();
+
+// Add a set to track used viewer names
+window.usedViewerNames = new Set();
+
 // Reserve viewer names per peer ID so they cannot be taken by others during the race
 window.reservedViewerNames = new Map();
+
+// === NEW: Viewer Approval System ===
+// Track pending approval requests (viewer peerId -> {peerId, name, timestamp})
+window.pendingViewerApprovals = new Map();
+
+// Track approved viewers (viewer peerId -> true)
+window.approvedViewers = new Map();
+
+// Function to request approval from host
+window.requestViewerApproval = function(name) {
+    if (window.role === 'viewer' && window.conn && window.conn.open) {
+        window.conn.send({ 
+            type: 'VIEWER_APPROVAL_REQUEST', 
+            name: name.trim(),
+            timestamp: Date.now()
+        });
+    }
+};
+
+// Function to approve a viewer (host only)
+window.approveViewer = function(peerId, name) {
+    const conn = window.connectedViewers.get(peerId);
+    if (!conn) return;
+    
+    // Mark as approved
+    window.approvedViewers.set(peerId, true);
+    window.pendingViewerApprovals.delete(peerId);
+    
+    // Notify the viewer
+    try {
+        conn.send({ 
+            type: 'APPROVAL_GRANTED', 
+            name: name,
+            viewerId: peerId,
+            message: 'Your request to join has been approved!'
+        });
+    } catch(e) { console.error('Failed to send approval', e); }
+    
+    // Update UI
+    window.updateViewerApprovalUI();
+    console.log(`✅ Viewer ${peerId} (${name}) approved`);
+};
+
+// Function to reject a viewer (host only)  
+window.rejectViewer = function(peerId, name) {
+    const conn = window.connectedViewers.get(peerId);
+    if (!conn) return;
+    
+    // Remove from pending
+    window.pendingViewerApprovals.delete(peerId);
+    
+    // Notify the viewer
+    try {
+        conn.send({ 
+            type: 'APPROVAL_REJECTED', 
+            message: 'Your request to join was rejected by the host.'
+        });
+    } catch(e) { console.error('Failed to send rejection', e); }
+    
+    // Close connection
+    setTimeout(() => {
+        try { conn.close(); } catch(e) {}
+    }, 500);
+    
+    window.updateViewerApprovalUI();
+    console.log(`❌ Viewer ${peerId} (${name}) rejected`);
+};
+
+// Function to remove an approved viewer
+window.removeViewer = function(peerId, name) {
+    const conn = window.connectedViewers.get(peerId);
+    if (!conn) return;
+    
+    // Mark as removed
+    window.approvedViewers.delete(peerId);
+    window.pendingViewerApprovals.delete(peerId);
+    
+    // Notify the viewer before disconnecting
+    try {
+        conn.send({ 
+            type: 'VIEWER_REMOVED', 
+            message: 'You have been removed from this race.'
+        });
+    } catch(e) {}
+    
+    // Close connection
+    setTimeout(() => {
+        try { conn.close(); } catch(e) {}
+    }, 500);
+    
+    window.updateViewerApprovalUI();
+    console.log(`🚫 Viewer ${peerId} (${name}) removed`);
+};
+
+// Update the UI for viewer approval modal
+window.updateViewerApprovalUI = function() {
+    const modal = document.getElementById('viewerApprovalModal');
+    if (!modal) return;
+    
+    const pendingList = document.getElementById('pendingViewersList');
+    const approvedList = document.getElementById('approvedViewersContent');
+    
+    if (!pendingList || !approvedList) return;
+    
+    // Clear lists
+    pendingList.innerHTML = '';
+    approvedList.innerHTML = '';
+    
+    // Render pending viewers
+    if (window.pendingViewerApprovals.size > 0) {
+        window.pendingViewerApprovals.forEach((data, peerId) => {
+            const div = document.createElement('div');
+            div.className = 'bg-navy-800 border border-yellow-600/30 rounded p-3';
+            div.innerHTML = `
+                <div class="flex justify-between items-start mb-2">
+                    <div>
+                        <div class="font-bold text-yellow-400">${data.name}</div>
+                        <div class="text-xs text-gray-400">#${peerId.substring(0, 8)}</div>
+                    </div>
+                    <span class="text-xs text-yellow-600" data-i18n="approvalPending">Pending</span>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="window.approveViewer('${peerId}', '${data.name}')" class="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs py-1 rounded" data-i18n="approveViewer">Approve</button>
+                    <button onclick="window.rejectViewer('${peerId}', '${data.name}')" class="flex-1 bg-red-600 hover:bg-red-700 text-white text-xs py-1 rounded" data-i18n="rejectViewer">Reject</button>
+                </div>
+            `;
+            pendingList.appendChild(div);
+        });
+    } else {
+        pendingList.innerHTML = '<div class="text-xs text-gray-500 text-center py-4">No pending requests</div>';
+    }
+    
+    // Render approved viewers
+    if (window.approvedViewers.size > 0) {
+        window.approvedViewers.forEach((_, peerId) => {
+            const conn = window.connectedViewers.get(peerId);
+            if (!conn || !conn.viewerName) return;
+            
+            const div = document.createElement('div');
+            div.className = 'bg-navy-800 border border-green-600/30 rounded p-2 flex justify-between items-center';
+            div.innerHTML = `
+                <div>
+                    <div class="font-bold text-green-400">${conn.viewerName}</div>
+                    <div class="text-xs text-gray-500">#${peerId.substring(0, 8)}</div>
+                </div>
+                <button onclick="window.removeViewer('${peerId}', '${conn.viewerName}')" class="bg-red-600/50 hover:bg-red-600 text-white text-xs px-2 py-1 rounded" data-i18n="removeViewer">Remove</button>
+            `;
+            approvedList.appendChild(div);
+        });
+    } else {
+        approvedList.innerHTML = '<div class="text-xs text-gray-500">No approved viewers yet</div>';
+    }
+};
+
+// Open/close approval modal
+window.openViewerApprovalModal = function() {
+    const modal = document.getElementById('viewerApprovalModal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        window.updateViewerApprovalUI();
+    }
+};
+
+window.closeViewerApprovalModal = function() {
+    const modal = document.getElementById('viewerApprovalModal');
+    if (modal) modal.classList.add('hidden');
+};
 
 window.initHostPeer = function() {
     // אם כבר קיים חיבור
@@ -124,6 +302,35 @@ window.initHostPeer = function() {
             });
             
             c.on('data', (data) => {
+                // === Handle Viewer Approval Requests ===
+                if (data.type === 'VIEWER_APPROVAL_REQUEST') {
+                    const name = data.name || 'Unknown';
+                    
+                    // Track as pending approval
+                    window.pendingViewerApprovals.set(c.peer, {
+                        peerId: c.peer,
+                        name: name,
+                        timestamp: data.timestamp
+                    });
+                    
+                    // Alert host that someone is requesting approval
+                    console.log(`🔔 Viewer approval request from ${name} (#${c.peer.substring(0, 8)})`);
+                    
+                    // Auto-show approval modal if host is viewing
+                    if (window.role === 'host') {
+                        window.openViewerApprovalModal();
+                    }
+                    
+                    return; // Don't process further until approved
+                }
+                
+                // === All other messages require approval (unless it's APPROVAL_GRANTED message) ===
+                if (!window.approvedViewers.has(c.peer) && data.type !== 'APPROVAL_GRANTED') {
+                    // Pending approval - only allow approval requests
+                    console.log(`⏳ Viewer ${c.peer} is pending approval. Ignoring ${data.type} message.`);
+                    return;
+                }
+                
                 if (data.type === 'CHAT') {
                     // Store viewer name from first chat message if not set yet (validate & reserve)
                     if (!c.viewerName && data.sender) {
@@ -367,6 +574,34 @@ window.connectToHost = function(hostId) {
                     if (window.role === 'viewer' && typeof window.onNameAccepted === 'function') {
                         window.onNameAccepted(data.name);
                     }
+                } else if (data.type === 'APPROVAL_GRANTED') {
+                    // Host approved our request to view
+                    console.log('✅ Your request has been approved by the host!');
+                    window.viewerApprovalStatus = 'approved';
+                    // Hide any pending messages and proceed with chat
+                    const joinErr = document.getElementById('chatJoinError');
+                    if (joinErr) { joinErr.classList.add('hidden'); }
+                    // Now can receive race data
+                } else if (data.type === 'APPROVAL_REJECTED') {
+                    // Host rejected our request
+                    console.log('❌ Your request was rejected by the host.');
+                    window.viewerApprovalStatus = 'rejected';
+                    if (window.role === 'viewer' && typeof window.onApprovalRejected === 'function') {
+                        window.onApprovalRejected(data.message || 'Your request was rejected');
+                    }
+                    // Close connection
+                    setTimeout(() => {
+                        try { window.conn.close(); } catch(e) {}
+                    }, 1000);
+                } else if (data.type === 'VIEWER_REMOVED') {
+                    // We were removed by the host
+                    console.log('🚫 You have been removed from this race.');
+                    alert(data.message || 'You have been removed from this race');
+                    // Close connection
+                    setTimeout(() => {
+                        try { window.conn.close(); } catch(e) {}
+                        location.reload();
+                    }, 500);
                 }
             });
         });
