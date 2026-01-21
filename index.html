@@ -90,9 +90,6 @@
                 <i class="fas fa-users-cog"></i>
                 <span class="hidden sm:inline">Manage Viewers</span>
             </button>
-            
-            <!-- <span id="myHostId" class="hidden">---</span>
-            <span id="dashboardHostId" class="hidden">---</span> -->
         </div>
     </header>
 
@@ -286,7 +283,7 @@
                     Generate Strategy (AI)
                 </button>
             </div>
-
+ 
             <div class="pt-2 space-y-2">
                 <button onclick="window.generatePreview(false, true)" class="w-full bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 text-white font-bold py-3 rounded shadow-lg transition">
                     <i class="fas fa-chart-bar mr-2"></i> <span data-i18n="previewStrategy">Preview Strategy</span>
@@ -296,6 +293,23 @@
                     Start Race
                 </button>
             </div>
+
+            <div>
+                <h2 class="text-ice text-lg font-bold mb-3 flex items-center gap-2">
+                    <i class="fas fa-comments"></i> <span data-i18n="feedbackTitle">Feedback</span>
+                </h2>
+                <div class="flex gap-2 mb-2">
+                    <button onclick="window.showFeedbackTab('bug')" id="bugReportTabBtn" class="flex-1 bg-red-900/50 hover:bg-red-800 border border-red-500/50 text-red-200 font-bold py-2 rounded transition" data-i18n="bugReport">Report Bug</button>
+                    <button onclick="window.showFeedbackTab('feature')" id="featureTabBtn" class="flex-1 bg-blue-900/50 hover:bg-blue-800 border border-blue-500/50 text-blue-200 font-bold py-2 rounded transition" data-i18n="featureSuggestion">Suggest Feature</button>
+                </div>
+                
+                <div id="feedbackForm" class="bg-navy-900 border border-gray-700 p-3 rounded">
+                    <div class="text-xs text-gray-400 font-bold mb-2" id="feedbackTitle" data-i18n="bugReportTitle">Bug Report</div>
+                    <textarea id="feedbackText" class="input-field text-xs mb-2 resize-none" rows="3" data-i18n="describeIssue" placeholder="Describe the issue or suggestion..."></textarea>
+                    <button onclick="window.submitFeedback()" class="w-full bg-gradient-to-r from-neon to-green-500 hover:from-green-400 hover:to-green-600 text-black font-bold py-2 rounded transition" data-i18n="send">Send</button>
+                </div>
+            </div>
+
         </div>
     </div>
 

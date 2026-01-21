@@ -64,6 +64,7 @@ app.all('/.netlify/functions/save-race', netlifyFunctionWrapper('save-race'));
 app.all('/.netlify/functions/save-strategy', netlifyFunctionWrapper('save-strategy'));
 app.all('/.netlify/functions/load-strategies', netlifyFunctionWrapper('load-strategies'));
 app.all('/.netlify/functions/get-strategies', netlifyFunctionWrapper('get-strategies'));
+app.all('/.netlify/functions/send-feedback', netlifyFunctionWrapper('send-feedback'));
 
 // נתיב ראשי - מגיש את ה-HTML
 app.get('*', (req, res) => {

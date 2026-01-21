@@ -829,3 +829,113 @@ window.confirmPitExit = function() {
     if (typeof window.broadcast === 'function') window.broadcast();
     if (typeof window.renderFrame === 'function') window.renderFrame();
 };
+
+// ==========================================
+// 💬 FEEDBACK SYSTEM (BUG REPORTS & SUGGESTIONS)
+// ==========================================
+
+window.feedbackType = 'bug'; // 'bug' or 'feature'
+
+window.showFeedbackTab = (type) => {
+    window.feedbackType = type;
+    
+    // Update button styles
+    const bugBtn = document.getElementById('bugReportTabBtn');
+    const featureBtn = document.getElementById('featureTabBtn');
+    const titleEl = document.getElementById('feedbackTitle');
+    
+    if (type === 'bug') {
+        bugBtn.classList.add('bg-red-800', 'border-red-500');
+        bugBtn.classList.remove('bg-red-900/50', 'border-red-500/50');
+        featureBtn.classList.remove('bg-blue-800', 'border-blue-500');
+        featureBtn.classList.add('bg-blue-900/50', 'border-blue-500/50');
+        titleEl.setAttribute('data-i18n', 'bugReportTitle');
+    } else {
+        featureBtn.classList.add('bg-blue-800', 'border-blue-500');
+        featureBtn.classList.remove('bg-blue-900/50', 'border-blue-500/50');
+        bugBtn.classList.remove('bg-red-800', 'border-red-500');
+        bugBtn.classList.add('bg-red-900/50', 'border-red-500/50');
+        titleEl.setAttribute('data-i18n', 'featureSuggestionTitle');
+    }
+    
+    // Re-translate
+    if (typeof window.translateUI === 'function') {
+        window.translateUI(titleEl);
+    }
+    
+    // Clear textarea and focus
+    document.getElementById('feedbackText').value = '';
+    document.getElementById('feedbackText').focus();
+};
+
+window.submitFeedback = async () => {
+    const text = document.getElementById('feedbackText').value.trim();
+    
+    if (!text) {
+        alert('Please describe the issue or suggestion.');
+        return;
+    }
+    
+    if (text.length > 1000) {
+        alert('Feedback must be 1000 characters or less.');
+        return;
+    }
+    
+    // Create feedback object
+    const feedback = {
+        type: window.feedbackType,
+        text: text,
+        timestamp: new Date().toISOString(),
+        role: window.role || 'unknown',
+        raceTime: window.state?.raceTime || 0
+    };
+    
+    // Store feedback locally
+    const feedbackList = JSON.parse(localStorage.getItem('strateger_feedback') || '[]');
+    feedbackList.push(feedback);
+    localStorage.setItem('strateger_feedback', JSON.stringify(feedbackList));
+    
+    // Clear form
+    document.getElementById('feedbackText').value = '';
+    
+    // Show sending status
+    const feedbackForm = document.getElementById('feedbackForm');
+    const originalHTML = feedbackForm.innerHTML;
+    const sendBtn = feedbackForm.querySelector('button');
+    
+    sendBtn.disabled = true;
+    sendBtn.textContent = '⏳ Sending...';
+    
+    try {
+        // Send to Netlify function
+        const response = await fetch('/.netlify/functions/send-feedback', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(feedback)
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            // Show success message
+            feedbackForm.innerHTML = '<div class="text-center text-neon font-bold p-4">✓ Feedback sent successfully!</div>';
+            
+            setTimeout(() => {
+                feedbackForm.innerHTML = originalHTML;
+                sendBtn.disabled = false;
+                sendBtn.textContent = window.t('send');
+            }, 2000);
+        } else {
+            throw new Error(result.error || 'Failed to send feedback');
+        }
+    } catch (error) {
+        console.error('Error sending feedback:', error);
+        
+        // Show error message but keep the form
+        sendBtn.disabled = false;
+        sendBtn.textContent = window.t('send');
+        alert(`Error sending feedback: ${error.message}. Feedback was saved locally.`);
+    }
+};
