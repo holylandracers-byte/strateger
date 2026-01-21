@@ -907,15 +907,20 @@ window.submitFeedback = async () => {
     sendBtn.textContent = '⏳ Sending...';
     
     try {
-        // Send to Netlify function
+        // Send to Netlify function with timeout
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+        
         const response = await fetch('/.netlify/functions/send-feedback', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(feedback)
+            body: JSON.stringify(feedback),
+            signal: controller.signal
         });
         
+        clearTimeout(timeout);
         const result = await response.json();
         
         if (response.ok) {
@@ -936,6 +941,11 @@ window.submitFeedback = async () => {
         // Show error message but keep the form
         sendBtn.disabled = false;
         sendBtn.textContent = window.t('send');
-        alert(`Error sending feedback: ${error.message}. Feedback was saved locally.`);
+        
+        if (error.name === 'AbortError') {
+            alert('Request timed out. Your feedback was saved locally. Please check your Gmail password is set correctly.');
+        } else {
+            alert(`Error sending feedback: ${error.message}. Feedback was saved locally.`);
+        }
     }
 };

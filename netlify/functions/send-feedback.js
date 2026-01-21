@@ -45,13 +45,38 @@ exports.handler = async (event, context) => {
             };
         }
 
+        // Get Gmail credentials from environment
+        const gmailUser = process.env.GMAIL_USER;
+        const gmailPassword = process.env.GMAIL_PASSWORD;
+        
+        // Validate credentials exist
+        if (!gmailUser || !gmailPassword) {
+            console.error('Missing Gmail credentials in environment variables');
+            return {
+                statusCode: 500,
+                headers,
+                body: JSON.stringify({ 
+                    error: 'Email service not configured',
+                    details: 'Gmail credentials missing'
+                })
+            };
+        }
+
         // Create email transporter using Gmail
-        // Uses environment variables for credentials
+        // Remove spaces from app password (Gmail sometimes adds them)
+        const cleanPassword = gmailPassword.replace(/\s/g, '');
+        
         const transporter = nodemailer.createTransport({
             service: 'gmail',
             auth: {
-                user: process.env.GMAIL_USER,
-                pass: process.env.GMAIL_PASSWORD
+                user: gmailUser,
+                pass: cleanPassword
+            },
+            connectionTimeout: 10000,
+            socketTimeout: 10000,
+            pool: {
+                maxConnections: 1,
+                maxMessages: 5
             }
         });
 
@@ -92,13 +117,20 @@ exports.handler = async (event, context) => {
         };
 
     } catch (error) {
-        console.error('Error sending feedback:', error);
+        console.error('Error sending feedback:', {
+            message: error.message,
+            code: error.code,
+            command: error.command,
+            response: error.response
+        });
+        
         return {
             statusCode: 500,
             headers,
             body: JSON.stringify({ 
                 error: 'Failed to send feedback',
-                details: error.message 
+                details: error.message,
+                code: error.code
             })
         };
     }
