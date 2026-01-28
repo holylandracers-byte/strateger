@@ -50,12 +50,15 @@ exports.handler = async (event, context) => {
         const gmailPassword = process.env.GMAIL_PASSWORD;
         
         // Log credential status (without exposing actual values)
-        console.log('Gmail credentials check:', {
-            userExists: !!gmailUser,
-            passwordExists: !!gmailPassword,
-            passwordHasQuotes: gmailPassword ? /^["'].*["']$/.test(gmailPassword) : false,
-            passwordHasSpaces: gmailPassword ? /\s/.test(gmailPassword) : false
-        });
+        // Only log diagnostic info in development to avoid exposing password structure
+        if (process.env.NODE_ENV === 'development') {
+            console.log('Gmail credentials check:', {
+                userExists: !!gmailUser,
+                passwordExists: !!gmailPassword,
+                passwordHasQuotes: gmailPassword ? /^["']|["']$/.test(gmailPassword) : false,
+                passwordHasSpaces: gmailPassword ? /\s/.test(gmailPassword) : false
+            });
+        }
         
         // Validate credentials exist
         if (!gmailUser || !gmailPassword) {
@@ -71,17 +74,16 @@ exports.handler = async (event, context) => {
         }
 
         // Create email transporter using Gmail
-        // Clean credentials: remove spaces, quotes, and any surrounding whitespace
-        // This handles cases where env vars are stored as "value" or " value "
-        const cleanUser = gmailUser
-            .trim()                        // Remove leading/trailing whitespace
-            .replace(/^["']|["']$/g, '')   // Remove leading/trailing quotes
-            .replace(/\s/g, '');           // Remove any remaining spaces
-        
+        // Clean password: remove spaces, quotes, and any surrounding whitespace
+        // This handles cases where env vars are stored as "password" or " password "
         const cleanPassword = gmailPassword
             .trim()                        // Remove leading/trailing whitespace
             .replace(/^["']|["']$/g, '')   // Remove leading/trailing quotes
             .replace(/\s/g, '');           // Remove any remaining spaces
+        
+        // Clean user email: only remove whitespace, preserve valid email characters
+        // Don't remove quotes from email as they could be part of valid RFC 5322 format
+        const cleanUser = gmailUser.trim();
         
         const transporter = nodemailer.createTransport({
             service: 'gmail',
@@ -120,7 +122,12 @@ exports.handler = async (event, context) => {
             console.log('Email transporter verified successfully');
         } catch (verifyError) {
             console.error('Email transporter verification failed:', verifyError.message);
-            throw new Error(`Email authentication failed: ${verifyError.message}`);
+            // Preserve error properties for proper error handling downstream
+            const authError = new Error(`Email authentication failed: ${verifyError.message}`);
+            authError.code = verifyError.code || 'EAUTH';
+            authError.command = verifyError.command;
+            authError.response = verifyError.response;
+            throw authError;
         }
 
         // Send email
