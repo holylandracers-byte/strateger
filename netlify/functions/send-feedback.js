@@ -49,6 +49,16 @@ exports.handler = async (event, context) => {
         const gmailUser = process.env.GMAIL_USER;
         const gmailPassword = process.env.GMAIL_PASSWORD;
         
+        // Log credential status (without exposing actual values)
+        console.log('Gmail credentials check:', {
+            userExists: !!gmailUser,
+            userLength: gmailUser ? gmailUser.length : 0,
+            passwordExists: !!gmailPassword,
+            passwordLength: gmailPassword ? gmailPassword.length : 0,
+            passwordHasQuotes: gmailPassword ? /^["'].*["']$/.test(gmailPassword) : false,
+            passwordHasSpaces: gmailPassword ? /\s/.test(gmailPassword) : false
+        });
+        
         // Validate credentials exist
         if (!gmailUser || !gmailPassword) {
             console.error('Missing Gmail credentials in environment variables');
@@ -63,8 +73,12 @@ exports.handler = async (event, context) => {
         }
 
         // Create email transporter using Gmail
-        // Remove spaces from app password (Gmail sometimes adds them)
-        const cleanPassword = gmailPassword.replace(/\s/g, '');
+        // Clean the password: remove spaces, quotes, and any surrounding whitespace
+        // This handles cases where env vars are stored as "password" or " password "
+        const cleanPassword = gmailPassword
+            .trim()                        // Remove leading/trailing whitespace
+            .replace(/^["']|["']$/g, '')   // Remove leading/trailing quotes
+            .replace(/\s/g, '');           // Remove any remaining spaces
         
         const transporter = nodemailer.createTransport({
             service: 'gmail',
@@ -72,8 +86,9 @@ exports.handler = async (event, context) => {
                 user: gmailUser,
                 pass: cleanPassword
             },
-            connectionTimeout: 10000,
-            socketTimeout: 10000,
+            connectionTimeout: 15000,  // Increased timeout for Render
+            socketTimeout: 15000,      // Increased timeout for Render
+            greetingTimeout: 10000,    // Add greeting timeout
             pool: {
                 maxConnections: 1,
                 maxMessages: 5
@@ -94,6 +109,16 @@ exports.handler = async (event, context) => {
 <h3>Message:</h3>
 <p>${text.replace(/\n/g, '<br>')}</p>
 `;
+
+        // Verify transporter connection before sending
+        // This helps catch authentication errors early
+        try {
+            await transporter.verify();
+            console.log('Email transporter verified successfully');
+        } catch (verifyError) {
+            console.error('Email transporter verification failed:', verifyError.message);
+            throw new Error(`Email authentication failed: ${verifyError.message}`);
+        }
 
         // Send email
         const mailOptions = {
@@ -117,18 +142,31 @@ exports.handler = async (event, context) => {
         };
 
     } catch (error) {
+        // Enhanced error logging for debugging on Render
         console.error('Error sending feedback:', {
             message: error.message,
             code: error.code,
             command: error.command,
-            response: error.response
+            response: error.response,
+            responseCode: error.responseCode,
+            stack: error.stack
         });
+        
+        // Provide more specific error messages
+        let errorMessage = 'Failed to send feedback';
+        if (error.code === 'EAUTH') {
+            errorMessage = 'Email authentication failed. Please check Gmail credentials.';
+        } else if (error.code === 'ETIMEDOUT' || error.code === 'ESOCKET') {
+            errorMessage = 'Connection timeout. Please try again.';
+        } else if (error.code === 'ECONNECTION') {
+            errorMessage = 'Unable to connect to email server.';
+        }
         
         return {
             statusCode: 500,
             headers,
             body: JSON.stringify({ 
-                error: 'Failed to send feedback',
+                error: errorMessage,
                 details: error.message,
                 code: error.code
             })
