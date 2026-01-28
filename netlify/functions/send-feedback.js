@@ -49,6 +49,17 @@ exports.handler = async (event, context) => {
         const gmailUser = process.env.GMAIL_USER;
         const gmailPassword = process.env.GMAIL_PASSWORD;
         
+        // Log credential status (without exposing actual values)
+        // Only log diagnostic info in development to avoid exposing password structure
+        if (process.env.NODE_ENV === 'development') {
+            console.log('Gmail credentials check:', {
+                userExists: !!gmailUser,
+                passwordExists: !!gmailPassword,
+                passwordHasQuotes: gmailPassword ? /^["']|["']$/.test(gmailPassword) : false,
+                passwordHasSpaces: gmailPassword ? /\s/.test(gmailPassword) : false
+            });
+        }
+        
         // Validate credentials exist
         if (!gmailUser || !gmailPassword) {
             console.error('Missing Gmail credentials in environment variables');
@@ -63,17 +74,26 @@ exports.handler = async (event, context) => {
         }
 
         // Create email transporter using Gmail
-        // Remove spaces from app password (Gmail sometimes adds them)
-        const cleanPassword = gmailPassword.replace(/\s/g, '');
+        // Clean password: remove spaces, quotes, and any surrounding whitespace
+        // This handles cases where env vars are stored as "password" or " password "
+        const cleanPassword = gmailPassword
+            .trim()                        // Remove leading/trailing whitespace
+            .replace(/^["']|["']$/g, '')   // Remove leading/trailing quotes
+            .replace(/\s/g, '');           // Remove any remaining spaces
+        
+        // Clean user email: only remove whitespace, preserve valid email characters
+        // Don't remove quotes from email as they could be part of valid RFC 5322 format
+        const cleanUser = gmailUser.trim();
         
         const transporter = nodemailer.createTransport({
             service: 'gmail',
             auth: {
-                user: gmailUser,
+                user: cleanUser,
                 pass: cleanPassword
             },
-            connectionTimeout: 10000,
-            socketTimeout: 10000,
+            connectionTimeout: 15000,  // Increased timeout for Render
+            socketTimeout: 15000,      // Increased timeout for Render
+            greetingTimeout: 10000,    // Add greeting timeout
             pool: {
                 maxConnections: 1,
                 maxMessages: 5
@@ -95,13 +115,28 @@ exports.handler = async (event, context) => {
 <p>${text.replace(/\n/g, '<br>')}</p>
 `;
 
+        // Verify transporter connection before sending
+        // This helps catch authentication errors early
+        try {
+            await transporter.verify();
+            console.log('Email transporter verified successfully');
+        } catch (verifyError) {
+            console.error('Email transporter verification failed:', verifyError.message);
+            // Preserve error properties for proper error handling downstream
+            const authError = new Error(`Email authentication failed: ${verifyError.message}`);
+            authError.code = verifyError.code || 'EAUTH';
+            authError.command = verifyError.command;
+            authError.response = verifyError.response;
+            throw authError;
+        }
+
         // Send email
         const mailOptions = {
-            from: process.env.GMAIL_USER,
+            from: cleanUser,
             to: 'holylandracers@gmail.com',
             subject: `[Strateger ${type === 'bug' ? 'BUG' : 'FEATURE'}] ${new Date().toLocaleString()}`,
             html: emailBody,
-            replyTo: process.env.GMAIL_USER
+            replyTo: cleanUser
         };
 
         await transporter.sendMail(mailOptions);
@@ -117,20 +152,36 @@ exports.handler = async (event, context) => {
         };
 
     } catch (error) {
+        // Enhanced error logging for debugging on Render
         console.error('Error sending feedback:', {
             message: error.message,
             code: error.code,
             command: error.command,
-            response: error.response
+            response: error.response,
+            responseCode: error.responseCode,
+            // Only log stack trace in development
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
         });
         
+        // Provide more specific error messages
+        let errorMessage = 'Failed to send feedback';
+        if (error.code === 'EAUTH') {
+            errorMessage = 'Email authentication failed. Please check Gmail credentials.';
+        } else if (error.code === 'ETIMEDOUT' || error.code === 'ESOCKET') {
+            errorMessage = 'Connection timeout. Please try again.';
+        } else if (error.code === 'ECONNECTION') {
+            errorMessage = 'Unable to connect to email server.';
+        }
+        
+        // Return generic error to client, keep details in server logs only
         return {
             statusCode: 500,
             headers,
             body: JSON.stringify({ 
-                error: 'Failed to send feedback',
-                details: error.message,
-                code: error.code
+                error: errorMessage,
+                // Only include technical details in development mode
+                details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+                code: process.env.NODE_ENV === 'development' ? error.code : undefined
             })
         };
     }
