@@ -52,9 +52,7 @@ exports.handler = async (event, context) => {
         // Log credential status (without exposing actual values)
         console.log('Gmail credentials check:', {
             userExists: !!gmailUser,
-            userLength: gmailUser ? gmailUser.length : 0,
             passwordExists: !!gmailPassword,
-            passwordLength: gmailPassword ? gmailPassword.length : 0,
             passwordHasQuotes: gmailPassword ? /^["'].*["']$/.test(gmailPassword) : false,
             passwordHasSpaces: gmailPassword ? /\s/.test(gmailPassword) : false
         });
@@ -73,8 +71,13 @@ exports.handler = async (event, context) => {
         }
 
         // Create email transporter using Gmail
-        // Clean the password: remove spaces, quotes, and any surrounding whitespace
-        // This handles cases where env vars are stored as "password" or " password "
+        // Clean credentials: remove spaces, quotes, and any surrounding whitespace
+        // This handles cases where env vars are stored as "value" or " value "
+        const cleanUser = gmailUser
+            .trim()                        // Remove leading/trailing whitespace
+            .replace(/^["']|["']$/g, '')   // Remove leading/trailing quotes
+            .replace(/\s/g, '');           // Remove any remaining spaces
+        
         const cleanPassword = gmailPassword
             .trim()                        // Remove leading/trailing whitespace
             .replace(/^["']|["']$/g, '')   // Remove leading/trailing quotes
@@ -83,7 +86,7 @@ exports.handler = async (event, context) => {
         const transporter = nodemailer.createTransport({
             service: 'gmail',
             auth: {
-                user: gmailUser,
+                user: cleanUser,
                 pass: cleanPassword
             },
             connectionTimeout: 15000,  // Increased timeout for Render
@@ -122,11 +125,11 @@ exports.handler = async (event, context) => {
 
         // Send email
         const mailOptions = {
-            from: process.env.GMAIL_USER,
+            from: cleanUser,
             to: 'holylandracers@gmail.com',
             subject: `[Strateger ${type === 'bug' ? 'BUG' : 'FEATURE'}] ${new Date().toLocaleString()}`,
             html: emailBody,
-            replyTo: process.env.GMAIL_USER
+            replyTo: cleanUser
         };
 
         await transporter.sendMail(mailOptions);
@@ -149,7 +152,8 @@ exports.handler = async (event, context) => {
             command: error.command,
             response: error.response,
             responseCode: error.responseCode,
-            stack: error.stack
+            // Only log stack trace in development
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
         });
         
         // Provide more specific error messages
@@ -162,13 +166,15 @@ exports.handler = async (event, context) => {
             errorMessage = 'Unable to connect to email server.';
         }
         
+        // Return generic error to client, keep details in server logs only
         return {
             statusCode: 500,
             headers,
             body: JSON.stringify({ 
                 error: errorMessage,
-                details: error.message,
-                code: error.code
+                // Only include technical details in development mode
+                details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+                code: process.env.NODE_ENV === 'development' ? error.code : undefined
             })
         };
     }
