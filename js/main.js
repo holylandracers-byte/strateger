@@ -894,7 +894,14 @@ window.submitFeedback = async () => {
     const feedbackList = JSON.parse(localStorage.getItem('strateger_feedback') || '[]');
     feedbackList.push(feedback);
     localStorage.setItem('strateger_feedback', JSON.stringify(feedbackList));
-    
+
+    // Check if running locally - Netlify functions won't work
+    if (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost') {
+        alert('✅ Feedback saved locally!\n\n⚠️ Email sending only works when deployed to Netlify.\n\nTo test locally, run: netlify dev');
+        document.getElementById('feedbackText').value = '';
+        return;
+    }
+
     // Clear form
     document.getElementById('feedbackText').value = '';
     

@@ -72,24 +72,14 @@ exports.handler = async (event, context) => {
                 })
             };
         }
-
-        // Create email transporter using Gmail
-        // Clean password: remove spaces, quotes, and any surrounding whitespace
-        // This handles cases where env vars are stored as "password" or " password "
-        const cleanPassword = gmailPassword
-            .trim()                        // Remove leading/trailing whitespace
-            .replace(/^["']|["']$/g, '')   // Remove leading/trailing quotes
-            .replace(/\s/g, '');           // Remove any remaining spaces
         
-        // Clean user email: only remove whitespace, preserve valid email characters
-        // Don't remove quotes from email as they could be part of valid RFC 5322 format
         const cleanUser = gmailUser.trim();
         
         const transporter = nodemailer.createTransport({
             service: 'gmail',
             auth: {
                 user: cleanUser,
-                pass: cleanPassword
+                pass: gmailPassword
             },
             connectionTimeout: 15000,  // Increased timeout for Render
             socketTimeout: 15000,      // Increased timeout for Render
