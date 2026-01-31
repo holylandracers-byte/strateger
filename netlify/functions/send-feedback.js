@@ -1,93 +1,77 @@
 // ================================================================
-// Netlify Function: Send Feedback Email
-// File: /netlify/functions/send-feedback.js
+// Render-Compatible Function: Send Feedback Email
+// File: send-feedback.js (for Express/Render deployment)
 // ================================================================
 
 const nodemailer = require('nodemailer');
 
-exports.handler = async (event, context) => {
+// Export as a regular async function for Express routes
+async function sendFeedback(req, res) {
     // CORS headers
-    const headers = {
+    res.set({
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Headers': 'Content-Type',
         'Access-Control-Allow-Methods': 'POST, OPTIONS',
         'Content-Type': 'application/json'
-    };
+    });
 
     // Handle preflight
-    if (event.httpMethod === 'OPTIONS') {
-        return {
-            statusCode: 200,
-            headers,
-            body: ''
-        };
+    if (req.method === 'OPTIONS') {
+        return res.status(200).send('');
     }
 
     // Only allow POST
-    if (event.httpMethod !== 'POST') {
-        return {
-            statusCode: 405,
-            headers,
-            body: JSON.stringify({ error: 'Method not allowed' })
-        };
+    if (req.method !== 'POST') {
+        return res.status(405).json({ error: 'Method not allowed' });
     }
 
     try {
-        // Parse request data
-        const { type, text, timestamp, role, raceTime } = JSON.parse(event.body);
+        // Parse request data (Express typically auto-parses with body-parser)
+        const { type, text, timestamp, role, raceTime } = req.body;
 
         // Validate required fields
         if (!text || !type) {
-            return {
-                statusCode: 400,
-                headers,
-                body: JSON.stringify({ error: 'Missing required fields: type, text' })
-            };
+            return res.status(400).json({ 
+                error: 'Missing required fields: type, text' 
+            });
         }
 
         // Get Gmail credentials from environment
         const gmailUser = process.env.GMAIL_USER;
         const gmailPassword = process.env.GMAIL_PASSWORD;
         
-        // Log credential status (without exposing actual values)
-        // Only log diagnostic info in development to avoid exposing password structure
-        if (process.env.NODE_ENV === 'development') {
-            console.log('Gmail credentials check:', {
-                userExists: !!gmailUser,
-                passwordExists: !!gmailPassword,
-                passwordHasQuotes: gmailPassword ? /^["']|["']$/.test(gmailPassword) : false,
-                passwordHasSpaces: gmailPassword ? /\s/.test(gmailPassword) : false
-            });
-        }
-        
         // Validate credentials exist
         if (!gmailUser || !gmailPassword) {
             console.error('Missing Gmail credentials in environment variables');
-            return {
-                statusCode: 500,
-                headers,
-                body: JSON.stringify({ 
-                    error: 'Email service not configured',
-                    details: 'Gmail credentials missing'
-                })
-            };
+            return res.status(500).json({ 
+                error: 'Email service not configured',
+                details: 'Gmail credentials missing'
+            });
         }
         
         const cleanUser = gmailUser.trim();
         
+        // Create transporter with Render-optimized settings
         const transporter = nodemailer.createTransport({
             service: 'gmail',
             auth: {
                 user: cleanUser,
                 pass: gmailPassword
             },
-            connectionTimeout: 15000,  // Increased timeout for Render
-            socketTimeout: 15000,      // Increased timeout for Render
-            greetingTimeout: 10000,    // Add greeting timeout
-            pool: {
-                maxConnections: 1,
-                maxMessages: 5
-            }
+            // Optimized timeouts for Render
+            connectionTimeout: 10000,
+            socketTimeout: 10000,
+            greetingTimeout: 5000,
+            // Disable pooling for reliability
+            pool: false,
+            // TLS settings
+            tls: {
+                rejectUnauthorized: true,
+                minVersion: 'TLSv1.2'
+            },
+            // Add logger for debugging (optional, remove in production)
+            logger: process.env.NODE_ENV === 'development',
+            debug: process.env.NODE_ENV === 'development'
         });
 
         // Format the email body
@@ -105,22 +89,7 @@ exports.handler = async (event, context) => {
 <p>${text.replace(/\n/g, '<br>')}</p>
 `;
 
-        // Verify transporter connection before sending
-        // This helps catch authentication errors early
-        try {
-            await transporter.verify();
-            console.log('Email transporter verified successfully');
-        } catch (verifyError) {
-            console.error('Email transporter verification failed:', verifyError.message);
-            // Preserve error properties for proper error handling downstream
-            const authError = new Error(`Email authentication failed: ${verifyError.message}`);
-            authError.code = verifyError.code || 'EAUTH';
-            authError.command = verifyError.command;
-            authError.response = verifyError.response;
-            throw authError;
-        }
-
-        // Send email
+        // Prepare mail options
         const mailOptions = {
             from: cleanUser,
             to: 'holylandracers@gmail.com',
@@ -129,50 +98,65 @@ exports.handler = async (event, context) => {
             replyTo: cleanUser
         };
 
-        await transporter.sendMail(mailOptions);
-
-        // Return success
-        return {
-            statusCode: 200,
-            headers,
-            body: JSON.stringify({ 
-                success: true, 
-                message: 'Feedback sent successfully!' 
-            })
+        // Send email with timeout wrapper to prevent hanging
+        const sendWithTimeout = (timeout = 25000) => {
+            return Promise.race([
+                transporter.sendMail(mailOptions),
+                new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Email send timeout')), timeout)
+                )
+            ]);
         };
 
+        const info = await sendWithTimeout();
+        
+        console.log('Email sent successfully:', info.messageId);
+
+        // Close the transporter connection explicitly
+        transporter.close();
+
+        // Return success
+        return res.status(200).json({ 
+            success: true, 
+            message: 'Feedback sent successfully!' 
+        });
+
     } catch (error) {
-        // Enhanced error logging for debugging on Render
+        // Enhanced error logging
         console.error('Error sending feedback:', {
             message: error.message,
             code: error.code,
             command: error.command,
-            response: error.response,
-            responseCode: error.responseCode,
-            // Only log stack trace in development
+            name: error.name,
             stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
         });
         
         // Provide more specific error messages
         let errorMessage = 'Failed to send feedback';
-        if (error.code === 'EAUTH') {
+        let statusCode = 500;
+        
+        if (error.message === 'Email send timeout') {
+            errorMessage = 'Request timed out. Please try again.';
+            statusCode = 504;
+        } else if (error.code === 'EAUTH') {
             errorMessage = 'Email authentication failed. Please check Gmail credentials.';
         } else if (error.code === 'ETIMEDOUT' || error.code === 'ESOCKET') {
             errorMessage = 'Connection timeout. Please try again.';
+            statusCode = 504;
         } else if (error.code === 'ECONNECTION') {
             errorMessage = 'Unable to connect to email server.';
+        } else if (error.name === 'AbortError') {
+            errorMessage = 'Request was cancelled. Please try again.';
+            statusCode = 408;
         }
         
-        // Return generic error to client, keep details in server logs only
-        return {
-            statusCode: 500,
-            headers,
-            body: JSON.stringify({ 
-                error: errorMessage,
-                // Only include technical details in development mode
-                details: process.env.NODE_ENV === 'development' ? error.message : undefined,
-                code: process.env.NODE_ENV === 'development' ? error.code : undefined
-            })
-        };
+        // Return error to client
+        return res.status(statusCode).json({ 
+            error: errorMessage,
+            details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+            code: process.env.NODE_ENV === 'development' ? error.code : undefined
+        });
     }
-};
+}
+
+module.exports = sendFeedback;
