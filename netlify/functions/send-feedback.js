@@ -1,39 +1,49 @@
 // ================================================================
-// Render-Compatible Function: Send Feedback Email
-// File: send-feedback.js (for Express/Render deployment)
+// Netlify Function: Send Feedback Email
+// File: /netlify/functions/send-feedback.js
+// Updated for Render compatibility
 // ================================================================
 
 const nodemailer = require('nodemailer');
 
-// Export as a regular async function for Express routes
-async function sendFeedback(req, res) {
+exports.handler = async (event, context) => {
     // CORS headers
-    res.set({
+    const headers = {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Headers': 'Content-Type',
         'Access-Control-Allow-Methods': 'POST, OPTIONS',
         'Content-Type': 'application/json'
-    });
+    };
 
     // Handle preflight
-    if (req.method === 'OPTIONS') {
-        return res.status(200).send('');
+    if (event.httpMethod === 'OPTIONS') {
+        return {
+            statusCode: 200,
+            headers,
+            body: ''
+        };
     }
 
     // Only allow POST
-    if (req.method !== 'POST') {
-        return res.status(405).json({ error: 'Method not allowed' });
+    if (event.httpMethod !== 'POST') {
+        return {
+            statusCode: 405,
+            headers,
+            body: JSON.stringify({ error: 'Method not allowed' })
+        };
     }
 
     try {
-        // Parse request data (Express typically auto-parses with body-parser)
-        const { type, text, timestamp, role, raceTime } = req.body;
+        // Parse request data
+        const { type, text, timestamp, role, raceTime } = JSON.parse(event.body);
 
         // Validate required fields
         if (!text || !type) {
-            return res.status(400).json({ 
-                error: 'Missing required fields: type, text' 
-            });
+            return {
+                statusCode: 400,
+                headers,
+                body: JSON.stringify({ error: 'Missing required fields: type, text' })
+            };
         }
 
         // Get Gmail credentials from environment
@@ -43,15 +53,20 @@ async function sendFeedback(req, res) {
         // Validate credentials exist
         if (!gmailUser || !gmailPassword) {
             console.error('Missing Gmail credentials in environment variables');
-            return res.status(500).json({ 
-                error: 'Email service not configured',
-                details: 'Gmail credentials missing'
-            });
+            return {
+                statusCode: 500,
+                headers,
+                body: JSON.stringify({ 
+                    error: 'Email service not configured',
+                    details: 'Gmail credentials missing'
+                })
+            };
         }
         
         const cleanUser = gmailUser.trim();
         
         // Create transporter with Render-optimized settings
+        // KEY CHANGES: Disabled pooling and reduced timeouts to prevent AbortError
         const transporter = nodemailer.createTransport({
             service: 'gmail',
             auth: {
@@ -62,16 +77,13 @@ async function sendFeedback(req, res) {
             connectionTimeout: 10000,
             socketTimeout: 10000,
             greetingTimeout: 5000,
-            // Disable pooling for reliability
+            // CRITICAL: Disable pooling to prevent AbortError
             pool: false,
-            // TLS settings
+            // TLS settings for security
             tls: {
                 rejectUnauthorized: true,
                 minVersion: 'TLSv1.2'
-            },
-            // Add logger for debugging (optional, remove in production)
-            logger: process.env.NODE_ENV === 'development',
-            debug: process.env.NODE_ENV === 'development'
+            }
         });
 
         // Format the email body
@@ -110,20 +122,24 @@ async function sendFeedback(req, res) {
 
         const info = await sendWithTimeout();
         
-        console.log('Email sent successfully:', info.messageId);
+        console.log('✅ Email sent successfully:', info.messageId);
 
-        // Close the transporter connection explicitly
+        // CRITICAL: Close the transporter to prevent hanging connections
         transporter.close();
 
         // Return success
-        return res.status(200).json({ 
-            success: true, 
-            message: 'Feedback sent successfully!' 
-        });
+        return {
+            statusCode: 200,
+            headers,
+            body: JSON.stringify({ 
+                success: true, 
+                message: 'Feedback sent successfully!' 
+            })
+        };
 
     } catch (error) {
-        // Enhanced error logging
-        console.error('Error sending feedback:', {
+        // Enhanced error logging for debugging
+        console.error('❌ Error sending feedback:', {
             message: error.message,
             code: error.code,
             command: error.command,
@@ -131,7 +147,7 @@ async function sendFeedback(req, res) {
             stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
         });
         
-        // Provide more specific error messages
+        // Provide specific error messages
         let errorMessage = 'Failed to send feedback';
         let statusCode = 500;
         
@@ -151,12 +167,14 @@ async function sendFeedback(req, res) {
         }
         
         // Return error to client
-        return res.status(statusCode).json({ 
-            error: errorMessage,
-            details: process.env.NODE_ENV === 'development' ? error.message : undefined,
-            code: process.env.NODE_ENV === 'development' ? error.code : undefined
-        });
+        return {
+            statusCode,
+            headers,
+            body: JSON.stringify({ 
+                error: errorMessage,
+                details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+                code: process.env.NODE_ENV === 'development' ? error.code : undefined
+            })
+        };
     }
-}
-
-module.exports = sendFeedback;
+};
