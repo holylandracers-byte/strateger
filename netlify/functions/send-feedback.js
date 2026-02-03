@@ -1,15 +1,42 @@
 // ================================================================
 // Netlify Function: Send Feedback Email
 // File: /netlify/functions/send-feedback.js
-// Updated for Render compatibility
 // ================================================================
 
 const nodemailer = require('nodemailer');
 
+const ALLOWED_ORIGINS = [
+    'https://strateger.onrender.com',
+    'http://localhost:3000'
+];
+
+/**
+ * Escapes HTML characters to prevent XSS attacks when embedding user input in HTML.
+ * @param {string} str - The string to escape.
+ * @returns {string} - The escaped string.
+ */
+function escapeHtml(str) {
+    if (!str) return '';
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return str.replace(/[&<>"']/g, (m) => map[m]);
+}
+
 exports.handler = async (event, context) => {
     // CORS headers
+    const requestOrigin =
+        (event.headers && (event.headers.origin || event.headers.Origin)) || '';
+    const corsOrigin = ALLOWED_ORIGINS.includes(requestOrigin)
+        ? requestOrigin
+        : ALLOWED_ORIGINS[0];
+
     const headers = {
-        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Origin': corsOrigin,
         'Access-Control-Allow-Headers': 'Content-Type',
         'Access-Control-Allow-Methods': 'POST, OPTIONS',
         'Content-Type': 'application/json'
@@ -35,51 +62,67 @@ exports.handler = async (event, context) => {
 
     try {
         // Parse request data
-        const { type, text, timestamp, role, raceTime } = JSON.parse(event.body);
-
-        // Validate required fields
-        if (!text || !type) {
+        let parsedBody;
+        try {
+            parsedBody = JSON.parse(event.body);
+        } catch (parseError) {
             return {
                 statusCode: 400,
                 headers,
-                body: JSON.stringify({ error: 'Missing required fields: type, text' })
+                body: JSON.stringify({ error: 'Invalid JSON in request body' })
+            };
+        }
+        const { type, text, timestamp, role, raceTime } = parsedBody;
+
+        if (!text) {
+            return {
+                statusCode: 400,
+                headers,
+                body: JSON.stringify({ error: 'Feedback text is required' })
             };
         }
 
-        // Get Gmail credentials from environment
+        // Get Gmail OAuth2 credentials from environment
         const gmailUser = process.env.GMAIL_USER;
-        const gmailPassword = process.env.GMAIL_PASSWORD;
+        const gmailClientId = process.env.GMAIL_CLIENT_ID;
+        const gmailClientSecret = process.env.GMAIL_CLIENT_SECRET;
+        const gmailRefreshToken = process.env.GMAIL_REFRESH_TOKEN;
         
-        // Validate credentials exist
-        if (!gmailUser || !gmailPassword) {
-            console.error('Missing Gmail credentials in environment variables');
+        // Validate OAuth2 credentials exist
+        if (!gmailUser || !gmailClientId || !gmailClientSecret || !gmailRefreshToken) {
+            console.error('Missing Gmail OAuth2 credentials in environment variables');
             return {
                 statusCode: 500,
                 headers,
                 body: JSON.stringify({ 
                     error: 'Email service not configured',
-                    details: 'Gmail credentials missing'
+                    details: 'Gmail OAuth2 credentials missing'
                 })
             };
         }
         
         const cleanUser = gmailUser.trim();
         
-        // Create transporter with Render-optimized settings
-        // KEY CHANGES: Disabled pooling and reduced timeouts to prevent AbortError
+        // Sanitize user input to prevent XSS
+        const sanitizedText = escapeHtml(text);
+        const sanitizedRole = escapeHtml(role || 'Unknown');
+        const sanitizedType = type === 'bug' ? 'Bug Report' : 'Feature Suggestion';
+        const typeEmoji = type === 'bug' ? 'BUG' : 'FEATURE';
+
+        // Create transporter with Render-optimized settings (OAuth2)
         const transporter = nodemailer.createTransport({
             service: 'gmail',
             auth: {
+                type: 'OAuth2',
                 user: cleanUser,
-                pass: gmailPassword
+                clientId: gmailClientId,
+                clientSecret: gmailClientSecret,
+                refreshToken: gmailRefreshToken
             },
-            // Optimized timeouts for Render
             connectionTimeout: 10000,
             socketTimeout: 10000,
             greetingTimeout: 5000,
-            // CRITICAL: Disable pooling to prevent AbortError
             pool: false,
-            // TLS settings for security
             tls: {
                 rejectUnauthorized: true,
                 minVersion: 'TLSv1.2'
@@ -88,46 +131,46 @@ exports.handler = async (event, context) => {
 
         // Format the email body
         const emailBody = `
-<h2>${type === 'bug' ? '🐛 Bug Report' : '💡 Feature Suggestion'}</h2>
+            <h2>${typeEmoji}: ${sanitizedType}</h2>
+            <p><strong>Feedback Type:</strong> ${sanitizedType}</p>
+            <p><strong>Role:</strong> ${sanitizedRole}</p>
+            <p><strong>Race Time:</strong> ${raceTime ? Math.floor(raceTime / 60) + ':' + String(raceTime % 60).padStart(2, '0') : 'N/A'}</p>
+            <p><strong>Submitted:</strong> ${new Date(timestamp || Date.now()).toLocaleString()}</p>
+            <hr />
+            <div style="white-space: pre-wrap; font-family: sans-serif; background: #f4f4f4; padding: 15px; border-radius: 5px;">${sanitizedText}</div>
+        `;
 
-<p><strong>Feedback Type:</strong> ${type === 'bug' ? 'Bug Report' : 'Feature Suggestion'}</p>
-<p><strong>Role:</strong> ${role || 'Unknown'}</p>
-<p><strong>Race Time:</strong> ${raceTime ? `${Math.floor(raceTime / 60)}:${String(raceTime % 60).padStart(2, '0')}` : 'N/A'}</p>
-<p><strong>Submitted:</strong> ${new Date(timestamp).toLocaleString()}</p>
-
-<hr />
-
-<h3>Message:</h3>
-<p>${text.replace(/\n/g, '<br>')}</p>
-`;
-
-        // Prepare mail options
         const mailOptions = {
-            from: cleanUser,
+            from: '"Strateger Feedback" <' + cleanUser + '>',
             to: 'holylandracers@gmail.com',
-            subject: `[Strateger ${type === 'bug' ? 'BUG' : 'FEATURE'}] ${new Date().toLocaleString()}`,
+            subject: '[Strateger] ' + sanitizedType + ': ' + sanitizedText.substring(0, 50) + (sanitizedText.length > 50 ? '...' : ''),
             html: emailBody,
-            replyTo: cleanUser
+            text: 'Type: ' + sanitizedType + '\nRole: ' + sanitizedRole + '\nTime: ' + raceTime + '\n\nMessage:\n' + text
         };
 
-        // Send email with timeout wrapper to prevent hanging
-        const sendWithTimeout = (timeout = 25000) => {
-            return Promise.race([
-                transporter.sendMail(mailOptions),
-                new Promise((_, reject) => 
-                    setTimeout(() => reject(new Error('Email send timeout')), timeout)
-                )
-            ]);
+        const sendWithTimeout = (timeout = 15000) => {
+            let timeoutId;
+            const timeoutPromise = new Promise((_, reject) => {
+                timeoutId = setTimeout(() => {
+                    timeoutId = null;
+                    reject(new Error('Email send timeout'));
+                }, timeout);
+            });
+
+            const sendPromise = transporter.sendMail(mailOptions).finally(() => {
+                if (timeoutId) {
+                    clearTimeout(timeoutId);
+                    timeoutId = null;
+                }
+            });
+
+            return Promise.race([sendPromise, timeoutPromise]);
         };
 
         const info = await sendWithTimeout();
-        
         console.log('✅ Email sent successfully:', info.messageId);
-
-        // CRITICAL: Close the transporter to prevent hanging connections
         transporter.close();
 
-        // Return success
         return {
             statusCode: 200,
             headers,
@@ -136,7 +179,6 @@ exports.handler = async (event, context) => {
                 message: 'Feedback sent successfully!' 
             })
         };
-
     } catch (error) {
         // Enhanced error logging for debugging
         console.error('❌ Error sending feedback:', {
