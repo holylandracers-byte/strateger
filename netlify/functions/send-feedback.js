@@ -109,26 +109,26 @@ exports.handler = async (event, context) => {
         const sanitizedType = type === 'bug' ? 'Bug Report' : 'Feature Suggestion';
         const typeEmoji = type === 'bug' ? 'BUG' : 'FEATURE';
 
-        console.log('📨 Attempting to send email via Gmail OAuth2...');
+        console.log('📨 Attempting to send email via Gmail OAuth2 (Port 587)...');
 
-        // Create transporter with Render-optimized settings
+        // Create transporter with Port 587 and STARTTLS
         const transporter = nodemailer.createTransport({
             host: 'smtp.gmail.com',
-            port: 465,
-            secure: true, // Use SSL
+            port: 587,
+            secure: false, // Port 587 uses STARTTLS, so secure must be false
             auth: {
                 type: 'OAuth2',
                 user: cleanUser,
-                clientId: gmailClientId.replace(/"/g, ''), // Remove quotes if present
+                clientId: gmailClientId.replace(/"/g, ''),
                 clientSecret: gmailClientSecret.replace(/"/g, ''),
                 refreshToken: gmailRefreshToken.replace(/"/g, '')
             },
-            connectionTimeout: 5000, // Reduced to fail faster
-            socketTimeout: 5000,
-            greetingTimeout: 3000,
+            connectionTimeout: 15000, // Increased to 15s
+            socketTimeout: 15000,
+            greetingTimeout: 15000,
             pool: false,
             tls: {
-                rejectUnauthorized: false, // Sometimes necessary in cloud environments
+                rejectUnauthorized: false,
                 minVersion: 'TLSv1.2'
             }
         });
