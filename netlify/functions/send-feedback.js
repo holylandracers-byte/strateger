@@ -110,12 +110,18 @@ exports.handler = async (event, context) => {
         const typeEmoji = type === 'bug' ? 'BUG' : 'FEATURE';
 
         console.log('📨 Attempting to send email via Gmail OAuth2 (Port 587)...');
+        console.log('🔑 Using credentials:', {
+            user: cleanUser,
+            clientIdPrefix: gmailClientId.substring(0, 20) + '...',
+            hasSecret: !!gmailClientSecret,
+            hasToken: !!gmailRefreshToken
+        });
 
         // Create transporter with Port 587 and STARTTLS
         const transporter = nodemailer.createTransport({
             host: 'smtp.gmail.com',
             port: 587,
-            secure: false, // Port 587 uses STARTTLS, so secure must be false
+            secure: false,
             auth: {
                 type: 'OAuth2',
                 user: cleanUser,
@@ -123,15 +129,27 @@ exports.handler = async (event, context) => {
                 clientSecret: gmailClientSecret.replace(/"/g, ''),
                 refreshToken: gmailRefreshToken.replace(/"/g, '')
             },
-            connectionTimeout: 15000, // Increased to 15s
-            socketTimeout: 15000,
-            greetingTimeout: 15000,
+            connectionTimeout: 20000,
+            socketTimeout: 20000,
+            greetingTimeout: 20000,
             pool: false,
+            logger: true, // Enable logging
+            debug: true, // Enable debug output
             tls: {
                 rejectUnauthorized: false,
                 minVersion: 'TLSv1.2'
             }
         });
+
+        // Verify connection configuration
+        console.log('🔍 Verifying SMTP connection...');
+        try {
+            await transporter.verify();
+            console.log('✅ SMTP connection verified successfully');
+        } catch (verifyError) {
+            console.error('❌ SMTP verification failed:', verifyError);
+            throw new Error(`SMTP Connection Failed: ${verifyError.message}`);
+        }
 
         // Format the email body
         const emailBody = `
