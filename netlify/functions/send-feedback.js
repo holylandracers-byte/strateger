@@ -109,22 +109,26 @@ exports.handler = async (event, context) => {
         const sanitizedType = type === 'bug' ? 'Bug Report' : 'Feature Suggestion';
         const typeEmoji = type === 'bug' ? 'BUG' : 'FEATURE';
 
-        // Create transporter with Render-optimized settings (OAuth2)
+        console.log('📨 Attempting to send email via Gmail OAuth2...');
+
+        // Create transporter with Render-optimized settings
         const transporter = nodemailer.createTransport({
-            service: 'gmail',
+            host: 'smtp.gmail.com',
+            port: 465,
+            secure: true, // Use SSL
             auth: {
                 type: 'OAuth2',
                 user: cleanUser,
-                clientId: gmailClientId,
-                clientSecret: gmailClientSecret,
-                refreshToken: gmailRefreshToken
+                clientId: gmailClientId.replace(/"/g, ''), // Remove quotes if present
+                clientSecret: gmailClientSecret.replace(/"/g, ''),
+                refreshToken: gmailRefreshToken.replace(/"/g, '')
             },
-            connectionTimeout: 10000,
-            socketTimeout: 10000,
-            greetingTimeout: 5000,
+            connectionTimeout: 5000, // Reduced to fail faster
+            socketTimeout: 5000,
+            greetingTimeout: 3000,
             pool: false,
             tls: {
-                rejectUnauthorized: true,
+                rejectUnauthorized: false, // Sometimes necessary in cloud environments
                 minVersion: 'TLSv1.2'
             }
         });
@@ -141,14 +145,14 @@ exports.handler = async (event, context) => {
         `;
 
         const mailOptions = {
-            from: '"Strateger Feedback" <' + cleanUser + '>',
+            from: `"Strateger Feedback" <${cleanUser}>`,
             to: 'holylandracers@gmail.com',
-            subject: '[Strateger] ' + sanitizedType + ': ' + sanitizedText.substring(0, 50) + (sanitizedText.length > 50 ? '...' : ''),
+            subject: `[Strateger] ${sanitizedType}: ${sanitizedText.substring(0, 50)}${sanitizedText.length > 50 ? '...' : ''}`,
             html: emailBody,
-            text: 'Type: ' + sanitizedType + '\nRole: ' + sanitizedRole + '\nTime: ' + raceTime + '\n\nMessage:\n' + text
+            text: `Type: ${sanitizedType}\nRole: ${sanitizedRole}\nTime: ${raceTime}\n\nMessage:\n${text}`
         };
 
-        const sendWithTimeout = (timeout = 15000) => {
+        const sendWithTimeout = (timeout = 10000) => {
             let timeoutId;
             const timeoutPromise = new Promise((_, reject) => {
                 timeoutId = setTimeout(() => {
