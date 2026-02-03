@@ -3,7 +3,7 @@
 // File: /netlify/functions/send-feedback.js
 // ================================================================
 
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 
 const ALLOWED_ORIGINS = [
     'https://strateger.onrender.com',
@@ -82,78 +82,34 @@ exports.handler = async (event, context) => {
             };
         }
 
-        // Get Gmail OAuth2 credentials from environment
-        const gmailUser = process.env.GMAIL_USER;
-        const gmailClientId = process.env.GMAIL_CLIENT_ID;
-        const gmailClientSecret = process.env.GMAIL_CLIENT_SECRET;
-        const gmailRefreshToken = process.env.GMAIL_REFRESH_TOKEN;
+        // Get Resend API key from environment
+        const resendApiKey = process.env.RESEND_API_KEY;
         
-        // Validate OAuth2 credentials exist
-        if (!gmailUser || !gmailClientId || !gmailClientSecret || !gmailRefreshToken) {
-            console.error('Missing Gmail OAuth2 credentials in environment variables');
+        if (!resendApiKey) {
+            console.error('Missing RESEND_API_KEY in environment variables');
             return {
                 statusCode: 500,
                 headers,
                 body: JSON.stringify({ 
                     error: 'Email service not configured',
-                    details: 'Gmail OAuth2 credentials missing'
+                    details: 'Resend API key missing'
                 })
             };
         }
-        
-        const cleanUser = gmailUser.trim();
         
         // Sanitize user input to prevent XSS
         const sanitizedText = escapeHtml(text);
         const sanitizedRole = escapeHtml(role || 'Unknown');
         const sanitizedType = type === 'bug' ? 'Bug Report' : 'Feature Suggestion';
-        const typeEmoji = type === 'bug' ? 'BUG' : 'FEATURE';
+        const typeEmoji = type === 'bug' ? '🐛' : '💡';
 
-        console.log('📨 Attempting to send email via Gmail OAuth2 (Port 587)...');
-        console.log('🔑 Using credentials:', {
-            user: cleanUser,
-            clientIdPrefix: gmailClientId.substring(0, 20) + '...',
-            hasSecret: !!gmailClientSecret,
-            hasToken: !!gmailRefreshToken
-        });
+        console.log('📨 Sending email via Resend API...');
 
-        // Create transporter with Port 587 and STARTTLS
-        const transporter = nodemailer.createTransport({
-            host: 'smtp.gmail.com',
-            port: 587,
-            secure: false,
-            auth: {
-                type: 'OAuth2',
-                user: cleanUser,
-                clientId: gmailClientId.replace(/"/g, ''),
-                clientSecret: gmailClientSecret.replace(/"/g, ''),
-                refreshToken: gmailRefreshToken.replace(/"/g, '')
-            },
-            connectionTimeout: 20000,
-            socketTimeout: 20000,
-            greetingTimeout: 20000,
-            pool: false,
-            logger: true, // Enable logging
-            debug: true, // Enable debug output
-            tls: {
-                rejectUnauthorized: false,
-                minVersion: 'TLSv1.2'
-            }
-        });
-
-        // Verify connection configuration
-        console.log('🔍 Verifying SMTP connection...');
-        try {
-            await transporter.verify();
-            console.log('✅ SMTP connection verified successfully');
-        } catch (verifyError) {
-            console.error('❌ SMTP verification failed:', verifyError);
-            throw new Error(`SMTP Connection Failed: ${verifyError.message}`);
-        }
+        const resend = new Resend(resendApiKey);
 
         // Format the email body
         const emailBody = `
-            <h2>${typeEmoji}: ${sanitizedType}</h2>
+            <h2>${typeEmoji} ${sanitizedType}</h2>
             <p><strong>Feedback Type:</strong> ${sanitizedType}</p>
             <p><strong>Role:</strong> ${sanitizedRole}</p>
             <p><strong>Race Time:</strong> ${raceTime ? Math.floor(raceTime / 60) + ':' + String(raceTime % 60).padStart(2, '0') : 'N/A'}</p>
@@ -162,36 +118,19 @@ exports.handler = async (event, context) => {
             <div style="white-space: pre-wrap; font-family: sans-serif; background: #f4f4f4; padding: 15px; border-radius: 5px;">${sanitizedText}</div>
         `;
 
-        const mailOptions = {
-            from: `"Strateger Feedback" <${cleanUser}>`,
-            to: 'holylandracers@gmail.com',
+        const { data, error } = await resend.emails.send({
+            from: 'Strateger Feedback <onboarding@resend.dev>',
+            to: ['holylandracers@gmail.com'],
             subject: `[Strateger] ${sanitizedType}: ${sanitizedText.substring(0, 50)}${sanitizedText.length > 50 ? '...' : ''}`,
-            html: emailBody,
-            text: `Type: ${sanitizedType}\nRole: ${sanitizedRole}\nTime: ${raceTime}\n\nMessage:\n${text}`
-        };
+            html: emailBody
+        });
 
-        const sendWithTimeout = (timeout = 10000) => {
-            let timeoutId;
-            const timeoutPromise = new Promise((_, reject) => {
-                timeoutId = setTimeout(() => {
-                    timeoutId = null;
-                    reject(new Error('Email send timeout'));
-                }, timeout);
-            });
+        if (error) {
+            console.error('❌ Resend API error:', error);
+            throw error;
+        }
 
-            const sendPromise = transporter.sendMail(mailOptions).finally(() => {
-                if (timeoutId) {
-                    clearTimeout(timeoutId);
-                    timeoutId = null;
-                }
-            });
-
-            return Promise.race([sendPromise, timeoutPromise]);
-        };
-
-        const info = await sendWithTimeout();
-        console.log('✅ Email sent successfully:', info.messageId);
-        transporter.close();
+        console.log('✅ Email sent successfully via Resend:', data.id);
 
         return {
             statusCode: 200,
