@@ -67,7 +67,6 @@ window.fetchLiveTimingFromProxy = async function() {
     if (!window.liveTimingConfig.url) return;
     
     window.updateSearchConfig();
-    window.updateProxyStatus("🔄 " + window.t('connecting'));
     
     // יצירת מנהל אם לא קיים (LiveTimingManager נטען ב-HTML)
     if (!window.liveTimingManager && typeof LiveTimingManager !== 'undefined') {
@@ -80,12 +79,27 @@ window.fetchLiveTimingFromProxy = async function() {
     const url = window.liveTimingConfig.url;
     // איחוד פרמטרים לחיפוש חכם
     const searchTerm = window.searchConfig.driverName || window.searchConfig.teamName || window.searchConfig.kartNumber || '';
+    
+    // Check if already running with same config - don't restart
+    const stats = window.liveTimingManager.getStats();
+    if (stats && stats.isRunning) {
+        console.log('[LiveTiming] Already running, skipping restart');
+        return;
+    }
+    
+    window.updateProxyStatus("🔄 " + window.t('connecting'));
 
     // התחלת הסקרייפר דרך המנהל
     window.liveTimingManager.start(url, searchTerm, {
         updateInterval: 2000, 
         
         onUpdate: (data) => {
+            console.log('[LiveTiming] Data update:', { 
+                hasOurTeam: !!data.ourTeam, 
+                position: data.ourTeam?.position,
+                compCount: data.competitors?.length 
+            });
+            
             if (data.ourTeam) {
                 window.liveData.previousPosition = window.liveData.position;
                 window.liveData.position = data.ourTeam.position;
@@ -94,13 +108,25 @@ window.fetchLiveTimingFromProxy = async function() {
                 window.liveData.laps = data.ourTeam.totalLaps;
                 window.liveData.gapToLeader = data.ourTeam.gap;
             }
-            window.liveData.competitors = data.competitors;
+            window.liveData.competitors = data.competitors || [];
             
-            // עדכון הממשק
-            window.updateLiveTimingUI();
+            // Force enable if data arrived
+            if (!window.liveTimingConfig.enabled) {
+                window.liveTimingConfig.enabled = true;
+            }
+            
+            // עדכון הממשק - always call
+            if (typeof window.updateLiveTimingUI === 'function') {
+                window.updateLiveTimingUI();
+            }
             
             // שידור ללקוחות אם אנחנו Host
-            if (window.state.isRunning) window.broadcast();
+            if (window.state && window.state.isRunning && typeof window.broadcast === 'function') {
+                window.broadcast();
+            }
+
+            // Persist live timing state so refresh/back keeps it
+            if (typeof window.saveRaceState === 'function') window.saveRaceState();
 
             const method = data.provider || 'http';
             window.updateProxyStatus(`✅ Connected (${method})`);
@@ -170,12 +196,16 @@ window.formatLapTime = function(ms) {
 };
 
 window.updateLiveTimingUI = function() {
-    if (!window.liveTimingConfig.enabled) return;
+    // Always show panel if we have data, regardless of enabled flag
+    const hasData = window.liveData && (window.liveData.position || window.liveData.competitors.length > 0);
     
     const panel = document.getElementById('liveTimingPanel');
     const indicator = document.getElementById('liveIndicator');
-    if (panel) panel.classList.remove('hidden');
-    if (indicator) indicator.classList.remove('hidden');
+    
+    if (hasData || window.liveTimingConfig.enabled) {
+        if (panel) panel.classList.remove('hidden');
+        if (indicator) indicator.classList.remove('hidden');
+    }
     
     const posEl = document.getElementById('livePosition');
     if (posEl) posEl.innerText = window.liveData.position || '-';
@@ -216,8 +246,18 @@ window.updateCompetitorsTable = function() {
     const ourTeam = window.liveData.competitors.find(c => c.isOurTeam);
     let html = '';
     
-    // מציג את הטופ 10 או רשימה רלוונטית
-    window.liveData.competitors.slice(0, 10).forEach((comp, idx) => {
+    // Show context around our team: 3 before, us, 3 after (or top 10 if no team found)
+    let displayList = [];
+    if (ourTeam) {
+        const ourIndex = window.liveData.competitors.findIndex(c => c.isOurTeam);
+        const startIdx = Math.max(0, ourIndex - 3);
+        const endIdx = Math.min(window.liveData.competitors.length, ourIndex + 4);
+        displayList = window.liveData.competitors.slice(startIdx, endIdx);
+    } else {
+        displayList = window.liveData.competitors.slice(0, 10);
+    }
+    
+    displayList.forEach((comp, idx) => {
         const isUs = comp.isOurTeam;
         const isDanger = !isUs && window.liveData.position && Math.abs(comp.position - window.liveData.position) <= 2;
         
@@ -308,6 +348,13 @@ window.refreshLiveTiming = function() {
 };
 
 window.startLiveTimingUpdates = function() {
+    // Prevent duplicate starts
+    if (window.__liveTimingStarted) {
+        console.log('[LiveTiming] Already started, skipping duplicate call');
+        return;
+    }
+    window.__liveTimingStarted = true;
+    
     if (window.liveTimingConfig.demoMode) {
         window.liveTimingInterval = setInterval(window.updateDemoData, 1000);
     } else if (window.liveTimingConfig.url) {
@@ -320,6 +367,8 @@ window.stopLiveTiming = function() {
         window.liveTimingManager.stop();
         window.liveTimingManager = null;
     }
+    
+    window.__liveTimingStarted = false;
     
     // איפוס נתונים
     window.liveData = { 
@@ -340,6 +389,7 @@ window.stopLiveTimingUpdates = function() {
         clearInterval(window.liveTimingInterval);
         window.liveTimingInterval = null;
     }
+    window.__liveTimingStarted = false;
     window.stopProxyLiveTiming();
 };
 

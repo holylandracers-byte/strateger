@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Apex Test</title>
+</head>
+<body>
+    <h1>Testing Apex Connection</h1>
+    <div id="status">Initializing...</div>
+    <pre id="output"></pre>
+
+    <script>
+        const output = document.getElementById('output');
+        const status = document.getElementById('status');
+
+        // Test 1: Try WebSocket
+        status.textContent = 'Testing WebSocket...';
+        const wsUrl = 'wss://www.apex-timing.com:8523/';
+        const ws = new WebSocket(wsUrl);
+
+        ws.onopen = () => {
+            status.textContent = '✅ WebSocket Connected!';
+            output.textContent += `Connected to: ${wsUrl}\n`;
+        };
+
+        ws.onmessage = (event) => {
+            output.textContent += `\n📨 Message received:\n${event.data}\n`;
+        };
+
+        ws.onerror = (error) => {
+            status.textContent = '❌ WebSocket Failed - Trying HTTP...';
+            output.textContent += `WS Error: ${error}\n\n`;
+            testHttp();
+        };
+
+        ws.onclose = () => {
+            output.textContent += 'WebSocket closed\n';
+        };
+
+        // Test 2: HTTP Fallback
+        async function testHttp() {
+            const urls = [
+                'https://www.apex-timing.com/live-timing/worldkarts/standings.json',
+                'https://www.apex-timing.com/live-timing/worldkarts/data.json',
+                'https://www.apex-timing.com/live-timing/worldkarts/'
+            ];
+
+            for (const url of urls) {
+                try {
+                    output.textContent += `\nTrying: ${url}\n`;
+                    const response = await fetch(url);
+                    output.textContent += `Status: ${response.status}\n`;
+                    
+                    if (response.ok) {
+                        const text = await response.text();
+                        output.textContent += `Success! Length: ${text.length}\n`;
+                        output.textContent += `Preview:\n${text.substring(0, 500)}\n\n`;
+                        status.textContent = `✅ HTTP Success: ${url}`;
+                        break;
+                    }
+                } catch (e) {
+                    output.textContent += `Error: ${e.message}\n`;
+                }
+            }
+        }
+
+        // Timeout test
+        setTimeout(() => {
+            if (status.textContent.includes('Initializing')) {
+                ws.close();
+                testHttp();
+            }
+        }, 3000);
+    </script>
+</body>
+</html>

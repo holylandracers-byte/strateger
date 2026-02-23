@@ -146,7 +146,7 @@ class LiveTimingManager {
         raceUrl: url,
         searchTerm: this.config.searchTerm,
         updateInterval: this.config.updateInterval,
-        debug: false,
+        debug: true,
 
         onUpdate: (data) => {
             const strategerData = this.convertToStrategerFormat(data, 'apex');

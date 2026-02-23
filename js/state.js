@@ -896,12 +896,27 @@ window.saveRaceState = function() {
         config: window.config,
         state: window.state,
         drivers: window.drivers,
+        liveTimingConfig: window.liveTimingConfig,
+        searchConfig: window.searchConfig,
+        liveData: window.liveData,
+        currentPitAdjustment: window.currentPitAdjustment || 0,
         // Save Host ID explicitly within the race state
         hostId: window.myId, 
         timestamp: Date.now()
     };
     localStorage.setItem(window.RACE_STATE_KEY, JSON.stringify(snapshot));
 };
+
+// Save a final snapshot on refresh/back-navigation
+if (!window.__racePersistenceHooksAttached) {
+    window.__racePersistenceHooksAttached = true;
+    window.addEventListener('pagehide', () => {
+        try { if (typeof window.saveRaceState === 'function') window.saveRaceState(); } catch (e) {}
+    });
+    window.addEventListener('beforeunload', () => {
+        try { if (typeof window.saveRaceState === 'function') window.saveRaceState(); } catch (e) {}
+    });
+}
 
 window.checkForSavedRace = function() {
     // 1. טעינת טיוטה (Draft) למסך ההגדרות
@@ -950,6 +965,11 @@ window.continueRace = function() {
         window.drivers = data.drivers;
         window.cachedStrategy = data.strategy; 
 
+        if (data.liveTimingConfig) window.liveTimingConfig = data.liveTimingConfig;
+        if (data.searchConfig) window.searchConfig = data.searchConfig;
+        if (data.liveData) window.liveData = data.liveData;
+        if (data.currentPitAdjustment !== undefined) window.currentPitAdjustment = data.currentPitAdjustment;
+
         // Restore Host ID from the confirmed saved race
         if (data.hostId) {
             localStorage.setItem('strateger_host_id', data.hostId);
@@ -997,6 +1017,14 @@ window.continueRace = function() {
         }, 1000);
 
         setInterval(window.saveRaceState, 10000);
+
+        // Restore live timing after refresh/continue
+        try {
+            if (window.liveTimingConfig && window.liveTimingConfig.enabled) {
+                if (typeof window.updateLiveTimingUI === 'function') window.updateLiveTimingUI();
+                if (typeof window.startLiveTimingUpdates === 'function') window.startLiveTimingUpdates();
+            }
+        } catch (e) { console.error('Failed restoring live timing', e); }
         
         if (typeof window.renderFrame === 'function') window.renderFrame();
         if (typeof window.updateDriversList === 'function') window.updateDriversList(); 

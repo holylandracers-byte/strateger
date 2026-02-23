@@ -64,7 +64,7 @@ window.createDriverInput = function(val, checked, squad) {
     driverInput.value = val;
     driverInput.className = 'driver-input bg-transparent text-white w-full outline-none font-bold text-sm px-2 focus:bg-navy-900 rounded';
     driverInput.addEventListener('click', (e) => e.stopPropagation());
-    driverInput.oninput = () => window.runSim();
+    driverInput.onchange = () => window.runSim();
 
     const squadLabel = document.createElement('label');
     squadLabel.className = 'squad-toggle-container flex items-center cursor-pointer ml-auto bg-navy-800 rounded px-2 py-1 border border-gray-600 hidden select-none shrink-0';

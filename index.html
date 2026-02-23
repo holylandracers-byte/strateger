@@ -176,23 +176,23 @@
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="text-xs text-gray-400 font-bold" data-i18n="lblDuration">Duration (Hours)</label>
-                        <input type="number" id="raceDuration" value="12" oninput="window.runSim()" class="input-field text-lg font-bold">
+                        <input type="number" id="raceDuration" value="12" onchange="window.runSim()" class="input-field text-lg font-bold">
                     </div>
                     <div>
                         <label class="text-xs text-gray-400 font-bold" data-i18n="lblStops">Req. Stops</label>
-                        <input type="number" id="reqPitStops" value="15" oninput="window.runSim()" class="input-field text-neon text-lg font-bold">
+                        <input type="number" id="reqPitStops" value="15" onchange="window.runSim()" class="input-field text-neon text-lg font-bold">
                     </div>
                     <div>
                         <label class="text-xs text-gray-400" data-i18n="lblMinStint">Min Stint (min)</label>
-                        <input type="number" id="minStint" value="30" oninput="window.runSim()" class="input-field">
+                        <input type="number" id="minStint" value="30" onchange="window.runSim()" class="input-field">
                     </div>
                     <div>
                         <label class="text-xs text-gray-400" data-i18n="lblMaxStint">Max Stint (min)</label>
-                        <input type="number" id="maxStint" value="65" oninput="window.runSim()" class="input-field">
+                        <input type="number" id="maxStint" value="65" onchange="window.runSim()" class="input-field">
                     </div>
                     <div>
                         <label class="text-xs text-gray-400" data-i18n="lblPitTime">Pit Time (sec)</label>
-                        <input type="number" id="minPitTime" value="120" oninput="window.runSim()" class="input-field">
+                        <input type="number" id="minPitTime" value="120" onchange="window.runSim()" class="input-field">
                     </div>
                 </div>
                 
@@ -229,34 +229,34 @@
                 <div class="grid grid-cols-2 gap-4 mb-3">
                     <div>
                         <label class="text-xs text-red-400 font-bold" data-i18n="lblPitClosedStart">🚫 Closed Start (min)</label>
-                        <input type="number" id="pitClosedStart" value="0" oninput="window.runSim()" class="input-field border-red-900/50">
+                        <input type="number" id="pitClosedStart" value="0" onchange="window.runSim()" class="input-field border-red-900/50">
                     </div>
                     <div>
                         <label class="text-xs text-red-400 font-bold" data-i18n="lblPitClosedEnd">🚫 Closed End (min)</label>
-                        <input type="number" id="pitClosedEnd" value="0" oninput="window.runSim()" class="input-field border-red-900/50">
+                        <input type="number" id="pitClosedEnd" value="0" onchange="window.runSim()" class="input-field border-red-900/50">
                     </div>
                 </div>
 
                 <div class="grid grid-cols-2 gap-4 mb-3">
                     <div>
                         <label class="text-xs text-gray-400" data-i18n="lblMinDrive">Min Driver Total</label>
-                        <input type="number" id="minDriverTime" placeholder="0" oninput="window.runSim()" class="input-field">
+                        <input type="number" id="minDriverTime" placeholder="0" onchange="window.runSim()" class="input-field">
                     </div>
                     <div>
                         <label class="text-xs text-gray-400" data-i18n="lblMaxDrive">Max Driver Total</label>
-                        <input type="number" id="maxDriverTime" placeholder="0" oninput="window.runSim()" class="input-field">
+                        <input type="number" id="maxDriverTime" placeholder="0" onchange="window.runSim()" class="input-field">
                     </div>
                 </div>
 
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="text-xs text-yellow-400 font-bold" data-i18n="lblBuffer">Pit Alert / Buffer (s)</label>
-                        <input type="number" id="releaseBuffer" value="5" oninput="window.runSim()" class="input-field border-yellow-600/50">
+                        <input type="number" id="releaseBuffer" value="5" onchange="window.runSim()" class="input-field border-yellow-600/50">
                     </div>
                     
                     <div id="fuelInputDiv" class="hidden">
                         <label class="text-xs text-fuel font-bold" data-i18n="lblFuelTank">Fuel Tank (min)</label>
-                        <input type="number" id="fuelTime" oninput="window.runSim()" class="input-field border-fuel/50">
+                        <input type="number" id="fuelTime" onchange="window.runSim()" class="input-field border-fuel/50">
                     </div>
                 </div>
             </div>

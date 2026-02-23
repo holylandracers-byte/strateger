@@ -127,7 +127,12 @@ window.calculateStintDurations = function(config) {
         console.warn("Time budget too tight, adjusting first/last to fit minimums.");
         const avg = totalNetDriveTime / totalStints;
         const fallbackDurations = new Array(totalStints).fill(avg);
-        return { durations: fallbackDurations };
+
+        // Normalize fallback durations to whole seconds and ensure exact sum.
+        const roundedFallback = fallbackDurations.map(d => Math.round(d / 1000) * 1000);
+        const sumRounded = roundedFallback.reduce((a, b) => a + b, 0);
+        roundedFallback[totalStints - 1] += (totalNetDriveTime - sumRounded);
+        return { durations: roundedFallback };
     }
 
     const stintDurations = new Array(totalStints).fill(0);
@@ -166,7 +171,47 @@ window.calculateStintDurations = function(config) {
     
     stintDurations[totalStints - 1] = finalStintDuration;
 
-    return { durations: stintDurations };
+    // Normalize durations to whole seconds to avoid 1s drift between
+    // accumulated race time and displayed stint/race timers.
+    const rounded = stintDurations.map(d => Math.round(d / 1000) * 1000);
+    const sumRounded = rounded.reduce((a, b) => a + b, 0);
+    let diff = totalNetDriveTime - sumRounded;
+
+    // Ensure we preserve constraints when applying the diff.
+    const canAdd = (idx) => rounded[idx] + 1000 <= effectiveMaxStint;
+    const canSub = (idx) => rounded[idx] - 1000 >= minStintMs;
+
+    // Apply diff in 1s steps.
+    const steps = Math.abs(diff) / 1000;
+    if (Number.isFinite(steps) && steps > 0) {
+        for (let step = 0; step < steps; step++) {
+            if (diff > 0) {
+                // Prefer adding to the last stint, else earlier ones.
+                let applied = false;
+                for (let i = totalStints - 1; i >= 0; i--) {
+                    if (canAdd(i)) {
+                        rounded[i] += 1000;
+                        applied = true;
+                        break;
+                    }
+                }
+                if (!applied) break;
+            } else {
+                // Prefer subtracting from the last stint, else earlier ones.
+                let applied = false;
+                for (let i = totalStints - 1; i >= 0; i--) {
+                    if (canSub(i)) {
+                        rounded[i] -= 1000;
+                        applied = true;
+                        break;
+                    }
+                }
+                if (!applied) break;
+            }
+        }
+    }
+
+    return { durations: rounded };
 };
 
 window.calculateStrategyLogic = function(config) {

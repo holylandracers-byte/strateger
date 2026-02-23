@@ -537,6 +537,8 @@ window.connectToHost = function(hostId) {
                     if (data.config) window.config = data.config;
                     if (data.drivers) window.drivers = data.drivers;
                     if (data.liveData) window.liveData = data.liveData;
+                    if (data.liveTimingConfig) window.liveTimingConfig = data.liveTimingConfig;
+                    if (data.searchConfig) window.searchConfig = data.searchConfig;
 
                     // Update pit adjustment from host
                     if (data.currentPitAdjustment !== undefined) {
@@ -670,6 +672,8 @@ window.broadcast = function(specificPayload = null) {
         config: window.config,
         drivers: window.drivers,
         liveData: window.liveData,
+        liveTimingConfig: window.liveTimingConfig,
+        searchConfig: window.searchConfig,
         currentPitAdjustment: window.currentPitAdjustment || 0, // 🟢 Include pit adjustment so viewers see it
         timestamp: Date.now()
         };
