@@ -4,6 +4,7 @@
 
 document.addEventListener('DOMContentLoaded', () => {
     console.log("🚀 Strateger Initializing...");
+    window._autoStartFired = false;
 
     // 🟢 Load viewer's own language preference if available
     let savedLang = window.role === 'viewer' 
@@ -56,7 +57,210 @@ document.addEventListener('DOMContentLoaded', () => {
         const btnNightMode = document.getElementById('btnNightMode');
         if (btnNightMode) btnNightMode.classList.add('hidden');
     }
+
+    // Start race countdown monitor
+    window.startRaceCountdown();
 });
+
+// ==========================================
+// ⏰ RACE COUNTDOWN & AUTO-START
+// ==========================================
+
+window._countdownInterval = null;
+window._notifiedMinutes = new Set(); // track which alerts we've sent
+
+window.getRaceStartDate = function() {
+    const timeEl = document.getElementById('raceStartTime');
+    const dateEl = document.getElementById('raceStartDate');
+    if (!timeEl || !timeEl.value || !dateEl || !dateEl.value) return null;
+    const [y, mo, d] = dateEl.value.split('-').map(Number);
+    const [h, m] = timeEl.value.split(':').map(Number);
+    const dt = new Date(y, mo - 1, d, h, m, 0, 0);
+    return isNaN(dt.getTime()) ? null : dt;
+};
+
+window.isAdminLoggedIn = function() {
+    // Host role + Google signed in
+    if (window.role !== 'host') return false;
+    const saved = localStorage.getItem('strateger_google_user');
+    return !!(saved || (typeof googleUser !== 'undefined' && googleUser));
+};
+
+window.startRaceCountdown = function() {
+    if (window._countdownInterval) clearInterval(window._countdownInterval);
+    window._notifiedMinutes.clear();
+    window._countdownInterval = setInterval(window.updateRaceCountdown, 1000);
+};
+
+window.updateRaceCountdown = function() {
+    const banner = document.getElementById('raceCountdownBanner');
+    const textEl = document.getElementById('raceCountdownText');
+    if (!banner || !textEl) return;
+
+    // Don't show during active race
+    if (window.state && window.state.isRunning) {
+        banner.classList.add('hidden');
+        return;
+    }
+
+    const raceStart = window.getRaceStartDate();
+    if (!raceStart) {
+        banner.classList.add('hidden');
+        return;
+    }
+
+    const now = new Date();
+    const diffMs = raceStart.getTime() - now.getTime();
+    const t = window.t || (k => k);
+
+    // Race already passed
+    if (diffMs < -60000) {
+        banner.classList.add('hidden');
+        return;
+    }
+
+    // Show banner
+    banner.classList.remove('hidden');
+
+    if (diffMs <= 0) {
+        // Time to start!
+        textEl.innerHTML = `<span class="animate-pulse">🏁 ${t('countdownGo')}</span>`;
+        banner.className = banner.className.replace(/from-[\w-]+\/\d+ to-[\w-]+\/\d+/g, '').replace(/border-[\w-]+\/\d+/g, '');
+        banner.classList.add('border-green-500/80');
+        banner.style.background = 'linear-gradient(90deg, rgba(34,197,94,0.3), rgba(16,185,129,0.2))';
+
+        // Auto-start if enabled
+        const autoStartEl = document.getElementById('autoStartRace');
+        if (autoStartEl && autoStartEl.checked && !window._autoStartFired) {
+            window._autoStartFired = true;
+            window.sendBrowserNotification('🏁 ' + t('autoStarting'));
+            setTimeout(() => {
+                if (!window.state.isRunning) window.initRace();
+            }, 2000);
+        }
+        return;
+    }
+
+    // Countdown display
+    const totalSec = Math.ceil(diffMs / 1000);
+    const hrs = Math.floor(totalSec / 3600);
+    const mins = Math.floor((totalSec % 3600) / 60);
+    const secs = totalSec % 60;
+
+    let timeStr;
+    if (hrs > 0) {
+        timeStr = `${hrs}:${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
+    } else {
+        timeStr = `${mins}:${String(secs).padStart(2,'0')}`;
+    }
+
+    textEl.innerHTML = `⏱️ ${t('countdownPrefix')} <span class="font-mono text-white">${timeStr}</span>`;
+
+    // Color intensity based on proximity
+    if (totalSec <= 60) {
+        banner.style.background = 'linear-gradient(90deg, rgba(239,68,68,0.4), rgba(220,38,38,0.3))';
+    } else if (totalSec <= 300) {
+        banner.style.background = 'linear-gradient(90deg, rgba(245,158,11,0.3), rgba(217,119,6,0.2))';
+    } else if (totalSec <= 1800) {
+        banner.style.background = 'linear-gradient(90deg, rgba(34,211,238,0.2), rgba(6,182,212,0.1))';
+    } else {
+        banner.style.background = 'linear-gradient(90deg, rgba(100,116,139,0.2), rgba(71,85,105,0.1))';
+    }
+
+    // Browser notifications at key moments (only for logged-in admin)
+    if (window.isAdminLoggedIn()) {
+        const minutesLeft = Math.ceil(diffMs / 60000);
+        const alerts = [30, 10, 5, 1];
+        for (const a of alerts) {
+            if (minutesLeft === a && !window._notifiedMinutes.has(a)) {
+                window._notifiedMinutes.add(a);
+                const msg = t('countdownAlert').replace('{min}', a);
+                window.sendBrowserNotification(msg);
+            }
+        }
+    }
+};
+
+window.sendBrowserNotification = function(message) {
+    // Audio beep
+    try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = 880;
+        gain.gain.value = 0.3;
+        osc.start();
+        osc.stop(ctx.currentTime + 0.15);
+    } catch (e) {}
+
+    // Browser notification
+    if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('🏎️ Strateger', { body: message, icon: 'https://cdn-icons-png.flaticon.com/512/2418/2418779.png' });
+    } else if ('Notification' in window && Notification.permission !== 'denied') {
+        Notification.requestPermission().then(p => {
+            if (p === 'granted') {
+                new Notification('🏎️ Strateger', { body: message });
+            }
+        });
+    }
+};
+
+window.requestNotificationPermission = function() {
+    if ('Notification' in window && Notification.permission !== 'granted') {
+        Notification.requestPermission();
+    }
+};
+
+// ==========================================
+// 🎮 DEMO RACE
+// ==========================================
+
+window.startDemoRace = function() {
+    const t = window.t || (k => k);
+
+    // Set demo config defaults if fields are empty/default
+    const durEl = document.getElementById('raceDuration');
+    if (durEl && (!durEl.value || parseFloat(durEl.value) > 1)) {
+        durEl.value = '0.5'; // 30 min demo
+    }
+
+    const timeEl = document.getElementById('raceStartTime');
+    if (timeEl && !timeEl.value) {
+        const now = new Date();
+        timeEl.value = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+    }
+    const dateEl = document.getElementById('raceStartDate');
+    if (dateEl && !dateEl.value) {
+        dateEl.value = new Date().toISOString().split('T')[0];
+    }
+
+    // Ensure we have at least 2 drivers
+    if (!window.drivers || window.drivers.length < 2) {
+        if (typeof window.addDriverField === 'function') {
+            while (document.querySelectorAll('.driver-row').length < 3) window.addDriverField();
+        }
+        // Name them for demo
+        const demoNames = ['Alex', 'Jordan', 'Sam'];
+        document.querySelectorAll('.driver-row input[type="text"]').forEach((inp, i) => {
+            if (!inp.value) inp.value = demoNames[i] || `Driver ${i+1}`;
+        });
+    }
+
+    // Generate strategy
+    if (typeof window.runSim === 'function') window.runSim();
+
+    // Activate demo live timing
+    if (typeof window.startDemoMode === 'function') window.startDemoMode();
+
+    // Start the race
+    if (typeof window.initRace === 'function') window.initRace();
+
+    // Show demo badge
+    const badge = document.getElementById('demoBadge');
+    if (badge) badge.classList.remove('hidden');
+};
 
 // ==========================================
 // 🎮 MODE CONTROL

@@ -237,14 +237,26 @@ window.calculateStintDurations = function(config) {
     return { durations: rounded };
 };
 
+// Determine if a given time falls inside the squad window.
+// Returns null if outside (all drivers share), or the squad label if inside.
+window.getScheduledSquad = function(dateTime, squadWindow, allSquadLabels) {
+    if (!squadWindow || !squadWindow.startMs || !squadWindow.endMs) return null;
+    const t = dateTime.getTime();
+    // Outside the squad window => everyone drives (return null)
+    if (t < squadWindow.startMs || t >= squadWindow.endMs) return null;
+    // Inside the window: split evenly among squads
+    const windowDuration = squadWindow.endMs - squadWindow.startMs;
+    const elapsed = t - squadWindow.startMs;
+    const sliceMs = windowDuration / allSquadLabels.length;
+    const squadIdx = Math.min(Math.floor(elapsed / sliceMs), allSquadLabels.length - 1);
+    return allSquadLabels[squadIdx];
+};
+
 window.calculateStrategyLogic = function(config) {
     const raceMs = config.raceMs || (config.duration * 3600000);
     const pitTimeMs = config.pitTime * 1000;
     const totalStints = config.stops + 1;
     const maxDriverTotalMs = (config.maxDriverTotal || 0) * 60000;
-    
-    const SQUAD_SHIFT_DURATION_MS = 4 * 3600000;
-    const MIN_REST_FOR_SWITCH_MS = 4 * 3600000;
     const extendedConfig = { ...config, maxDriverTotalMs };
     
     const durationResult = window.calculateStintDurations(config);
@@ -257,10 +269,30 @@ window.calculateStrategyLogic = function(config) {
     
     console.log(`📋 Planned stint durations: ${stintDurations.map(d => (d/60000).toFixed(1) + 'm').join(', ')}`);
     
-    let currentTime = new Date();
+    // Build race start time from config
+    let raceStart = new Date();
     if (window.raceStartTime) {
         const d = new Date(window.raceStartTime);
-        if (!isNaN(d.getTime())) currentTime = d;
+        if (!isNaN(d.getTime())) raceStart = d;
+    }
+    let currentTime = new Date(raceStart);
+    
+    // Build squad window: absolute start/end times for squad rotation
+    const allSquadLabels = window.getSquadLabelsInUse();
+    let squadWindow = null;
+    if (config.useSquads && config.squadWindowStart && config.squadWindowEnd) {
+        const raceDate = new Date(raceStart);
+        // Parse squad window start time
+        const [sh, sm] = config.squadWindowStart.split(':').map(Number);
+        const winStart = new Date(raceDate);
+        winStart.setHours(sh, sm, 0, 0);
+        if (winStart.getTime() < raceStart.getTime()) winStart.setDate(winStart.getDate() + 1);
+        // Parse squad window end time
+        const [eh, em] = config.squadWindowEnd.split(':').map(Number);
+        const winEnd = new Date(raceDate);
+        winEnd.setHours(eh, em, 0, 0);
+        if (winEnd.getTime() <= winStart.getTime()) winEnd.setDate(winEnd.getDate() + 1);
+        squadWindow = { startMs: winStart.getTime(), endMs: winEnd.getTime() };
     }
     
     let currentDriverIdx = window.drivers.findIndex(d => d.isStarter);
@@ -275,8 +307,6 @@ window.calculateStrategyLogic = function(config) {
     }));
     
     let timeline = [];
-    let squadModeActive = false;
-    let activeSquad = 'A';
     let accumulatedRaceTime = 0;
     
     for (let i = 0; i < totalStints; i++) {
@@ -286,29 +316,14 @@ window.calculateStrategyLogic = function(config) {
         const isNight = window.isNightPhase(stintStartTime);
         
         let selectedIdx = -1;
+        let activeSquad = null;
         
-        const allSquadLabels = window.getSquadLabelsInUse();
-        if (config.useSquads && config.duration >= 12 && allSquadLabels.length > 1) {
-            if (isNight) {
-                if (!squadModeActive) {
-                    squadModeActive = true;
-                    activeSquad = allSquadLabels[0];
-                }
-                
-                const squadDriveTime = window.getSquadContinuousDriveTime(activeSquad, timeline);
-                
-                if (squadDriveTime >= SQUAD_SHIFT_DURATION_MS) {
-                    // Cycle to next squad that has a rested driver
-                    const curIdx = allSquadLabels.indexOf(activeSquad);
-                    for (let s = 1; s < allSquadLabels.length; s++) {
-                        const candidate = allSquadLabels[(curIdx + s) % allSquadLabels.length];
-                        if (window.squadHasRestedDriver(candidate, stintStartTime, driverStats, MIN_REST_FOR_SWITCH_MS)) {
-                            activeSquad = candidate;
-                            break;
-                        }
-                    }
-                }
-                
+        if (config.useSquads && allSquadLabels.length > 1 && squadWindow) {
+            // Determine which squad should be driving at this stint's start time
+            activeSquad = window.getScheduledSquad(stintStartTime, squadWindow, allSquadLabels);
+            
+            if (activeSquad) {
+                // Inside squad window — pick from the scheduled squad
                 selectedIdx = window.selectDriverFromSquad(activeSquad, stintStartTime, driverStats, currentDriverIdx, extendedConfig);
                 if (selectedIdx === null) {
                     // Fallback: try other squads in order
@@ -319,7 +334,7 @@ window.calculateStrategyLogic = function(config) {
                     }
                 }
             } else {
-                squadModeActive = false;
+                // Outside squad window — all drivers share equally
                 selectedIdx = window.selectMostRestedDriver(stintStartTime, driverStats, currentDriverIdx, extendedConfig);
             }
         } else {
@@ -346,8 +361,8 @@ window.calculateStrategyLogic = function(config) {
             color: window.drivers[selectedIdx].color,
             squad: window.drivers[selectedIdx].squad,
             isNightPhase: isNight,
-            squadModeActive,
-            activeSquad: squadModeActive ? activeSquad : null,
+            squadModeActive: activeSquad !== null,
+            activeSquad: activeSquad,
             start, end, startTime: start, endTime: end, duration
         });
         
@@ -391,16 +406,38 @@ window.runSim = function() {
     window.updateDriversFromUI();
     if (!window.drivers || window.drivers.length === 0) return;
 
+    // Build race start date/time from main settings inputs
     const startTimeInput = document.getElementById('raceStartTime');
+    const startDateInput = document.getElementById('raceStartDate');
     if (startTimeInput && !startTimeInput.value) {
         const now = new Date();
         startTimeInput.value = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
     }
+    if (startDateInput && !startDateInput.value) {
+        const now = new Date();
+        startDateInput.value = now.toISOString().split('T')[0];
+    }
     if (startTimeInput && startTimeInput.value) {
+        let startDate;
+        if (startDateInput && startDateInput.value) {
+            const [y, mo, d] = startDateInput.value.split('-').map(Number);
+            startDate = new Date(y, mo - 1, d);
+        } else {
+            startDate = new Date();
+        }
         const [h, m] = startTimeInput.value.split(':');
-        const startDate = new Date();
         startDate.setHours(parseInt(h), parseInt(m), 0, 0);
         window.raceStartTime = startDate.toISOString();
+    }
+
+    // Read squad window start/end times
+    let squadWindowStart = '';
+    let squadWindowEnd = '';
+    if (useSquads) {
+        const wsEl = document.getElementById('squadWindowStart');
+        const weEl = document.getElementById('squadWindowEnd');
+        squadWindowStart = wsEl ? wsEl.value : '';
+        squadWindowEnd = weEl ? weEl.value : '';
     }
 
     const raceMs = durationHours * 3600000;
@@ -421,6 +458,8 @@ window.runSim = function() {
         closedEnd: closedEndMin,
         useSquads: useSquads,
         numSquads: numSquads,
+        squadWindowStart: squadWindowStart,
+        squadWindowEnd: squadWindowEnd,
         allowDouble: allowDouble,
         minDriverTotal: minDriverMin,
         maxDriverTotal: maxDriverMin,
@@ -518,12 +557,9 @@ window.runSim = function() {
 
     let squadInfo = '';
     if (useSquads) {
-        const nightStints = stints.filter(s => s.isNightPhase);
-        if (nightStints.length > 0) {
-            const squadLabels = window.getSquadLabelsInUse();
-            const counts = squadLabels.map(lbl => `${lbl}=${nightStints.filter(s => s.squad === lbl).length}`);
-            squadInfo = ` | 🌙 ${counts.join(' ')}`;
-        }
+        const squadLabels = window.getSquadLabelsInUse();
+        const counts = squadLabels.map(lbl => `${lbl}=${stints.filter(s => s.squad === lbl).length}`);
+        squadInfo = ` | 🔄 ${counts.join(' ')}`;
     }
 
     const resEl = document.getElementById('simResult');
@@ -642,6 +678,15 @@ window.initRace = function() {
         // === FIX: Save IMMEDIATELY so we can restore even if refreshed quickly ===
         window.saveRaceState(); 
         setInterval(window.saveRaceState, 10000);
+    }
+
+    // Start live timing updates (including demo mode) if enabled
+    if (window.liveTimingConfig && window.liveTimingConfig.enabled) {
+        if (typeof window.startLiveTimingUpdates === 'function') window.startLiveTimingUpdates();
+        const ltPanel = document.getElementById('liveTimingPanel');
+        if (ltPanel) ltPanel.classList.remove('hidden');
+        const ltIndicator = document.getElementById('liveIndicator');
+        if (ltIndicator) ltIndicator.classList.remove('hidden');
     }
     
     if (typeof window.renderFrame === 'function') window.renderFrame(); 

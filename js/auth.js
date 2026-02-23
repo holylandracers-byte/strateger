@@ -82,6 +82,11 @@ window.fetchGoogleUserInfo = async function(accessToken) {
         localStorage.setItem('strateger_google_user', JSON.stringify(googleUser));
         window.updateGoogleUI(true);
         
+        // Request notification permission for race countdown alerts
+        if (typeof window.requestNotificationPermission === 'function') {
+            window.requestNotificationPermission();
+        }
+        
     } catch (error) {
         console.error(error);
         alert('Auth Error: ' + error.message);

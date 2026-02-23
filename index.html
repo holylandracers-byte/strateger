@@ -169,10 +169,13 @@
                 ⚠️ Invalid Strategy: Average stint <span id="averageStintValue">--</span> is outside bounds [<span id="minStintBound">30</span>-<span id="maxStintBound">65</span>] min
             </div>
 
-            <div>
-                <h2 class="text-ice text-lg font-bold mb-3 flex items-center gap-2">
+            <!-- GENERAL INFO (collapsible) -->
+            <div class="collapsible-section">
+                <h2 class="text-ice text-lg font-bold mb-3 flex items-center gap-2 cursor-pointer select-none" onclick="this.parentElement.classList.toggle('collapsed')">
                     <i class="fas fa-cog"></i> <span data-i18n="generalInfo">General Info</span>
+                    <i class="fas fa-chevron-down ml-auto text-xs text-gray-500 collapse-icon transition-transform"></i>
                 </h2>
+                <div class="collapse-body">
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="text-xs text-gray-400 font-bold" data-i18n="lblDuration">Duration (Hours)</label>
@@ -181,6 +184,14 @@
                     <div>
                         <label class="text-xs text-gray-400 font-bold" data-i18n="lblStops">Req. Stops</label>
                         <input type="number" id="reqPitStops" value="15" onchange="window.runSim()" class="input-field text-neon text-lg font-bold">
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-400 font-bold" data-i18n="lblStartTime">🕐 Race Start Time</label>
+                        <input type="time" id="raceStartTime" onchange="window.runSim()" class="input-field">
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-400 font-bold" data-i18n="lblStartDate">📅 Race Date</label>
+                        <input type="date" id="raceStartDate" onchange="window.runSim()" class="input-field">
                     </div>
                     <div>
                         <label class="text-xs text-gray-400" data-i18n="lblMinStint">Min Stint (min)</label>
@@ -195,8 +206,18 @@
                         <input type="number" id="minPitTime" value="120" onchange="window.runSim()" class="input-field">
                     </div>
                 </div>
-                
-                <div class="flex flex-col gap-3 mt-3 p-3 bg-navy-800 rounded border border-gray-700">
+                </div>
+            </div>
+
+            <!-- ADVANCED CONSTRAINTS (collapsible, merged with toggles) -->
+            <div class="collapsible-section bg-navy-800 p-3 rounded border border-gray-700">
+                <h2 class="text-gray-400 text-xs font-bold uppercase flex items-center gap-2 cursor-pointer select-none" onclick="this.parentElement.classList.toggle('collapsed')">
+                    <i class="fas fa-sliders-h"></i> <span data-i18n="advancedConstraints">Advanced Constraints</span>
+                    <i class="fas fa-chevron-down ml-auto text-[10px] text-gray-600 collapse-icon transition-transform"></i>
+                </h2>
+                <div class="collapse-body mt-3">
+                <!-- Toggles -->
+                <div class="flex flex-col gap-3 mb-3">
                     <div class="border-b border-gray-600 pb-2">
                         <label class="flex items-center gap-2 cursor-pointer">
                             <input type="checkbox" id="allowDouble" onchange="window.runSim()" class="accent-ice w-4 h-4">
@@ -207,14 +228,28 @@
                     <div class="border-b border-gray-600 pb-2">
                         <div class="flex items-center gap-2">
                             <span class="text-sm text-gray-300" data-i18n="lblSquads">Squads</span>
-                            <select id="numSquads" onchange="window.toggleSquadsInput(); window.runSim()" class="bg-navy-800 text-white text-sm border border-gray-600 rounded px-2 py-1 cursor-pointer">
-                                <option value="0">Off</option>
-                                <option value="2">2 Squads</option>
-                                <option value="3">3 Squads</option>
-                                <option value="4">4 Squads</option>
+                            <select id="numSquads" onchange="window.toggleSquadsInput(); window.runSim()" class="bg-navy-900 text-white text-sm border border-gray-600 rounded px-2 py-1 cursor-pointer">
+                                <option value="0" data-i18n-opt="squadOff">Off</option>
+                                <option value="2" data-i18n-opt="squad2">2 Squads</option>
+                                <option value="3" data-i18n-opt="squad3">3 Squads</option>
+                                <option value="4" data-i18n-opt="squad4">4 Squads</option>
                             </select>
                         </div>
                         <span class="text-xs text-gray-500 block mt-1" data-i18n="lblSquadsHint">Rotate driver groups for long races</span>
+                        <div id="squadScheduleContainer" class="hidden mt-2 space-y-2 bg-navy-950 p-2 rounded border border-gray-700">
+                            <label class="text-[10px] text-gray-400 font-bold block" data-i18n="lblSquadSchedule">🔄 Squad Window</label>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="text-[9px] text-gray-500 block" data-i18n="lblSquadWindowStart">Start</label>
+                                    <input type="time" id="squadWindowStart" class="squad-start-time bg-navy-800 border border-gray-600 text-white rounded px-2 py-0.5 text-xs w-full" onchange="window.runSim()">
+                                </div>
+                                <div>
+                                    <label class="text-[9px] text-gray-500 block" data-i18n="lblSquadWindowEnd">End</label>
+                                    <input type="time" id="squadWindowEnd" class="bg-navy-800 border border-gray-600 text-white rounded px-2 py-0.5 text-xs w-full" onchange="window.runSim()">
+                                </div>
+                            </div>
+                            <span class="text-[9px] text-gray-600 block" data-i18n="lblSquadScheduleHint">Outside this window all drivers share equally. Inside, squads rotate evenly.</span>
+                        </div>
                     </div>
                     <div>
                         <label class="flex items-center gap-2 cursor-pointer">
@@ -224,13 +259,7 @@
                         <span class="text-xs text-gray-500 ml-6 block mt-1" data-i18n="lblFuelHint">Track fuel tank capacity</span>
                     </div>
                 </div>
-            </div>
-
-            <div class="bg-navy-800 p-3 rounded border border-gray-700">
-                <h2 class="text-gray-400 text-xs font-bold uppercase mb-3 flex items-center gap-2">
-                    <i class="fas fa-sliders-h"></i> <span data-i18n="advancedConstraints">Advanced Constraints</span>
-                </h2>
-                
+                <!-- Constraint fields -->
                 <div class="grid grid-cols-2 gap-4 mb-3">
                     <div>
                         <label class="text-xs text-red-400 font-bold" data-i18n="lblPitClosedStart">🚫 Closed Start (min)</label>
@@ -241,70 +270,124 @@
                         <input type="number" id="pitClosedEnd" value="0" onchange="window.runSim()" class="input-field border-red-900/50">
                     </div>
                 </div>
-
                 <div class="grid grid-cols-2 gap-4 mb-3">
                     <div>
-                        <label class="text-xs text-gray-400" data-i18n="lblMinDrive">Min Driver Total</label>
+                        <label class="text-xs text-gray-400" data-i18n="lblMinDrive">Min Driver Total (min)</label>
                         <input type="number" id="minDriverTime" placeholder="0" onchange="window.runSim()" class="input-field">
                     </div>
                     <div>
-                        <label class="text-xs text-gray-400" data-i18n="lblMaxDrive">Max Driver Total</label>
+                        <label class="text-xs text-gray-400" data-i18n="lblMaxDrive">Max Driver Total (min)</label>
                         <input type="number" id="maxDriverTime" placeholder="0" onchange="window.runSim()" class="input-field">
                     </div>
                 </div>
-
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="text-xs text-yellow-400 font-bold" data-i18n="lblBuffer">Pit Alert / Buffer (s)</label>
                         <input type="number" id="releaseBuffer" value="5" onchange="window.runSim()" class="input-field border-yellow-600/50">
                     </div>
-                    
                     <div id="fuelInputDiv" class="hidden">
                         <label class="text-xs text-fuel font-bold" data-i18n="lblFuelTank">Fuel Tank (min)</label>
                         <input type="number" id="fuelTime" onchange="window.runSim()" class="input-field border-fuel/50">
                     </div>
                 </div>
+                </div>
             </div>
 
-            <div>
-                <h2 class="text-ice text-lg font-bold mb-3 flex items-center gap-2">
+            <!-- DRIVERS (collapsible) -->
+            <div class="collapsible-section">
+                <h2 class="text-ice text-lg font-bold mb-3 flex items-center gap-2 cursor-pointer select-none" onclick="this.parentElement.classList.toggle('collapsed')">
                     <i class="fas fa-users"></i> <span data-i18n="driverConfig">Drivers</span>
+                    <i class="fas fa-chevron-down ml-auto text-xs text-gray-500 collapse-icon transition-transform"></i>
                 </h2>
+                <div class="collapse-body">
                 <div id="driversList" class="space-y-2"></div>
                 
                 <div class="flex gap-2 mt-2">
                     <button onclick="window.addDriverField(); window.runSim()" class="btn-small bg-blue-600 w-full" data-i18n="addDriver">+ Add</button>
                     <button onclick="window.removeDriverField(); window.runSim()" class="btn-small bg-red-600 w-12">-</button>
                 </div>
+                </div>
             </div>
             
-            <div>
-                <h2 class="text-ice text-lg font-bold mb-2 flex items-center gap-2">
+            <!-- AI STRATEGY (collapsible) -->
+            <div class="collapsible-section">
+                <h2 class="text-ice text-lg font-bold mb-2 flex items-center gap-2 cursor-pointer select-none" onclick="this.parentElement.classList.toggle('collapsed')">
                     <i class="fas fa-robot"></i> <span data-i18n="aiTitle">AI Strategy</span>
+                    <i class="fas fa-chevron-down ml-auto text-xs text-gray-500 collapse-icon transition-transform"></i>
                 </h2>
+                <div class="collapse-body">
                 <textarea id="strategyInstructions" rows="2" class="input-field text-xs mb-2" data-i18n="aiPlaceholder"></textarea>
                 
                 <button onclick="window.callAIStrategy(this)" class="w-full bg-indigo-900/50 hover:bg-indigo-800 border border-indigo-500/30 text-indigo-200 text-xs py-2 rounded transition" data-i18n="generateStrategy">
                     Generate Strategy (AI)
                 </button>
+                </div>
             </div>
 
-            <!-- Appearance -->
-            <div>
-                <h2 class="text-ice text-lg font-bold mb-3 flex items-center gap-2">
-                    <i class="fas fa-palette"></i> <span>Appearance</span>
+            <!-- APPEARANCE (collapsible, starts collapsed) -->
+            <div class="collapsible-section collapsed">
+                <h2 class="text-ice text-lg font-bold mb-3 flex items-center gap-2 cursor-pointer select-none" onclick="this.parentElement.classList.toggle('collapsed')">
+                    <i class="fas fa-palette"></i> <span data-i18n="lblAppearance">Appearance</span>
+                    <i class="fas fa-chevron-down ml-auto text-xs text-gray-500 collapse-icon transition-transform"></i>
                 </h2>
-                <label class="text-xs text-gray-400 mb-2 block">Page Background</label>
-                <div id="bgSwatches" class="flex flex-wrap gap-2 items-center">
-                    <button class="bg-swatch active w-8 h-8 rounded-full border-2 border-gray-600 hover:border-white transition" data-bg="" title="Default (Navy Grid)" onclick="window.setPageBackground('')" style="background: linear-gradient(135deg, #020617 50%, #1e293b 100%);"></button>
-                    <button class="bg-swatch w-8 h-8 rounded-full border-2 border-gray-600 hover:border-gray-300 transition" data-bg="#000000" title="Pure Black" onclick="window.setPageBackground('#000000')" style="background:#000000;"></button>
-                    <button class="bg-swatch w-8 h-8 rounded-full border-2 border-gray-600 hover:border-green-400 transition" data-bg="#030f07" title="Forest" onclick="window.setPageBackground('#030f07')" style="background:#030f07;"></button>
-                    <button class="bg-swatch w-8 h-8 rounded-full border-2 border-gray-600 hover:border-purple-400 transition" data-bg="#0a0215" title="Deep Purple" onclick="window.setPageBackground('#0a0215')" style="background:#0a0215;"></button>
-                    <button class="bg-swatch w-8 h-8 rounded-full border-2 border-gray-600 hover:border-red-400 transition" data-bg="#130106" title="Crimson" onclick="window.setPageBackground('#130106')" style="background:#130106;"></button>
-                    <button class="bg-swatch w-8 h-8 rounded-full border-2 border-gray-600 hover:border-blue-400 transition" data-bg="#06111a" title="Steel Blue" onclick="window.setPageBackground('#06111a')" style="background:#06111a;"></button>
-                    <button class="bg-swatch w-8 h-8 rounded-full border-2 border-gray-600 hover:border-yellow-400 transition" data-bg="#130e02" title="Desert" onclick="window.setPageBackground('#130e02')" style="background:#130e02;"></button>
-                    <label class="bg-swatch w-8 h-8 rounded-full border-2 border-gray-600 hover:border-ice transition overflow-hidden cursor-pointer relative flex items-center justify-center" data-bg="custom" title="Custom color" style="background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red);">
-                        <input type="color" id="bgColorCustom" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" onchange="window.setPageBackground(this.value)">
+                <div class="collapse-body">
+                <label class="text-xs text-gray-400 mb-2 block" data-i18n="lblPageBg">Page Background</label>
+                <div id="bgSwatches" class="grid grid-cols-4 gap-2 items-center">
+                    <!-- Default navy grid -->
+                    <button class="bg-swatch active w-full aspect-[3/2] rounded-lg border-2 border-gray-600 hover:border-white transition overflow-hidden relative group" data-bg="" title="Default" onclick="window.setPageBackground('')">
+                        <div class="absolute inset-0" style="background: linear-gradient(135deg, #020617 50%, #1e293b 100%);"></div>
+                        <span class="absolute bottom-0 inset-x-0 text-[8px] text-gray-400 bg-black/70 text-center py-0.5 opacity-0 group-hover:opacity-100 transition">Default</span>
+                    </button>
+                    <!-- Checkered flag -->
+                    <button class="bg-swatch w-full aspect-[3/2] rounded-lg border-2 border-gray-600 hover:border-white transition overflow-hidden relative group" data-bg="checkered" title="Checkered Flag" onclick="window.setPageBackground('checkered')">
+                        <div class="absolute inset-0" style="background-color:#111; background-image: repeating-conic-gradient(#222 0% 25%, #111 0% 50%); background-size: 10px 10px;"></div>
+                        <span class="absolute bottom-0 inset-x-0 text-[8px] text-gray-300 bg-black/70 text-center py-0.5 opacity-0 group-hover:opacity-100 transition">🏁 Flag</span>
+                    </button>
+                    <!-- Carbon fiber -->
+                    <button class="bg-swatch w-full aspect-[3/2] rounded-lg border-2 border-gray-600 hover:border-gray-300 transition overflow-hidden relative group" data-bg="carbon" title="Carbon Fiber" onclick="window.setPageBackground('carbon')">
+                        <div class="absolute inset-0" style="background: repeating-linear-gradient(45deg, #0a0a0a, #0a0a0a 2px, #151515 2px, #151515 4px);"></div>
+                        <span class="absolute bottom-0 inset-x-0 text-[8px] text-gray-300 bg-black/70 text-center py-0.5 opacity-0 group-hover:opacity-100 transition">Carbon</span>
+                    </button>
+                    <!-- Racing stripes (red) -->
+                    <button class="bg-swatch w-full aspect-[3/2] rounded-lg border-2 border-gray-600 hover:border-red-400 transition overflow-hidden relative group" data-bg="stripes-red" title="Racing Red" onclick="window.setPageBackground('stripes-red')">
+                        <div class="absolute inset-0" style="background: linear-gradient(180deg, #0a0000 0%, #1a0505 40%, #300808 50%, #1a0505 60%, #0a0000 100%);"></div>
+                        <div class="absolute top-[42%] left-0 right-0 h-[4px]" style="background:#cc0000;"></div>
+                        <div class="absolute top-[55%] left-0 right-0 h-[2px]" style="background:#cc0000;"></div>
+                        <span class="absolute bottom-0 inset-x-0 text-[8px] text-red-300 bg-black/70 text-center py-0.5 opacity-0 group-hover:opacity-100 transition">🏎️ Red</span>
+                    </button>
+                    <!-- Night circuit (neon) -->
+                    <button class="bg-swatch w-full aspect-[3/2] rounded-lg border-2 border-gray-600 hover:border-cyan-400 transition overflow-hidden relative group" data-bg="night-circuit" title="Night Circuit" onclick="window.setPageBackground('night-circuit')">
+                        <div class="absolute inset-0" style="background: radial-gradient(ellipse at 30% 80%, rgba(34,211,238,0.12) 0%, transparent 50%), radial-gradient(ellipse at 70% 20%, rgba(168,85,247,0.1) 0%, transparent 50%), #050a12;"></div>
+                        <span class="absolute bottom-0 inset-x-0 text-[8px] text-cyan-300 bg-black/70 text-center py-0.5 opacity-0 group-hover:opacity-100 transition">🌙 Night</span>
+                    </button>
+                    <!-- Pit lane (warning stripes) -->
+                    <button class="bg-swatch w-full aspect-[3/2] rounded-lg border-2 border-gray-600 hover:border-yellow-400 transition overflow-hidden relative group" data-bg="pit-lane" title="Pit Lane" onclick="window.setPageBackground('pit-lane')">
+                        <div class="absolute inset-0" style="background: #0c0c0c;"></div>
+                        <div class="absolute bottom-0 left-0 right-0 h-[6px]" style="background: repeating-linear-gradient(90deg, #d4a017 0px, #d4a017 6px, #111 6px, #111 12px);"></div>
+                        <span class="absolute bottom-0 inset-x-0 text-[8px] text-yellow-300 bg-black/70 text-center py-0.5 opacity-0 group-hover:opacity-100 transition">⚠️ Pit</span>
+                    </button>
+                    <!-- Tarmac / asphalt -->
+                    <button class="bg-swatch w-full aspect-[3/2] rounded-lg border-2 border-gray-600 hover:border-gray-400 transition overflow-hidden relative group" data-bg="tarmac" title="Tarmac" onclick="window.setPageBackground('tarmac')">
+                        <div class="absolute inset-0" style="background: #181818; background-image: url('data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%224%22 height=%224%22><rect width=%224%22 height=%224%22 fill=%22%23181818%22/><rect width=%221%22 height=%221%22 x=%220%22 y=%220%22 fill=%22%23202020%22 /><rect width=%221%22 height=%221%22 x=%222%22 y=%222%22 fill=%22%23141414%22 /></svg>');"></div>
+                        <div class="absolute top-[48%] left-0 right-0 h-[2px]" style="background: linear-gradient(90deg, transparent 0%, #ffffff44 20%, #ffffff44 80%, transparent 100%);"></div>
+                        <span class="absolute bottom-0 inset-x-0 text-[8px] text-gray-300 bg-black/70 text-center py-0.5 opacity-0 group-hover:opacity-100 transition">Tarmac</span>
+                    </button>
+                    <!-- Pure black -->
+                    <button class="bg-swatch w-full aspect-[3/2] rounded-lg border-2 border-gray-600 hover:border-gray-300 transition overflow-hidden relative group" data-bg="black" title="Pure Black" onclick="window.setPageBackground('black')">
+                        <div class="absolute inset-0" style="background:#000;"></div>
+                        <span class="absolute bottom-0 inset-x-0 text-[8px] text-gray-400 bg-black/70 text-center py-0.5 opacity-0 group-hover:opacity-100 transition">Black</span>
+                    </button>
+                </div>
+                </div>
+            </div>
+
+            <!-- RACE COUNTDOWN BANNER -->
+            <div id="raceCountdownBanner" class="hidden rounded-lg border border-ice/30 p-2 text-center transition-all duration-500">
+                <div id="raceCountdownText" class="text-sm font-bold text-ice"></div>
+                <div class="flex items-center justify-center gap-3 mt-1">
+                    <label class="flex items-center gap-1.5 cursor-pointer">
+                        <input type="checkbox" id="autoStartRace" class="accent-green-500 w-3.5 h-3.5">
+                        <span class="text-[10px] text-gray-400" data-i18n="lblAutoStart">Auto-start at race time</span>
                     </label>
                 </div>
             </div>
@@ -314,15 +397,23 @@
                     <i class="fas fa-chart-bar mr-2"></i> <span data-i18n="previewStrategy">Preview Strategy</span>
                 </button>
 
-                <button id="startRaceBtn" onclick="window.initRace()" class="w-full bg-ice hover:bg-cyan-300 text-navy-950 font-bold py-4 rounded text-xl shadow-[0_0_15px_rgba(34,211,238,0.4)] transition uppercase tracking-wider" data-i18n="startRace">
-                    Start Race
-                </button>
+                <div class="flex gap-2">
+                    <button id="startRaceBtn" onclick="window.initRace()" class="flex-1 bg-ice hover:bg-cyan-300 text-navy-950 font-bold py-4 rounded text-xl shadow-[0_0_15px_rgba(34,211,238,0.4)] transition uppercase tracking-wider" data-i18n="startRace">
+                        Start Race
+                    </button>
+                    <button onclick="window.startDemoRace()" class="bg-neon/20 border-2 border-neon/50 text-neon font-bold py-4 px-4 rounded text-sm hover:bg-neon/30 transition" title="Start a 30-min demo race with simulated competitors">
+                        <i class="fas fa-play-circle mr-1"></i> <span data-i18n="demoRace">Demo</span>
+                    </button>
+                </div>
             </div>
 
-            <div>
-                <h2 class="text-ice text-lg font-bold mb-3 flex items-center gap-2">
+            <!-- FEEDBACK (collapsible, starts collapsed) -->
+            <div class="collapsible-section collapsed">
+                <h2 class="text-ice text-lg font-bold mb-3 flex items-center gap-2 cursor-pointer select-none" onclick="this.parentElement.classList.toggle('collapsed')">
                     <i class="fas fa-comments"></i> <span data-i18n="feedbackTitle">Feedback</span>
+                    <i class="fas fa-chevron-down ml-auto text-xs text-gray-500 collapse-icon transition-transform"></i>
                 </h2>
+                <div class="collapse-body">
                 <div class="flex gap-2 mb-2">
                     <button onclick="window.showFeedbackTab('bug')" id="bugReportTabBtn" class="flex-1 bg-red-900/50 hover:bg-red-800 border border-red-500/50 text-red-200 font-bold py-2 rounded transition" data-i18n="bugReport">Report Bug</button>
                     <button onclick="window.showFeedbackTab('feature')" id="featureTabBtn" class="flex-1 bg-blue-900/50 hover:bg-blue-800 border border-blue-500/50 text-blue-200 font-bold py-2 rounded transition" data-i18n="featureSuggestion">Suggest Feature</button>
@@ -332,6 +423,7 @@
                     <div class="text-xs text-gray-400 font-bold mb-2" id="feedbackTitle" data-i18n="bugReportTitle">Bug Report</div>
                     <textarea id="feedbackText" class="input-field text-xs mb-2 resize-none" rows="3" data-i18n="describeIssue" placeholder="Describe the issue or suggestion..."></textarea>
                     <button onclick="window.submitFeedback()" class="w-full bg-gradient-to-r from-neon to-green-500 hover:from-green-400 hover:to-green-600 text-black font-bold py-2 rounded transition" data-i18n="send">Send</button>
+                </div>
                 </div>
             </div>
 
@@ -352,7 +444,7 @@
                 <div class="flex flex-wrap gap-4 items-end justify-between">
                     <div>
                         <label class="text-xs text-gray-400 block mb-1" data-i18n="thStart">Start Time</label>
-                        <input type="time" id="raceStartTime" class="bg-navy-800 border border-gray-600 text-white rounded px-2 py-1 text-sm" onchange="window.renderPreview()">
+                        <div id="previewStartTimeDisplay" class="text-sm font-mono text-white bg-navy-800 border border-gray-600 rounded px-2 py-1">--:--</div>
                     </div>
                     
                     <div class="text-right">
@@ -412,6 +504,7 @@
             <div class="text-center">
                 <div class="text-[10px] text-gray-500 uppercase font-bold" data-i18n="raceTime">Race Time</div>
                 <div id="raceTimerDisplay" class="text-xl font-mono font-bold text-white tracking-wider">00:00:00</div>
+                <div id="demoBadge" class="hidden text-[8px] bg-neon/20 text-neon border border-neon/50 px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider">Demo</div>
             </div>
             <div class="text-center">
                 <div class="text-[10px] text-gray-500 uppercase font-bold" data-i18n="stops">Stops</div>
@@ -435,7 +528,10 @@
                 <div class="grid grid-cols-3 gap-1 text-center">
                     <div class="bg-navy-950 rounded border border-gray-700 p-1">
                         <div class="text-[9px] text-gray-500" data-i18n="pos">POS</div>
-                        <div id="livePosition" class="text-lg font-bold text-ice">-</div>
+                        <div class="flex items-center justify-center gap-1">
+                            <span id="livePosition" class="text-lg font-bold text-ice">-</span>
+                            <span id="livePositionChange" class="text-[10px] position-same"></span>
+                        </div>
                     </div>
                     <div class="bg-navy-950 rounded border border-gray-700 p-1">
                         <div class="text-[9px] text-gray-500" data-i18n="last">LAST</div>
@@ -446,6 +542,21 @@
                         <div id="liveBestLap" class="text-sm font-mono text-neon">-</div>
                     </div>
                 </div>
+                <div class="grid grid-cols-3 gap-1 text-center mt-1">
+                    <div class="bg-navy-950 rounded border border-gray-700 p-1">
+                        <div class="text-[9px] text-gray-500" data-i18n="laps">LAPS</div>
+                        <div id="liveLaps" class="text-sm font-bold text-white">-</div>
+                    </div>
+                    <div class="bg-navy-950 rounded border border-gray-700 p-1">
+                        <div class="text-[9px] text-gray-500" data-i18n="gap">GAP</div>
+                        <div id="liveGap" class="text-sm font-mono text-fuel">-</div>
+                    </div>
+                    <div class="bg-navy-950 rounded border border-gray-700 p-1">
+                        <div class="text-[9px] text-gray-500" data-i18n="totalCompetitors">CARS</div>
+                        <div id="liveTotalCars" class="text-sm font-bold text-gray-300">-</div>
+                    </div>
+                </div>
+                <div id="competitorsTable" class="mt-2 max-h-48 overflow-y-auto scrollbar-thin"></div>
             </div>
 
             <div id="strategyBox" class="p-2 text-center bg-navy-900 border border-gray-700 rounded-lg shadow-sm">

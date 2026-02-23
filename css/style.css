@@ -29,6 +29,28 @@ body {
 }
 
 /* ==================== HEADER PROTECTION ==================== */
+
+/* ==================== COLLAPSIBLE SECTIONS ==================== */
+.collapsible-section .collapse-body {
+    max-height: 2000px;
+    overflow: hidden;
+    transition: max-height 0.3s ease, opacity 0.25s ease;
+    opacity: 1;
+}
+.collapsible-section.collapsed .collapse-body {
+    max-height: 0;
+    opacity: 0;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+.collapsible-section .collapse-icon {
+    transition: transform 0.25s ease;
+}
+.collapsible-section.collapsed .collapse-icon {
+    transform: rotate(-90deg);
+}
+
+/* ==================== HEADER ==================== */
 header {
     position: sticky;
     top: 0;
@@ -151,8 +173,25 @@ header {
 .driver-color-picker::-webkit-color-swatch { border: none; border-radius: 50%; }
 .driver-color-picker::-moz-color-swatch { border: none; border-radius: 50%; }
 
+/* Race countdown banner pulse */
+#raceCountdownBanner:not(.hidden) {
+    animation: countdown-pulse 2s ease-in-out infinite;
+}
+@keyframes countdown-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.85; }
+}
+
+/* Demo badge */
+#demoBadge { animation: demo-blink 3s ease-in-out infinite; }
+@keyframes demo-blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
 /* Background swatch active ring */
-.bg-swatch.active { border-color: #ffffff !important; box-shadow: 0 0 0 2px rgba(255,255,255,0.6); }
+.bg-swatch.active { border-color: var(--ice) !important; box-shadow: 0 0 8px rgba(34, 211, 238, 0.5); }
+.bg-swatch { position: relative; }
 
 /* ==================== DRIVER ROW PROTECTION ==================== */
 /* וידוא שהשורות לא נמעכות */
@@ -166,7 +205,16 @@ header {
 .position-up { color: #22c55e; }
 .position-down { color: #ef4444; }
 .position-same { color: #9ca3af; }
+.competitor-row { transition: background 0.3s ease; }
 .competitor-row.our-team { background: rgba(34, 211, 238, 0.2); border: 1px solid var(--ice); }
+.competitor-row.danger-zone { background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); }
+.competitor-row:hover { background: rgba(255, 255, 255, 0.05); }
+
+/* Scrollbar for competitors table */
+.scrollbar-thin::-webkit-scrollbar { width: 4px; }
+.scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+.scrollbar-thin::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 2px; }
+.scrollbar-thin::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.3); }
 
 .hidden { display: none !important; }
 

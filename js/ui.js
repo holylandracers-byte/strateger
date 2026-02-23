@@ -144,8 +144,51 @@ window.toggleSquadsInput = function() {
         useSquads ? btnNightMode.classList.remove('hidden') : btnNightMode.classList.add('hidden');
     }
 
+    // Show/hide squad window inputs & set smart defaults
+    const schedContainer = document.getElementById('squadScheduleContainer');
+    if (schedContainer) {
+        if (!useSquads) {
+            schedContainer.classList.add('hidden');
+        } else {
+            schedContainer.classList.remove('hidden');
+            const startInput = document.getElementById('squadWindowStart');
+            const endInput = document.getElementById('squadWindowEnd');
+            if (startInput && !startInput.value) {
+                const raceStartInput = document.getElementById('raceStartTime');
+                const raceHours = parseFloat(document.getElementById('raceDuration')?.value) || 12;
+                let baseH = 0, baseM = 0;
+                if (raceStartInput && raceStartInput.value) {
+                    const p = raceStartInput.value.split(':');
+                    baseH = parseInt(p[0]) || 0;
+                    baseM = parseInt(p[1]) || 0;
+                }
+                // Default squad window: middle third of race
+                const startOffsetMin = Math.round(raceHours * 60 / 3);
+                const endOffsetMin = Math.round(raceHours * 60 * 2 / 3);
+                const sH = Math.floor((baseH * 60 + baseM + startOffsetMin) / 60) % 24;
+                const sM = (baseH * 60 + baseM + startOffsetMin) % 60;
+                const eH = Math.floor((baseH * 60 + baseM + endOffsetMin) / 60) % 24;
+                const eM = (baseH * 60 + baseM + endOffsetMin) % 60;
+                startInput.value = `${String(sH).padStart(2,'0')}:${String(sM).padStart(2,'0')}`;
+                endInput.value = `${String(eH).padStart(2,'0')}:${String(eM).padStart(2,'0')}`;
+            }
+        }
+    }
+
+    // Translate dropdown options
+    window.translateSquadDropdown();
+
     // Auto-assign drivers equally across squads
     if (useSquads) window.autoAssignSquads(numSquads);
+};
+
+window.translateSquadDropdown = function() {
+    const sel = document.getElementById('numSquads');
+    if (!sel) return;
+    sel.querySelectorAll('option[data-i18n-opt]').forEach(opt => {
+        const key = opt.getAttribute('data-i18n-opt');
+        if (key && window.t) opt.textContent = window.t(key);
+    });
 };
 
 window.autoAssignSquads = function(numSquads) {
@@ -171,21 +214,46 @@ window.toggleFuelInput = function() {
     }
 };
 
-const _BG_PRESETS = ['', '#000000', '#030f07', '#0a0215', '#130106', '#06111a', '#130e02'];
+const _BG_THEMES = {
+    '': '', // Default — CSS handles it
+    'checkered': 'background-color:#111; background-image: repeating-conic-gradient(#1a1a1a 0% 25%, #111 0% 50%); background-size: 20px 20px;',
+    'carbon': 'background: repeating-linear-gradient(45deg, #0a0a0a, #0a0a0a 3px, #161616 3px, #161616 6px);',
+    'stripes-red': 'background: linear-gradient(180deg, #080000 0%, #150303 35%, #2a0505 48%, #cc0000 49.5%, #cc0000 50.5%, #2a0505 52%, #cc0000 55%, #cc0000 55.5%, #150303 57%, #080000 100%);',
+    'night-circuit': 'background: radial-gradient(ellipse at 30% 80%, rgba(34,211,238,0.15) 0%, transparent 50%), radial-gradient(ellipse at 70% 20%, rgba(168,85,247,0.12) 0%, transparent 50%), radial-gradient(ellipse at 50% 50%, rgba(0,0,0,0) 0%, #050a12 100%); background-color: #050a12;',
+    'pit-lane': 'background: linear-gradient(180deg, #0c0c0c 0%, #0c0c0c 92%, transparent 92%), repeating-linear-gradient(90deg, #d4a017 0px, #d4a017 10px, #111 10px, #111 20px); background-color: #0c0c0c;',
+    'tarmac': "background-color:#181818; background-image: url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='4' height='4' fill='%23181818'/%3E%3Crect width='1' height='1' fill='%23202020'/%3E%3Crect width='1' height='1' x='2' y='2' fill='%23141414'/%3E%3C/svg%3E\"), linear-gradient(180deg, transparent 47%, rgba(255,255,255,0.15) 49%, rgba(255,255,255,0.15) 51%, transparent 53%);",
+    'black': 'background: #000000;'
+};
+
 window.setPageBackground = function(bg) {
-    document.body.style.background = bg || '';
+    // Clear all inline background styles first
+    document.body.style.cssText = document.body.style.cssText.replace(/background[^;]*;?/gi, '');
+    
+    if (bg && _BG_THEMES[bg]) {
+        // Apply named theme CSS
+        const styles = _BG_THEMES[bg];
+        // Parse and apply each property
+        styles.split(';').forEach(rule => {
+            const [prop, ...valParts] = rule.split(':');
+            if (prop && valParts.length) {
+                const cssProp = prop.trim();
+                const val = valParts.join(':').trim();
+                if (cssProp.startsWith('background')) {
+                    document.body.style.setProperty(cssProp, val);
+                }
+            }
+        });
+    } else if (bg) {
+        // Fallback for legacy saved values (old hex colors)
+        document.body.style.background = bg;
+    }
+    // else: empty = default, CSS handles it
+    
     localStorage.setItem('strateger_bg', bg);
     // Highlight active swatch
     document.querySelectorAll('.bg-swatch').forEach(s => {
-        const isPresetMatch = s.dataset.bg === bg;
-        const isCustomMatch = !_BG_PRESETS.includes(bg) && s.dataset.bg === 'custom';
-        s.classList.toggle('active', isPresetMatch || isCustomMatch);
+        s.classList.toggle('active', s.dataset.bg === bg);
     });
-    // Update custom swatch preview color when a custom hex is picked
-    if (!_BG_PRESETS.includes(bg)) {
-        const customSwatch = document.querySelector('.bg-swatch[data-bg="custom"]');
-        if (customSwatch) customSwatch.style.background = bg;
-    }
 };
 
 // פונקציית עזר לפורמט שעות:דקות (3:35)
@@ -204,13 +272,10 @@ window.renderPreview = function() {
     // === 1. קביעת זמן התחלה ===
     let startRef;
     const timeInput = document.getElementById('raceStartTime');
+    const previewTimeDisplay = document.getElementById('previewStartTimeDisplay');
     
-    if (timeInput && !timeInput.value && window.previewData.startTime) {
-        const dt = new Date(window.previewData.startTime);
-        const timeStr = dt.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', hour12: false});
-        timeInput.value = timeStr;
-        startRef = dt;
-    } else if (timeInput && timeInput.value) {
+    if (timeInput && timeInput.value) {
+        if (previewTimeDisplay) previewTimeDisplay.innerText = timeInput.value;
         startRef = new Date();
         const [h, m] = timeInput.value.split(':');
         startRef.setHours(parseInt(h), parseInt(m), 0, 0);

@@ -231,6 +231,32 @@ window.updateLiveTimingUI = function() {
     const bestLapEl = document.getElementById('liveBestLap');
     if (bestLapEl && window.liveData.bestLap) bestLapEl.innerText = window.formatLapTime(window.liveData.bestLap);
     
+    // Update laps counter
+    const lapsEl = document.getElementById('liveLaps');
+    if (lapsEl) lapsEl.innerText = window.liveData.laps != null ? window.liveData.laps : '-';
+    
+    // Update gap to leader
+    const gapEl = document.getElementById('liveGap');
+    if (gapEl) {
+        if (window.liveData.position === 1) {
+            gapEl.innerText = 'LEADER';
+            gapEl.className = 'text-sm font-mono text-gold';
+        } else if (window.liveData.gapToLeader) {
+            const gapSec = (window.liveData.gapToLeader / 1000).toFixed(1);
+            gapEl.innerText = `+${gapSec}s`;
+            gapEl.className = 'text-sm font-mono text-fuel';
+        } else {
+            gapEl.innerText = '-';
+            gapEl.className = 'text-sm font-mono text-fuel';
+        }
+    }
+    
+    // Update total cars count
+    const totalCarsEl = document.getElementById('liveTotalCars');
+    if (totalCarsEl && window.liveData.competitors) {
+        totalCarsEl.innerText = window.liveData.competitors.length || '-';
+    }
+    
     window.updateCompetitorsTable();
 };
 
@@ -368,20 +394,52 @@ window.stopLiveTiming = function() {
         window.liveTimingManager = null;
     }
     
+    // Clear demo/live interval
+    if (window.liveTimingInterval) {
+        clearInterval(window.liveTimingInterval);
+        window.liveTimingInterval = null;
+    }
+    
     window.__liveTimingStarted = false;
+    window.liveTimingConfig.demoMode = false;
     
     // איפוס נתונים
     window.liveData = { 
-        position: null, lastLap: null, bestLap: null, 
+        position: null, previousPosition: null, lastLap: null, bestLap: null, 
         laps: 0, gapToLeader: 0, competitors: [] 
     };
+    
+    // Reset demo state
+    window.demoState = { competitors: [], updateInterval: null };
     
     document.getElementById('liveTimingPanel')?.classList.add('hidden');
     document.getElementById('liveIndicator')?.classList.add('hidden');
     
-    window.updateLiveTimingUI();
+    // Reset UI elements
+    const posEl = document.getElementById('livePosition');
+    if (posEl) posEl.innerText = '-';
+    const lastEl = document.getElementById('liveLastLap');
+    if (lastEl) lastEl.innerText = '-';
+    const bestEl = document.getElementById('liveBestLap');
+    if (bestEl) bestEl.innerText = '-';
+    const lapsEl = document.getElementById('liveLaps');
+    if (lapsEl) lapsEl.innerText = '-';
+    const gapEl = document.getElementById('liveGap');
+    if (gapEl) { gapEl.innerText = '-'; gapEl.className = 'text-sm font-mono text-fuel'; }
+    const carsEl = document.getElementById('liveTotalCars');
+    if (carsEl) carsEl.innerText = '-';
+    const changeEl = document.getElementById('livePositionChange');
+    if (changeEl) { changeEl.innerText = ''; changeEl.className = 'text-[10px] position-same'; }
+    const tableEl = document.getElementById('competitorsTable');
+    if (tableEl) tableEl.innerHTML = '';
+    
+    // Hide demo badge
+    const badge = document.getElementById('demoBadge');
+    if (badge) badge.classList.add('hidden');
+    
     window.updateProxyStatus("⏹️ " + window.t('stopped'));
     window.liveTimingConfig.enabled = false;
+    window.stopProxyLiveTiming();
 };
 
 window.stopLiveTimingUpdates = function() {
@@ -414,6 +472,9 @@ window.initializeDemoCompetitors = function() {
         'Fast Lane', 'Grid Warriors'
     ];
     
+    // Shuffle base speeds so "Your Team" isn't always P1
+    const speedOffsets = teamNames.map(() => Math.random() * 3000);
+    
     window.demoState.competitors = teamNames.map((name, idx) => ({
         name: name,
         position: idx + 1,
@@ -422,6 +483,7 @@ window.initializeDemoCompetitors = function() {
         lastLap: null,
         bestLap: null,
         baseLapTime: null,
+        speedOffset: speedOffsets[idx],
         totalRaceTime: 0,
         pitStops: 0,
         inPit: false,
@@ -436,22 +498,29 @@ window.updateDemoData = function() {
     
     window.demoState.competitors.forEach((comp, idx) => {
         if (!comp.baseLapTime) {
-            comp.baseLapTime = 61000 + (idx * 400) + (Math.random() * 500);
+            // Base time 60-63s range with random spread
+            comp.baseLapTime = 60000 + (comp.speedOffset || idx * 400) + (Math.random() * 500);
         }
+        
+        // Add per-lap variance (tire degradation, traffic, mistakes)
+        const lapVariance = (Math.random() - 0.4) * 2000; // slightly biased slower
+        const currentLapTime = comp.baseLapTime + lapVariance;
         
         const expectedLaps = Math.floor(raceElapsed / comp.baseLapTime);
         if (expectedLaps > comp.laps) {
             comp.laps = expectedLaps;
-            comp.lastLap = comp.baseLapTime + (Math.random() - 0.5) * 1000;
+            comp.lastLap = currentLapTime;
             if (!comp.bestLap || comp.lastLap < comp.bestLap) comp.bestLap = comp.lastLap;
         }
         
         // סימולציית פיטס פשוטה
-        const pitInterval = 50 * 60 * 1000 + (idx * 2 * 60 * 1000);
+        const raceDurationMs = (window.config.raceDuration || 0.5) * 3600000;
+        const basePitInterval = raceDurationMs < 3600000 ? 8 * 60 * 1000 : 50 * 60 * 1000;
+        const pitInterval = basePitInterval + (idx * 30 * 1000);
         const expectedPits = Math.floor(raceElapsed / pitInterval);
         if (expectedPits > comp.pitStops) comp.pitStops = expectedPits;
         
-        const pitTimePenalty = 120000;
+        const pitTimePenalty = raceDurationMs < 3600000 ? 30000 : 120000;
         const timeSinceLastPit = raceElapsed - (comp.pitStops * pitInterval);
         comp.inPit = timeSinceLastPit >= 0 && timeSinceLastPit < pitTimePenalty && comp.pitStops > 0;
         
