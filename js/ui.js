@@ -16,7 +16,9 @@ window.addDriverField = function() {
     const list = document.getElementById('driversList');
     if (!list) return;
     const count = list.children.length + 1;
-    window.createDriverInput(`${window.t('ltDriver')} ${count}`, count === 1, 'A');
+    const numSquads = parseInt(document.getElementById('numSquads')?.value) || 0;
+    const squadIdx = numSquads > 0 ? (count - 1) % numSquads : 0;
+    window.createDriverInput(`${window.t('ltDriver')} ${count}`, count === 1, squadIdx);
     window.toggleSquadsInput();
 };
 
@@ -66,31 +68,51 @@ window.createDriverInput = function(val, checked, squad) {
     driverInput.addEventListener('click', (e) => e.stopPropagation());
     driverInput.onchange = () => window.runSim();
 
-    const squadLabel = document.createElement('label');
+    // Color picker
+    const DRIVER_PALETTE = ['#22d3ee','#a3e635','#f97316','#ef4444','#8b5cf6','#ec4899','#facc15','#34d399'];
+    const colorIdx = document.getElementById('driversList')?.children.length || 0;
+    const colorPicker = document.createElement('input');
+    colorPicker.type = 'color';
+    colorPicker.className = 'driver-color-picker';
+    colorPicker.value = DRIVER_PALETTE[colorIdx % DRIVER_PALETTE.length];
+    colorPicker.title = 'Driver color';
+    colorPicker.addEventListener('click', (e) => e.stopPropagation());
+    colorPicker.onchange = () => window.runSim();
+
+    const SQUAD_COLORS = ['#3b82f6','#06b6d4','#a855f7','#f97316'];
+    const SQUAD_LABELS = ['A','B','C','D'];
+    const squadIdx = typeof squad === 'number' ? squad : (squad === 'B' ? 1 : squad === 'C' ? 2 : squad === 'D' ? 3 : 0);
+
+    const squadLabel = document.createElement('div');
     squadLabel.className = 'squad-toggle-container flex items-center cursor-pointer ml-auto bg-navy-800 rounded px-2 py-1 border border-gray-600 hidden select-none shrink-0';
     squadLabel.addEventListener('click', (e) => e.stopPropagation());
 
-    const squadCheck = document.createElement('input');
-    squadCheck.type = 'checkbox';
-    squadCheck.className = 'squad-toggle hidden';
-    squadCheck.checked = (squad === 'B');
-    squadCheck.onchange = function(e) {
-        const display = this.nextElementSibling;
-        display.innerText = this.checked ? 'B' : 'A';
-        display.className = `w-6 h-4 rounded text-[10px] flex items-center justify-center font-bold text-white ${this.checked ? 'bg-squadB' : 'bg-squadA'}`;
+    const squadHidden = document.createElement('input');
+    squadHidden.type = 'hidden';
+    squadHidden.className = 'squad-value';
+    squadHidden.value = String(squadIdx);
+
+    const squadDisplay = document.createElement('div');
+    squadDisplay.innerText = SQUAD_LABELS[squadIdx];
+    squadDisplay.style.background = SQUAD_COLORS[squadIdx];
+    squadDisplay.className = 'w-6 h-5 rounded text-[10px] flex items-center justify-center font-bold text-white cursor-pointer select-none';
+    squadDisplay.onclick = function(e) {
+        e.stopPropagation();
+        const numSquads = parseInt(document.getElementById('numSquads')?.value) || 2;
+        let cur = parseInt(squadHidden.value) || 0;
+        cur = (cur + 1) % numSquads;
+        squadHidden.value = String(cur);
+        squadDisplay.innerText = SQUAD_LABELS[cur];
+        squadDisplay.style.background = SQUAD_COLORS[cur];
         window.runSim();
     };
 
-    const squadDisplay = document.createElement('div');
-    squadDisplay.innerText = squad;
-    squadDisplay.className = `w-6 h-4 rounded text-[10px] flex items-center justify-center font-bold text-white ${squad === 'B' ? 'bg-squadB' : 'bg-squadA'}`;
-
-    squadLabel.appendChild(document.createTextNode('Sq '));
-    squadLabel.appendChild(squadCheck);
+    squadLabel.appendChild(squadHidden);
     squadLabel.appendChild(squadDisplay);
 
     div.appendChild(label);
     div.appendChild(driverInput);
+    div.appendChild(colorPicker);
     div.appendChild(squadLabel);
     
     document.getElementById('driversList').appendChild(div);
@@ -110,7 +132,8 @@ window.updateStarterVisuals = function() {
 };
 
 window.toggleSquadsInput = function() {
-    const useSquads = document.getElementById('useSquads')?.checked;
+    const numSquads = parseInt(document.getElementById('numSquads')?.value) || 0;
+    const useSquads = numSquads > 0;
     document.querySelectorAll('.squad-toggle-container').forEach(el => 
         el.classList.toggle('hidden', !useSquads)
     );
@@ -118,12 +141,26 @@ window.toggleSquadsInput = function() {
     // Show/hide night mode button based on squads
     const btnNightMode = document.getElementById('btnNightMode');
     if (btnNightMode) {
-        if (useSquads) {
-            btnNightMode.classList.remove('hidden');
-        } else {
-            btnNightMode.classList.add('hidden');
-        }
+        useSquads ? btnNightMode.classList.remove('hidden') : btnNightMode.classList.add('hidden');
     }
+
+    // Auto-assign drivers equally across squads
+    if (useSquads) window.autoAssignSquads(numSquads);
+};
+
+window.autoAssignSquads = function(numSquads) {
+    const SQUAD_COLORS = ['#3b82f6','#06b6d4','#a855f7','#f97316'];
+    const SQUAD_LABELS = ['A','B','C','D'];
+    const rows = document.querySelectorAll('.driver-row');
+    rows.forEach((row, i) => {
+        const hidden = row.querySelector('.squad-value');
+        const display = row.querySelector('.squad-toggle-container > div:last-child');
+        if (!hidden || !display) return;
+        const sq = i % numSquads;
+        hidden.value = String(sq);
+        display.innerText = SQUAD_LABELS[sq];
+        display.style.background = SQUAD_COLORS[sq];
+    });
 };
 
 window.toggleFuelInput = function() {
@@ -131,6 +168,23 @@ window.toggleFuelInput = function() {
     const fuelDiv = document.getElementById('fuelInputDiv');
     if (trackFuel && fuelDiv) {
         trackFuel.checked ? fuelDiv.classList.remove('hidden') : fuelDiv.classList.add('hidden');
+    }
+};
+
+const _BG_PRESETS = ['', '#000000', '#030f07', '#0a0215', '#130106', '#06111a', '#130e02'];
+window.setPageBackground = function(bg) {
+    document.body.style.background = bg || '';
+    localStorage.setItem('strateger_bg', bg);
+    // Highlight active swatch
+    document.querySelectorAll('.bg-swatch').forEach(s => {
+        const isPresetMatch = s.dataset.bg === bg;
+        const isCustomMatch = !_BG_PRESETS.includes(bg) && s.dataset.bg === 'custom';
+        s.classList.toggle('active', isPresetMatch || isCustomMatch);
+    });
+    // Update custom swatch preview color when a custom hex is picked
+    if (!_BG_PRESETS.includes(bg)) {
+        const customSwatch = document.querySelector('.bg-swatch[data-bg="custom"]');
+        if (customSwatch) customSwatch.style.background = bg;
     }
 };
 
@@ -315,14 +369,17 @@ window.updateStats = function(currentStintMs) {
         mainRow.className = isCurrent ? "bg-white/10 font-bold text-white border-b border-gray-600" : "border-b border-gray-700 text-gray-300";
         
         // Show squad info if night mode is active and squads are enabled
+        const SQUAD_COLOR_MAP = { A: '#3b82f6', B: '#06b6d4', C: '#a855f7', D: '#f97316' };
         let squadBadge = '';
         if (window.config.useSquads && window.state.isNightMode) {
             const driverSquad = d.squad || 'A';
             const activeSquad = window.state.activeSquad || 'A';
             const isActive = driverSquad === activeSquad;
-            const squadColor = driverSquad === 'A' ? 'squadA' : 'squadB';
             const squadStatus = isActive ? '🟢' : '😴';
-            squadBadge = `<span class="text-xs font-bold px-2 py-0.5 rounded ml-1 ${isActive ? 'bg-green-900/50 text-green-300' : 'bg-gray-700/50 text-gray-400'}">${driverSquad} ${squadStatus}</span>`;
+            squadBadge = `<span class="text-xs font-bold px-2 py-0.5 rounded ml-1" style="background:${isActive ? 'rgba(34,197,94,0.2)' : 'rgba(107,114,128,0.3)'}; color:${isActive ? '#86efac' : '#9ca3af'}">${driverSquad} ${squadStatus}</span>`;
+        } else if (window.config.useSquads) {
+            const driverSquad = d.squad || 'A';
+            squadBadge = `<span class="text-[9px] font-bold px-1.5 py-0.5 rounded ml-1" style="background:${SQUAD_COLOR_MAP[driverSquad] || '#3b82f6'}; color:#fff">${driverSquad}</span>`;
         }
         
         mainRow.innerHTML = `
@@ -723,7 +780,8 @@ window.applyStrategy = function(index) {
                 if (el) el.checked = !!val;
             };
             setCheck('allowDouble', strategy.config.allowDouble);
-            setCheck('useSquads', strategy.config.useSquads);
+            const numSquadsEl = document.getElementById('numSquads');
+            if (numSquadsEl) numSquadsEl.value = String(strategy.config.numSquads || (strategy.config.useSquads ? 2 : 0));
         }
 
         // 3. בניית רשימת הנהגים מחדש ב-UI

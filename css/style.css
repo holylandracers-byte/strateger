@@ -134,6 +134,26 @@ header {
 .draggable-source { opacity: 0.4; }
 .drag-over { outline: 2px dashed var(--ice); outline-offset: -2px; border-radius: 4px; }
 
+/* ==================== DRIVER COLOR PICKER ==================== */
+.driver-color-picker {
+    width: 26px;
+    height: 26px;
+    padding: 2px;
+    border: 2px solid rgba(255,255,255,0.25);
+    border-radius: 50%;
+    cursor: pointer;
+    background: transparent;
+    flex-shrink: 0;
+    transition: border-color 0.15s;
+}
+.driver-color-picker:hover { border-color: rgba(255,255,255,0.7); }
+.driver-color-picker::-webkit-color-swatch-wrapper { padding: 0; border-radius: 50%; }
+.driver-color-picker::-webkit-color-swatch { border: none; border-radius: 50%; }
+.driver-color-picker::-moz-color-swatch { border: none; border-radius: 50%; }
+
+/* Background swatch active ring */
+.bg-swatch.active { border-color: #ffffff !important; box-shadow: 0 0 0 2px rgba(255,255,255,0.6); }
+
 /* ==================== DRIVER ROW PROTECTION ==================== */
 /* וידוא שהשורות לא נמעכות */
 .driver-row {

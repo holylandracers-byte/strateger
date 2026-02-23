@@ -16,9 +16,21 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (typeof window.setLanguage === 'function') window.setLanguage(savedLang);
 
+    // Restore saved page background
+    const savedBg = localStorage.getItem('strateger_bg');
+    if (savedBg !== null) {
+        if (typeof window.setPageBackground === 'function') window.setPageBackground(savedBg);
+        else document.body.style.background = savedBg || '';
+    }
+
     if (typeof window.addDriverField === 'function') {
         window.addDriverField();
         window.addDriverField();
+    }
+
+    // Calculate initial strategy from default params
+    if (typeof window.runSim === 'function') {
+        window.runSim();
     }
     
     const urlParams = new URLSearchParams(window.location.search);
@@ -39,12 +51,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if(typeof attachConfigListeners === 'function') attachConfigListeners();
     
     // Initialize night mode button visibility
-    const useSquadsCheckbox = document.getElementById('useSquads');
-    if (useSquadsCheckbox) {
+    const numSquadsInit = parseInt(document.getElementById('numSquads')?.value) || 0;
+    if (numSquadsInit === 0) {
         const btnNightMode = document.getElementById('btnNightMode');
-        if (btnNightMode && !useSquadsCheckbox.checked) {
-            btnNightMode.classList.add('hidden');
-        }
+        if (btnNightMode) btnNightMode.classList.add('hidden');
     }
 });
 
@@ -201,11 +211,12 @@ window.getActiveStintInfo = function() {
     
     if (window.state.isNightMode) {
         const activeSquad = window.state.activeSquad;
-        const sleepingSquad = activeSquad === 'A' ? 'B' : 'A';
+        const allLabels = window.getSquadLabelsInUse ? window.getSquadLabelsInUse() : ['A','B'];
+        const sleepingSquads = allLabels.filter(l => l !== activeSquad);
         return {
             driverName: currentDriver.name,
             activeSquad: activeSquad,
-            sleepingSquad: sleepingSquad,
+            sleepingSquads: sleepingSquads,
             stintNumber: window.state.globalStintNumber || 1
         };
     }
@@ -229,20 +240,20 @@ window.toggleNightMode = function() {
     if (window.state.isNightMode) window.cycleNextDriver(true);
     if (typeof window.broadcast === 'function') window.broadcast();
     
-    // Display current stint information
-    const stintInfo = getActiveStintInfo();
+    const stintInfo = window.getActiveStintInfo();
     if (stintInfo) {
-        console.log(`🌙 Night Mode: Squad ${window.state.activeSquad} active, Squad ${stintInfo.sleepingSquad} sleeping. Stint ${window.state.globalStintNumber}: ${stintInfo.driverName}`);
+        console.log(`🌙 Night Mode: Squad ${window.state.activeSquad} active, Sleeping: ${(stintInfo.sleepingSquads||[]).join(', ')}. Stint ${window.state.globalStintNumber}: ${stintInfo.driverName}`);
     }
 };
 
 window.switchNightSquad = function() {
     if (!window.state.isNightMode || !window.config.useSquads) return;
     
-    // Switch to other squad
-    window.state.activeSquad = window.state.activeSquad === 'A' ? 'B' : 'A';
+    // Cycle to next squad
+    const allLabels = window.getSquadLabelsInUse ? window.getSquadLabelsInUse() : ['A','B'];
+    const curIdx = allLabels.indexOf(window.state.activeSquad);
+    window.state.activeSquad = allLabels[(curIdx + 1) % allLabels.length];
     
-    // Force cycle to next driver from the new active squad
     if (typeof window.cycleNextDriver === 'function') {
         window.cycleNextDriver(true);
     }
@@ -281,9 +292,10 @@ function updateNightModeUI() {
 
     if (window.state.isNightMode) {
         const activeSquad = window.state.activeSquad || 'A';
-        const sleepingSquad = activeSquad === 'A' ? 'B' : 'A';
+        const allLabels = window.getSquadLabelsInUse ? window.getSquadLabelsInUse() : ['A','B'];
+        const sleeping = allLabels.filter(l => l !== activeSquad).join(', ');
         if (btn) btn.className = "bg-indigo-600 hover:bg-indigo-500 border border-indigo-300 text-white text-xs font-bold py-3 px-2 rounded transition flex flex-row items-center justify-center gap-2 shadow-[0_0_15px_rgba(99,102,241,0.5)] animate-pulse";
-        if (text) text.innerHTML = `${t('squadSleeping')} <span class="text-yellow-300 text-lg font-black px-1">${sleepingSquad}</span>`;
+        if (text) text.innerHTML = `${t('squadSleeping')} <span class="text-yellow-300 text-lg font-black px-1">${sleeping}</span>`;
     } else {
         if (btn) btn.className = "bg-navy-800 hover:bg-indigo-800 border border-indigo-500/50 text-indigo-200 text-xs font-bold py-3 px-2 rounded transition flex flex-row items-center justify-center gap-2 shadow-lg";
         if (text) text.innerText = t('nightMode');
@@ -328,7 +340,10 @@ window.renderFrame = function() {
             timerEl.classList.add("text-neon", "animate-pulse");
             return;
         }
-        timerEl.innerText = window.formatTimeHMS(raceRemaining);
+        // Ceil to nearest second so the countdown doesn't drop a visual
+        // second the instant the race starts (avoids 1s offset vs stint timer).
+        const raceRemainingDisplay = Math.ceil(raceRemaining / 1000) * 1000;
+        timerEl.innerText = window.formatTimeHMS(raceRemainingDisplay);
 
         const totalPlannedStops = window.config.reqStops || 0;
         document.getElementById('pitCountDisplay').innerHTML = 
@@ -719,8 +734,8 @@ window.cycleNextDriver = function(forceValidation = false) {
         const driver = window.drivers[candidate];
         let isValid = true;
 
-        if (window.config.useSquads) {
-            if (window.state.isNightMode && driver.squad !== window.state.activeSquad) {
+        if (window.config.useSquads && window.state.isNightMode) {
+            if (driver.squad !== window.state.activeSquad) {
                 isValid = false;
             }
         }
@@ -820,8 +835,10 @@ window.confirmPitExit = function() {
         window.state.consecutiveStints = (window.state.consecutiveStints || 1) + 1;
     } else {
         window.state.consecutiveStints = 1; 
-        if (window.config.useSquads && window.drivers[newDriverIdx] && !window.state.isNightMode) {
-            window.state.activeSquad = window.drivers[newDriverIdx].squad;
+        if (window.config.useSquads && window.drivers[newDriverIdx]) {
+            if (!window.state.isNightMode) {
+                window.state.activeSquad = window.drivers[newDriverIdx].squad;
+            }
         }
     }
 

@@ -4,19 +4,24 @@
 
 window.updateDriversFromUI = function() {
     const inputs = document.querySelectorAll('.driver-input');
-    const squads = document.querySelectorAll('.squad-toggle');
     const radios = document.querySelectorAll('.starter-radio');
     if (!inputs.length) return;
 
     let starterIdx = 0;
     radios.forEach((r, i) => { if (r.checked) starterIdx = i; });
 
+    const SQUAD_LABELS = ['A','B','C','D'];
+    const squadValues = document.querySelectorAll('.squad-value');
+    const colorPickers = document.querySelectorAll('.driver-color-picker');
     window.drivers = Array.from(inputs).map((input, i) => {
-        const existingColor = (window.drivers && window.drivers[i]) ? window.drivers[i].color : `hsl(${(i * 360 / inputs.length)}, 70%, 50%)`;
+        const existingColor = colorPickers[i]?.value ||
+            ((window.drivers && window.drivers[i]) ? window.drivers[i].color : `hsl(${(i * 360 / inputs.length)}, 70%, 50%)`);
+        const sqIdx = parseInt(squadValues[i]?.value) || 0;
         return {
             name: input.value || `${window.t('ltDriver')} ${i+1}`,
             isStarter: i === starterIdx,
-            squad: squads[i]?.checked ? 'B' : 'A',
+            squad: SQUAD_LABELS[sqIdx] || 'A',
+            squadIdx: sqIdx,
             color: existingColor,
             totalTime: 0,
             stints: 0,
@@ -36,13 +41,13 @@ window.getDriverRestTime = function(driverIdx, currentTime, driverStats) {
     return currentTime.getTime() - lastEnd.getTime();
 };
 
-window.getSquadContinuousDriveTime = function(squadLetter, timeline) {
+window.getSquadContinuousDriveTime = function(squadLabel, timeline) {
     let totalMs = 0;
     for (let i = timeline.length - 1; i >= 0; i--) {
         const item = timeline[i];
         if (item.type !== 'stint') continue;
         const driver = window.drivers[item.driverIdx];
-        if (driver && driver.squad === squadLetter) {
+        if (driver && driver.squad === squadLabel) {
             totalMs += item.duration;
         } else {
             break;
@@ -51,10 +56,16 @@ window.getSquadContinuousDriveTime = function(squadLetter, timeline) {
     return totalMs;
 };
 
-window.squadHasRestedDriver = function(squadLetter, currentTime, driverStats, minRestMs) {
+window.squadHasRestedDriver = function(squadLabel, currentTime, driverStats, minRestMs) {
     return window.drivers.some((d, i) => 
-        d.squad === squadLetter && window.getDriverRestTime(i, currentTime, driverStats) >= minRestMs
+        d.squad === squadLabel && window.getDriverRestTime(i, currentTime, driverStats) >= minRestMs
     );
+};
+
+window.getSquadLabelsInUse = function() {
+    const labels = new Set();
+    (window.drivers || []).forEach(d => labels.add(d.squad || 'A'));
+    return Array.from(labels);
 };
 
 window.selectMostRestedDriver = function(currentTime, driverStats, currentDriverIdx, config) {
@@ -102,20 +113,23 @@ window.calculateStintDurations = function(config) {
     const closedStartMs = (config.closedStart || 0) * 60000;
     const closedEndMs = (config.closedEnd || 0) * 60000;
     const minStintMs = Math.max(60000, config.minStint * 60000);
+    // Add 30s safety buffer above minimum so drivers can pit without penalty risk.
+    const safeMinStintMs = minStintMs + 30000;
     const maxStintMs = config.maxStint > 0 ? config.maxStint * 60000 : raceMs;
     const fuelLimitMs = config.fuel > 0 ? config.fuel * 60000 : Infinity;
     
     const effectiveMaxStint = Math.min(maxStintMs, fuelLimitMs);
-    const targetStintDuration = effectiveMaxStint - 60000; 
+    // Target 1 minute below max to leave buffer for pit entry.
+    const targetStintDuration = effectiveMaxStint - 60000;
 
-    let durationFirst = Math.max(minStintMs, targetStintDuration); 
+    let durationFirst = Math.max(safeMinStintMs, targetStintDuration); 
     if (closedStartMs > 0) {
         durationFirst = Math.max(durationFirst, closedStartMs + 120000);
     }
     durationFirst = Math.min(durationFirst, effectiveMaxStint);
     if (durationFirst < closedStartMs) durationFirst = closedStartMs + 60000; 
 
-    let minLastStint = minStintMs;
+    let minLastStint = safeMinStintMs;
     if (closedEndMs > 0) {
         minLastStint = Math.max(minStintMs, closedEndMs + 120000); 
     }
@@ -123,7 +137,7 @@ window.calculateStintDurations = function(config) {
     let remainingTime = totalNetDriveTime - durationFirst - minLastStint;
     const middleStintsCount = totalStints - 2;
 
-    if (remainingTime < middleStintsCount * minStintMs) {
+    if (remainingTime < middleStintsCount * safeMinStintMs) {
         console.warn("Time budget too tight, adjusting first/last to fit minimums.");
         const avg = totalNetDriveTime / totalStints;
         const fallbackDurations = new Array(totalStints).fill(avg);
@@ -142,10 +156,10 @@ window.calculateStintDurations = function(config) {
         let currentPool = remainingTime;
         for (let i = 1; i <= middleStintsCount; i++) {
             const slotsLeftAfterThis = middleStintsCount - i;
-            const reservedForOthers = slotsLeftAfterThis * minStintMs;
+            const reservedForOthers = slotsLeftAfterThis * safeMinStintMs;
             let canTake = currentPool - reservedForOthers;
             let take = Math.min(canTake, targetStintDuration);
-            take = Math.max(take, minStintMs);
+            take = Math.max(take, safeMinStintMs);
             
             stintDurations[i] = take;
             currentPool -= take;
@@ -160,9 +174,15 @@ window.calculateStintDurations = function(config) {
         finalStintDuration = targetStintDuration; 
         
         if (middleStintsCount > 0) {
-            const spread = excess / middleStintsCount;
+            // Distribute excess using integer math to avoid floating-point drift.
+            const baseAdd = Math.floor(excess / middleStintsCount);
+            let leftover = excess - (baseAdd * middleStintsCount);
             for (let i = 1; i <= middleStintsCount; i++) {
-                stintDurations[i] += spread;
+                stintDurations[i] += baseAdd;
+                if (leftover > 0) {
+                    stintDurations[i] += 1;
+                    leftover--;
+                }
             }
         } else {
             stintDurations[0] += excess;
@@ -171,22 +191,20 @@ window.calculateStintDurations = function(config) {
     
     stintDurations[totalStints - 1] = finalStintDuration;
 
-    // Normalize durations to whole seconds to avoid 1s drift between
-    // accumulated race time and displayed stint/race timers.
+    // Normalize durations to whole seconds to avoid sub-second drift.
     const rounded = stintDurations.map(d => Math.round(d / 1000) * 1000);
     const sumRounded = rounded.reduce((a, b) => a + b, 0);
     let diff = totalNetDriveTime - sumRounded;
 
     // Ensure we preserve constraints when applying the diff.
     const canAdd = (idx) => rounded[idx] + 1000 <= effectiveMaxStint;
-    const canSub = (idx) => rounded[idx] - 1000 >= minStintMs;
+    const canSub = (idx) => rounded[idx] - 1000 >= safeMinStintMs;
 
     // Apply diff in 1s steps.
-    const steps = Math.abs(diff) / 1000;
-    if (Number.isFinite(steps) && steps > 0) {
+    const steps = Math.round(Math.abs(diff) / 1000);
+    if (steps > 0) {
         for (let step = 0; step < steps; step++) {
             if (diff > 0) {
-                // Prefer adding to the last stint, else earlier ones.
                 let applied = false;
                 for (let i = totalStints - 1; i >= 0; i--) {
                     if (canAdd(i)) {
@@ -197,7 +215,6 @@ window.calculateStintDurations = function(config) {
                 }
                 if (!applied) break;
             } else {
-                // Prefer subtracting from the last stint, else earlier ones.
                 let applied = false;
                 for (let i = totalStints - 1; i >= 0; i--) {
                     if (canSub(i)) {
@@ -209,6 +226,12 @@ window.calculateStintDurations = function(config) {
                 if (!applied) break;
             }
         }
+    }
+
+    // Final safeguard: guarantee the sum equals totalNetDriveTime exactly.
+    const finalSum = rounded.reduce((a, b) => a + b, 0);
+    if (finalSum !== totalNetDriveTime) {
+        rounded[totalStints - 1] += (totalNetDriveTime - finalSum);
     }
 
     return { durations: rounded };
@@ -264,25 +287,36 @@ window.calculateStrategyLogic = function(config) {
         
         let selectedIdx = -1;
         
-        if (config.useSquads && config.duration >= 12) {
+        const allSquadLabels = window.getSquadLabelsInUse();
+        if (config.useSquads && config.duration >= 12 && allSquadLabels.length > 1) {
             if (isNight) {
                 if (!squadModeActive) {
                     squadModeActive = true;
-                    activeSquad = 'A';
+                    activeSquad = allSquadLabels[0];
                 }
                 
                 const squadDriveTime = window.getSquadContinuousDriveTime(activeSquad, timeline);
-                const otherSquad = activeSquad === 'A' ? 'B' : 'A';
                 
                 if (squadDriveTime >= SQUAD_SHIFT_DURATION_MS) {
-                    if (window.squadHasRestedDriver(otherSquad, stintStartTime, driverStats, MIN_REST_FOR_SWITCH_MS)) {
-                        activeSquad = otherSquad;
+                    // Cycle to next squad that has a rested driver
+                    const curIdx = allSquadLabels.indexOf(activeSquad);
+                    for (let s = 1; s < allSquadLabels.length; s++) {
+                        const candidate = allSquadLabels[(curIdx + s) % allSquadLabels.length];
+                        if (window.squadHasRestedDriver(candidate, stintStartTime, driverStats, MIN_REST_FOR_SWITCH_MS)) {
+                            activeSquad = candidate;
+                            break;
+                        }
                     }
                 }
                 
                 selectedIdx = window.selectDriverFromSquad(activeSquad, stintStartTime, driverStats, currentDriverIdx, extendedConfig);
                 if (selectedIdx === null) {
-                    selectedIdx = window.selectDriverFromSquad(otherSquad, stintStartTime, driverStats, currentDriverIdx, extendedConfig);
+                    // Fallback: try other squads in order
+                    for (let s = 1; s < allSquadLabels.length; s++) {
+                        const fallback = allSquadLabels[(allSquadLabels.indexOf(activeSquad) + s) % allSquadLabels.length];
+                        selectedIdx = window.selectDriverFromSquad(fallback, stintStartTime, driverStats, currentDriverIdx, extendedConfig);
+                        if (selectedIdx !== null) break;
+                    }
                 }
             } else {
                 squadModeActive = false;
@@ -348,7 +382,8 @@ window.runSim = function() {
     const fuelMin = parseFloat(document.getElementById('fuelTime').value) || 0;
     const closedStartMin = parseFloat(document.getElementById('pitClosedStart').value) || 0;
     const closedEndMin = parseFloat(document.getElementById('pitClosedEnd').value) || 0;
-    const useSquads = document.getElementById('useSquads')?.checked || false;
+    const numSquads = parseInt(document.getElementById('numSquads')?.value) || 0;
+    const useSquads = numSquads > 0;
     const allowDouble = document.getElementById('allowDouble')?.checked || false;
     const minDriverMin = parseFloat(document.getElementById('minDriverTime').value) || 0;
     const maxDriverMin = parseFloat(document.getElementById('maxDriverTime').value) || 0;
@@ -385,6 +420,7 @@ window.runSim = function() {
         closedStart: closedStartMin,
         closedEnd: closedEndMin,
         useSquads: useSquads,
+        numSquads: numSquads,
         allowDouble: allowDouble,
         minDriverTotal: minDriverMin,
         maxDriverTotal: maxDriverMin,
@@ -484,9 +520,9 @@ window.runSim = function() {
     if (useSquads) {
         const nightStints = stints.filter(s => s.isNightPhase);
         if (nightStints.length > 0) {
-            const squadANight = nightStints.filter(s => s.squad === 'A').length;
-            const squadBNight = nightStints.filter(s => s.squad === 'B').length;
-            squadInfo = ` | 🌙 A=${squadANight} B=${squadBNight}`;
+            const squadLabels = window.getSquadLabelsInUse();
+            const counts = squadLabels.map(lbl => `${lbl}=${nightStints.filter(s => s.squad === lbl).length}`);
+            squadInfo = ` | 🌙 ${counts.join(' ')}`;
         }
     }
 
@@ -551,9 +587,11 @@ window.initRace = function() {
     window.state.nextDriverIdx = (window.state.currentDriverIdx + 1) % window.drivers.length;
     
     if (window.config.useSquads) {
+        const startSquad = window.drivers[window.state.currentDriverIdx].squad;
+        window.state.activeSquad = startSquad;
         let attempts = 0;
         let candidate = window.state.nextDriverIdx;
-        while (window.drivers[candidate].squad !== window.drivers[window.state.currentDriverIdx].squad && attempts < window.drivers.length) {
+        while (window.drivers[candidate].squad !== startSquad && attempts < window.drivers.length) {
             candidate = (candidate + 1) % window.drivers.length;
             attempts++;
         }

@@ -27,7 +27,7 @@
                     colors: {
                         navy: { 950: '#020617', 900: '#0f172a', 800: '#1e293b', 700: '#334155' },
                         ice: '#22d3ee', neon: '#a3e635', danger: '#ef4444', fuel: '#f97316',
-                        squadA: '#3b82f6', squadB: '#06b6d4', live: '#ef4444',
+                        squadA: '#3b82f6', squadB: '#06b6d4', squadC: '#a855f7', squadD: '#f97316', live: '#ef4444',
                         gold: '#fbbf24', silver: '#9ca3af', bronze: '#f97316'
                     },
                     animation: { 
@@ -161,12 +161,6 @@
                 <div id="liveTimingStatus" class="text-[10px] text-gray-500 text-center mt-1"></div>
             </div>
 
-            <div>
-                <button onclick="window.runSim()" class="w-full bg-gradient-to-r from-ice to-blue-500 hover:from-blue-400 hover:to-ice text-navy-950 font-bold py-3 rounded shadow-lg transition text-sm uppercase tracking-wider">
-                    <i class="fas fa-calculator mr-2"></i> <span data-i18n="calculateStrategy">Calculate Strategy</span>
-                </button>
-            </div>
-
             <div id="simResult" class="bg-black/40 border border-ice/30 p-3 rounded text-xs text-ice font-mono text-center whitespace-pre-line hidden">
                 calculating...
             </div>
@@ -211,11 +205,16 @@
                         <span class="text-xs text-gray-500 ml-6 block mt-1" data-i18n="lblDoublesHint">Same driver back-to-back</span>
                     </div>
                     <div class="border-b border-gray-600 pb-2">
-                        <label class="flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" id="useSquads" onchange="window.toggleSquadsInput(); window.runSim()" class="accent-squadB w-4 h-4">
-                            <span class="text-sm text-gray-300" data-i18n="lblSquads">Use Squads</span>
-                        </label>
-                        <span class="text-xs text-gray-500 ml-6 block mt-1" data-i18n="lblSquadsHint">Separate drivers into two teams</span>
+                        <div class="flex items-center gap-2">
+                            <span class="text-sm text-gray-300" data-i18n="lblSquads">Squads</span>
+                            <select id="numSquads" onchange="window.toggleSquadsInput(); window.runSim()" class="bg-navy-800 text-white text-sm border border-gray-600 rounded px-2 py-1 cursor-pointer">
+                                <option value="0">Off</option>
+                                <option value="2">2 Squads</option>
+                                <option value="3">3 Squads</option>
+                                <option value="4">4 Squads</option>
+                            </select>
+                        </div>
+                        <span class="text-xs text-gray-500 block mt-1" data-i18n="lblSquadsHint">Rotate driver groups for long races</span>
                     </div>
                     <div>
                         <label class="flex items-center gap-2 cursor-pointer">
@@ -289,7 +288,27 @@
                     Generate Strategy (AI)
                 </button>
             </div>
- 
+
+            <!-- Appearance -->
+            <div>
+                <h2 class="text-ice text-lg font-bold mb-3 flex items-center gap-2">
+                    <i class="fas fa-palette"></i> <span>Appearance</span>
+                </h2>
+                <label class="text-xs text-gray-400 mb-2 block">Page Background</label>
+                <div id="bgSwatches" class="flex flex-wrap gap-2 items-center">
+                    <button class="bg-swatch active w-8 h-8 rounded-full border-2 border-gray-600 hover:border-white transition" data-bg="" title="Default (Navy Grid)" onclick="window.setPageBackground('')" style="background: linear-gradient(135deg, #020617 50%, #1e293b 100%);"></button>
+                    <button class="bg-swatch w-8 h-8 rounded-full border-2 border-gray-600 hover:border-gray-300 transition" data-bg="#000000" title="Pure Black" onclick="window.setPageBackground('#000000')" style="background:#000000;"></button>
+                    <button class="bg-swatch w-8 h-8 rounded-full border-2 border-gray-600 hover:border-green-400 transition" data-bg="#030f07" title="Forest" onclick="window.setPageBackground('#030f07')" style="background:#030f07;"></button>
+                    <button class="bg-swatch w-8 h-8 rounded-full border-2 border-gray-600 hover:border-purple-400 transition" data-bg="#0a0215" title="Deep Purple" onclick="window.setPageBackground('#0a0215')" style="background:#0a0215;"></button>
+                    <button class="bg-swatch w-8 h-8 rounded-full border-2 border-gray-600 hover:border-red-400 transition" data-bg="#130106" title="Crimson" onclick="window.setPageBackground('#130106')" style="background:#130106;"></button>
+                    <button class="bg-swatch w-8 h-8 rounded-full border-2 border-gray-600 hover:border-blue-400 transition" data-bg="#06111a" title="Steel Blue" onclick="window.setPageBackground('#06111a')" style="background:#06111a;"></button>
+                    <button class="bg-swatch w-8 h-8 rounded-full border-2 border-gray-600 hover:border-yellow-400 transition" data-bg="#130e02" title="Desert" onclick="window.setPageBackground('#130e02')" style="background:#130e02;"></button>
+                    <label class="bg-swatch w-8 h-8 rounded-full border-2 border-gray-600 hover:border-ice transition overflow-hidden cursor-pointer relative flex items-center justify-center" data-bg="custom" title="Custom color" style="background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red);">
+                        <input type="color" id="bgColorCustom" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" onchange="window.setPageBackground(this.value)">
+                    </label>
+                </div>
+            </div>
+
             <div class="pt-2 space-y-2">
                 <button onclick="window.generatePreview(false, true)" class="w-full bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 text-white font-bold py-3 rounded shadow-lg transition">
                     <i class="fas fa-chart-bar mr-2"></i> <span data-i18n="previewStrategy">Preview Strategy</span>
