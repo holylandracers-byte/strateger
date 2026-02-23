@@ -192,7 +192,10 @@ window.renderPreview = function() {
     const endEl = document.getElementById('timelineEnd');
     if (endEl) endEl.innerText = raceEndTime.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
 
-    // === 6. רינדור רשימת הסטינטים ===
+    // === 6. רינדור רשימת הסטינטים (with drag-drop & editable durations) ===
+    const minStintMin = window.config ? (window.config.minStint || 1) : 1;
+    const maxStintMin = window.config ? (window.config.maxStint || 999) : 999;
+
     const listHtml = stints.map((stint, index) => {
         const startTime = new Date(currentTimeMs);
         const endTime = new Date(currentTimeMs + stint.duration);
@@ -201,12 +204,11 @@ window.renderPreview = function() {
         const startTimeStr = startTime.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
         const endTimeStr = endTime.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
         
-        // קידום הזמן
         currentTimeMs += stint.duration;
         
-        // בדיקה אם יש פיט אחרי הסטינט הזה
         const pit = pits[index];
         const isLast = index === stints.length - 1;
+        const isFirst = index === 0;
         
         let pitIndicator = '';
         if (pit && !isLast) {
@@ -215,26 +217,56 @@ window.renderPreview = function() {
             currentTimeMs += pit.duration;
         }
         
+        const outOfBounds = durationMin < minStintMin || durationMin > maxStintMin;
+        const borderWarning = outOfBounds ? 'ring-1 ring-red-500' : '';
+
         return `
-            <div class="flex items-center gap-2 bg-navy-950 p-2 rounded border-l-4 mb-1 text-xs" style="border-left-color: ${stint.color}">
-                <span class="text-gray-500 w-5 text-center font-mono">#${index + 1}</span>
-                <div class="flex-1">
-                    <div class="font-bold text-white">${stint.driverName}</div>
-                    <div class="flex items-center gap-2 text-gray-400 text-[10px]">
+            <div class="flex items-center gap-1 bg-navy-950 p-2 rounded border-l-4 mb-1 text-xs cursor-grab active:cursor-grabbing ${borderWarning}" 
+                 style="border-left-color: ${stint.color}" 
+                 draggable="true" data-index="${index}"
+                 ondragstart="window.handleDragStart(event)" 
+                 ondragover="window.handleDragOver(event)" 
+                 ondragleave="window.handleDragLeave(event)" 
+                 ondrop="window.handleDrop(event)">
+                <div class="flex flex-col gap-0.5 shrink-0">
+                    <button onclick="window.moveStint(${index}, -1)" class="text-gray-500 hover:text-white text-[10px] leading-none px-1 ${isFirst ? 'invisible' : ''}" title="Move Up">▲</button>
+                    <span class="text-gray-500 text-center font-mono text-[10px]">#${index + 1}</span>
+                    <button onclick="window.moveStint(${index}, 1)" class="text-gray-500 hover:text-white text-[10px] leading-none px-1 ${isLast ? 'invisible' : ''}" title="Move Down">▼</button>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="font-bold text-white truncate">${stint.driverName}</div>
+                    <div class="flex items-center gap-1 text-gray-400 text-[10px]">
                         <span>${startTimeStr}</span>
                         <span class="text-ice">${arrow}</span>
                         <span>${endTimeStr}</span>
                         ${pitIndicator}
                     </div>
                 </div>
-                <div class="text-gray-300 font-mono">${durationMin}m</div>
+                <input type="number" value="${durationMin}" min="${minStintMin}" max="${maxStintMin}" 
+                       onchange="window.updateStintDuration(${index}, this.value)" 
+                       class="w-14 bg-navy-800 border border-gray-600 text-white text-center text-xs rounded px-1 py-0.5 font-mono focus:border-ice focus:outline-none ${outOfBounds ? 'border-red-500 text-red-300' : ''}" 
+                       title="Stint duration (min)">
+                <span class="text-gray-500 text-[10px]">m</span>
                 ${isLast ? '🏁' : ''}
             </div>
         `;
     }).join('');
+
+    // Total bar showing drive time + pit time = race time
+    const totalDrive = stints.reduce((a, s) => a + s.duration, 0);
+    const totalPit = pits.reduce((a, p) => a + p.duration, 0);
+    const raceTimeMs = window.config ? (window.config.raceMs || 0) : 0;
+    const diffMs = (totalDrive + totalPit) - raceTimeMs;
+    const diffClass = Math.abs(diffMs) <= 60000 ? 'text-neon' : 'text-red-400';
+    const totalBar = `
+        <div class="bg-navy-800 p-2 rounded border border-gray-700 text-[10px] text-gray-400 flex justify-between items-center mt-2">
+            <span>Drive: <b class="text-white">${(totalDrive/60000).toFixed(0)}m</b> + Pit: <b class="text-gold">${(totalPit/60000).toFixed(0)}m</b></span>
+            <span class="${diffClass} font-bold">= ${((totalDrive+totalPit)/60000).toFixed(0)}m ${diffMs !== 0 ? '(' + (diffMs > 0 ? '+' : '') + (diffMs/60000).toFixed(0) + 'm)' : '✅'}</span>
+        </div>
+    `;
     
     const scheduleEl = document.getElementById('driverScheduleList');
-    if (scheduleEl) scheduleEl.innerHTML = listHtml;
+    if (scheduleEl) scheduleEl.innerHTML = listHtml + totalBar;
 
     // === 7. סיכום נהגים ===
     const summary = {};
@@ -384,15 +416,62 @@ window.swapStints = function(fromIdx, toIdx) {
     window.renderPreview();
 };
 window.updateStintDuration = function(idx, val) {
-    const ms = parseFloat(val) * 60000;
-    if (ms > 0) {
-        const stints = window.previewData.timeline.filter(t => t.type === 'stint');
-        if (stints[idx]) {
-            stints[idx].duration = ms;
-            window.recalculateTimelineTimes(); 
-            window.renderPreview();
+    const newMs = parseFloat(val) * 60000;
+    if (!(newMs > 0) || !window.previewData?.timeline) return;
+
+    const stints = window.previewData.timeline.filter(t => t.type === 'stint');
+    if (!stints[idx]) return;
+
+    const pits = window.previewData.timeline.filter(t => t.type === 'pit');
+    const totalPitMs = pits.reduce((a, p) => a + p.duration, 0);
+    const raceMs = window.config ? (window.config.raceMs || 0) : 0;
+    const targetDriveMs = raceMs - totalPitMs;
+
+    const minMs = (window.config?.minStint || 1) * 60000;
+    const maxMs = (window.config?.maxStint || 999) * 60000;
+
+    // Clamp to bounds
+    const clampedMs = Math.max(minMs, Math.min(maxMs, newMs));
+    const oldMs = stints[idx].duration;
+    const delta = clampedMs - oldMs;
+
+    stints[idx].duration = clampedMs;
+
+    // Rebalance: distribute the delta across the other stints proportionally
+    if (delta !== 0 && stints.length > 1) {
+        const others = stints.filter((_, i) => i !== idx);
+        const othersTotal = others.reduce((a, s) => a + s.duration, 0);
+        const newOthersTarget = targetDriveMs - clampedMs;
+
+        if (othersTotal > 0 && newOthersTarget > 0) {
+            const scale = newOthersTarget / othersTotal;
+            let distributed = 0;
+            others.forEach((s, i) => {
+                if (i < others.length - 1) {
+                    let adjusted = Math.round((s.duration * scale) / 1000) * 1000;
+                    adjusted = Math.max(minMs, Math.min(maxMs, adjusted));
+                    distributed += adjusted;
+                    s.duration = adjusted;
+                } else {
+                    // Last stint absorbs remainder
+                    let remainder = newOthersTarget - distributed;
+                    remainder = Math.max(minMs, Math.min(maxMs, Math.round(remainder / 1000) * 1000));
+                    s.duration = remainder;
+                }
+            });
         }
     }
+
+    window.recalculateTimelineTimes();
+    window.renderPreview();
+};
+
+window.moveStint = function(fromIdx, direction) {
+    if (!window.previewData?.timeline) return;
+    const stints = window.previewData.timeline.filter(t => t.type === 'stint');
+    const toIdx = fromIdx + direction;
+    if (toIdx < 0 || toIdx >= stints.length) return;
+    window.swapStints(fromIdx, toIdx);
 };
 window.closePreview = function() {
     document.getElementById('previewScreen').classList.add('hidden');

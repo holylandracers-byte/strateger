@@ -130,6 +130,10 @@ header {
     padding: 1rem;
 }
 
+/* Drag & Drop Stint Reorder */
+.draggable-source { opacity: 0.4; }
+.drag-over { outline: 2px dashed var(--ice); outline-offset: -2px; border-radius: 4px; }
+
 /* ==================== DRIVER ROW PROTECTION ==================== */
 /* וידוא שהשורות לא נמעכות */
 .driver-row {

@@ -17,12 +17,21 @@ class ApexTimingScraper {
         this.isRunning = false;
         this.ws = null;
         this.wsConnected = false;
+        this.fallbackMode = false;
         
         // Data storage
         this.competitors = new Map(); // rowId -> competitor data
         this.gridInitialized = false;
         
         this.host = this.extractHost(config.raceUrl);
+        this.raceId = this.extractRaceId(config.raceUrl);
+        
+        // CORS proxies for HTTP fallback
+        this.proxies = [
+            { name: 'allorigins', url: 'https://api.allorigins.win/raw?url=' },
+            { name: 'corsproxy', url: 'https://corsproxy.io/?' }
+        ];
+        this.currentProxyIndex = 0;
     }
 
     log(message, type = 'info') {
@@ -37,6 +46,18 @@ class ApexTimingScraper {
             return u.hostname;
         } catch (e) {
             return 'www.apex-timing.com';
+        }
+    }
+
+    extractRaceId(url) {
+        try {
+            const u = new URL(url);
+            const parts = u.pathname.split('/').filter(Boolean);
+            // e.g. /live-timing/worldkarts/ -> 'worldkarts'
+            const ltIdx = parts.indexOf('live-timing');
+            return (ltIdx >= 0 && parts[ltIdx + 1]) ? parts[ltIdx + 1] : (parts[parts.length - 1] || 'race');
+        } catch (e) {
+            return 'race';
         }
     }
 
@@ -476,12 +497,21 @@ class ApexTimingScraper {
     start() {
         this.isRunning = true;
         this.startWebSocket(); // Try WS first
+        
+        // If WS doesn't deliver grid data within 10s, fall back to HTTP
+        this._wsFallbackTimer = setTimeout(() => {
+            if (this.isRunning && !this.gridInitialized && !this.fallbackMode) {
+                this.log('⏰ WS timeout - switching to HTTP fallback', 'warn');
+                this.switchToFallback();
+            }
+        }, 10000);
     }
 
     stop() {
         this.isRunning = false;
         if (this.ws) this.ws.close();
         if (this.httpInterval) clearInterval(this.httpInterval);
+        if (this._wsFallbackTimer) clearTimeout(this._wsFallbackTimer);
     }
 }
 
