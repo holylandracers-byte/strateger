@@ -238,10 +238,14 @@ header {
     overflow: hidden;
 }
 
-/* Consistency background overlays */
+/* Pace trend background overlays */
 .driver-consistency-green  { background: linear-gradient(180deg, rgb(14, 60, 30) 0%, rgb(0,0,0) 100%) !important; }
 .driver-consistency-yellow { background: linear-gradient(180deg, rgb(70, 55, 0) 0%, rgb(0,0,0) 100%) !important; }
 .driver-consistency-red    { background: linear-gradient(180deg, rgb(80, 15, 15) 0%, rgb(0,0,0) 100%) !important; }
+
+#driverModePanel {
+    transition: background 1.5s ease;
+}
 
 .driver-zone-box {
     animation: driverBoxPulse 1.2s ease-in-out infinite;

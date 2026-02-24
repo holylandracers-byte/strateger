@@ -1223,6 +1223,13 @@ window.confirmPitExit = function() {
     window.state.stintStart = now;
     window.state.stintOffset = 0;
     window.state.globalStintNumber++;
+
+    // Reset stint lap tracking for new driver/stint
+    if (window.liveData) {
+        window.liveData.stintLapHistory = [];
+        window.liveData.stintBestLap = null;
+        window.liveData.lastRecordedLap = null;
+    }
     
     if (typeof window.adjustPitTime === 'function') {
         window.adjustPitTime(-window.currentPitAdjustment); 
@@ -1498,7 +1505,9 @@ window.updateDriverMode = function() {
         if (lastEl && window.liveData.lastLap) {
             lastEl.innerText = window.formatLapTime ? window.formatLapTime(window.liveData.lastLap) : '--';
         }
-        if (bestEl && window.liveData.bestLap) {
+        if (bestEl && window.liveData.stintBestLap) {
+            bestEl.innerText = window.formatLapTime ? window.formatLapTime(window.liveData.stintBestLap) : '--';
+        } else if (bestEl && window.liveData.bestLap) {
             bestEl.innerText = window.formatLapTime ? window.formatLapTime(window.liveData.bestLap) : '--';
         }
         if (posEl && window.liveData.position) {
@@ -1512,16 +1521,14 @@ window.updateDriverMode = function() {
         }
     }
 
-    // === Consistency → background tint on the ENTIRE panel ===
+    // === Pace Trend → background tint on the ENTIRE panel ===
     const panel = document.getElementById('driverModePanel');
-    const consistency = window.calculateConsistency();
+    const trend = window.calculatePaceTrend();
     if (panel) {
         panel.classList.remove('driver-consistency-green', 'driver-consistency-yellow', 'driver-consistency-red');
-        if (consistency !== null) {
-            if (consistency <= 0.5) panel.classList.add('driver-consistency-green');
-            else if (consistency <= 1.5) panel.classList.add('driver-consistency-yellow');
-            else panel.classList.add('driver-consistency-red');
-        }
+        if (trend === 'improving') panel.classList.add('driver-consistency-green');
+        else if (trend === 'stable') panel.classList.add('driver-consistency-yellow');
+        else if (trend === 'declining') panel.classList.add('driver-consistency-red');
     }
 
     // === Progress bar ===
@@ -1632,17 +1639,28 @@ window.updateDriverMode = function() {
     }
 };
 
-// === CONSISTENCY CALCULATOR ===
-window.calculateConsistency = function() {
-    // Calculate std deviation of last 5 lap times from live data
-    if (!window.liveData || !window.liveData.competitors) return null;
-    const ourTeam = window.liveData.competitors.find(c => c.isOurTeam);
-    if (!ourTeam) return null;
-    
-    // We only have lastLap + bestLap, calculate rough consistency
-    if (ourTeam.lastLap && ourTeam.bestLap) {
-        const diffSec = Math.abs(ourTeam.lastLap - ourTeam.bestLap) / 1000;
-        return diffSec; // Returns seconds of variance
-    }
-    return null;
+// === PACE TREND CALCULATOR ===
+window.calculatePaceTrend = function() {
+    // Compare rolling average of recent laps vs earlier laps in the stint
+    // Returns: 'improving' | 'stable' | 'declining' | null
+    if (!window.liveData || !window.liveData.stintLapHistory) return null;
+    const laps = window.liveData.stintLapHistory;
+    if (laps.length < 4) return null; // Need at least 4 laps for any trend
+
+    const windowSize = Math.min(3, Math.floor(laps.length / 2));
+    const recentLaps = laps.slice(-windowSize);
+    const earlierLaps = laps.slice(-(windowSize * 2), -windowSize);
+
+    if (earlierLaps.length === 0 || recentLaps.length === 0) return null;
+
+    const avgRecent = recentLaps.reduce((a, b) => a + b, 0) / recentLaps.length;
+    const avgEarlier = earlierLaps.reduce((a, b) => a + b, 0) / earlierLaps.length;
+
+    // Positive diff = getting slower (declining), negative = getting faster (improving)
+    const diffMs = avgRecent - avgEarlier;
+    const thresholdMs = 300; // 0.3s threshold for "stable"
+
+    if (diffMs < -thresholdMs) return 'improving';
+    if (diffMs > thresholdMs) return 'declining';
+    return 'stable';
 };

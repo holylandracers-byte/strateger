@@ -108,6 +108,17 @@ window.fetchLiveTimingFromProxy = async function() {
                 window.liveData.laps = data.ourTeam.totalLaps;
                 window.liveData.gapToLeader = data.ourTeam.gap;
 
+                // === Track stint lap history for pace analysis ===
+                if (data.ourTeam.lastLap && data.ourTeam.lastLap > 0 && data.ourTeam.lastLap !== window.liveData.lastRecordedLap) {
+                    window.liveData.lastRecordedLap = data.ourTeam.lastLap;
+                    if (!window.liveData.stintLapHistory) window.liveData.stintLapHistory = [];
+                    window.liveData.stintLapHistory.push(data.ourTeam.lastLap);
+                    // Update stint best
+                    if (!window.liveData.stintBestLap || data.ourTeam.lastLap < window.liveData.stintBestLap) {
+                        window.liveData.stintBestLap = data.ourTeam.lastLap;
+                    }
+                }
+
                 // === Pit status from live timing ===
                 const wasInPit = window.liveData.ourTeamInPit;
                 window.liveData.ourTeamInPit = !!data.ourTeam.inPit;
@@ -123,6 +134,10 @@ window.fetchLiveTimingFromProxy = async function() {
                 // Auto-detect pit exit from live timing
                 if (window.state && window.state.isRunning && window.state.isInPit && wasInPit === true && !data.ourTeam.inPit) {
                     console.log('[LiveTiming] ✅ Auto-detected PIT EXIT from live data');
+                    // Reset stint lap tracking for new stint
+                    window.liveData.stintLapHistory = [];
+                    window.liveData.stintBestLap = null;
+                    window.liveData.lastRecordedLap = null;
                     if (typeof window.confirmPitExit === 'function') {
                         window.confirmPitExit();
                     }
@@ -642,6 +657,23 @@ window.updateDemoData = function() {
         window.liveData.bestLap = ourTeam.bestLap;
         window.liveData.laps = ourTeam.laps;
         window.liveData.gapToLeader = ourTeam.gapToLeader;
+
+        // Track stint lap history in demo mode
+        if (ourTeam.lastLap && ourTeam.lastLap !== window.liveData.lastRecordedLap) {
+            window.liveData.stintLapHistory.push(ourTeam.lastLap);
+            window.liveData.lastRecordedLap = ourTeam.lastLap;
+            if (!window.liveData.stintBestLap || ourTeam.lastLap < window.liveData.stintBestLap) {
+                window.liveData.stintBestLap = ourTeam.lastLap;
+            }
+        }
+
+        // Reset stint on pit exit in demo
+        if (ourTeam._wasInPit && !ourTeam.inPit) {
+            window.liveData.stintLapHistory = [];
+            window.liveData.stintBestLap = null;
+            window.liveData.lastRecordedLap = null;
+        }
+        ourTeam._wasInPit = ourTeam.inPit;
     }
     
     window.liveData.competitors = window.demoState.competitors;
