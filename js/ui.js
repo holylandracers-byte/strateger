@@ -1113,6 +1113,13 @@ window.toggleChat = function() {
             const chatInput = document.getElementById('chatUserName');
             const teamName = window.searchConfig?.teamName || window.searchConfig?.driverName || '';
             if (chatInput && teamName) chatInput.value = teamName;
+        } else {
+            // Pre-fill chat name from viewer approval name if available
+            const viewerName = localStorage.getItem('strateger_viewer_name');
+            if (viewerName) {
+                const chatInput = document.getElementById('chatUserName');
+                if (chatInput) chatInput.value = viewerName;
+            }
         }
     }
 };
@@ -1150,7 +1157,31 @@ window.joinChat = function() {
     }
 
     // === Viewer flow ===
+    if (!name) {
+        // Try to use the approved viewer name
+        name = localStorage.getItem('strateger_viewer_name') || localStorage.getItem('strateger_chat_name');
+    }
     if (!name) return alert("Name required");
+    
+    // If viewer is already approved, skip approval request — go straight to chat
+    if (window.viewerApprovalStatus === 'approved') {
+        localStorage.setItem('strateger_chat_name', name);
+        if (window.conn && window.conn.open) {
+            try { window.conn.send({ type: 'SET_NAME', name: name }); } catch(e) {}
+        }
+        document.getElementById('chatLoginView').classList.add('hidden');
+        document.getElementById('chatMessagesView').classList.remove('hidden');
+        document.getElementById('chatMessagesView').classList.add('flex');
+        window.updateChatPlaceholder();
+        const feed = document.getElementById('chatFeed');
+        if (feed && feed.children.length === 0) {
+            try {
+                const history = JSON.parse(localStorage.getItem('strateger_chat_history') || '[]');
+                history.forEach(msg => window.renderChatMessage(msg));
+            } catch(e) {}
+        }
+        return;
+    }
     
     // Clear previous join errors
     const joinErr = document.getElementById('chatJoinError');

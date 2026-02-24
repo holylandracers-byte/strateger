@@ -51,9 +51,25 @@ document.addEventListener('DOMContentLoaded', () => {
         if (idInput) idInput.value = driverCode;
     } else if (joinCode) {
         window.role = 'client';
+        window._pendingJoinCode = joinCode;
         document.getElementById('setupScreen').classList.add('hidden');
-        document.getElementById('clientWaitScreen').classList.remove('hidden');
-        if (typeof window.connectToHost === 'function') window.connectToHost(joinCode);
+        // Check if we already have an approved name stored (reconnecting)
+        const savedViewerName = localStorage.getItem('strateger_viewer_name');
+        if (savedViewerName) {
+            // Reconnect automatically with saved name
+            window.pendingChatName = savedViewerName;
+            document.getElementById('clientWaitScreen').classList.remove('hidden');
+            if (typeof window.connectToHost === 'function') window.connectToHost(joinCode);
+        } else {
+            // Show viewer name entry screen
+            document.getElementById('viewerNameScreen').classList.remove('hidden');
+            // Pre-fill with Google name if available
+            const googleUser = window.googleUser || JSON.parse(localStorage.getItem('strateger_google_user') || 'null');
+            if (googleUser && googleUser.name) {
+                const nameInput = document.getElementById('viewerNameInput');
+                if (nameInput) nameInput.value = googleUser.name;
+            }
+        }
     } else {
         window.role = 'host';
         if (typeof window.checkForSavedRace === 'function') window.checkForSavedRace();
@@ -73,6 +89,43 @@ document.addEventListener('DOMContentLoaded', () => {
     // Start race countdown monitor
     window.startRaceCountdown();
 });
+
+// ==========================================
+// 👀 VIEWER NAME ENTRY
+// ==========================================
+
+window.submitViewerName = function() {
+    const t = window.t || (k => k);
+    const nameInput = document.getElementById('viewerNameInput');
+    const errorEl = document.getElementById('viewerNameError');
+    const waitingMsg = document.getElementById('viewerWaitingMsg');
+    const name = (nameInput?.value || '').trim();
+    
+    if (!name || name.length < 2) {
+        if (errorEl) {
+            errorEl.classList.remove('hidden');
+            errorEl.innerText = t('viewerNameTooShort');
+        }
+        return;
+    }
+    
+    // Store name for approval flow
+    window.pendingChatName = name;
+    localStorage.setItem('strateger_viewer_name', name);
+    
+    // Hide input area, show waiting message
+    if (nameInput) nameInput.disabled = true;
+    const submitBtn = nameInput?.parentElement?.nextElementSibling;
+    if (submitBtn?.tagName === 'BUTTON') submitBtn.classList.add('hidden');
+    if (errorEl) errorEl.classList.add('hidden');
+    if (waitingMsg) waitingMsg.classList.remove('hidden');
+    
+    // Now connect to host
+    const joinCode = window._pendingJoinCode;
+    if (joinCode && typeof window.connectToHost === 'function') {
+        window.connectToHost(joinCode);
+    }
+};
 
 // ==========================================
 // ⏰ RACE COUNTDOWN & AUTO-START
@@ -354,7 +407,7 @@ function updateModeUI() {
 
     // In problem mode: if min stint not reached, show "stay on track" instead of "box now"
     const minStintMs = (window.config?.minStintMs) || ((window.config?.minStint || 0) * 60000);
-    const now = Date.now();
+    const now = window.getSyncedNow();
     const currentStintMs = (now - (window.state.stintStart || now)) + (window.state.stintOffset || 0);
     const belowMinStint = !window.state.isInPit && minStintMs > 0 && currentStintMs < minStintMs;
 
@@ -412,7 +465,7 @@ window.recalculateTargetStint = function() {
         if (isLastStint) {
             // Last stint: target = remaining race time from stint start
             const raceMs = window.config.raceMs || (parseFloat(window.config.duration) * 3600000);
-            const now = Date.now();
+            const now = window.getSyncedNow();
             let raceRemaining = raceMs - (now - window.state.startTime);
             // Use live timing race clock when available
             if (window.liveData && window.liveData.raceTimeLeftMs != null) {
@@ -589,6 +642,11 @@ window.tick = function() {
     window.renderFrame();
 };
 
+// Returns Date.now() adjusted by host clock offset (for viewers/drivers)
+window.getSyncedNow = function() {
+    return Date.now() + (window._hostTimeOffset || 0);
+};
+
 window.renderFrame = function() {
     if (!window.state || !window.state.isRunning) return;
 
@@ -605,7 +663,7 @@ window.renderFrame = function() {
     if (!raceMs) return;
 
     try {
-        const now = Date.now();
+        const now = window.getSyncedNow();
         const raceElapsed = now - window.state.startTime;
         let raceRemaining = raceMs - raceElapsed;
         
@@ -768,7 +826,7 @@ function updateRemainingStrategyLogic(raceRemainingMs) {
     const futureStints = Math.max(0, totalStopsRequired - stopsDone);
     
     // חישוב זמן נטו שנשאר לנהיגה בעתיד
-    const now = Date.now();
+    const now = window.getSyncedNow();
     const currentStintElapsed = (now - window.state.stintStart) + (window.state.stintOffset || 0);
     const targetStintMs = window.state.targetStintMs || maxStintMs;
     // הזמן שנשאר לנהוג בסטינט הנוכחי עד ליעד שלו
@@ -1173,7 +1231,7 @@ window.getEstimatedLapMs = function() {
 
 window.getBoxMessage = function() {
     const t = window.t || (k => k);
-    const now = Date.now();
+    const now = window.getSyncedNow();
     const currentStintMs = (now - window.state.stintStart) + (window.state.stintOffset || 0);
     const targetMs = window.state.targetStintMs || 0;
     const timeToTarget = targetMs - currentStintMs;
@@ -1646,7 +1704,7 @@ window.updateDriverStintNotifications = function() {
     }
     
     // Calculate time until next stint
-    const now = Date.now();
+    const now = window.getSyncedNow();
     const stintStart = new Date(nextStint.start).getTime();
     const msUntil = stintStart - now;
     
@@ -1729,7 +1787,7 @@ window._fireDriverAlert = function(message, minutesBefore) {
 window.updateDriverMode = function() {
     if (!window.state || !window.state.isRunning) return;
     
-    const now = Date.now();
+    const now = window.getSyncedNow();
     const t = window.t || (k => k);
     const raceMs = window.config.raceMs || (parseFloat(window.config.duration) * 3600000);
     let raceRemaining = raceMs - (now - window.state.startTime);

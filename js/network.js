@@ -363,6 +363,19 @@ window.initHostPeer = function() {
                 if (data.type === 'VIEWER_APPROVAL_REQUEST') {
                     const name = data.name || 'Unknown';
                     
+                    // If this viewer was previously approved (reconnection), auto-accept
+                    if (window.approvedViewers.has(c.peer)) {
+                        console.log(`🔄 Viewer ${name} (${c.peer.substring(0, 8)}) reconnected — auto-approved`);
+                        try {
+                            c.send({ type: 'APPROVAL_GRANTED', name: name, viewerId: c.peer, message: 'Reconnected — auto-approved!' });
+                        } catch(e) {}
+                        // Send fresh state
+                        try {
+                            c.send({ type: 'UPDATE', state: window.state, config: window.config, drivers: window.drivers, liveData: window.liveData, liveTimingConfig: window.liveTimingConfig, searchConfig: window.searchConfig, currentPitAdjustment: window.currentPitAdjustment || 0, timestamp: Date.now() });
+                        } catch(e) {}
+                        return;
+                    }
+                    
                     // Track as pending approval
                     window.pendingViewerApprovals.set(c.peer, {
                         peerId: c.peer,
@@ -594,9 +607,17 @@ window.connectToHost = function(hostId) {
                 if (window.conn && !window.conn.open) {
                     console.warn('Connection to host timed out after 15s');
                     try { window.conn.close(); } catch(e) {}
+                    // Show timeout on whichever screen is visible
+                    const viewerScreen = document.getElementById('viewerNameScreen');
                     const waitScreen = document.getElementById('clientWaitScreen');
-                    if (waitScreen) {
-                        waitScreen.innerHTML = '<div class="flex flex-col items-center justify-center gap-2"><div class="text-xl text-yellow-400 font-bold">⏱️ Connection Timed Out</div><div class="text-xs text-gray-400 mt-2">Host may be offline or link expired</div><button onclick="location.reload()" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-500">Try Again</button></div>';
+                    const errorHtml = '<div class="flex flex-col items-center justify-center gap-2"><div class="text-xl text-yellow-400 font-bold">⏱️ Connection Timed Out</div><div class="text-xs text-gray-400 mt-2">Host may be offline or link expired</div><button onclick="location.reload()" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-500">Try Again</button></div>';
+                    const viewerError = document.getElementById('viewerNameError');
+                    const viewerWaiting = document.getElementById('viewerWaitingMsg');
+                    if (viewerScreen && !viewerScreen.classList.contains('hidden')) {
+                        if (viewerWaiting) viewerWaiting.innerHTML = errorHtml;
+                        else if (viewerError) { viewerError.classList.remove('hidden'); viewerError.innerText = 'Connection timed out. Host may be offline.'; }
+                    } else if (waitScreen) {
+                        waitScreen.innerHTML = errorHtml;
                     }
                 }
             }, 15000);
@@ -607,35 +628,41 @@ window.connectToHost = function(hostId) {
                 // Reset reconnection state on successful connection
                 window.resetReconnectionState();
                 window.conn.send('REQUEST_INIT');
-                // If the viewer picked a name before connection opened, send it now
-                if (window.pendingChatName) {
-                    try { window.conn.send({ type: 'SET_NAME', name: window.pendingChatName }); } catch(e) { console.error('Failed to send pending name', e); }
-                    // show waiting message in UI
-                    const joinErr = document.getElementById('chatJoinError');
-                    if (joinErr) { joinErr.classList.remove('hidden'); joinErr.innerText = 'Waiting for host to accept your name...'; }
-                } else {
-                    // Try to auto-join with Google name if available
-                    if (typeof window.autoJoinChatWithGoogle === 'function') {
-                        window.autoJoinChatWithGoogle();
-                    }
+                
+                // Auto-send viewer approval request with pending name
+                if (window.pendingChatName && !window._autoDriverMode) {
+                    window.requestViewerApproval(window.pendingChatName);
+                    console.log(`📡 Sent approval request as "${window.pendingChatName}"`);
                 }
-                // Update wait screen to show connected status
+                
+                // Update wait screen / viewer name screen to show connected status
                 const waitScreen = document.getElementById('clientWaitScreen');
-                if (waitScreen) {
+                if (waitScreen && !waitScreen.classList.contains('hidden')) {
                     waitScreen.innerHTML = '<div class="flex flex-col items-center justify-center gap-2"><div class="text-2xl text-green-400 font-bold">✅ Connected!</div><div class="text-xs text-gray-400 mt-1">Receiving race data...</div></div>';
                 }
             });
 
             window.conn.on('data', (data) => {
                 if (data.type === 'UPDATE' || data.type === 'INIT') {
-                    // Only hide wait screen when we have actual race data
-                    document.getElementById('clientWaitScreen').classList.add('hidden');
+                    // Always absorb state data
                     if (data.state) window.state = data.state;
                     if (data.config) window.config = data.config;
                     if (data.drivers) window.drivers = data.drivers;
                     if (data.liveData) window.liveData = data.liveData;
                     if (data.liveTimingConfig) window.liveTimingConfig = data.liveTimingConfig;
                     if (data.searchConfig) window.searchConfig = data.searchConfig;
+
+                    // Sync clock offset: host sends its Date.now() — compute how far ahead/behind we are
+                    if (data.timestamp) {
+                        const localNow = Date.now();
+                        const newOffset = data.timestamp - localNow;
+                        // Smooth it: blend with previous offset to avoid jumps
+                        if (window._hostTimeOffset === undefined) {
+                            window._hostTimeOffset = newOffset;
+                        } else {
+                            window._hostTimeOffset = window._hostTimeOffset * 0.7 + newOffset * 0.3;
+                        }
+                    }
 
                     // Update pit adjustment from host
                     if (data.currentPitAdjustment !== undefined) {
@@ -647,6 +674,15 @@ window.connectToHost = function(hostId) {
                         window._receivedTimeline = data.strategyTimeline;
                     }
 
+                    // For viewers (non-driver): gate dashboard behind approval
+                    if (!window._autoDriverMode && window.viewerApprovalStatus !== 'approved') {
+                        // Don't show dashboard yet — just store state silently
+                        return;
+                    }
+
+                    // === Show dashboard ===
+                    document.getElementById('clientWaitScreen').classList.add('hidden');
+                    document.getElementById('viewerNameScreen')?.classList.add('hidden');
                     window.enforceViewerMode();
                     document.getElementById('setupScreen').classList.add('hidden');
                     document.getElementById('raceDashboard').classList.remove('hidden');
@@ -703,13 +739,11 @@ window.connectToHost = function(hostId) {
                     // Host approved our request to view
                     console.log('✅ Your request has been approved by the host!');
                     window.viewerApprovalStatus = 'approved';
-                    // Hide any pending messages
-                    const joinErr = document.getElementById('chatJoinError');
-                    if (joinErr) { joinErr.classList.add('hidden'); }
                     
-                    // Save approved name and transition to chat
+                    // Save approved name for chat auto-login and reconnection
                     const approvedName = data.name || window.pendingChatName || 'Viewer';
                     localStorage.setItem('strateger_chat_name', approvedName);
+                    localStorage.setItem('strateger_viewer_name', approvedName);
                     window.pendingChatName = null;
                     
                     // Send SET_NAME so host registers our name
@@ -717,10 +751,21 @@ window.connectToHost = function(hostId) {
                         try { window.conn.send({ type: 'SET_NAME', name: approvedName }); } catch(e) {}
                     }
                     
-                    // Transition to chat view
-                    document.getElementById('chatLoginView').classList.add('hidden');
-                    document.getElementById('chatMessagesView').classList.remove('hidden');
-                    document.getElementById('chatMessagesView').classList.add('flex');
+                    // === Transition to dashboard ===
+                    document.getElementById('viewerNameScreen')?.classList.add('hidden');
+                    document.getElementById('clientWaitScreen')?.classList.add('hidden');
+                    document.getElementById('setupScreen')?.classList.add('hidden');
+                    document.getElementById('raceDashboard')?.classList.remove('hidden');
+                    if (typeof window.enforceViewerMode === 'function') window.enforceViewerMode();
+                    
+                    // Show chat button
+                    const chatBtn = document.getElementById('chatToggleBtn');
+                    if (chatBtn) chatBtn.style.display = 'block';
+                    
+                    // Auto-set chat to messages view (skip login since name is known)
+                    document.getElementById('chatLoginView')?.classList.add('hidden');
+                    document.getElementById('chatMessagesView')?.classList.remove('hidden');
+                    document.getElementById('chatMessagesView')?.classList.add('flex');
                     
                     // Load chat history
                     const feed = document.getElementById('chatFeed');
@@ -733,12 +778,32 @@ window.connectToHost = function(hostId) {
                     
                     // Update placeholder for viewer
                     if (typeof window.updateChatPlaceholder === 'function') window.updateChatPlaceholder();
+                    
+                    // Render current state if available
+                    if (typeof window.renderFrame === 'function' && window.state?.isRunning) {
+                        window.renderFrame();
+                    }
                 } else if (data.type === 'APPROVAL_REJECTED') {
                     // Host rejected our request
                     console.log('❌ Your request was rejected by the host.');
                     window.viewerApprovalStatus = 'rejected';
-                    if (window.role === 'viewer' && typeof window.onApprovalRejected === 'function') {
-                        window.onApprovalRejected(data.message || 'Your request was rejected');
+                    localStorage.removeItem('strateger_viewer_name');
+                    
+                    // Show rejection on the viewer name screen
+                    const viewerNameScreen = document.getElementById('viewerNameScreen');
+                    const errorEl = document.getElementById('viewerNameError');
+                    const waitingMsg = document.getElementById('viewerWaitingMsg');
+                    const nameInput = document.getElementById('viewerNameInput');
+                    
+                    if (viewerNameScreen) viewerNameScreen.classList.remove('hidden');
+                    if (waitingMsg) waitingMsg.classList.add('hidden');
+                    if (nameInput) nameInput.disabled = false;
+                    // Re-show submit button
+                    const submitBtn = viewerNameScreen?.querySelector('button[onclick*="submitViewerName"]');
+                    if (submitBtn) submitBtn.classList.remove('hidden');
+                    if (errorEl) {
+                        errorEl.classList.remove('hidden');
+                        errorEl.innerText = data.message || (window.t ? window.t('approvalRejected') : 'Your request was rejected');
                     }
                     // Close connection
                     setTimeout(() => {

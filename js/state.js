@@ -167,6 +167,7 @@ window.translations = {
         boxThisLap: "🏁 BOX THIS LAP", boxNextLap: "📢 BOX NEXT LAP", stayOut: "STAY OUT", onTrack: "ON TRACK", inPit: "IN PIT",
         driverEntryHint: "Enter the race ID to connect", driverEntryLabel: "Race ID", driverConnect: "Connect as Driver", driverIdTooShort: "ID is too short", joinAsDriver: "Join as Driver", backToSetup: "← Back to Setup",
         nextStintIn: "Your next stint in", stayAwake: "Stay awake", sleepOk: "You can sleep", yourStints: "Your Stints", noStintsFound: "No stints found for you", wakeUpAlert: "⏰ Wake up! Your stint is coming",
+        viewerNameHint: "Enter your name to join the race", viewerNameLabel: "Your Name", requestToJoin: "Request to Join", waitingForApproval: "Waiting for host approval...", waitingForApprovalHint: "The race admin will approve your request", viewerNameTooShort: "Name must be at least 2 characters",
     },
     he: {
         ltSearchType: "סנן לפי:", ltTeam: "קבוצה", ltDriver: "נהג", ltKart: "מספר קארט", ltPlaceholder: "הכנס ערך לחיפוש...",
@@ -264,6 +265,7 @@ window.translations = {
         boxThisLap: "🏁 היכנס להקפה הזו", boxNextLap: "📢 היכנס בהקפה הבאה", stayOut: "הישאר בחוץ", onTrack: "על המסלול", inPit: "בפיטס",
         driverEntryHint: "הזן את קוד המירוץ להתחברות", driverEntryLabel: "קוד מירוץ", driverConnect: "התחבר כנהג", driverIdTooShort: "הקוד קצר מדי", joinAsDriver: "הצטרף כנהג", backToSetup: "← חזרה להגדרות",
         nextStintIn: "הסטינט הבא שלך בעוד", stayAwake: "הישאר ער", sleepOk: "אפשר לישון", yourStints: "הסטינטים שלך", noStintsFound: "לא נמצאו סטינטים עבורך", wakeUpAlert: "⏰ התעורר! הסטינט שלך מתקרב",
+        viewerNameHint: "הכנס את שמך כדי להצטרף למירוץ", viewerNameLabel: "השם שלך", requestToJoin: "בקש להצטרף", waitingForApproval: "ממתין לאישור מנהל...", waitingForApprovalHint: "מנהל המירוץ יאשר את בקשתך", viewerNameTooShort: "השם חייב להכיל לפחות 2 תווים",
     },
     fr: {
         ltSearchType: "Filtrer par:", ltTeam: "Équipe", ltDriver: "Pilote", ltKart: "Kart n°", ltPlaceholder: "Rechercher...",
@@ -360,6 +362,7 @@ window.translations = {
         boxThisLap: "🏁 BOX CE TOUR", boxNextLap: "📢 BOX PROCHAIN TOUR", stayOut: "RESTEZ EN PISTE", onTrack: "EN PISTE", inPit: "AUX STANDS",
         driverEntryHint: "Entrez l'ID de course pour vous connecter", driverEntryLabel: "ID de course", driverConnect: "Se connecter comme pilote", driverIdTooShort: "L'ID est trop court", joinAsDriver: "Rejoindre en tant que pilote", backToSetup: "← Retour aux réglages",
         nextStintIn: "Votre prochain stint dans", stayAwake: "Restez éveillé", sleepOk: "Vous pouvez dormir", yourStints: "Vos Stints", noStintsFound: "Aucun stint trouvé pour vous", wakeUpAlert: "⏰ Réveillez-vous! Votre stint approche",
+        viewerNameHint: "Entrez votre nom pour rejoindre la course", viewerNameLabel: "Votre Nom", requestToJoin: "Demander à rejoindre", waitingForApproval: "En attente d'approbation...", waitingForApprovalHint: "L'administrateur de la course approuvera votre demande", viewerNameTooShort: "Le nom doit contenir au moins 2 caractères",
     },
     pt: {
         ltSearchType: "Filtrar por:", ltTeam: "Equipe", ltDriver: "Piloto", ltKart: "Kart nº", ltPlaceholder: "Pesquisar...",
@@ -451,6 +454,7 @@ window.translations = {
         boxThisLap: "🏁 BOX NESTA VOLTA", boxNextLap: "📢 BOX PRÓXIMA VOLTA", stayOut: "FIQUE FORA", onTrack: "NA PISTA", inPit: "NOS BOXES",
         driverEntryHint: "Digite o ID da corrida para conectar", driverEntryLabel: "ID da corrida", driverConnect: "Conectar como piloto", driverIdTooShort: "ID muito curto", joinAsDriver: "Entrar como piloto", backToSetup: "← Voltar às configurações",
         nextStintIn: "Seu próximo stint em", stayAwake: "Fique acordado", sleepOk: "Pode dormir", yourStints: "Seus Stints", noStintsFound: "Nenhum stint encontrado para você", wakeUpAlert: "⏰ Acorde! Seu stint está chegando",
+        viewerNameHint: "Digite seu nome para participar da corrida", viewerNameLabel: "Seu Nome", requestToJoin: "Solicitar Entrada", waitingForApproval: "Aguardando aprovação...", waitingForApprovalHint: "O administrador da corrida aprovará sua solicitação", viewerNameTooShort: "O nome deve ter pelo menos 2 caracteres",
     },
     ru: {
         ltSearchType: "Фильтр по:", ltTeam: "Команда", ltDriver: "Пилот", ltKart: "Карт №", ltPlaceholder: "Поиск...",
@@ -547,6 +551,7 @@ window.translations = {
         boxThisLap: "🏁 ЗАЕЗД В БОКСЫ ЭТОТ КРУГ", boxNextLap: "📢 БОКСЫ СЛЕДУЮЩИЙ КРУГ", stayOut: "ОСТАВАЙТЕСЬ НА ТРАССЕ", onTrack: "НА ТРАССЕ", inPit: "В БОКСАХ",
         driverEntryHint: "Введите ID гонки для подключения", driverEntryLabel: "ID гонки", driverConnect: "Подключиться как пилот", driverIdTooShort: "ID слишком короткий", joinAsDriver: "Войти как пилот", backToSetup: "← Назад к настройкам",
         nextStintIn: "Ваш следующий стинт через", stayAwake: "Не спите", sleepOk: "Можно спать", yourStints: "Ваши стинты", noStintsFound: "Стинты для вас не найдены", wakeUpAlert: "⏰ Проснитесь! Ваш стинт скоро",
+        viewerNameHint: "Введите имя, чтобы присоединиться к гонке", viewerNameLabel: "Ваше имя", requestToJoin: "Запросить доступ", waitingForApproval: "Ожидание одобрения...", waitingForApprovalHint: "Администратор гонки одобрит ваш запрос", viewerNameTooShort: "Имя должно содержать минимум 2 символа",
     },
     ar: {
         ltSearchType: "تصفية حسب:", ltTeam: "الفريق", ltDriver: "السائق", ltKart: "رقم الكارت", ltPlaceholder: "البحث...",
@@ -643,6 +648,7 @@ window.translations = {
         boxThisLap: "🏁 ادخل هذه اللفة", boxNextLap: "📢 ادخل اللفة القادمة", stayOut: "ابقَ على المسار", onTrack: "على المسار", inPit: "في الحفرة",
         driverEntryHint: "أدخل رقم السباق للاتصال", driverEntryLabel: "رقم السباق", driverConnect: "اتصل كسائق", driverIdTooShort: "الرقم قصير جداً", joinAsDriver: "انضم كسائق", backToSetup: "← العودة للإعدادات",
         nextStintIn: "فترتك القادمة خلال", stayAwake: "ابقَ مستيقظاً", sleepOk: "يمكنك النوم", yourStints: "فتراتك", noStintsFound: "لم يتم العثور على فترات لك", wakeUpAlert: "⏰ استيقظ! فترتك قادمة",
+        viewerNameHint: "أدخل اسمك للانضمام إلى السباق", viewerNameLabel: "اسمك", requestToJoin: "طلب الانضمام", waitingForApproval: "في انتظار الموافقة...", waitingForApprovalHint: "سيوافق مدير السباق على طلبك", viewerNameTooShort: "يجب أن يحتوي الاسم على حرفين على الأقل",
     },
     es: {
         ltSearchType: "Filtrar por:", ltTeam: "Equipo", ltDriver: "Piloto", ltKart: "Kart nº", ltPlaceholder: "Buscar...",
@@ -738,6 +744,7 @@ window.translations = {
         boxThisLap: "🏁 BOX ESTA VUELTA", boxNextLap: "📢 BOX SIGUIENTE VUELTA", stayOut: "SIGUE EN PISTA", onTrack: "EN PISTA", inPit: "EN BOXES",
         driverEntryHint: "Ingresa el ID de carrera para conectarte", driverEntryLabel: "ID de carrera", driverConnect: "Conectar como piloto", driverIdTooShort: "El ID es muy corto", joinAsDriver: "Unirse como piloto", backToSetup: "← Volver a configuración",
         nextStintIn: "Tu próximo stint en", stayAwake: "Mantente despierto", sleepOk: "Puedes dormir", yourStints: "Tus Stints", noStintsFound: "No se encontraron stints para ti", wakeUpAlert: "⏰ ¡Despierta! Tu stint se acerca",
+        viewerNameHint: "Ingresa tu nombre para unirte a la carrera", viewerNameLabel: "Tu Nombre", requestToJoin: "Solicitar Unirse", waitingForApproval: "Esperando aprobación...", waitingForApprovalHint: "El administrador de la carrera aprobará tu solicitud", viewerNameTooShort: "El nombre debe tener al menos 2 caracteres",
     },
     it: {
         ltSearchType: "Filtra per:", ltTeam: "Squadra", ltDriver: "Pilota", ltKart: "Kart n°", ltPlaceholder: "Ricerca...", previewTitle: "Anteprima strategia", addToCalendar: "Aggiungi al calendario", timeline: "Cronologia", driverSchedule: "Orario piloti", totalTime: "Tempo totale", close: "Chiudi",
@@ -787,6 +794,7 @@ window.translations = {
         boxThisLap: "🏁 BOX QUESTO GIRO", boxNextLap: "📢 BOX PROSSIMO GIRO", stayOut: "RIMANI IN PISTA", onTrack: "IN PISTA", inPit: "AI BOX",
         driverEntryHint: "Inserisci l'ID gara per connetterti", driverEntryLabel: "ID gara", driverConnect: "Connetti come pilota", driverIdTooShort: "L'ID è troppo corto", joinAsDriver: "Unisciti come pilota", backToSetup: "← Torna alle impostazioni",
         nextStintIn: "Il tuo prossimo stint tra", stayAwake: "Resta sveglio", sleepOk: "Puoi dormire", yourStints: "I Tuoi Stint", noStintsFound: "Nessuno stint trovato per te", wakeUpAlert: "⏰ Svegliati! Il tuo stint si avvicina",
+        viewerNameHint: "Inserisci il tuo nome per unirti alla gara", viewerNameLabel: "Il Tuo Nome", requestToJoin: "Richiedi di unirti", waitingForApproval: "In attesa di approvazione...", waitingForApprovalHint: "L'amministratore della gara approverà la tua richiesta", viewerNameTooShort: "Il nome deve avere almeno 2 caratteri",
     },
     ka: {
         ltSearchType: "ფილტრი:", ltTeam: "გუნდი", ltDriver: "მძღოლი", ltKart: "კარტი #", ltPlaceholder: "ძებნა...",
@@ -883,6 +891,7 @@ window.translations = {
         boxThisLap: "🏁 შედი ამ წრეზე", boxNextLap: "📢 შედი მომდევნო წრეზე", stayOut: "დარჩი ტრასაზე", onTrack: "ტრასაზე", inPit: "ბოქსში",
         driverEntryHint: "შეიყვანეთ რბოლის ID დასაკავშირებლად", driverEntryLabel: "რბოლის ID", driverConnect: "დაკავშირება მძღოლად", driverIdTooShort: "ID ძალიან მოკლეა", joinAsDriver: "შეუერთდი მძღოლად", backToSetup: "← უკან პარამეტრებზე",
         nextStintIn: "შენი შემდეგი სტინტი", stayAwake: "დარჩი ფხიზლად", sleepOk: "შეგიძლია დაიძინო", yourStints: "შენი სტინტები", noStintsFound: "სტინტები ვერ მოიძებნა", wakeUpAlert: "⏰ გაიღვიძე! შენი სტინტი ახლოვდება",
+        viewerNameHint: "შეიყვანე სახელი რბოლაში შესაერთებლად", viewerNameLabel: "შენი სახელი", requestToJoin: "მოითხოვე შეერთება", waitingForApproval: "მოლოდინში ადმინის თანხმობაზე...", waitingForApprovalHint: "რბოლის ადმინისტრატორი დაამტკიცებს თქვენს მოთხოვნას", viewerNameTooShort: "სახელი უნდა შეიცავდეს მინიმუმ 2 სიმბოლოს",
     },
     de: {
         ltSearchType: "Filter nach:", ltTeam: "Team", ltDriver: "Fahrer", ltKart: "Kart Nr.", ltPlaceholder: "Suchen...", previewTitle: "Strategievorschau", addToCalendar: "Zum Kalender hinzufügen", timeline: "Zeitleiste", driverSchedule: "Fahrerplan", totalTime: "Gesamtzeit", close: "Schließen",
@@ -933,6 +942,7 @@ window.translations = {
         boxThisLap: "🏁 BOX DIESE RUNDE", boxNextLap: "📢 BOX NÄCHSTE RUNDE", stayOut: "DRAUSSEN BLEIBEN", onTrack: "AUF DER STRECKE", inPit: "IN DER BOX",
         driverEntryHint: "Rennen-ID eingeben zum Verbinden", driverEntryLabel: "Rennen-ID", driverConnect: "Als Fahrer verbinden", driverIdTooShort: "ID ist zu kurz", joinAsDriver: "Als Fahrer beitreten", backToSetup: "← Zurück zur Einrichtung",
         nextStintIn: "Dein nächster Stint in", stayAwake: "Bleib wach", sleepOk: "Du kannst schlafen", yourStints: "Deine Stints", noStintsFound: "Keine Stints für dich gefunden", wakeUpAlert: "⏰ Aufwachen! Dein Stint kommt",
+        viewerNameHint: "Gib deinen Namen ein, um dem Rennen beizutreten", viewerNameLabel: "Dein Name", requestToJoin: "Beitritt anfragen", waitingForApproval: "Warte auf Genehmigung...", waitingForApprovalHint: "Der Rennadministrator wird deine Anfrage genehmigen", viewerNameTooShort: "Name muss mindestens 2 Zeichen haben",
     },
     ja: {
         ltSearchType: "フィルタリング:", ltTeam: "チーム", ltDriver: "ドライバー", ltKart: "カート番号", ltPlaceholder: "検索...", previewTitle: "戦略プレビュー", addToCalendar: "カレンダーに追加", timeline: "タイムライン", driverSchedule: "ドライバースケジュール", totalTime: "総時間", close: "閉じる",
@@ -982,6 +992,7 @@ window.translations = {
         boxThisLap: "🏁 今周ピットイン", boxNextLap: "📢 次周ピットイン", stayOut: "ステイアウト", onTrack: "走行中", inPit: "ピット内",
         driverEntryHint: "レースIDを入力して接続", driverEntryLabel: "レースID", driverConnect: "ドライバーとして接続", driverIdTooShort: "IDが短すぎます", joinAsDriver: "ドライバーとして参加", backToSetup: "← セットアップに戻る",
         nextStintIn: "次のスティントまで", stayAwake: "起きていて", sleepOk: "寝ても大丈夫", yourStints: "あなたのスティント", noStintsFound: "スティントが見つかりません", wakeUpAlert: "⏰ 起きて！スティントが近づいています",
+        viewerNameHint: "レースに参加するために名前を入力してください", viewerNameLabel: "あなたの名前", requestToJoin: "参加をリクエスト", waitingForApproval: "承認を待っています...", waitingForApprovalHint: "レース管理者があなたのリクエストを承認します", viewerNameTooShort: "名前は2文字以上必要です",
     }
 };
 
