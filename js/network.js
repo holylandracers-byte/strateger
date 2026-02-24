@@ -51,12 +51,17 @@ window.selectRole = function(r) {
 window.updateShareUI = function() {
     const shareBtn = document.getElementById('shareRaceBtn');
     const manageBtn = document.getElementById('viewerManageBtn');
+    const driverLinkBtn = document.getElementById('driverLinkBtn');
     
     // מציג את הכפתור רק אם יש ID והמשתמש הוא HOST
     if (window.myId && window.role === 'host') {
         if (shareBtn) {
             shareBtn.classList.remove('hidden');
             shareBtn.innerHTML = '<i class="fas fa-link"></i> <span class="hidden sm:inline">Invite</span>';
+        }
+        
+        if (driverLinkBtn) {
+            driverLinkBtn.classList.remove('hidden');
         }
         
         if (manageBtn) {
@@ -407,8 +412,11 @@ window.initHostPeer = function() {
                             }
                         }
                     }
-                    window.renderChatMessage(data); 
-                    window.broadcast(data); 
+                    // === Viewer messages go to ADMIN only (not broadcast) ===
+                    // Tag message with sender's peerId so admin can reply
+                    data.senderPeerId = c.peer;
+                    window.renderChatMessage(data);
+                    // Do NOT broadcast viewer messages - admin sees them privately 
                 } else if (data.type === 'SET_NAME') {
                     // Ensure unique and valid viewer names
                     let uniqueName = data.name.trim();
@@ -508,12 +516,12 @@ window.copyDriverLink = function() {
         const btn = document.getElementById('driverLinkBtn');
         if (!btn) return;
         const original = btn.innerHTML;
-        btn.innerHTML = '✅ Copied!';
-        btn.classList.add('bg-green-700', 'text-white');
+        btn.innerHTML = '<i class="fas fa-check"></i> <span class="hidden sm:inline">Copied!</span>';
+        btn.style.background = '#15803d';
         
         setTimeout(() => {
             btn.innerHTML = original;
-            btn.classList.remove('bg-green-700', 'text-white');
+            btn.style.background = '';
         }, 2000);
     }).catch(err => {
         prompt("Copy this driver link:", link);
@@ -681,10 +689,36 @@ window.connectToHost = function(hostId) {
                     // Host approved our request to view
                     console.log('✅ Your request has been approved by the host!');
                     window.viewerApprovalStatus = 'approved';
-                    // Hide any pending messages and proceed with chat
+                    // Hide any pending messages
                     const joinErr = document.getElementById('chatJoinError');
                     if (joinErr) { joinErr.classList.add('hidden'); }
-                    // Now can receive race data
+                    
+                    // Save approved name and transition to chat
+                    const approvedName = data.name || window.pendingChatName || 'Viewer';
+                    localStorage.setItem('strateger_chat_name', approvedName);
+                    window.pendingChatName = null;
+                    
+                    // Send SET_NAME so host registers our name
+                    if (window.conn && window.conn.open) {
+                        try { window.conn.send({ type: 'SET_NAME', name: approvedName }); } catch(e) {}
+                    }
+                    
+                    // Transition to chat view
+                    document.getElementById('chatLoginView').classList.add('hidden');
+                    document.getElementById('chatMessagesView').classList.remove('hidden');
+                    document.getElementById('chatMessagesView').classList.add('flex');
+                    
+                    // Load chat history
+                    const feed = document.getElementById('chatFeed');
+                    if (feed && feed.children.length === 0) {
+                        try {
+                            const history = JSON.parse(localStorage.getItem('strateger_chat_history') || '[]');
+                            history.forEach(msg => window.renderChatMessage(msg));
+                        } catch(e) {}
+                    }
+                    
+                    // Update placeholder for viewer
+                    if (typeof window.updateChatPlaceholder === 'function') window.updateChatPlaceholder();
                 } else if (data.type === 'APPROVAL_REJECTED') {
                     // Host rejected our request
                     console.log('❌ Your request was rejected by the host.');

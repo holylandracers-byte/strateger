@@ -222,7 +222,32 @@ const _BG_THEMES = {
     'night-circuit': 'background: radial-gradient(ellipse at 30% 80%, rgba(34,211,238,0.15) 0%, transparent 50%), radial-gradient(ellipse at 70% 20%, rgba(168,85,247,0.12) 0%, transparent 50%), radial-gradient(ellipse at 50% 50%, rgba(0,0,0,0) 0%, #050a12 100%); background-color: #050a12;',
     'pit-lane': 'background: linear-gradient(180deg, #0c0c0c 0%, #0c0c0c 92%, transparent 92%), repeating-linear-gradient(90deg, #d4a017 0px, #d4a017 10px, #111 10px, #111 20px); background-color: #0c0c0c;',
     'tarmac': "background-color:#181818; background-image: url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='4' height='4' fill='%23181818'/%3E%3Crect width='1' height='1' fill='%23202020'/%3E%3Crect width='1' height='1' x='2' y='2' fill='%23141414'/%3E%3C/svg%3E\"), linear-gradient(180deg, transparent 47%, rgba(255,255,255,0.15) 49%, rgba(255,255,255,0.15) 51%, transparent 53%);",
-    'black': 'background: #000000;'
+    'black': 'background: #000000;',
+    // === COLOR THEMES ===
+    'midnight-blue': 'background: linear-gradient(180deg, #020820 0%, #0a1640 50%, #020820 100%);',
+    'deep-red': 'background: linear-gradient(180deg, #1a0505 0%, #2d0a0a 50%, #1a0505 100%);',
+    'forest': 'background: linear-gradient(180deg, #051a0a 0%, #0a2d15 50%, #051a0a 100%);',
+    'purple-night': 'background: linear-gradient(180deg, #0d0520 0%, #1a0a35 50%, #0d0520 100%);',
+    'amber-heat': 'background: linear-gradient(180deg, #1a1000 0%, #2d1a05 50%, #1a1000 100%);',
+    'steel': 'background: linear-gradient(180deg, #15181e 0%, #1e2530 50%, #15181e 100%);'
+};
+
+// Dashboard tint colors per theme — applied to dashboard elements
+const _THEME_TINTS = {
+    '': { main: '', panel: '', border: '' },
+    'checkered': { main: '#0e0e0e', panel: '#181818', border: '#2a2a2a' },
+    'carbon': { main: '#0a0a0a', panel: '#141414', border: '#252525' },
+    'stripes-red': { main: '#0e0202', panel: '#180505', border: '#3a1010' },
+    'night-circuit': { main: '#050a12', panel: '#0a1225', border: '#1a2545' },
+    'pit-lane': { main: '#0c0c0c', panel: '#161610', border: '#2a2a1a' },
+    'tarmac': { main: '#141414', panel: '#1a1a1a', border: '#2a2a2a' },
+    'black': { main: '#000000', panel: '#0a0a0a', border: '#1a1a1a' },
+    'midnight-blue': { main: '#020820', panel: '#081535', border: '#102050' },
+    'deep-red': { main: '#1a0505', panel: '#220808', border: '#401515' },
+    'forest': { main: '#051a0a', panel: '#082510', border: '#104020' },
+    'purple-night': { main: '#0d0520', panel: '#150a30', border: '#251545' },
+    'amber-heat': { main: '#1a1000', panel: '#221805', border: '#403015' },
+    'steel': { main: '#15181e', panel: '#1c2028', border: '#2a3040' }
 };
 
 window.setPageBackground = function(bg) {
@@ -248,6 +273,25 @@ window.setPageBackground = function(bg) {
         document.body.style.background = bg;
     }
     // else: empty = default, CSS handles it
+    
+    // Apply dashboard tint
+    const tint = _THEME_TINTS[bg] || _THEME_TINTS[''];
+    const dashboard = document.getElementById('raceDashboard');
+    const infoBar = document.getElementById('dashboardInfoBar');
+    if (tint.main) {
+        if (dashboard) dashboard.style.backgroundColor = tint.main;
+        if (infoBar) infoBar.style.backgroundColor = tint.panel;
+        // Set CSS variables for panels that use bg-navy-900/bg-navy-950
+        document.documentElement.style.setProperty('--theme-main', tint.main);
+        document.documentElement.style.setProperty('--theme-panel', tint.panel);
+        document.documentElement.style.setProperty('--theme-border', tint.border);
+    } else {
+        if (dashboard) dashboard.style.backgroundColor = '';
+        if (infoBar) infoBar.style.backgroundColor = '';
+        document.documentElement.style.removeProperty('--theme-main');
+        document.documentElement.style.removeProperty('--theme-panel');
+        document.documentElement.style.removeProperty('--theme-border');
+    }
     
     localStorage.setItem('strateger_bg', bg);
     // Highlight active swatch
@@ -964,6 +1008,30 @@ window.enforceViewerMode = function() {
 // ==========================================
 window.chatUnread = 0;
 
+// Helper: update chat input placeholder based on role
+window.updateChatPlaceholder = function() {
+    const input = document.getElementById('chatInput');
+    if (!input) return;
+    if (window.role === 'host') {
+        input.placeholder = 'Message to viewers...';
+    } else {
+        input.placeholder = 'Send to Admin...';
+    }
+};
+
+// Enter key support for chat inputs
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        if (e.target.id === 'chatInput') {
+            e.preventDefault();
+            window.sendChatMessage();
+        } else if (e.target.id === 'chatUserName') {
+            e.preventDefault();
+            window.joinChat();
+        }
+    }
+});
+
 // === FIX: Consolidated toggleChat function (removes originalToggleChat dependency) ===
 window.toggleChat = function() {
     const panel = document.getElementById('chatPanel');
@@ -989,12 +1057,27 @@ window.toggleChat = function() {
             badge.classList.add('hidden');
         }
         
+        // HOST: auto-join as ADMIN with team name (skip login screen)
+        if (window.role === 'host' && !localStorage.getItem('strateger_chat_name')) {
+            const teamName = window.searchConfig?.teamName || window.searchConfig?.driverName || 'Admin';
+            localStorage.setItem('strateger_chat_name', teamName);
+        }
+
         // If user already entered name, go straight to messages
         const savedName = localStorage.getItem('strateger_chat_name');
         if (savedName) {
             document.getElementById('chatLoginView').classList.add('hidden');
             document.getElementById('chatMessagesView').classList.remove('hidden');
             document.getElementById('chatMessagesView').classList.add('flex');
+
+            // Show viewer selector for host
+            if (window.role === 'host') {
+                const selector = document.getElementById('chatViewerSelector');
+                if (selector) selector.classList.remove('hidden');
+            }
+
+            // Update placeholder based on role
+            window.updateChatPlaceholder();
             
             // 🟢 Load chat history for continuing races
             if (feed.children.length === 0) {
@@ -1003,61 +1086,63 @@ window.toggleChat = function() {
                     history.forEach(msg => window.renderChatMessage(msg));
                 } catch(e) { console.error("Error loading chat history:", e); }
             }
+        } else if (window.role === 'host') {
+            // Edge case: no saved name yet, pre-fill the input for host
+            const chatInput = document.getElementById('chatUserName');
+            const teamName = window.searchConfig?.teamName || window.searchConfig?.driverName || '';
+            if (chatInput && teamName) chatInput.value = teamName;
         }
     }
 };
 
 window.joinChat = function() {
-    const name = document.getElementById('chatUserName').value.trim();
+    let name = document.getElementById('chatUserName').value.trim();
+    
+    // For host: use team name as chat name, fallback to input
+    if (window.role === 'host') {
+        if (!name) {
+            name = window.searchConfig?.teamName || window.searchConfig?.driverName || 'Admin';
+        }
+        localStorage.setItem('strateger_chat_name', name);
+        document.getElementById('chatLoginView').classList.add('hidden');
+        document.getElementById('chatMessagesView').classList.remove('hidden');
+        document.getElementById('chatMessagesView').classList.add('flex');
+        
+        // Show viewer selector for host
+        document.getElementById('chatViewerSelector').classList.remove('hidden');
+        window.updateChatPlaceholder();
+        
+        // Ensure chat panel is visible & load history
+        const panel = document.getElementById('chatPanel');
+        if (panel.classList.contains('hidden')) {
+            panel.classList.remove('hidden');
+            const feed = document.getElementById('chatFeed');
+            if (feed.children.length === 0) {
+                try {
+                    const history = JSON.parse(localStorage.getItem('strateger_chat_history') || '[]');
+                    history.forEach(msg => window.renderChatMessage(msg));
+                } catch(e) { console.error("Error loading chat history:", e); }
+            }
+        }
+        return;
+    }
+
+    // === Viewer flow ===
     if (!name) return alert("Name required");
     
     // Clear previous join errors
     const joinErr = document.getElementById('chatJoinError');
     if (joinErr) { joinErr.classList.add('hidden'); joinErr.innerText = ''; }
 
-    // For viewers, request approval from host
-    if (window.role === 'viewer') {
-        // Store temporarily so we can retry if connection opens later
-        window.pendingChatName = name;
-        // Request approval
-        window.requestViewerApproval(name);
-        
-        // Show waiting message
-        if (joinErr) { 
-            joinErr.classList.remove('hidden'); 
-            joinErr.innerText = 'Requesting approval from host...'; 
-        }
-        return;
-    }
-
-    // Hosts don't need approval
-    localStorage.setItem('strateger_chat_name', name);
-    document.getElementById('chatLoginView').classList.add('hidden');
-    document.getElementById('chatMessagesView').classList.remove('hidden');
-    document.getElementById('chatMessagesView').classList.add('flex');
+    // Store temporarily so we can retry if connection opens later
+    window.pendingChatName = name;
+    // Request approval from host
+    window.requestViewerApproval(name);
     
-    // Show viewer selector only for host
-    if (window.role === 'host') {
-        document.getElementById('chatViewerSelector').classList.remove('hidden');
-    }
-    
-    // 🟢 Ensure chat panel is visible
-    const panel = document.getElementById('chatPanel');
-    if (panel.classList.contains('hidden')) {
-        panel.classList.remove('hidden');
-        // Load chat history
-        const feed = document.getElementById('chatFeed');
-        if (feed.children.length === 0) {
-            try {
-                const history = JSON.parse(localStorage.getItem('strateger_chat_history') || '[]');
-                history.forEach(msg => window.renderChatMessage(msg));
-            } catch(e) { console.error("Error loading chat history:", e); }
-        }
-    }
-
-    // Send name to host if connected
-    if (window.role === 'viewer' && window.conn && window.conn.open) {
-        try { window.conn.send({ type: 'SET_NAME', name }); } catch(e) { console.error('Failed to send name to host', e); }
+    // Show waiting message
+    if (joinErr) { 
+        joinErr.classList.remove('hidden'); 
+        joinErr.innerText = 'Requesting approval from host...'; 
     }
 };
 
@@ -1167,6 +1252,26 @@ window.setReplyContext = function(msgTimestamp, sender, text) {
         document.getElementById('replyContextText').innerText = text.substring(0, 80) + (text.length > 80 ? '...' : '');
         ctxEl.classList.remove('hidden');
     }
+
+    // Auto-select viewer in dropdown when admin replies to a viewer's message
+    if (window.role === 'host') {
+        const select = document.getElementById('chatRecipientSelect');
+        if (select) {
+            // Find the viewer by name in connected viewers
+            let found = false;
+            window.connectedViewers.forEach((conn, peerId) => {
+                if (conn.viewerName === sender) {
+                    select.value = peerId;
+                    found = true;
+                }
+            });
+            // If replying to own message or unknown, keep current selection
+        }
+    }
+
+    // Focus the input
+    const input = document.getElementById('chatInput');
+    if (input) input.focus();
 };
 
 window.clearReplyContext = function() {
@@ -1182,63 +1287,67 @@ window.sendChatMessage = function() {
     
     if (!text) return;
 
-    // Get recipient if host is sending
-    let recipient = null;
     if (window.role === 'host') {
+        // === ADMIN: can send to all or specific viewer ===
         const select = document.getElementById('chatRecipientSelect');
-        recipient = select ? select.value : 'broadcast';
-        if (recipient === 'broadcast') recipient = null; // null means broadcast to all
-    }
+        let recipient = select ? select.value : 'broadcast';
+        if (recipient === 'broadcast') recipient = null; // null = broadcast to all
 
-    const msgData = {
-        type: 'CHAT',
-        sender: name,
-        text: text,
-        role: window.role, // 'host' or 'viewer'
-        recipient: recipient, // null = broadcast to all, or specific viewer ID
-        replyTo: window.replyToMessageId || null, // Reference to the message being replied to
-        timestamp: Date.now()
-    };
+        const msgData = {
+            type: 'CHAT',
+            sender: name,
+            text: text,
+            role: 'host',
+            recipient: recipient,
+            replyTo: window.replyToMessageId || null,
+            timestamp: Date.now()
+        };
 
-    // 1. שליחה לרשת
-    if (window.role === 'host') {
-        // Host sends - route based on recipient
-        window.broadcast(msgData); // broadcast() handles private routing
+        // Send via broadcast (handles routing to all or specific viewer)
+        window.broadcast(msgData);
+        // Render locally for admin
+        window.renderChatMessage(msgData);
     } else {
-        // Viewers can only send to host
+        // === VIEWER: always sends to admin only ===
+        const msgData = {
+            type: 'CHAT',
+            sender: name,
+            text: text,
+            role: 'viewer',
+            recipient: null, // Will be routed to admin on host side
+            replyTo: window.replyToMessageId || null,
+            timestamp: Date.now()
+        };
+
         if (window.conn && window.conn.open) {
             window.conn.send(msgData);
         }
+        // Render locally for the viewer
+        window.renderChatMessage(msgData);
     }
 
-    // 2. הצגה מקומית
-    window.renderChatMessage(msgData);
     input.value = '';
     window.clearReplyContext();
 };
 
 window.renderChatMessage = function(msg) {
     const feed = document.getElementById('chatFeed');
+    if (!feed) return;
     
-    // 🟢 MESSAGE FILTERING: Check if this message should be displayed
-    // Broadcast messages (recipient = null or 'broadcast'): show to all
-    // Private messages (recipient = specific ID): 
-    //   - Show if I'm the host (see everything)
-    //   - Show if I'm the recipient
-    //   - Hide if I'm a viewer and message is for someone else
+    // 🟢 MESSAGE FILTERING:
+    // - Host (ADMIN) sees ALL messages
+    // - Viewers see: broadcasts from admin, private messages TO them, and their own messages
     if (msg.recipient && msg.recipient !== 'broadcast') {
-        if (window.role === 'host') {
-            // Host sees all messages
-        } else if (window.role === 'viewer') {
-            // Viewers only see messages sent to them or broadcasts
-            if (msg.recipient !== window.myId) {
-                // Don't display this message - it's for someone else
+        if (window.role !== 'host') {
+            const myName = localStorage.getItem('strateger_chat_name');
+            // Viewer only sees private messages addressed to them
+            if (msg.recipient !== window.myId && msg.sender !== myName) {
                 return;
             }
         }
     }
     
-    // Prevent duplicate rendering if reloading history
+    // Prevent duplicate rendering
     const lastMsg = feed.lastElementChild;
     if (lastMsg && lastMsg.dataset.ts == msg.timestamp && lastMsg.innerText.includes(msg.text)) {
         return;
@@ -1247,49 +1356,58 @@ window.renderChatMessage = function(msg) {
     const div = document.createElement('div');
     div.dataset.ts = msg.timestamp; 
     
-    const isMe = msg.sender === (localStorage.getItem('strateger_chat_name') || 'Viewer');
-    const isHost = msg.role === 'host';
+    const myName = localStorage.getItem('strateger_chat_name') || 'Viewer';
+    const isMe = msg.sender === myName;
+    const isAdmin = msg.role === 'host';
     const isPrivate = msg.recipient && msg.recipient !== 'broadcast';
     
     let bgClass = 'bg-navy-800';
     let alignClass = 'items-start';
     
-    if (isHost) {
+    if (isAdmin) {
         bgClass = isPrivate ? 'bg-yellow-900/40 border border-yellow-500/30' : 'bg-red-900/40 border border-red-500/30';
     } else if (isMe) {
         bgClass = 'bg-blue-900/40 border border-blue-500/30';
         alignClass = 'items-end';
     }
 
-    // 🟢 Visual Indicator for Private Messages
-    const privateIndicator = isPrivate ? '<span class="text-yellow-400 font-bold text-[10px]">🔒 PRIVATE</span>' : '';
+    // Role badge
+    const roleBadge = isAdmin 
+        ? '<span class="bg-red-600 text-white text-[8px] px-1.5 py-0.5 rounded font-bold ml-1">ADMIN</span>' 
+        : '';
+    // Private indicator
+    const privateIndicator = isPrivate ? '<span class="text-yellow-400 font-bold text-[10px]">🔒 DM</span>' : '';
 
-    // Build reply context if this message is a reply
+    // Build reply context
     let replyHTML = '';
     if (msg.replyTo) {
         const history = JSON.parse(localStorage.getItem('strateger_chat_history') || '[]');
         const original = history.find(m => m.timestamp === msg.replyTo);
         if (original) {
             replyHTML = `<div class="bg-navy-900/60 border-l-2 border-blue-400 pl-2 mb-2 text-[9px] text-gray-300">
-                <div class="font-bold text-blue-400">${original.sender}</div>
+                <div class="font-bold text-blue-400">${original.sender}${original.role === 'host' ? ' 👑' : ''}</div>
                 <div>${original.text.substring(0, 60)}${original.text.length > 60 ? '...' : ''}</div>
             </div>`;
         }
     }
+
+    // Sanitize text for safe embedding in onclick
+    const safeSender = msg.sender.replace(/'/g, '\\\'').replace(/"/g, '&quot;');
+    const safeText = msg.text.replace(/'/g, '\\\'').replace(/"/g, '&quot;').replace(/\n/g, ' ');
 
     div.className = `flex flex-col ${alignClass} mb-2`;
     div.innerHTML = `
         <div class="${bgClass} p-2 rounded-lg max-w-[90%]">
             ${replyHTML}
             <div class="flex justify-between items-baseline gap-2 mb-1">
-                <span class="font-bold ${isHost ? (isPrivate ? 'text-yellow-400' : 'text-red-400') : 'text-ice'} text-[10px]">
-                    ${isHost ? '👑 ' : ''}${msg.sender}
+                <span class="font-bold ${isAdmin ? (isPrivate ? 'text-yellow-400' : 'text-red-400') : 'text-ice'} text-[10px]">
+                    ${isAdmin ? '👑 ' : ''}${msg.sender}${roleBadge}
                 </span>
                 ${privateIndicator}
                 <span class="text-[9px] text-gray-500">${new Date(msg.timestamp).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span>
             </div>
             <div class="text-white break-words">${msg.text}</div>
-            <button onclick="window.setReplyContext(${msg.timestamp}, '${msg.sender.replace(/'/g, '\\\'')}', '${msg.text.replace(/'/g, '\\\'').replace(/\n/g, ' ')}\')" class="text-[9px] text-blue-400 hover:text-blue-300 mt-1 text-left">↳ Reply</button>
+            <button onclick="window.setReplyContext(${msg.timestamp}, '${safeSender}', '${safeText}')" class="text-[9px] text-blue-400 hover:text-blue-300 mt-1 text-left">↳ Reply</button>
         </div>
     `;
     
@@ -1302,7 +1420,7 @@ window.renderChatMessage = function(msg) {
         const exists = history.some(m => m.timestamp === msg.timestamp && m.text === msg.text);
         if (!exists) {
             history.push(msg);
-            if (history.length > 50) history.shift(); 
+            if (history.length > 100) history.shift(); 
             localStorage.setItem('strateger_chat_history', JSON.stringify(history));
         }
     } catch(e) { console.error("Chat save error", e); }

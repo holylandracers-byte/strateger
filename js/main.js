@@ -884,16 +884,19 @@ window.updatePitModalLogic = function() {
         releaseBtn.className = "w-full max-w-xs bg-gray-800 text-gray-500 font-bold py-4 rounded-lg text-2xl border border-gray-700 cursor-not-allowed";
         const pitWarningBox = document.getElementById('pitWarningBox');
         if (pitWarningBox) pitWarningBox.classList.add('hidden');
+        window._lastOrangeBeep = null;
     } else if (pitZone === 'ready') {
         if (timerDisplay) timerDisplay.className = "text-6xl font-bold font-mono text-yellow-400 animate-pulse";
         releaseBtn.innerText = t('getReady');
-        releaseBtn.disabled = false;
-        releaseBtn.className = "w-full max-w-xs bg-yellow-600 hover:bg-yellow-500 text-black font-bold py-4 rounded-lg text-2xl border border-yellow-400 animate-pulse cursor-pointer";
+        releaseBtn.disabled = true;
+        releaseBtn.className = "w-full max-w-xs bg-yellow-800 text-yellow-400 font-bold py-4 rounded-lg text-2xl border border-yellow-600 animate-pulse cursor-not-allowed";
         const pitWarningBox = document.getElementById('pitWarningBox');
         if (pitWarningBox) pitWarningBox.classList.remove('hidden');
-        // Sound only on transition to ready zone
-        if (window.alertState.lastZone !== 'ready') {
+        // Repeating beep in orange zone (every 1 second)
+        const now = Date.now();
+        if (!window._lastOrangeBeep || (now - window._lastOrangeBeep >= 1000)) {
             window.playAlertBeep('info');
+            window._lastOrangeBeep = now;
         }
     } else {
         if (timerDisplay) timerDisplay.className = "text-6xl font-bold font-mono text-green-500";
@@ -902,6 +905,7 @@ window.updatePitModalLogic = function() {
         releaseBtn.className = "w-full max-w-xs bg-green-600 hover:bg-green-500 text-white font-bold py-4 rounded-lg text-3xl border border-green-400 shadow-[0_0_20px_rgba(34,197,94,0.6)] cursor-pointer";
         const pitWarningBox = document.getElementById('pitWarningBox');
         if (pitWarningBox) pitWarningBox.classList.add('hidden');
+        window._lastOrangeBeep = null;
         // Sound only on transition to go zone
         if (window.alertState.lastZone !== 'go') {
             window.playReleaseSound();
@@ -1386,6 +1390,20 @@ window.submitFeedback = async () => {
 // 🏎️ DRIVER MODE (In-Car HUD)
 // ==========================================
 
+// Driver pit tap — tap the status zone to enter/exit pits (when radio is unavailable)
+window.driverPitTap = function() {
+    if (!window.state || !window.state.isRunning) return;
+    
+    if (window.state.isInPit) {
+        // Only allow exit if in green zone
+        if (window.alertState.lastZone === 'go') {
+            window.confirmPitExit();
+        }
+    } else {
+        window.confirmPitEntry();
+    }
+};
+
 window.toggleDriverMode = function() {
     const panel = document.getElementById('driverModePanel');
     if (!panel) return;
@@ -1641,6 +1659,26 @@ window.updateDriverMode = function() {
             let tStr = window.formatTimeHMS(Math.max(0, timeToTarget));
             if (tStr.startsWith('00:')) tStr = tStr.substring(3);
             sub.innerText = `→ ${tStr}`;
+        }
+    }
+
+    // === TAP HINT ===
+    const tapHint = document.getElementById('driverTapHint');
+    if (tapHint) {
+        if (window.state.isInPit) {
+            if (window.alertState.lastZone === 'go') {
+                tapHint.innerText = t('tapToExit') || 'TAP TO EXIT PIT';
+                tapHint.style.color = 'rgba(74,222,128,0.5)';
+            } else if (window.alertState.lastZone === 'ready') {
+                tapHint.innerText = t('getReady') || 'GET READY...';
+                tapHint.style.color = 'rgba(250,204,21,0.4)';
+            } else {
+                tapHint.innerText = t('wait') || 'WAIT...';
+                tapHint.style.color = 'rgba(255,255,255,0.15)';
+            }
+        } else {
+            tapHint.innerText = t('tapToPit') || 'TAP TO ENTER PIT';
+            tapHint.style.color = 'rgba(255,255,255,0.25)';
         }
     }
 };

@@ -30,6 +30,26 @@ body {
 
 /* ==================== HEADER PROTECTION ==================== */
 
+/* ==================== THEME TINTING ==================== */
+/* When a color theme is active, tint dashboard panels */
+:root[style*="--theme-panel"] #raceDashboard .bg-navy-900,
+:root[style*="--theme-panel"] #raceDashboard .bg-navy-900\/80 {
+    background-color: var(--theme-panel) !important;
+}
+:root[style*="--theme-main"] #raceDashboard .bg-navy-950 {
+    background-color: var(--theme-main) !important;
+}
+:root[style*="--theme-border"] #raceDashboard [class*="border-gray-700"],
+:root[style*="--theme-border"] #raceDashboard [class*="border-gray-800"] {
+    border-color: var(--theme-border) !important;
+}
+:root[style*="--theme-panel"] #dashboardInfoBar {
+    background-color: var(--theme-panel) !important;
+}
+:root[style*="--theme-main"] #setupScreen {
+    background-color: var(--theme-main) !important;
+}
+
 /* ==================== COLLAPSIBLE SECTIONS ==================== */
 .collapsible-section .collapse-body {
     max-height: 2000px;

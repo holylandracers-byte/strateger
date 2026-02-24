@@ -86,6 +86,11 @@
                 <span class="hidden sm:inline" data-i18n="invite">Invite</span>
             </button>
 
+            <button id="driverLinkBtn" onclick="window.copyDriverLink()" class="hidden bg-gradient-to-r from-orange-500 to-amber-500 hover:from-amber-400 hover:to-orange-400 text-navy-950 text-xs font-bold px-3 py-1.5 rounded-full shadow-lg transition transform active:scale-95 flex items-center gap-1" title="Copy Driver Link">
+                <i class="fas fa-car-side"></i>
+                <span class="hidden sm:inline" data-i18n="driverLink">Driver</span>
+            </button>
+
             <button id="viewerManageBtn" onclick="window.openViewerApprovalModal()" class="hidden bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg transition transform active:scale-95 flex items-center gap-1">
                 <i class="fas fa-users-cog"></i>
                 <span class="hidden sm:inline">Manage Viewers</span>
@@ -378,6 +383,40 @@
                         <span class="absolute bottom-0 inset-x-0 text-[8px] text-gray-400 bg-black/70 text-center py-0.5 opacity-0 group-hover:opacity-100 transition">Black</span>
                     </button>
                 </div>
+                <!-- COLOR THEMES -->
+                <label class="text-xs text-gray-400 mt-3 mb-2 block" data-i18n="lblColorThemes">Color Themes</label>
+                <div class="grid grid-cols-3 gap-2 items-center">
+                    <!-- Midnight Blue -->
+                    <button class="bg-swatch w-full aspect-[3/2] rounded-lg border-2 border-gray-600 hover:border-blue-400 transition overflow-hidden relative group" data-bg="midnight-blue" title="Midnight Blue" onclick="window.setPageBackground('midnight-blue')">
+                        <div class="absolute inset-0" style="background: linear-gradient(180deg, #020820 0%, #0a1640 50%, #020820 100%);"></div>
+                        <span class="absolute bottom-0 inset-x-0 text-[8px] text-blue-300 bg-black/70 text-center py-0.5 opacity-0 group-hover:opacity-100 transition">🌊 Blue</span>
+                    </button>
+                    <!-- Deep Red -->
+                    <button class="bg-swatch w-full aspect-[3/2] rounded-lg border-2 border-gray-600 hover:border-red-400 transition overflow-hidden relative group" data-bg="deep-red" title="Deep Red" onclick="window.setPageBackground('deep-red')">
+                        <div class="absolute inset-0" style="background: linear-gradient(180deg, #1a0505 0%, #2d0a0a 50%, #1a0505 100%);"></div>
+                        <span class="absolute bottom-0 inset-x-0 text-[8px] text-red-300 bg-black/70 text-center py-0.5 opacity-0 group-hover:opacity-100 transition">🔴 Red</span>
+                    </button>
+                    <!-- Forest -->
+                    <button class="bg-swatch w-full aspect-[3/2] rounded-lg border-2 border-gray-600 hover:border-green-400 transition overflow-hidden relative group" data-bg="forest" title="Forest" onclick="window.setPageBackground('forest')">
+                        <div class="absolute inset-0" style="background: linear-gradient(180deg, #051a0a 0%, #0a2d15 50%, #051a0a 100%);"></div>
+                        <span class="absolute bottom-0 inset-x-0 text-[8px] text-green-300 bg-black/70 text-center py-0.5 opacity-0 group-hover:opacity-100 transition">🌲 Forest</span>
+                    </button>
+                    <!-- Purple Night -->
+                    <button class="bg-swatch w-full aspect-[3/2] rounded-lg border-2 border-gray-600 hover:border-purple-400 transition overflow-hidden relative group" data-bg="purple-night" title="Purple Night" onclick="window.setPageBackground('purple-night')">
+                        <div class="absolute inset-0" style="background: linear-gradient(180deg, #0d0520 0%, #1a0a35 50%, #0d0520 100%);"></div>
+                        <span class="absolute bottom-0 inset-x-0 text-[8px] text-purple-300 bg-black/70 text-center py-0.5 opacity-0 group-hover:opacity-100 transition">🟣 Purple</span>
+                    </button>
+                    <!-- Amber Heat -->
+                    <button class="bg-swatch w-full aspect-[3/2] rounded-lg border-2 border-gray-600 hover:border-amber-400 transition overflow-hidden relative group" data-bg="amber-heat" title="Amber Heat" onclick="window.setPageBackground('amber-heat')">
+                        <div class="absolute inset-0" style="background: linear-gradient(180deg, #1a1000 0%, #2d1a05 50%, #1a1000 100%);"></div>
+                        <span class="absolute bottom-0 inset-x-0 text-[8px] text-amber-300 bg-black/70 text-center py-0.5 opacity-0 group-hover:opacity-100 transition">🔥 Amber</span>
+                    </button>
+                    <!-- Steel -->
+                    <button class="bg-swatch w-full aspect-[3/2] rounded-lg border-2 border-gray-600 hover:border-gray-400 transition overflow-hidden relative group" data-bg="steel" title="Steel" onclick="window.setPageBackground('steel')">
+                        <div class="absolute inset-0" style="background: linear-gradient(180deg, #15181e 0%, #1e2530 50%, #15181e 100%);"></div>
+                        <span class="absolute bottom-0 inset-x-0 text-[8px] text-gray-300 bg-black/70 text-center py-0.5 opacity-0 group-hover:opacity-100 transition">⚙️ Steel</span>
+                    </button>
+                </div>
                 </div>
             </div>
 
@@ -497,13 +536,10 @@
 
     <div id="raceDashboard" class="hidden flex flex-col h-full min-h-0 bg-navy-950 w-full relative">
 
-        <div class="bg-navy-900 border-b border-gray-800 shrink-0 p-2 flex justify-between items-center z-10 shadow-md">
+        <div id="dashboardInfoBar" class="bg-navy-900 border-b border-gray-800 shrink-0 p-2 flex justify-between items-center z-[15] shadow-md sticky top-[42px]">
             <div class="flex items-center gap-1">
                 <button id="btnRain" onclick="window.toggleRain()" class="bg-navy-800 border border-blue-500/50 rounded px-3 py-1 hover:bg-navy-700 transition">
                     <span id="rainIcon">☀️</span> <span id="rainText" class="text-xs font-bold text-yellow-400">Dry</span>
-                </button>
-                <button onclick="window.copyDriverLink()" class="bg-navy-800 border border-ice/30 rounded px-2 py-1 hover:bg-navy-700 transition text-ice text-xs font-bold" title="Copy Driver Link" id="driverLinkBtn">
-                    📱 <span class="hidden sm:inline text-[9px]" data-i18n="driverLink">Driver Link</span>
                 </button>
             </div>
             <div class="text-center">
@@ -684,9 +720,9 @@
     <div id="driverModePanel" class="hidden fixed inset-0 z-40 flex flex-col bg-black">
 
         <!-- ===== TOP HALF: STATUS ZONE ===== -->
-        <div id="driverStatusZone" class="driver-status-zone" style="flex:1;min-height:0;">
+        <div id="driverStatusZone" class="driver-status-zone cursor-pointer" onclick="window.driverPitTap()" style="flex:1;min-height:0;">
             <!-- Exit button (top-left, small) -->
-            <button onclick="window.toggleDriverMode()" class="absolute top-2 left-2 z-10 text-white/30 text-lg px-2 py-1">✕</button>
+            <button onclick="event.stopPropagation(); window.toggleDriverMode()" class="absolute top-2 left-2 z-10 text-white/30 text-lg px-2 py-1">✕</button>
             <!-- Race timer (top-right, small) -->
             <div class="absolute top-2 right-2 z-10 flex items-center gap-2">
                 <div id="driverDemoBadge" class="hidden text-[10px] bg-neon/20 text-neon border border-neon/50 px-1.5 py-0.5 rounded-full font-bold">DEMO</div>
@@ -698,6 +734,8 @@
                 <div id="driverStatusMsg" class="driver-msg">ON TRACK</div>
                 <div id="driverStatusSub" class="driver-sub"></div>
             </div>
+            <!-- Tap hint -->
+            <div id="driverTapHint" class="absolute bottom-3 inset-x-0 text-center text-white/25 text-[10px] font-bold uppercase tracking-widest" data-i18n="tapToPit">TAP TO ENTER PIT</div>
         </div>
 
         <!-- ===== BOTTOM HALF: DATA ===== -->
@@ -891,11 +929,11 @@
         </div>
 
         <div id="chatLoginView" class="flex-1 p-4 flex flex-col justify-center gap-2">
-            <div class="text-xs text-gray-400 text-center mb-2">💬 Join the chat or just watch the race</div>
-            <input type="text" id="chatUserName" class="input-field text-sm" placeholder="Enter your name (or leave blank to auto-fill)">
+            <div id="chatLoginHint" class="text-xs text-gray-400 text-center mb-2">💬 Join the chat or just watch the race</div>
+            <input type="text" id="chatUserName" class="input-field text-sm" placeholder="Enter your name / team name">
             <div id="chatJoinError" class="text-sm text-yellow-400 hidden"></div>
-            <button onclick="window.joinChat()" class="bg-ice text-navy-950 font-bold py-2 rounded text-sm hover:bg-cyan-300">Join Chat</button>
-            <button onclick="window.skipChat()" class="bg-gray-700 text-gray-100 py-2 rounded text-sm hover:bg-gray-600 text-xs">Just Watch (No Chat)</button>
+            <button onclick="window.joinChat()" class="bg-ice text-navy-950 font-bold py-2 rounded text-sm hover:bg-cyan-300" id="chatJoinBtn">Join Chat</button>
+            <button onclick="window.skipChat()" class="bg-gray-700 text-gray-100 py-2 rounded text-sm hover:bg-gray-600 text-xs" id="chatSkipBtn">Just Watch (No Chat)</button>
         </div>
 
         <div id="chatMessagesView" class="hidden flex-1 flex flex-col min-h-0">
