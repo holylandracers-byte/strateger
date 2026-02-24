@@ -31,7 +31,7 @@ body {
 /* ==================== HEADER PROTECTION ==================== */
 
 /* ==================== THEME TINTING ==================== */
-/* When a color theme is active, tint dashboard panels */
+/* When a color theme is active, tint ALL app elements */
 :root[style*="--theme-panel"] #raceDashboard .bg-navy-900,
 :root[style*="--theme-panel"] #raceDashboard .bg-navy-900\/80 {
     background-color: var(--theme-panel) !important;
@@ -48,6 +48,52 @@ body {
 }
 :root[style*="--theme-main"] #setupScreen {
     background-color: var(--theme-main) !important;
+}
+/* Header tinting */
+:root[style*="--theme-panel"] header {
+    background-color: var(--theme-panel) !important;
+}
+/* Pit modal tinting */
+:root[style*="--theme-main"] #pitModal {
+    background-color: var(--theme-main) !important;
+    background-image: radial-gradient(circle at 50% 50%, var(--theme-panel) 0%, var(--theme-main) 100%);
+}
+/* Setup screen panels */
+:root[style*="--theme-panel"] #setupScreen .bg-navy-900,
+:root[style*="--theme-panel"] #setupScreen .bg-navy-900\/80 {
+    background-color: var(--theme-panel) !important;
+}
+:root[style*="--theme-border"] #setupScreen [class*="border-gray-700"],
+:root[style*="--theme-border"] #setupScreen [class*="border-gray-800"] {
+    border-color: var(--theme-border) !important;
+}
+/* Button tinting — subtle theme border on primary buttons */
+:root[style*="--theme-border"] #raceDashboard button[class*="border-"] {
+    border-color: var(--theme-border) !important;
+}
+/* Preview modal */
+:root[style*="--theme-main"] #previewScreen {
+    background-color: var(--theme-main) !important;
+}
+/* Wide-screen center column */
+@media (min-width: 1025px) {
+    :root[style*="--theme-main"] #setupScreen,
+    :root[style*="--theme-main"] #raceDashboard {
+        background-color: var(--theme-main) !important;
+    }
+}
+
+/* ==================== THEME PANEL ANIMATION ==================== */
+@keyframes slideUp {
+    from { transform: translateY(100%); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
+}
+.animate-slide-up {
+    animation: slideUp 0.25s ease-out;
+}
+#themePanel {
+    background: rgba(0,0,0,0.5);
+    backdrop-filter: blur(4px);
 }
 
 /* ==================== COLLAPSIBLE SECTIONS ==================== */
@@ -244,6 +290,24 @@ header {
     overflow: hidden;
     height: 100vh;
     height: 100dvh; /* Dynamic viewport height — avoids mobile address bar overlap */
+}
+
+/* Landscape layout: side-by-side instead of top/bottom */
+@media (orientation: landscape) {
+    #driverModePanel {
+        flex-direction: row !important;
+    }
+    #driverModePanel .driver-status-zone {
+        flex: 1;
+        min-width: 0;
+    }
+    #driverModePanel > div:last-of-type {
+        flex: 1;
+        min-width: 0;
+    }
+    .driver-emoji { font-size: min(12vw, 15vh); }
+    .driver-msg { font-size: min(6vw, 8vh); }
+    .driver-stint-timer { font-size: min(12vw, 14vh); }
 }
 
 /* Status zone (top half) */

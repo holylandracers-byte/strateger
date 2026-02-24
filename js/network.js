@@ -642,6 +642,11 @@ window.connectToHost = function(hostId) {
                         window.currentPitAdjustment = data.currentPitAdjustment;
                     }
 
+                    // Store strategy timeline for driver notifications
+                    if (data.strategyTimeline) {
+                        window._receivedTimeline = data.strategyTimeline;
+                    }
+
                     window.enforceViewerMode();
                     document.getElementById('setupScreen').classList.add('hidden');
                     document.getElementById('raceDashboard').classList.remove('hidden');
@@ -655,11 +660,20 @@ window.connectToHost = function(hostId) {
                     // Auto-open Driver Mode if opened via driver link
                     if (window._autoDriverMode && !window._driverModeOpened) {
                         window._driverModeOpened = true;
-                        setTimeout(() => {
-                            if (typeof window.toggleDriverMode === 'function') {
-                                window.toggleDriverMode();
+                        
+                        // Show driver identity picker if not already identified
+                        if (window._myDriverIdx === undefined && window.drivers && window.drivers.length > 1) {
+                            window._showDriverPicker();
+                        } else {
+                            if (window.drivers && window.drivers.length === 1) {
+                                window._myDriverIdx = 0;
                             }
-                        }, 300);
+                            setTimeout(() => {
+                                if (typeof window.toggleDriverMode === 'function') {
+                                    window.toggleDriverMode();
+                                }
+                            }, 300);
+                        }
                     }
 
                     if (typeof window.renderFrame === 'function') window.renderFrame();
@@ -821,6 +835,7 @@ window.broadcast = function(specificPayload = null) {
         liveTimingConfig: window.liveTimingConfig,
         searchConfig: window.searchConfig,
         currentPitAdjustment: window.currentPitAdjustment || 0, // 🟢 Include pit adjustment so viewers see it
+        strategyTimeline: (window.cachedStrategy && window.cachedStrategy.timeline) ? window.cachedStrategy.timeline.filter(t => t.type === 'stint').map(t => ({ driverIdx: t.driverIdx, driverName: t.driverName, start: t.start, end: t.end, duration: t.duration, stintNumber: t.stintNumber, squad: t.squad })) : null,
         timestamp: Date.now()
         };
 

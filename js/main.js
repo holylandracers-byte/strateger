@@ -39,13 +39,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const driverCode = urlParams.get('driver');
 
     if (driverCode) {
-        // Driver link — connect as viewer + auto-open Driver Mode HUD
+        // Driver link — show ID entry screen for verification
         window.role = 'client';
         window._autoDriverMode = true;
         window._driverModeOpened = false;
+        window._pendingDriverCode = driverCode;
         document.getElementById('setupScreen').classList.add('hidden');
-        document.getElementById('clientWaitScreen').classList.remove('hidden');
-        if (typeof window.connectToHost === 'function') window.connectToHost(driverCode);
+        document.getElementById('driverEntryScreen').classList.remove('hidden');
+        // Pre-fill the ID field
+        const idInput = document.getElementById('driverIdInput');
+        if (idInput) idInput.value = driverCode;
     } else if (joinCode) {
         window.role = 'client';
         document.getElementById('setupScreen').classList.add('hidden');
@@ -1390,6 +1393,92 @@ window.submitFeedback = async () => {
 // 🏎️ DRIVER MODE (In-Car HUD)
 // ==========================================
 
+// Show driver entry screen (manual ID entry without a link)
+window.showDriverEntryScreen = function() {
+    window.role = 'client';
+    window._autoDriverMode = true;
+    window._driverModeOpened = false;
+    document.getElementById('setupScreen').classList.add('hidden');
+    document.getElementById('driverEntryScreen').classList.remove('hidden');
+    const input = document.getElementById('driverIdInput');
+    if (input) { input.value = ''; input.focus(); }
+};
+
+// Show a quick identity picker — "Who are you?" with driver name buttons
+window._showDriverPicker = function() {
+    // Create an overlay with driver name buttons
+    let overlay = document.getElementById('driverPickerOverlay');
+    if (overlay) overlay.remove();
+    
+    overlay = document.createElement('div');
+    overlay.id = 'driverPickerOverlay';
+    overlay.className = 'fixed inset-0 z-[60] bg-black flex flex-col items-center justify-center p-6 gap-4';
+    
+    const title = document.createElement('div');
+    title.className = 'text-3xl mb-2';
+    title.innerText = '🏎️';
+    overlay.appendChild(title);
+    
+    const label = document.createElement('div');
+    label.className = 'text-white text-xl font-bold mb-4 tracking-wider text-center';
+    label.innerText = window.t ? window.t('joinAsDriver') || 'Who are you?' : 'Who are you?';
+    overlay.appendChild(label);
+    
+    // Create a button for each driver
+    window.drivers.forEach((driver, idx) => {
+        const btn = document.createElement('button');
+        btn.className = 'w-full max-w-xs py-4 px-6 rounded-xl text-xl font-bold text-white border-2 transition-all active:scale-95';
+        btn.style.borderColor = driver.color || '#888';
+        btn.style.background = `linear-gradient(135deg, ${driver.color || '#333'}33, #111)`;
+        
+        let nameText = driver.name;
+        if (driver.squad) nameText += ` (${driver.squad})`;
+        btn.innerText = nameText;
+        
+        btn.onclick = function() {
+            window._myDriverIdx = idx;
+            localStorage.setItem('strateger_chat_name', driver.name);
+            overlay.remove();
+            setTimeout(() => {
+                if (typeof window.toggleDriverMode === 'function') {
+                    window.toggleDriverMode();
+                }
+            }, 200);
+        };
+        overlay.appendChild(btn);
+    });
+    
+    document.body.appendChild(overlay);
+    
+    // Request notification permission early
+    if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
+    }
+};
+
+// Submit driver ID from the manual entry screen
+window.submitDriverId = function() {
+    const input = document.getElementById('driverIdInput');
+    const errEl = document.getElementById('driverEntryError');
+    if (!input) return;
+    
+    const code = input.value.trim();
+    if (!code || code.length < 5) {
+        if (errEl) {
+            errEl.innerText = window.t('driverIdTooShort') || 'ID is too short';
+            errEl.classList.remove('hidden');
+        }
+        return;
+    }
+    
+    // Hide entry screen, show connecting screen
+    document.getElementById('driverEntryScreen').classList.add('hidden');
+    document.getElementById('clientWaitScreen').classList.remove('hidden');
+    document.getElementById('clientWaitScreen').innerHTML = '<div class="flex flex-col items-center justify-center gap-2"><div class="text-3xl animate-pulse font-bold text-ice">🏎️ Connecting...</div><div class="text-sm text-gray-500 mt-2">Joining race as driver</div></div>';
+    
+    if (typeof window.connectToHost === 'function') window.connectToHost(code);
+};
+
 // Driver pit tap — tap the status zone to enter/exit pits (when radio is unavailable)
 window.driverPitTap = function() {
     if (!window.state || !window.state.isRunning) return;
@@ -1418,6 +1507,8 @@ window.toggleDriverMode = function() {
         }
         // Unlock screen orientation
         try { screen.orientation?.unlock(); } catch(e) {}
+        // Exit fullscreen
+        try { if (document.fullscreenElement) document.exitFullscreen(); } catch(e) {}
         // Restore chat button (only if NOT auto-driver-mode link)
         if (!window._autoDriverMode) {
             const chatBtn = document.getElementById('chatToggleBtn');
@@ -1426,6 +1517,19 @@ window.toggleDriverMode = function() {
     } else {
         panel.classList.remove('hidden');
         window.alertState.driverModeActive = true;
+        // Force landscape orientation for wheel-mounted phone
+        try {
+            // Request fullscreen first (required by some browsers before orientation lock)
+            const el = document.documentElement;
+            if (el.requestFullscreen) el.requestFullscreen().catch(()=>{});
+            else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+        } catch(e) {}
+        try {
+            screen.orientation.lock('landscape').catch(() => {
+                // Fallback: try landscape-primary 
+                screen.orientation.lock('landscape-primary').catch(()=>{});
+            });
+        } catch(e) {}
         // Hide chat button & panel in driver mode
         const chatBtn = document.getElementById('chatToggleBtn');
         const chatPanel = document.getElementById('chatPanel');
@@ -1441,6 +1545,184 @@ window.toggleDriverMode = function() {
         // Update at higher frequency for responsiveness
         window._driverModeInterval = setInterval(window.updateDriverMode, 500);
         window.updateDriverMode();
+    }
+};
+
+// ==========================================
+// 🔔 DRIVER STINT NOTIFICATIONS
+// ==========================================
+
+// Find the driver index that matches this connected driver
+window.getMyDriverIdx = function() {
+    // If assigned via host, use the currentDriverIdx from last stint we drove
+    // Otherwise, try to match by driver name from the connection context
+    if (window._myDriverIdx !== undefined) return window._myDriverIdx;
+    
+    // Auto-detect: when in driver mode as a client, our name might match a driver
+    // The host sends the full driver list — try matching by name stored in localStorage
+    const storedName = localStorage.getItem('strateger_chat_name');
+    if (storedName && window.drivers) {
+        const idx = window.drivers.findIndex(d => 
+            d.name.toLowerCase().trim() === storedName.toLowerCase().trim()
+        );
+        if (idx !== -1) {
+            window._myDriverIdx = idx;
+            return idx;
+        }
+    }
+    return null;
+};
+
+// Get upcoming stints for a specific driver from the timeline
+window.getDriverStints = function(driverIdx) {
+    const timeline = window._receivedTimeline || 
+        (window.cachedStrategy && window.cachedStrategy.timeline && 
+         window.cachedStrategy.timeline.filter(t => t.type === 'stint')) || [];
+    
+    return timeline.filter(s => s.driverIdx === driverIdx);
+};
+
+// Get the next upcoming stint for a driver (not yet started)
+window.getNextDriverStint = function(driverIdx) {
+    const stints = window.getDriverStints(driverIdx);
+    if (!stints || stints.length === 0) return null;
+    
+    const now = Date.now();
+    // Current stint number from state
+    const currentGlobalStint = window.state.globalStintNumber || 1;
+    
+    // Find the next stint that hasn't started yet (stintNumber > current)
+    for (const s of stints) {
+        if (s.stintNumber > currentGlobalStint) return s;
+    }
+    return null;
+};
+
+// Check if the driver's squad is currently active (should stay awake)
+window.isDriverSquadActive = function(driverIdx) {
+    if (!window.config || !window.config.useSquads) return null; // No squad system
+    if (!window.drivers || !window.drivers[driverIdx]) return null;
+    
+    const mySquad = window.drivers[driverIdx].squad;
+    const activeSquad = window.state.activeSquad;
+    
+    if (!mySquad) return null;
+    return mySquad === activeSquad;
+};
+
+// Driver notification state
+window._driverNotifState = {
+    lastAlertStint: 0,      // last stint we alerted for
+    alert15Fired: false,
+    alert5Fired: false,
+    wakeUpFired: false
+};
+
+// Update the next stint banner in driver mode
+window.updateDriverStintNotifications = function() {
+    const t = window.t || (k => k);
+    const banner = document.getElementById('driverNextStintBanner');
+    const textEl = document.getElementById('driverNextStintText');
+    const sleepEl = document.getElementById('driverSleepStatus');
+    if (!banner || !textEl) return;
+    
+    const myIdx = window.getMyDriverIdx();
+    
+    // If we're the current driver, hide the next stint info (we're driving!)
+    if (myIdx === window.state.currentDriverIdx && !window.state.isInPit) {
+        banner.classList.add('hidden');
+        return;
+    }
+    
+    if (myIdx === null) {
+        banner.classList.add('hidden');
+        return;
+    }
+    
+    const nextStint = window.getNextDriverStint(myIdx);
+    if (!nextStint) {
+        banner.classList.add('hidden');
+        return;
+    }
+    
+    // Calculate time until next stint
+    const now = Date.now();
+    const stintStart = new Date(nextStint.start).getTime();
+    const msUntil = stintStart - now;
+    
+    if (msUntil <= 0) {
+        // Stint should have started — might be running now
+        banner.classList.add('hidden');
+        return;
+    }
+    
+    // Show the banner
+    banner.classList.remove('hidden');
+    
+    const minUntil = Math.ceil(msUntil / 60000);
+    const hrUntil = Math.floor(minUntil / 60);
+    const minRem = minUntil % 60;
+    
+    let timeStr;
+    if (hrUntil > 0) {
+        timeStr = `${hrUntil}h ${minRem}m`;
+    } else {
+        timeStr = `${minUntil}m`;
+    }
+    
+    textEl.innerText = `🏎️ ${t('nextStintIn') || 'Your next stint in'} ${timeStr}`;
+    
+    // Squad sleep/wake status
+    if (sleepEl && window.config && window.config.useSquads) {
+        const isActive = window.isDriverSquadActive(myIdx);
+        if (isActive === true) {
+            sleepEl.innerText = `🟢 ${t('stayAwake') || 'Stay awake'}`;
+            sleepEl.style.color = '#4ade80';
+        } else if (isActive === false) {
+            sleepEl.innerText = `😴 ${t('sleepOk') || 'You can sleep'}`;
+            sleepEl.style.color = '#9ca3af';
+        } else {
+            sleepEl.innerText = '';
+        }
+    } else if (sleepEl) {
+        sleepEl.innerText = '';
+    }
+    
+    // Fire wake-up alerts
+    if (nextStint.stintNumber !== window._driverNotifState.lastAlertStint) {
+        window._driverNotifState.lastAlertStint = nextStint.stintNumber;
+        window._driverNotifState.alert15Fired = false;
+        window._driverNotifState.alert5Fired = false;
+        window._driverNotifState.wakeUpFired = false;
+    }
+    
+    // 15-minute warning
+    if (minUntil <= 15 && !window._driverNotifState.alert15Fired) {
+        window._driverNotifState.alert15Fired = true;
+        window._fireDriverAlert(t('wakeUpAlert') || '⏰ Wake up! Your stint is coming', 15);
+    }
+    
+    // 5-minute warning
+    if (minUntil <= 5 && !window._driverNotifState.alert5Fired) {
+        window._driverNotifState.alert5Fired = true;
+        window._fireDriverAlert(t('wakeUpAlert') || '⏰ Wake up! Your stint is coming', 5);
+    }
+};
+
+// Fire a driver alert (sound + browser notification)
+window._fireDriverAlert = function(message, minutesBefore) {
+    // Play alert beep
+    if (typeof window.playAlertBeep === 'function') {
+        window.playAlertBeep('warning');
+    }
+    
+    // Browser notification
+    if ('Notification' in window && Notification.permission === 'granted') {
+        try {
+            new Notification('🏎️ Strateger', { body: `${message} (${minutesBefore}min)`, icon: '/favicon.ico', tag: 'stint-alert' });
+        } catch(e) {}
+    } else if ('Notification' in window && Notification.permission !== 'denied') {
+        Notification.requestPermission();
     }
 };
 
@@ -1680,6 +1962,11 @@ window.updateDriverMode = function() {
             tapHint.innerText = t('tapToPit') || 'TAP TO ENTER PIT';
             tapHint.style.color = 'rgba(255,255,255,0.25)';
         }
+    }
+
+    // === DRIVER STINT NOTIFICATIONS ===
+    if (typeof window.updateDriverStintNotifications === 'function') {
+        window.updateDriverStintNotifications();
     }
 };
 

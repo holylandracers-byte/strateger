@@ -278,9 +278,11 @@ window.setPageBackground = function(bg) {
     const tint = _THEME_TINTS[bg] || _THEME_TINTS[''];
     const dashboard = document.getElementById('raceDashboard');
     const infoBar = document.getElementById('dashboardInfoBar');
+    const headerEl = document.querySelector('header');
     if (tint.main) {
         if (dashboard) dashboard.style.backgroundColor = tint.main;
         if (infoBar) infoBar.style.backgroundColor = tint.panel;
+        if (headerEl) headerEl.style.backgroundColor = tint.panel;
         // Set CSS variables for panels that use bg-navy-900/bg-navy-950
         document.documentElement.style.setProperty('--theme-main', tint.main);
         document.documentElement.style.setProperty('--theme-panel', tint.panel);
@@ -288,6 +290,7 @@ window.setPageBackground = function(bg) {
     } else {
         if (dashboard) dashboard.style.backgroundColor = '';
         if (infoBar) infoBar.style.backgroundColor = '';
+        if (headerEl) headerEl.style.backgroundColor = '';
         document.documentElement.style.removeProperty('--theme-main');
         document.documentElement.style.removeProperty('--theme-panel');
         document.documentElement.style.removeProperty('--theme-border');
@@ -298,6 +301,25 @@ window.setPageBackground = function(bg) {
     document.querySelectorAll('.bg-swatch').forEach(s => {
         s.classList.toggle('active', s.dataset.bg === bg);
     });
+    // Auto-close theme panel after selection
+    const tp = document.getElementById('themePanel');
+    if (tp && !tp.classList.contains('hidden')) {
+        setTimeout(() => tp.classList.add('hidden'), 250);
+    }
+};
+
+// Toggle theme picker panel (nav button)
+window.toggleThemePanel = function() {
+    const panel = document.getElementById('themePanel');
+    if (!panel) return;
+    panel.classList.toggle('hidden');
+    // Re-sync active swatch highlight when opening
+    if (!panel.classList.contains('hidden')) {
+        const current = localStorage.getItem('strateger_bg') || '';
+        panel.querySelectorAll('.bg-swatch').forEach(s => {
+            s.classList.toggle('active', s.dataset.bg === current);
+        });
+    }
 };
 
 // פונקציית עזר לפורמט שעות:דקות (3:35)

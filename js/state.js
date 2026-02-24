@@ -165,6 +165,8 @@ window.translations = {
         lblAppearance: "🎨 Appearance", lblPageBg: "Page Background", lblColorThemes: "Color Themes",
         laps: "LAPS", gap: "GAP", totalCompetitors: "CARS", waitingData: "Waiting for data...",
         boxThisLap: "🏁 BOX THIS LAP", boxNextLap: "📢 BOX NEXT LAP", stayOut: "STAY OUT", onTrack: "ON TRACK", inPit: "IN PIT",
+        driverEntryHint: "Enter the race ID to connect", driverEntryLabel: "Race ID", driverConnect: "Connect as Driver", driverIdTooShort: "ID is too short", joinAsDriver: "Join as Driver", backToSetup: "← Back to Setup",
+        nextStintIn: "Your next stint in", stayAwake: "Stay awake", sleepOk: "You can sleep", yourStints: "Your Stints", noStintsFound: "No stints found for you", wakeUpAlert: "⏰ Wake up! Your stint is coming",
     },
     he: {
         ltSearchType: "סנן לפי:", ltTeam: "קבוצה", ltDriver: "נהג", ltKart: "מספר קארט", ltPlaceholder: "הכנס ערך לחיפוש...",
@@ -260,6 +262,8 @@ window.translations = {
         lblAppearance: "🎨 מראה", lblPageBg: "רקע עמוד", lblColorThemes: "ערכות נושא צבע",
         laps: "הקפות", gap: "פער", totalCompetitors: "מכוניות", waitingData: "ממתין לנתונים...",
         boxThisLap: "🏁 היכנס להקפה הזו", boxNextLap: "📢 היכנס בהקפה הבאה", stayOut: "הישאר בחוץ", onTrack: "על המסלול", inPit: "בפיטס",
+        driverEntryHint: "הזן את קוד המירוץ להתחברות", driverEntryLabel: "קוד מירוץ", driverConnect: "התחבר כנהג", driverIdTooShort: "הקוד קצר מדי", joinAsDriver: "הצטרף כנהג", backToSetup: "← חזרה להגדרות",
+        nextStintIn: "הסטינט הבא שלך בעוד", stayAwake: "הישאר ער", sleepOk: "אפשר לישון", yourStints: "הסטינטים שלך", noStintsFound: "לא נמצאו סטינטים עבורך", wakeUpAlert: "⏰ התעורר! הסטינט שלך מתקרב",
     },
     fr: {
         ltSearchType: "Filtrer par:", ltTeam: "Équipe", ltDriver: "Pilote", ltKart: "Kart n°", ltPlaceholder: "Rechercher...",
@@ -354,6 +358,8 @@ window.translations = {
         lblAppearance: "🎨 Apparence", lblPageBg: "Fond de page", lblColorThemes: "Thèmes de couleur",
         laps: "TOURS", gap: "ÉCART", totalCompetitors: "VOITURES", waitingData: "En attente de données...",
         boxThisLap: "🏁 BOX CE TOUR", boxNextLap: "📢 BOX PROCHAIN TOUR", stayOut: "RESTEZ EN PISTE", onTrack: "EN PISTE", inPit: "AUX STANDS",
+        driverEntryHint: "Entrez l'ID de course pour vous connecter", driverEntryLabel: "ID de course", driverConnect: "Se connecter comme pilote", driverIdTooShort: "L'ID est trop court", joinAsDriver: "Rejoindre en tant que pilote", backToSetup: "← Retour aux réglages",
+        nextStintIn: "Votre prochain stint dans", stayAwake: "Restez éveillé", sleepOk: "Vous pouvez dormir", yourStints: "Vos Stints", noStintsFound: "Aucun stint trouvé pour vous", wakeUpAlert: "⏰ Réveillez-vous! Votre stint approche",
     },
     pt: {
         ltSearchType: "Filtrar por:", ltTeam: "Equipe", ltDriver: "Piloto", ltKart: "Kart nº", ltPlaceholder: "Pesquisar...",
@@ -443,6 +449,8 @@ window.translations = {
         lblAppearance: "🎨 Aparência", lblPageBg: "Fundo da página", lblColorThemes: "Temas de cor",
         laps: "VOLTAS", gap: "DIFERENÇA", totalCompetitors: "CARROS", waitingData: "Aguardando dados...",
         boxThisLap: "🏁 BOX NESTA VOLTA", boxNextLap: "📢 BOX PRÓXIMA VOLTA", stayOut: "FIQUE FORA", onTrack: "NA PISTA", inPit: "NOS BOXES",
+        driverEntryHint: "Digite o ID da corrida para conectar", driverEntryLabel: "ID da corrida", driverConnect: "Conectar como piloto", driverIdTooShort: "ID muito curto", joinAsDriver: "Entrar como piloto", backToSetup: "← Voltar às configurações",
+        nextStintIn: "Seu próximo stint em", stayAwake: "Fique acordado", sleepOk: "Pode dormir", yourStints: "Seus Stints", noStintsFound: "Nenhum stint encontrado para você", wakeUpAlert: "⏰ Acorde! Seu stint está chegando",
     },
     ru: {
         ltSearchType: "Фильтр по:", ltTeam: "Команда", ltDriver: "Пилот", ltKart: "Карт №", ltPlaceholder: "Поиск...",
@@ -537,6 +545,8 @@ window.translations = {
         lblAppearance: "🎨 Внешний вид", lblPageBg: "Фон страницы", lblColorThemes: "Цветовые темы",
         laps: "КРУГИ", gap: "РАЗРЫВ", totalCompetitors: "МАШИНЫ", waitingData: "Ожидание данных...",
         boxThisLap: "🏁 ЗАЕЗД В БОКСЫ ЭТОТ КРУГ", boxNextLap: "📢 БОКСЫ СЛЕДУЮЩИЙ КРУГ", stayOut: "ОСТАВАЙТЕСЬ НА ТРАССЕ", onTrack: "НА ТРАССЕ", inPit: "В БОКСАХ",
+        driverEntryHint: "Введите ID гонки для подключения", driverEntryLabel: "ID гонки", driverConnect: "Подключиться как пилот", driverIdTooShort: "ID слишком короткий", joinAsDriver: "Войти как пилот", backToSetup: "← Назад к настройкам",
+        nextStintIn: "Ваш следующий стинт через", stayAwake: "Не спите", sleepOk: "Можно спать", yourStints: "Ваши стинты", noStintsFound: "Стинты для вас не найдены", wakeUpAlert: "⏰ Проснитесь! Ваш стинт скоро",
     },
     ar: {
         ltSearchType: "تصفية حسب:", ltTeam: "الفريق", ltDriver: "السائق", ltKart: "رقم الكارت", ltPlaceholder: "البحث...",
@@ -631,6 +641,8 @@ window.translations = {
         lblAppearance: "🎨 المظهر", lblPageBg: "خلفية الصفحة", lblColorThemes: "سمات الألوان",
         laps: "لفات", gap: "فارق", totalCompetitors: "سيارات", waitingData: "في انتظار البيانات...",
         boxThisLap: "🏁 ادخل هذه اللفة", boxNextLap: "📢 ادخل اللفة القادمة", stayOut: "ابقَ على المسار", onTrack: "على المسار", inPit: "في الحفرة",
+        driverEntryHint: "أدخل رقم السباق للاتصال", driverEntryLabel: "رقم السباق", driverConnect: "اتصل كسائق", driverIdTooShort: "الرقم قصير جداً", joinAsDriver: "انضم كسائق", backToSetup: "← العودة للإعدادات",
+        nextStintIn: "فترتك القادمة خلال", stayAwake: "ابقَ مستيقظاً", sleepOk: "يمكنك النوم", yourStints: "فتراتك", noStintsFound: "لم يتم العثور على فترات لك", wakeUpAlert: "⏰ استيقظ! فترتك قادمة",
     },
     es: {
         ltSearchType: "Filtrar por:", ltTeam: "Equipo", ltDriver: "Piloto", ltKart: "Kart nº", ltPlaceholder: "Buscar...",
@@ -724,6 +736,8 @@ window.translations = {
         lblAppearance: "🎨 Apariencia", lblPageBg: "Fondo de página", lblColorThemes: "Temas de color",
         laps: "VUELTAS", gap: "BRECHA", totalCompetitors: "COCHES", waitingData: "Esperando datos...",
         boxThisLap: "🏁 BOX ESTA VUELTA", boxNextLap: "📢 BOX SIGUIENTE VUELTA", stayOut: "SIGUE EN PISTA", onTrack: "EN PISTA", inPit: "EN BOXES",
+        driverEntryHint: "Ingresa el ID de carrera para conectarte", driverEntryLabel: "ID de carrera", driverConnect: "Conectar como piloto", driverIdTooShort: "El ID es muy corto", joinAsDriver: "Unirse como piloto", backToSetup: "← Volver a configuración",
+        nextStintIn: "Tu próximo stint en", stayAwake: "Mantente despierto", sleepOk: "Puedes dormir", yourStints: "Tus Stints", noStintsFound: "No se encontraron stints para ti", wakeUpAlert: "⏰ ¡Despierta! Tu stint se acerca",
     },
     it: {
         ltSearchType: "Filtra per:", ltTeam: "Squadra", ltDriver: "Pilota", ltKart: "Kart n°", ltPlaceholder: "Ricerca...", previewTitle: "Anteprima strategia", addToCalendar: "Aggiungi al calendario", timeline: "Cronologia", driverSchedule: "Orario piloti", totalTime: "Tempo totale", close: "Chiudi",
@@ -771,6 +785,8 @@ window.translations = {
         lblAppearance: "🎨 Aspetto", lblPageBg: "Sfondo pagina", lblColorThemes: "Temi colore",
         laps: "GIRI", gap: "DISTACCO", totalCompetitors: "AUTO", waitingData: "In attesa di dati...",
         boxThisLap: "🏁 BOX QUESTO GIRO", boxNextLap: "📢 BOX PROSSIMO GIRO", stayOut: "RIMANI IN PISTA", onTrack: "IN PISTA", inPit: "AI BOX",
+        driverEntryHint: "Inserisci l'ID gara per connetterti", driverEntryLabel: "ID gara", driverConnect: "Connetti come pilota", driverIdTooShort: "L'ID è troppo corto", joinAsDriver: "Unisciti come pilota", backToSetup: "← Torna alle impostazioni",
+        nextStintIn: "Il tuo prossimo stint tra", stayAwake: "Resta sveglio", sleepOk: "Puoi dormire", yourStints: "I Tuoi Stint", noStintsFound: "Nessuno stint trovato per te", wakeUpAlert: "⏰ Svegliati! Il tuo stint si avvicina",
     },
     ka: {
         ltSearchType: "ფილტრი:", ltTeam: "გუნდი", ltDriver: "მძღოლი", ltKart: "კარტი #", ltPlaceholder: "ძებნა...",
@@ -865,6 +881,8 @@ window.translations = {
         lblAppearance: "🎨 გარეგნობა", lblPageBg: "გვერდის ფონი", lblColorThemes: "ფერის თემები",
         laps: "წრეები", gap: "სხვაობა", totalCompetitors: "მანქანები", waitingData: "მონაცემების მოლოდინი...",
         boxThisLap: "🏁 შედი ამ წრეზე", boxNextLap: "📢 შედი მომდევნო წრეზე", stayOut: "დარჩი ტრასაზე", onTrack: "ტრასაზე", inPit: "ბოქსში",
+        driverEntryHint: "შეიყვანეთ რბოლის ID დასაკავშირებლად", driverEntryLabel: "რბოლის ID", driverConnect: "დაკავშირება მძღოლად", driverIdTooShort: "ID ძალიან მოკლეა", joinAsDriver: "შეუერთდი მძღოლად", backToSetup: "← უკან პარამეტრებზე",
+        nextStintIn: "შენი შემდეგი სტინტი", stayAwake: "დარჩი ფხიზლად", sleepOk: "შეგიძლია დაიძინო", yourStints: "შენი სტინტები", noStintsFound: "სტინტები ვერ მოიძებნა", wakeUpAlert: "⏰ გაიღვიძე! შენი სტინტი ახლოვდება",
     },
     de: {
         ltSearchType: "Filter nach:", ltTeam: "Team", ltDriver: "Fahrer", ltKart: "Kart Nr.", ltPlaceholder: "Suchen...", previewTitle: "Strategievorschau", addToCalendar: "Zum Kalender hinzufügen", timeline: "Zeitleiste", driverSchedule: "Fahrerplan", totalTime: "Gesamtzeit", close: "Schließen",
@@ -913,6 +931,8 @@ window.translations = {
         lblAppearance: "🎨 Darstellung", lblPageBg: "Seitenhintergrund", lblColorThemes: "Farbthemen",
         laps: "RUNDEN", gap: "ABSTAND", totalCompetitors: "AUTOS", waitingData: "Warte auf Daten...",
         boxThisLap: "🏁 BOX DIESE RUNDE", boxNextLap: "📢 BOX NÄCHSTE RUNDE", stayOut: "DRAUSSEN BLEIBEN", onTrack: "AUF DER STRECKE", inPit: "IN DER BOX",
+        driverEntryHint: "Rennen-ID eingeben zum Verbinden", driverEntryLabel: "Rennen-ID", driverConnect: "Als Fahrer verbinden", driverIdTooShort: "ID ist zu kurz", joinAsDriver: "Als Fahrer beitreten", backToSetup: "← Zurück zur Einrichtung",
+        nextStintIn: "Dein nächster Stint in", stayAwake: "Bleib wach", sleepOk: "Du kannst schlafen", yourStints: "Deine Stints", noStintsFound: "Keine Stints für dich gefunden", wakeUpAlert: "⏰ Aufwachen! Dein Stint kommt",
     },
     ja: {
         ltSearchType: "フィルタリング:", ltTeam: "チーム", ltDriver: "ドライバー", ltKart: "カート番号", ltPlaceholder: "検索...", previewTitle: "戦略プレビュー", addToCalendar: "カレンダーに追加", timeline: "タイムライン", driverSchedule: "ドライバースケジュール", totalTime: "総時間", close: "閉じる",
@@ -960,6 +980,8 @@ window.translations = {
         lblAppearance: "🎨 外観", lblPageBg: "ページ背景", lblColorThemes: "カラーテーマ",
         laps: "周回", gap: "差", totalCompetitors: "台数", waitingData: "データ待機中...",
         boxThisLap: "🏁 今周ピットイン", boxNextLap: "📢 次周ピットイン", stayOut: "ステイアウト", onTrack: "走行中", inPit: "ピット内",
+        driverEntryHint: "レースIDを入力して接続", driverEntryLabel: "レースID", driverConnect: "ドライバーとして接続", driverIdTooShort: "IDが短すぎます", joinAsDriver: "ドライバーとして参加", backToSetup: "← セットアップに戻る",
+        nextStintIn: "次のスティントまで", stayAwake: "起きていて", sleepOk: "寝ても大丈夫", yourStints: "あなたのスティント", noStintsFound: "スティントが見つかりません", wakeUpAlert: "⏰ 起きて！スティントが近づいています",
     }
 };
 
