@@ -107,8 +107,33 @@ window.fetchLiveTimingFromProxy = async function() {
                 window.liveData.bestLap = data.ourTeam.bestLap;
                 window.liveData.laps = data.ourTeam.totalLaps;
                 window.liveData.gapToLeader = data.ourTeam.gap;
+
+                // === Pit status from live timing ===
+                const wasInPit = window.liveData.ourTeamInPit;
+                window.liveData.ourTeamInPit = !!data.ourTeam.inPit;
+                window.liveData.ourTeamPitCount = data.ourTeam.pitCount ?? null;
+
+                // Auto-detect pit entry from live timing
+                if (window.state && window.state.isRunning && !window.state.isInPit && wasInPit === false && data.ourTeam.inPit) {
+                    console.log('[LiveTiming] 🛑 Auto-detected PIT ENTRY from live data');
+                    if (typeof window.confirmPitEntry === 'function') {
+                        window.confirmPitEntry(true); // true = auto-detected, skip confirm dialog
+                    }
+                }
+                // Auto-detect pit exit from live timing
+                if (window.state && window.state.isRunning && window.state.isInPit && wasInPit === true && !data.ourTeam.inPit) {
+                    console.log('[LiveTiming] ✅ Auto-detected PIT EXIT from live data');
+                    if (typeof window.confirmPitExit === 'function') {
+                        window.confirmPitExit();
+                    }
+                }
             }
             window.liveData.competitors = data.competitors || [];
+
+            // === Race time from live timing (RaceFacer provides timeLeftSeconds) ===
+            if (data.race && data.race.timeLeftSeconds != null) {
+                window.liveData.raceTimeLeftMs = data.race.timeLeftSeconds * 1000;
+            }
             
             // Force enable if data arrived
             if (!window.liveTimingConfig.enabled) {

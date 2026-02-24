@@ -48,7 +48,7 @@ window.state = {
 
 window.liveTimingConfig = { url: '', enabled: false, demoMode: false };
 window.searchConfig = { teamName: '', driverName: '', kartNumber: '' };
-window.liveData = { position: null, previousPosition: null, lastLap: null, bestLap: null, laps: null, gapToLeader: null, competitors: [] };
+window.liveData = { position: null, previousPosition: null, lastLap: null, bestLap: null, laps: null, gapToLeader: null, competitors: [], raceTimeLeftMs: null, ourTeamInPit: null, ourTeamPitCount: null };
 window.demoState = { competitors: [], updateInterval: null };
 
 // Alert state tracking — prevents re-firing same alerts every frame

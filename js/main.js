@@ -410,7 +410,11 @@ window.recalculateTargetStint = function() {
             // Last stint: target = remaining race time from stint start
             const raceMs = window.config.raceMs || (parseFloat(window.config.duration) * 3600000);
             const now = Date.now();
-            const raceRemaining = raceMs - (now - window.state.startTime);
+            let raceRemaining = raceMs - (now - window.state.startTime);
+            // Use live timing race clock when available
+            if (window.liveData && window.liveData.raceTimeLeftMs != null) {
+                raceRemaining = window.liveData.raceTimeLeftMs;
+            }
             const stintElapsed = (now - window.state.stintStart) + (window.state.stintOffset || 0);
             window.state.targetStintMs = stintElapsed + Math.max(0, raceRemaining);
         } else {
@@ -600,7 +604,12 @@ window.renderFrame = function() {
     try {
         const now = Date.now();
         const raceElapsed = now - window.state.startTime;
-        const raceRemaining = raceMs - raceElapsed;
+        let raceRemaining = raceMs - raceElapsed;
+        
+        // Use live timing race clock when available (more accurate than local timer)
+        if (window.liveData && window.liveData.raceTimeLeftMs != null) {
+            raceRemaining = window.liveData.raceTimeLeftMs;
+        }
         
         const timerEl = document.getElementById('raceTimerDisplay');
         if (raceRemaining <= 0) {
@@ -934,16 +943,18 @@ window.adjustPitTime = function(seconds) {
     }
 };
 
-window.confirmPitEntry = function() {
+window.confirmPitEntry = function(autoDetected) {
     const now = Date.now();
     const currentStintMs = (now - window.state.stintStart) + (window.state.stintOffset || 0);
     const minStintMs = (window.config.minStint || 0) * 60000;
     let isShortStint = false;
 
     if (minStintMs > 0 && currentStintMs < minStintMs) {
-        const missingSec = Math.ceil((minStintMs - currentStintMs) / 1000);
-        const t = window.t || ((k) => k);
-        if (!confirm(`⚠️ ${t('shortStintMsg')}\n${t('missingSeconds') || 'Missing'}: ${missingSec}s\n${t('proceedToPit') || 'Proceed to Pit?'}`)) return;
+        if (!autoDetected) {
+            const missingSec = Math.ceil((minStintMs - currentStintMs) / 1000);
+            const t = window.t || ((k) => k);
+            if (!confirm(`⚠️ ${t('shortStintMsg')}\n${t('missingSeconds') || 'Missing'}: ${missingSec}s\n${t('proceedToPit') || 'Proceed to Pit?'}`)) return;
+        }
         isShortStint = true;
     }
 
@@ -1411,7 +1422,11 @@ window.updateDriverMode = function() {
     const now = Date.now();
     const t = window.t || (k => k);
     const raceMs = window.config.raceMs || (parseFloat(window.config.duration) * 3600000);
-    const raceRemaining = raceMs - (now - window.state.startTime);
+    let raceRemaining = raceMs - (now - window.state.startTime);
+    // Use live timing race clock when available
+    if (window.liveData && window.liveData.raceTimeLeftMs != null) {
+        raceRemaining = window.liveData.raceTimeLeftMs;
+    }
     const maxStintMs = (window.config.maxStint * 60000) || (60 * 60000);
     const minStintMs = (window.config.minStint * 60000) || 0;
     const targetMs = window.state.targetStintMs || maxStintMs;
