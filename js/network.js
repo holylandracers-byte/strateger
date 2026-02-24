@@ -103,7 +103,7 @@ window.approvedViewers = new Map();
 
 // Function to request approval from host
 window.requestViewerApproval = function(name) {
-    if (window.role === 'viewer' && window.conn && window.conn.open) {
+    if (window.role === 'client' && window.conn && window.conn.open) {
         window.conn.send({ 
             type: 'VIEWER_APPROVAL_REQUEST', 
             name: name.trim(),
@@ -120,6 +120,13 @@ window.approveViewer = function(peerId, name) {
     // Mark as approved
     window.approvedViewers.set(peerId, true);
     window.pendingViewerApprovals.delete(peerId);
+    
+    // Store the viewer name on the connection object
+    conn.viewerName = name;
+    window.reservedViewerNames.set(peerId, name);
+    window.usedViewerNames.add(name);
+    window.connectedViewers.set(peerId, conn);
+    window.updateViewerDropdown();
     
     // Notify the viewer
     try {
@@ -351,9 +358,12 @@ window.initHostPeer = function() {
                 if (window.state && window.state.isRunning && typeof window.broadcast === 'function') {
                     window.broadcast();
                 }
-                const chatHistory = JSON.parse(localStorage.getItem('strateger_chat_history') || '[]');
-                if(chatHistory.length) {
-                    chatHistory.forEach(msg => c.send(msg));
+                // Only send chat history to previously approved viewers (reconnections)
+                if (window.approvedViewers.has(c.peer)) {
+                    const chatHistory = JSON.parse(localStorage.getItem('strateger_chat_history') || '[]');
+                    if(chatHistory.length) {
+                        chatHistory.forEach(msg => c.send(msg));
+                    }
                 }
             });
             
@@ -748,7 +758,7 @@ window.connectToHost = function(hostId) {
                     window.renderChatMessage(msg);
                 } else if (data.type === 'ERROR') {
                     // Show a friendly message on the join screen (if present)
-                    if (window.role === 'viewer' && typeof window.onNameRejected === 'function') {
+                    if (window.role === 'client' && typeof window.onNameRejected === 'function') {
                         window.onNameRejected(data.message || 'Name rejected by host');
                     } else {
                         alert(data.message || 'Error from host');
@@ -758,7 +768,7 @@ window.connectToHost = function(hostId) {
                     try {
                         localStorage.setItem('strateger_chat_name', data.name);
                     } catch (e) { console.error('Failed to store accepted name', e); }
-                    if (window.role === 'viewer' && typeof window.onNameAccepted === 'function') {
+                    if (window.role === 'client' && typeof window.onNameAccepted === 'function') {
                         window.onNameAccepted(data.name);
                     }
                 } else if (data.type === 'APPROVAL_GRANTED') {
@@ -943,16 +953,16 @@ window.broadcast = function(specificPayload = null) {
                 }
             } catch (e) { console.error('Failed saving chat history', e); }
 
-            // If recipient is null -> broadcast to all viewers
+            // If recipient is null -> broadcast to all approved viewers
             if (!payload.recipient) {
                 window.connections.forEach(c => {
-                    if (c && c.open) {
+                    if (c && c.open && window.approvedViewers.has(c.peer)) {
                         try { c.send(payload); } catch (e) { console.error('Send chat failed', e); }
                     }
                 });
             } else if (payload.recipient === 'broadcast') {
                 // compatibility: treat as broadcast
-                window.connections.forEach(c => { if (c && c.open) try { c.send(payload); } catch (e) {} });
+                window.connections.forEach(c => { if (c && c.open && window.approvedViewers.has(c.peer)) try { c.send(payload); } catch (e) {} });
             } else {
                 // Private message to a single viewerId
                 const dest = window.connectedViewers.get(payload.recipient);
@@ -964,11 +974,15 @@ window.broadcast = function(specificPayload = null) {
             return;
         }
 
-        // For non-chat updates, send full state to all viewers
+        // For non-chat updates, send full state to approved viewers only
         try {
             window.connections.forEach(c => {
                 if (c && c.open) {
-                    c.send(payload);
+                    // Only send race data to approved viewers (or all if no approval system active)
+                    const isApproved = window.approvedViewers.has(c.peer);
+                    if (isApproved) {
+                        c.send(payload);
+                    }
                 }
             });
         } catch (e) {

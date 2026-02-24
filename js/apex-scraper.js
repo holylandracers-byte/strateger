@@ -1,527 +1,569 @@
-/**
- * Apex Timing Live Scraper V3 (WebSocket with Pipe-Delimited Parser)
- * For Strateger
- */
-
 class ApexTimingScraper {
-    constructor(config) {
-        this.config = {
-            raceUrl: config.raceUrl || '',
-            searchTerm: config.searchTerm || '',
-            updateInterval: config.updateInterval || 1000,
-            onUpdate: config.onUpdate || null,
-            onError: config.onError || null,
-            debug: config.debug || false
-        };
-        
-        this.isRunning = false;
+    constructor() {
         this.ws = null;
-        this.wsConnected = false;
-        this.fallbackMode = false;
-        
-        // Data storage
-        this.competitors = new Map(); // rowId -> competitor data
-        this.gridInitialized = false;
-        
-        this.host = this.extractHost(config.raceUrl);
-        this.raceId = this.extractRaceId(config.raceUrl);
-        
-        // CORS proxies for HTTP fallback
-        // Netlify serverless proxy (primary - most reliable)
-        this.proxies = [
-            { name: 'netlify', url: '/.netlify/functions/cors-proxy?url=' },
-            { name: 'allorigins', url: 'https://api.allorigins.win/raw?url=' },
-            { name: 'corsproxy', url: 'https://corsproxy.io/?' }
-        ];
-        this.currentProxyIndex = 0;
+        this.competitors = new Map();
+        this.onUpdate = null;
+        this.onError = null;
+        this.isRunning = false;
+        this.raceUrl = '';
+        this.wsUrl = '';
+        this.pollInterval = null;
+        this.consecutiveErrors = 0;
+        this.maxConsecutiveErrors = 5;
+        this.searchConfig = { type: 'team', value: '' };
+        this.gridHtml = '';
+        this.sessionId = '';
     }
 
-    log(message, type = 'info') {
-        if (this.config.debug || type === 'error') {
-            console.log(`[Apex ${type.toUpperCase()}] ${message}`);
-        }
+    log(level, msg) {
+        const ts = new Date().toLocaleTimeString();
+        const prefix = `[Apex ${level}]`;
+        if (level === 'ERROR') console.error(`${prefix} ${msg}`);
+        else if (level === 'WARN') console.warn(`${prefix} ${msg}`);
+        else console.log(`${prefix} ${msg}`);
     }
 
-    extractHost(url) {
+    async start(url, searchConfig) {
+        this.raceUrl = url;
+        this.searchConfig = searchConfig || this.searchConfig;
+        this.isRunning = true;
+        this.consecutiveErrors = 0;
+
+        // Detect WebSocket URL from the page URL
+        // Apex timing uses wss://<domain>:<port>/
+        // The port is typically found in the page's JavaScript
         try {
-            const u = new URL(url);
-            return u.hostname;
+            this.wsUrl = await this.detectWebSocketUrl(url);
         } catch (e) {
-            return 'www.apex-timing.com';
+            this.log('WARN', `Could not auto-detect WS URL, using default port 8523: ${e.message}`);
+            const urlObj = new URL(url);
+            this.wsUrl = `wss://${urlObj.hostname}:8523/`;
         }
+
+        this.connectWebSocket();
+        this.scrapeInitialGrid();
     }
 
-    extractRaceId(url) {
+    async detectWebSocketUrl(pageUrl) {
+        const urlObj = new URL(pageUrl);
+        // Try to fetch the page and find the WebSocket port
         try {
-            const u = new URL(url);
-            const parts = u.pathname.split('/').filter(Boolean);
-            // e.g. /live-timing/worldkarts/ -> 'worldkarts'
-            const ltIdx = parts.indexOf('live-timing');
-            return (ltIdx >= 0 && parts[ltIdx + 1]) ? parts[ltIdx + 1] : (parts[parts.length - 1] || 'race');
+            const html = await this.fetchWithProxy(pageUrl);
+            // Look for patterns like: wsPort = 8523, ws_port: 8523, :8523/
+            const portMatch = html.match(/(?:wsPort|ws_port|WebSocket.*?:)\s*(\d{4})/i) ||
+                              html.match(/:(\d{4})\//);
+            if (portMatch) {
+                return `wss://${urlObj.hostname}:${portMatch[1]}/`;
+            }
         } catch (e) {
-            return 'race';
+            this.log('WARN', `Page fetch for WS detection failed: ${e.message}`);
         }
+        return `wss://${urlObj.hostname}:8523/`;
     }
 
-    // ================= WebSocket Logic =================
-    
-    startWebSocket() {
-        const wsUrl = `wss://${this.host}:8523/`;
-        
-        this.log(`🔌 Connecting to WSS: ${wsUrl}`);
+    connectWebSocket() {
+        if (!this.isRunning) return;
+
+        this.log('INFO', `🔌 Connecting to WSS: ${this.wsUrl}`);
         
         try {
-            this.ws = new WebSocket(wsUrl);
-            
-            this.ws.onopen = () => {
-                this.log('⚡ WebSocket Connected to Apex');
-                this.wsConnected = true;
-                // Scrape initial grid data via HTTP since WS may not send it
-                this.scrapeInitialGrid();
-            };
-            
-            this.ws.onmessage = (event) => {
-                if (this.config.debug) {
-                    this.log(`📨 WS Message (${event.data.length} chars)`);
-                }
-                this.parseApexMessage(event.data);
-            };
-            
-            this.ws.onerror = (error) => {
-                this.log('WebSocket Error', 'error');
-                if (this.config.onError) {
-                    this.config.onError('WebSocket connection failed');
-                }
-            };
-            
-            this.ws.onclose = () => {
-                this.log('WebSocket Closed', 'warn');
-                this.wsConnected = false;
-                if (this.isRunning) {
-                    // Try to reconnect after 3 seconds
-                    setTimeout(() => {
-                        if (this.isRunning) this.startWebSocket();
-                    }, 3000);
-                }
-            };
-            
+            this.ws = new WebSocket(this.wsUrl);
         } catch (e) {
-            this.log(`WS Setup Failed: ${e.message}`, 'error');
-            if (this.config.onError) {
-                this.config.onError(e.message);
+            this.log('ERROR', `WebSocket creation failed: ${e.message}`);
+            this.scheduleReconnect();
+            return;
+        }
+
+        this.ws.onopen = () => {
+            this.log('INFO', '⚡ WebSocket Connected to Apex');
+            this.consecutiveErrors = 0;
+        };
+
+        this.ws.onmessage = (event) => {
+            try {
+                this.handleMessage(event.data);
+            } catch (e) {
+                this.log('ERROR', `Message handling error: ${e.message}`);
+            }
+        };
+
+        this.ws.onclose = () => {
+            this.log('WARN', 'WebSocket Closed');
+            if (this.isRunning) {
+                this.scheduleReconnect();
+            }
+        };
+
+        this.ws.onerror = (err) => {
+            this.log('ERROR', 'WebSocket Error');
+            this.consecutiveErrors++;
+            if (this.consecutiveErrors >= this.maxConsecutiveErrors) {
+                this.log('ERROR', '🛑 Too many consecutive errors, stopping');
+                this.stop();
+                if (this.onError) this.onError(new Error('Too many WebSocket errors'));
+            }
+        };
+    }
+
+    scheduleReconnect() {
+        if (!this.isRunning) return;
+        const delay = Math.min(2000 * Math.pow(2, this.consecutiveErrors), 30000);
+        this.log('INFO', `Reconnecting in ${delay / 1000}s...`);
+        setTimeout(() => this.connectWebSocket(), delay);
+    }
+
+    handleMessage(data) {
+        const lines = data.split('\n');
+        
+        this.log('INFO', `📨 WS Message (${data.length} chars)`);
+        this.log('INFO', `📨 Message has ${lines.length} lines. First 3:`);
+        for (let i = 0; i < Math.min(3, lines.length); i++) {
+            this.log('INFO', `  Line ${i}: "${lines[i].substring(0, 80)}"`);
+        }
+
+        for (const line of lines) {
+            if (!line.trim()) continue;
+            const pipeIdx = line.indexOf('|');
+            if (pipeIdx === -1) continue;
+
+            const key = line.substring(0, pipeIdx);
+            const rest = line.substring(pipeIdx + 1);
+
+            if (key === 'grid') {
+                // Format: grid|<sessionId>|<html>
+                // rest = "<sessionId>|<html>"
+                const secondPipe = rest.indexOf('|');
+                let gridHtml = '';
+                if (secondPipe !== -1) {
+                    this.sessionId = rest.substring(0, secondPipe);
+                    gridHtml = rest.substring(secondPipe + 1);
+                } else {
+                    // Fallback: rest is just HTML directly
+                    gridHtml = rest;
+                }
+                this.log('INFO', `📋 Received grid message (${gridHtml.length} chars HTML), sessionId="${this.sessionId}"`);
+                if (gridHtml.length > 0) {
+                    this.gridHtml = gridHtml;
+                    this.parseGridHTML(gridHtml);
+                } else {
+                    this.log('WARN', '📋 Grid HTML was empty in WS message — waiting for HTTP fallback');
+                }
+            } else if (key === 'r' || key.startsWith('r')) {
+                this.handleRowUpdate(line);
+            } else if (key === 'title') {
+                this.log('INFO', `🏁 Race title: ${rest}`);
+            } else if (key === 'comment') {
+                this.log('INFO', `💬 Comment: ${rest}`);
+            } else if (key === 'init') {
+                this.log('INFO', `🔧 Init: ${rest}`);
+            } else if (key === 'best') {
+                this.log('INFO', `🏆 Best: ${rest}`);
+            } else if (key === 'css') {
+                // Style info, skip
+            } else if (key === 'ti') {
+                this.log('INFO', `⏱️ Timer: ${rest}`);
             }
         }
     }
 
-    // ================= Initial Grid Scraping =================
+    handleRowUpdate(line) {
+        // Cell update: r<rowId>c<colIdx>|<value>|
+        const cellMatch = line.match(/^(r\d+)c(\d+)\|([^|]*)\|?$/);
+        if (cellMatch) {
+            const rowId = cellMatch[1];
+            const colIdx = parseInt(cellMatch[2]);
+            const value = cellMatch[3];
+            
+            const comp = this.competitors.get(rowId);
+            if (comp) {
+                this.updateCompetitorCell(comp, colIdx, value);
+                this.emitUpdate();
+            }
+            return;
+        }
+
+        // Lap update: r<rowId>|*|<laptime>|<totaltime>
+        const lapMatch = line.match(/^(r\d+)\|\*\|([^|]*)\|([^|]*)/);
+        if (lapMatch) {
+            const rowId = lapMatch[1];
+            const lapTime = lapMatch[2];
+            const comp = this.competitors.get(rowId);
+            if (comp) {
+                comp.lastLap = lapTime;
+                const lapMs = this.parseTimeToMs(lapTime);
+                if (lapMs > 0 && (!comp.bestLapMs || lapMs < comp.bestLapMs)) {
+                    comp.bestLap = lapTime;
+                    comp.bestLapMs = lapMs;
+                }
+                comp.totalLaps = (comp.totalLaps || 0) + 1;
+                this.emitUpdate();
+            }
+            return;
+        }
+
+        // Position update: r<rowId>|#|<position>
+        const posMatch = line.match(/^(r\d+)\|#\|(\d+)/);
+        if (posMatch) {
+            const rowId = posMatch[1];
+            const newPos = parseInt(posMatch[2]);
+            const comp = this.competitors.get(rowId);
+            if (comp) {
+                comp.previousPosition = comp.position;
+                comp.position = newPos;
+                this.emitUpdate();
+            }
+            return;
+        }
+
+        // Pit status: r<rowId>|p|<0or1>
+        const pitMatch = line.match(/^(r\d+)\|p\|(\d)/);
+        if (pitMatch) {
+            const rowId = pitMatch[1];
+            const inPit = pitMatch[2] === '1';
+            const comp = this.competitors.get(rowId);
+            if (comp) {
+                comp.inPit = inPit;
+                this.emitUpdate();
+            }
+            return;
+        }
+    }
+
+    updateCompetitorCell(comp, colIdx, value) {
+        // Apex column mapping (standard layout):
+        // 0,1 = hidden status cells
+        // 2 = position (Rnk)
+        // 3 = kart number
+        // 4 = driver name/alias
+        // 5 = first name
+        // 6 = last name
+        // 7 = S1
+        // 8 = S2
+        // 9 = S3
+        // 10 = last lap
+        // 11 = best lap
+        // 12 = gap
+        // 13 = laps
+        switch (colIdx) {
+            case 2: comp.position = parseInt(value) || comp.position; break;
+            case 3: comp.kartNumber = value; break;
+            case 4: comp.driverName = value; break;
+            case 5: comp.firstName = value; break;
+            case 6: comp.lastName = value; break;
+            case 7: comp.sector1 = value; break;
+            case 8: comp.sector2 = value; break;
+            case 9: comp.sector3 = value; break;
+            case 10: 
+                comp.lastLap = value; 
+                const ms = this.parseTimeToMs(value);
+                if (ms > 0) {
+                    comp.lastLapMs = ms;
+                    if (!comp.bestLapMs || ms < comp.bestLapMs) {
+                        comp.bestLapMs = ms;
+                        comp.bestLap = value;
+                    }
+                }
+                break;
+            case 11: 
+                comp.bestLap = value; 
+                comp.bestLapMs = this.parseTimeToMs(value);
+                break;
+            case 12: comp.gap = value; break;
+            case 13: comp.totalLaps = parseInt(value) || 0; break;
+        }
+    }
+
+    parseGridHTML(html) {
+        const parser = new DOMParser();
+        // Wrap in a basic HTML structure to ensure proper parsing
+        const doc = parser.parseFromString(`<html><body><table>${html}</table></body></html>`, 'text/html');
+        
+        // Try multiple selectors to find rows — Apex uses various structures
+        let rows = doc.querySelectorAll('tr[id^="r"]');
+        
+        if (rows.length === 0) {
+            // Try just all TRs with cells
+            rows = doc.querySelectorAll('tr');
+            // Filter out header rows (rows without enough cells or without numeric position)
+            rows = Array.from(rows).filter(tr => {
+                const cells = tr.querySelectorAll('td');
+                return cells.length >= 10; // Apex rows have 14 cells (2 hidden + 12 visible)
+            });
+        }
+
+        this.log('INFO', `📋 Parsing grid HTML, found ${rows.length} rows`);
+
+        if (rows.length === 0 && html.length > 100) {
+            // Debug: show what tags exist
+            const allTags = doc.querySelectorAll('*');
+            const tagNames = new Set();
+            allTags.forEach(el => tagNames.add(el.tagName.toLowerCase()));
+            this.log('WARN', `📋 HTML tags found: ${[...tagNames].join(', ')}`);
+            
+            // Try to find any element with an id starting with 'r' followed by digits
+            const rElements = doc.querySelectorAll('[id^="r"]');
+            this.log('WARN', `📋 Elements with id^="r": ${rElements.length}`);
+            if (rElements.length > 0) {
+                this.log('WARN', `📋 First r-element: tag=${rElements[0].tagName}, id=${rElements[0].id}, children=${rElements[0].children.length}`);
+            }
+            
+            // Last resort: try parsing as raw HTML with regex
+            this.parseGridHTMLRegex(html);
+            return;
+        }
+
+        this.competitors.clear();
+
+        for (const row of rows) {
+            const cells = row.querySelectorAll('td');
+            if (cells.length < 10) continue;
+
+            const rowId = row.id || `r${this.competitors.size}`;
+            
+            const comp = {
+                rowId: rowId,
+                position: parseInt(cells[2]?.textContent?.trim()) || 0,
+                kartNumber: cells[3]?.textContent?.trim() || '',
+                driverName: cells[4]?.textContent?.trim() || '',
+                firstName: cells[5]?.textContent?.trim() || '',
+                lastName: cells[6]?.textContent?.trim() || '',
+                sector1: cells[7]?.textContent?.trim() || '',
+                sector2: cells[8]?.textContent?.trim() || '',
+                sector3: cells[9]?.textContent?.trim() || '',
+                lastLap: cells[10]?.textContent?.trim() || '',
+                bestLap: cells[11]?.textContent?.trim() || '',
+                gap: cells[12]?.textContent?.trim() || '',
+                totalLaps: parseInt(cells[13]?.textContent?.trim()) || 0,
+                lastLapMs: 0,
+                bestLapMs: 0,
+                inPit: false,
+                previousPosition: 0
+            };
+
+            comp.lastLapMs = this.parseTimeToMs(comp.lastLap);
+            comp.bestLapMs = this.parseTimeToMs(comp.bestLap);
+            comp.previousPosition = comp.position;
+
+            // Check pit status from hidden cells (cells 0 and 1)
+            const statusCell = cells[0]?.textContent?.trim() || cells[1]?.textContent?.trim() || '';
+            if (statusCell.includes('P') || statusCell.includes('pit')) {
+                comp.inPit = true;
+            }
+
+            this.competitors.set(rowId, comp);
+        }
+
+        this.log('INFO', `Grid initialized with ${this.competitors.size} competitors`);
+        if (this.competitors.size > 0) {
+            this.emitUpdate();
+        }
+    }
+
+    parseGridHTMLRegex(html) {
+        // Fallback regex parser for when DOMParser doesn't find rows
+        // Look for <tr id="rXXXXX"> patterns and extract cell content
+        const rowRegex = /<tr[^>]*\bid=["']?(r\d+)["']?[^>]*>([\s\S]*?)<\/tr>/gi;
+        const cellRegex = /<td[^>]*>([\s\S]*?)<\/td>/gi;
+        
+        this.competitors.clear();
+        let match;
+
+        while ((match = rowRegex.exec(html)) !== null) {
+            const rowId = match[1];
+            const rowHtml = match[2];
+            const cells = [];
+            let cellMatch;
+
+            cellRegex.lastIndex = 0;
+            while ((cellMatch = cellRegex.exec(rowHtml)) !== null) {
+                // Strip inner HTML tags to get text content
+                const text = cellMatch[1].replace(/<[^>]*>/g, '').trim();
+                cells.push(text);
+            }
+
+            if (cells.length < 10) continue;
+
+            const comp = {
+                rowId: rowId,
+                position: parseInt(cells[2]) || 0,
+                kartNumber: cells[3] || '',
+                driverName: cells[4] || '',
+                firstName: cells[5] || '',
+                lastName: cells[6] || '',
+                sector1: cells[7] || '',
+                sector2: cells[8] || '',
+                sector3: cells[9] || '',
+                lastLap: cells[10] || '',
+                bestLap: cells[11] || '',
+                gap: cells[12] || '',
+                totalLaps: parseInt(cells[13]) || 0,
+                lastLapMs: 0,
+                bestLapMs: 0,
+                inPit: false,
+                previousPosition: 0
+            };
+
+            comp.lastLapMs = this.parseTimeToMs(comp.lastLap);
+            comp.bestLapMs = this.parseTimeToMs(comp.bestLap);
+            comp.previousPosition = comp.position;
+
+            this.competitors.set(rowId, comp);
+        }
+
+        this.log('INFO', `Regex parser found ${this.competitors.size} competitors`);
+        if (this.competitors.size > 0) {
+            this.emitUpdate();
+        }
+    }
+
+    parseTimeToMs(timeStr) {
+        if (!timeStr || timeStr === '-') return 0;
+        
+        // Handle formats: "1:01.573", "61.573", "24.185"
+        const parts = timeStr.match(/(?:(\d+):)?(\d+)\.(\d+)/);
+        if (!parts) return 0;
+        
+        const minutes = parseInt(parts[1] || '0');
+        const seconds = parseInt(parts[2]);
+        const millis = parseInt(parts[3].padEnd(3, '0').substring(0, 3));
+        
+        return (minutes * 60 + seconds) * 1000 + millis;
+    }
+
+    emitUpdate() {
+        if (!this.onUpdate || this.competitors.size === 0) return;
+
+        const allCompetitors = Array.from(this.competitors.values())
+            .sort((a, b) => (a.position || 999) - (b.position || 999));
+
+        // Find our team based on search config
+        let ourTeam = null;
+        const sv = (this.searchConfig.value || '').toLowerCase();
+
+        if (sv) {
+            for (const comp of allCompetitors) {
+                const fullName = `${comp.driverName} ${comp.firstName} ${comp.lastName}`.toLowerCase();
+                const kart = (comp.kartNumber || '').toLowerCase();
+
+                switch (this.searchConfig.type) {
+                    case 'team':
+                    case 'driver':
+                        if (fullName.includes(sv)) ourTeam = comp;
+                        break;
+                    case 'kart':
+                        if (kart === sv) ourTeam = comp;
+                        break;
+                }
+                if (ourTeam) break;
+            }
+        }
+
+        const result = {
+            competitors: allCompetitors.map(c => ({
+                position: c.position,
+                name: c.driverName || `${c.firstName} ${c.lastName}`.trim(),
+                kartNumber: c.kartNumber,
+                lastLap: c.lastLap,
+                lastLapMs: c.lastLapMs,
+                bestLap: c.bestLap,
+                bestLapMs: c.bestLapMs,
+                gap: c.gap,
+                totalLaps: c.totalLaps,
+                inPit: c.inPit,
+                previousPosition: c.previousPosition
+            })),
+            ourTeam: ourTeam ? {
+                position: ourTeam.position,
+                previousPosition: ourTeam.previousPosition,
+                name: ourTeam.driverName || `${ourTeam.firstName} ${ourTeam.lastName}`.trim(),
+                kartNumber: ourTeam.kartNumber,
+                lastLap: ourTeam.lastLap,
+                lastLapMs: ourTeam.lastLapMs,
+                bestLap: ourTeam.bestLap,
+                bestLapMs: ourTeam.bestLapMs,
+                gap: ourTeam.gap,
+                totalLaps: ourTeam.totalLaps,
+                inPit: ourTeam.inPit,
+                sector1: ourTeam.sector1,
+                sector2: ourTeam.sector2,
+                sector3: ourTeam.sector3
+            } : null,
+            totalCompetitors: allCompetitors.length
+        };
+
+        this.onUpdate(result);
+    }
 
     async scrapeInitialGrid() {
+        this.log('INFO', '🌐 Fetching initial grid via HTTP (with CORS proxy)');
         try {
-            this.log('🌐 Fetching initial grid via HTTP (with CORS proxy)');
-            const proxy = this.proxies[this.currentProxyIndex];
-            const proxyUrl = proxy.url + encodeURIComponent(this.config.raceUrl);
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 10000);
+            const html = await this.fetchWithProxy(this.raceUrl);
             
-            const response = await fetch(proxyUrl, { signal: controller.signal });
-            clearTimeout(timeoutId);
+            // Extract the grid table from the full page HTML
+            // Look for the main timing table — Apex uses <table id="tbl"> or similar
+            const tableMatch = html.match(/<table[^>]*id=["']?tbl["']?[^>]*>([\s\S]*?)<\/table>/i) ||
+                               html.match(/<table[^>]*class=["'][^"']*live[^"']*["'][^>]*>([\s\S]*?)<\/table>/i);
             
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
-            const html = await response.text();
-            
-            // Parse the HTML to find the grid table
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(html, 'text/html');
-            
-            // Look for the main timing table (adjust selector as needed)
-            const table = doc.querySelector('table') || doc.querySelector('.timing-table') || doc.querySelector('#grid');
-            if (!table) {
-                this.log('No grid table found in HTML', 'warn');
-                return;
-            }
-            
-            const htmlString = table.innerHTML;
-            this.log(`📋 Scraped grid HTML (${htmlString.length} chars)`);
-            this.parseGridHtml(htmlString);
-            
-        } catch (error) {
-            this.log(`Initial grid scrape failed: ${error.message}`, 'error');
-        }
-    }
-
-    // ================= Apex Message Parser =================
-
-    parseApexMessage(message) {
-        // Apex sends pipe-delimited commands
-        const lines = message.split('\n');
-        
-        if (this.config.debug && lines.length > 0) {
-            this.log(`📨 Message has ${lines.length} lines. First 3:`);
-            lines.slice(0, 3).forEach((line, i) => {
-                const preview = line.length > 100 ? line.substring(0, 100) + '...' : line;
-                this.log(`  Line ${i}: "${preview}"`);
-            });
-        }
-        
-        lines.forEach(line => {
-            if (!line.trim()) return;
-            
-            const parts = line.split('|');
-            const key = parts[0];
-            
-            if (this.config.debug && key === 'grid') {
-                this.log(`📋 Grid parts: key="${key}", parts.length=${parts.length}, parts[1] length=${parts[1]?.length || 0}`);
-                if (parts.length > 1 && parts[1].length < 200) {
-                    this.log(`Grid content preview: "${parts[1]}"`);
-                }
-            }
-            
-            // Initial grid data (HTML table)
-            if (key === 'grid' && parts.length > 1) {
-                this.log(`📋 Received grid message (${parts[1].length} chars HTML)`);
-                this.parseGridHtml(parts[1]);
-                return;
-            }
-            
-            // Cell update: r59c2|in|
-            if (key.match(/^r\d+c\d+$/)) {
-                const match = key.match(/^r(\d+)c(\d+)$/);
-                if (match) {
-                    const rowId = 'r' + match[1];
-                    const colId = parseInt(match[2]);
-                    const value = parts[1] || '';
-                    this.updateCell(rowId, colId, value);
-                }
-                return;
-            }
-            
-            // Row update with lap data: r66|*|67641|27171
-            if (key.match(/^r\d+$/) && parts[1] === '*') {
-                const rowId = key;
-                const lastLapMs = parts[2] ? parseInt(parts[2]) : null;
-                const sector1Ms = parts[3] ? parseInt(parts[3]) : null;
-                this.updateLapData(rowId, lastLapMs, sector1Ms);
-                return;
-            }
-            
-            // Position update: r66|#|5
-            if (key.match(/^r\d+$/) && parts[1] === '#') {
-                const rowId = key;
-                const position = parseInt(parts[2]);
-                this.updatePosition(rowId, position);
-                return;
-            }
-        });
-        
-        // Trigger update callback if we have data
-        if (this.gridInitialized && this.competitors.size > 0) {
-            this.sendUpdate();
-        }
-    }
-
-    parseGridHtml(htmlString) {
-        // Parse the initial grid HTML to extract driver info
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(`<table>${htmlString}</table>`, 'text/html');
-        const rows = doc.querySelectorAll('tr[data-id^="r"]');
-        
-        this.log(`📋 Parsing grid HTML, found ${rows.length} rows`);
-        
-        rows.forEach(row => {
-            const rowId = row.getAttribute('data-id');
-            if (rowId === 'r0') return; // Skip header
-            
-            const cells = row.querySelectorAll('td');
-            
-            if (this.config.debug && this.competitors.size === 0) {
-                // Log first row's cells to see structure
-                this.log(`First row cells (${cells.length} total):`, Array.from(cells).map((c, i) => `[${i}]="${c.textContent.trim()}"`).join(', '));
-            }
-            
-            const competitor = {
-                rowId: rowId,
-                position: this.getCellText(cells, 2),
-                kart: this.getCellText(cells, 3),
-                driver: this.getCellText(cells, 4),
-                firstName: this.getCellText(cells, 5),
-                lastName: this.getCellText(cells, 6),
-                sector1: this.getCellText(cells, 7),
-                sector2: this.getCellText(cells, 8),
-                sector3: this.getCellText(cells, 9),
-                lastLap: this.getCellText(cells, 10),
-                bestLap: this.getCellText(cells, 11),
-                gap: this.getCellText(cells, 12),
-                laps: this.getCellText(cells, 13),
-                lastLapMs: this.parseTimeToMs(this.getCellText(cells, 10)),
-                bestLapMs: this.parseTimeToMs(this.getCellText(cells, 11))
-            };
-            
-            this.competitors.set(rowId, competitor);
-        });
-        
-        this.gridInitialized = true;
-        this.log(`Grid initialized with ${this.competitors.size} competitors`);
-        
-        // Log first competitor as example
-        if (this.competitors.size > 0 && this.config.debug) {
-            const first = Array.from(this.competitors.values())[0];
-            this.log(`Example competitor:`, first);
-            this.log(`Cells parsed - driver: "${first.driver}", lastName: "${first.lastName}", kart: "${first.kart}"`);
-        }
-    }
-
-    getCellText(cells, index) {
-        if (!cells[index]) return '';
-        return cells[index].textContent.trim();
-    }
-
-    updateCell(rowId, colId, value) {
-        if (!this.competitors.has(rowId)) {
-            this.competitors.set(rowId, { rowId });
-        }
-        
-        const competitor = this.competitors.get(rowId);
-        
-        // Map column IDs to properties
-        switch(colId) {
-            case 3: competitor.position = value; break;
-            case 4: competitor.kart = value; break;
-            case 5: competitor.driver = value; break;
-            case 6: competitor.firstName = value; break;
-            case 7: competitor.lastName = value; break;
-            case 8: competitor.sector1 = value; break;
-            case 9: competitor.sector2 = value; break;
-            case 10: competitor.sector3 = value; break;
-            case 11: 
-                competitor.lastLap = value;
-                competitor.lastLapMs = this.parseTimeToMs(value);
-                break;
-            case 12: 
-                competitor.bestLap = value;
-                competitor.bestLapMs = this.parseTimeToMs(value);
-                break;
-            case 13: competitor.gap = value; break;
-            case 14: competitor.laps = value; break;
-        }
-    }
-
-    updateLapData(rowId, lastLapMs, sector1Ms) {
-        if (!this.competitors.has(rowId)) return;
-        
-        const competitor = this.competitors.get(rowId);
-        if (lastLapMs) {
-            competitor.lastLapMs = lastLapMs;
-            competitor.lastLap = this.formatMsToTime(lastLapMs);
-        }
-    }
-
-    updatePosition(rowId, position) {
-        if (!this.competitors.has(rowId)) return;
-        
-        const competitor = this.competitors.get(rowId);
-        competitor.position = position.toString();
-    }
-
-    sendUpdate() {
-        this.log(`🔄 Preparing update: ${this.competitors.size} total competitors`);
-        
-        // Debug: show what's in competitors before filtering
-        if (this.config.debug && this.competitors.size > 0) {
-            const sample = Array.from(this.competitors.values())[0];
-            this.log(`Sample before filter: position=${sample.position}, kart=${sample.kart}, driver="${sample.driver}", lastName="${sample.lastName}"`);
-        }
-        
-        const competitorsArray = Array.from(this.competitors.values())
-            .filter(c => c.driver) // Only include rows with driver names
-            .sort((a, b) => {
-                const posA = parseInt(a.position) || 999;
-                const posB = parseInt(b.position) || 999;
-                return posA - posB;
-            })
-            .map(c => ({
-                position: parseInt(c.position) || 0,
-                name: c.driver || 'Unknown',
-                team: c.lastName || '',
-                kart: c.kart || '',
-                laps: parseInt(c.laps) || 0,
-                lastLap: c.lastLap || '',
-                lastLapMs: c.lastLapMs,
-                bestLap: c.bestLap || '',
-                bestLapMs: c.bestLapMs,
-                gap: c.gap || '-',
-                inPit: false
-            }));
-        
-        const ourTeam = this.findOurTeam(competitorsArray);
-        
-        this.log(`📊 Sending ${competitorsArray.length} competitors, ourTeam: ${ourTeam ? ourTeam.name : 'not found'}`);
-        
-        if (this.config.onUpdate) {
-            this.config.onUpdate({
-                competitors: competitorsArray,
-                ourTeam: ourTeam,
-                found: !!ourTeam,
-                provider: 'apex-ws'
-            });
-        }
-        }
-
-
-    switchToFallback() {
-        if (this.fallbackMode) return;
-        this.fallbackMode = true;
-        if (this.ws) {
-            this.ws.close();
-            this.ws = null;
-        }
-        this.log('🔄 Falling back to HTTP Polling');
-        
-        // Immediate fetch
-        this.fetchHttpData();
-        
-        // Start Interval
-        this.httpInterval = setInterval(() => {
-            if (this.isRunning) this.fetchHttpData();
-        }, 5000); // Slower interval for HTTP
-    }
-
-    // ================= HTTP Logic (Fallback) =================
-    
-    async fetchHttpData() {
-        // Use the previous robust JSON/HTML scraping logic here
-        // Shortened for brevity - assumes integration with previous logic
-        const apiUrl = `https://${this.host}/live-timing/${this.raceId}/standings.json`;
-        
-        try {
-            const proxy = this.proxies[this.currentProxyIndex];
-            const response = await fetch(proxy.url + encodeURIComponent(apiUrl));
-            if (response.ok) {
-                const text = await response.text();
-                const data = JSON.parse(text);
-                this.processData(data);
+            let gridContent = '';
+            if (tableMatch) {
+                gridContent = tableMatch[1];
+                this.log('INFO', `📋 Extracted table content (${gridContent.length} chars)`);
             } else {
-                throw new Error('Fetch failed');
+                // Try to find rows directly in the full HTML
+                gridContent = html;
+                this.log('INFO', `📋 No table tag found, using full HTML (${html.length} chars)`);
+            }
+
+            this.log('INFO', `📋 Scraped grid HTML (${gridContent.length} chars)`);
+            
+            // Only use HTTP result if WS didn't already give us data
+            if (this.competitors.size === 0 && gridContent.length > 0) {
+                this.parseGridHTML(gridContent);
             }
         } catch (e) {
-            // Rotate proxy
-            this.currentProxyIndex = (this.currentProxyIndex + 1) % this.proxies.length;
+            this.log('WARN', `HTTP grid scrape failed: ${e.message}`);
         }
     }
 
-    // ================= Data Processing =================
+    async fetchWithProxy(url) {
+        const proxies = [
+            { prefix: '/.netlify/functions/cors-proxy?url=', label: 'netlify-proxy' },
+            { prefix: 'https://corsproxy.io/?', label: 'corsproxy' },
+            { prefix: 'https://api.allorigins.win/raw?url=', label: 'allorigins' }
+        ];
 
-    processData(rawData) {
-        // Parse Apex structure (handles both WS and HTTP usually)
-        let competitors = [];
-        
-        // Common structure handling
-        const entries = rawData.standings || rawData.drivers || rawData.init || [];
-        
-        entries.forEach((entry, idx) => {
-            competitors.push({
-                position: entry.p || entry.pos || entry.position || idx + 1,
-                name: entry.d || entry.driver || entry.name || 'Unknown',
-                team: entry.t || entry.team || '',
-                kart: entry.k || entry.kart || '',
-                laps: parseInt(entry.l || entry.laps || 0),
-                lastLap: entry.lt || entry.last_time || '',
-                lastLapMs: this.parseTimeToMs(entry.lt || entry.last_time),
-                bestLap: entry.bt || entry.best_time || '',
-                gap: entry.g || entry.gap || '-',
-                inPit: entry.pit || false
-            });
-        });
-        
-        const ourTeam = this.findOurTeam(competitors);
-        
-        if (this.config.onUpdate) {
-            this.config.onUpdate({
-                competitors: competitors,
-                ourTeam: ourTeam,
-                found: !!ourTeam,
-                provider: this.fallbackMode ? 'apex-http' : 'apex-ws'
-            });
-        }
-    }
-    
-    // ... (Helpers: findOurTeam, parseTimeToMs remain the same) ...
-    parseTimeToMs(timeStr) {
-        if (!timeStr) return null;
-        // ... (Existing parser)
-        const str = String(timeStr).trim();
-        let match = str.match(/^(\d{1,2}):(\d{2})\.(\d{2,3})$/);
-        if (match) return ((parseInt(match[1])*60) + parseInt(match[2])) * 1000 + parseInt(match[3].padEnd(3,'0'));
-        match = str.match(/^(\d{2})\.(\d{2,3})$/);
-        if (match) return parseInt(match[1]) * 1000 + parseInt(match[2].padEnd(3,'0'));
-        return null;
-    }
+        for (const proxy of proxies) {
+            try {
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), 10000);
+                
+                const resp = await fetch(proxy.prefix + encodeURIComponent(url), {
+                    signal: controller.signal
+                });
+                clearTimeout(timeout);
 
-    formatMsToTime(ms) {
-        if (ms == null || isNaN(ms)) return '';
-        const total = Number(ms);
-        const minutes = Math.floor(total / 60000);
-        const seconds = Math.floor((total % 60000) / 1000);
-        const millis = total % 1000;
-        const msStr = String(millis).padStart(3, '0');
-        if (minutes > 0) {
-            return `${minutes}:${String(seconds).padStart(2, '0')}.${msStr}`;
-        }
-        return `${String(seconds).padStart(2, '0')}.${msStr}`;
-    }
-
-    findOurTeam(competitors) {
-        const term = this.config.searchTerm.toUpperCase().trim();
-        if (!term) return competitors[0];
-        
-        this.log(`🔍 Searching for: "${term}" in ${competitors.length} competitors`);
-        
-        const found = competitors.find(c => {
-            const teamMatch = c.team && c.team.toUpperCase().includes(term);
-            const nameMatch = c.name && c.name.toUpperCase().includes(term);
-            const kartMatch = c.kart && (
-                c.kart.toUpperCase() === term || 
-                c.kart === term || 
-                String(parseInt(c.kart)) === String(parseInt(term))
-            );
-            
-            if (teamMatch || nameMatch || kartMatch) {
-                this.log(`✅ Found match: ${c.name} (Kart: ${c.kart}, Team: ${c.team})`);
-            }
-            
-            return teamMatch || nameMatch || kartMatch;
-        });
-        
-        if (!found) {
-            this.log(`❌ No match found for "${term}"`);
-            if (competitors.length > 0) {
-                this.log(`Available karts: ${competitors.map(c => c.kart).join(', ')}`);
+                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                return await resp.text();
+            } catch (e) {
+                this.log('WARN', `${proxy.label} failed: ${e.message}`);
             }
         }
-        
-        return found;
-    }
 
-    start() {
-        this.isRunning = true;
-        this.startWebSocket(); // Try WS first
-        
-        // If WS doesn't deliver grid data within 10s, fall back to HTTP
-        this._wsFallbackTimer = setTimeout(() => {
-            if (this.isRunning && !this.gridInitialized && !this.fallbackMode) {
-                this.log('⏰ WS timeout - switching to HTTP fallback', 'warn');
-                this.switchToFallback();
-            }
-        }, 10000);
+        throw new Error('All proxies failed');
     }
 
     stop() {
         this.isRunning = false;
-        if (this.ws) this.ws.close();
-        if (this.httpInterval) clearInterval(this.httpInterval);
-        if (this._wsFallbackTimer) clearTimeout(this._wsFallbackTimer);
+        if (this.ws) {
+            try { this.ws.close(); } catch (e) {}
+            this.ws = null;
+        }
+        if (this.pollInterval) {
+            clearInterval(this.pollInterval);
+            this.pollInterval = null;
+        }
     }
 }
 
+// Export for use
 window.ApexTimingScraper = ApexTimingScraper;

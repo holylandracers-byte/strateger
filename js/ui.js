@@ -1233,7 +1233,7 @@ window.onNameRejected = function(message) {
     if (joinErr) { joinErr.classList.remove('hidden'); joinErr.innerText = message || 'Name rejected by host'; }
     // Keep the login view visible so the user can choose a new name
     document.getElementById('chatLoginView').classList.remove('hidden');
-    if (window.role === 'viewer') {
+    if (window.role === 'client') {
         // Allow user to try again
         window.pendingChatName = null;
     }
@@ -1248,7 +1248,7 @@ window.onApprovalRejected = function(message) {
     }
     // Keep the login view visible so the user can choose a new name
     document.getElementById('chatLoginView').classList.remove('hidden');
-    if (window.role === 'viewer') {
+    if (window.role === 'client') {
         // Allow user to try again
         window.pendingChatName = null;
     }
@@ -1264,7 +1264,7 @@ window.autoJoinChatWithGoogle = function() {
             chatInput.value = googleUser.name;
         }
         // Auto-join if viewer is already connected
-        if (window.role === 'viewer' && window.conn && window.conn.open) {
+        if (window.role === 'client' && window.conn && window.conn.open) {
             console.log(`Auto-joining chat as ${googleUser.name}`);
             window.joinChat();
         }
