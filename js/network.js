@@ -7,7 +7,25 @@ const PEER_CONFIG = {
     config: {
         iceServers: [
             { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:19302' }
+            { urls: 'stun:stun1.l.google.com:19302' },
+            { urls: 'stun:stun2.l.google.com:19302' },
+            { urls: 'stun:stun3.l.google.com:19302' },
+            { urls: 'stun:stun4.l.google.com:19302' },
+            {
+                urls: 'turn:openrelay.metered.ca:80',
+                username: 'openrelayproject',
+                credential: 'openrelayproject'
+            },
+            {
+                urls: 'turn:openrelay.metered.ca:443',
+                username: 'openrelayproject',
+                credential: 'openrelayproject'
+            },
+            {
+                urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+                username: 'openrelayproject',
+                credential: 'openrelayproject'
+            }
         ]
     }
 };
@@ -108,6 +126,21 @@ window.approveViewer = function(peerId, name) {
         });
     } catch(e) { console.error('Failed to send approval', e); }
     
+    // Send full race state to the newly approved viewer
+    try {
+        conn.send({
+            type: 'UPDATE',
+            state: window.state,
+            config: window.config,
+            drivers: window.drivers,
+            liveData: window.liveData,
+            liveTimingConfig: window.liveTimingConfig,
+            searchConfig: window.searchConfig,
+            currentPitAdjustment: window.currentPitAdjustment || 0,
+            timestamp: Date.now()
+        });
+    } catch(e) { console.error('Failed to send state after approval', e); }
+
     // Update UI
     window.updateViewerApprovalUI();
     console.log(`✅ Viewer ${peerId} (${name}) approved`);
@@ -302,6 +335,25 @@ window.initHostPeer = function() {
             });
             
             c.on('data', (data) => {
+                // === Handle REQUEST_INIT from viewer (plain string) — send state immediately ===
+                if (data === 'REQUEST_INIT') {
+                    console.log(`📡 Viewer ${c.peer} requested init data`);
+                    try {
+                        c.send({
+                            type: 'INIT',
+                            state: window.state,
+                            config: window.config,
+                            drivers: window.drivers,
+                            liveData: window.liveData,
+                            liveTimingConfig: window.liveTimingConfig,
+                            searchConfig: window.searchConfig,
+                            currentPitAdjustment: window.currentPitAdjustment || 0,
+                            timestamp: Date.now()
+                        });
+                    } catch(e) { console.error('Failed to send INIT to viewer', e); }
+                    return;
+                }
+
                 // === Handle Viewer Approval Requests ===
                 if (data.type === 'VIEWER_APPROVAL_REQUEST') {
                     const name = data.name || 'Unknown';
@@ -567,8 +619,9 @@ window.connectToHost = function(hostId) {
             });
 
             window.conn.on('data', (data) => {
-                document.getElementById('clientWaitScreen').classList.add('hidden');
                 if (data.type === 'UPDATE' || data.type === 'INIT') {
+                    // Only hide wait screen when we have actual race data
+                    document.getElementById('clientWaitScreen').classList.add('hidden');
                     if (data.state) window.state = data.state;
                     if (data.config) window.config = data.config;
                     if (data.drivers) window.drivers = data.drivers;

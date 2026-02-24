@@ -1206,7 +1206,18 @@ window.continueRace = function() {
         // Restore live timing after refresh/continue
         try {
             if (window.liveTimingConfig && window.liveTimingConfig.enabled) {
+                // Populate setup screen inputs from saved config so scraper can find team
+                const urlInput = document.getElementById('liveTimingUrl');
+                if (urlInput && window.liveTimingConfig.url) urlInput.value = window.liveTimingConfig.url;
+                const searchInput = document.getElementById('searchValue');
+                if (searchInput && window.searchConfig) {
+                    searchInput.value = window.searchConfig.teamName || window.searchConfig.driverName || window.searchConfig.kartNumber || '';
+                }
+                
+                // Show restored live data immediately (before scraper reconnects)
                 if (typeof window.updateLiveTimingUI === 'function') window.updateLiveTimingUI();
+                
+                // Restart the scraper / demo interval
                 if (typeof window.startLiveTimingUpdates === 'function') window.startLiveTimingUpdates();
             }
         } catch (e) { console.error('Failed restoring live timing', e); }

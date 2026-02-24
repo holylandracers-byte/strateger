@@ -27,7 +27,9 @@ class ApexTimingScraper {
         this.raceId = this.extractRaceId(config.raceUrl);
         
         // CORS proxies for HTTP fallback
+        // Netlify serverless proxy (primary - most reliable)
         this.proxies = [
+            { name: 'netlify', url: '/.netlify/functions/cors-proxy?url=' },
             { name: 'allorigins', url: 'https://api.allorigins.win/raw?url=' },
             { name: 'corsproxy', url: 'https://corsproxy.io/?' }
         ];

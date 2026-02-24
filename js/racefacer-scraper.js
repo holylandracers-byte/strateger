@@ -29,7 +29,10 @@ class RaceFacerScraper {
         
         this.apiUrl = `https://live.racefacer.com/ajax/live-data?slug=${this.config.raceSlug}`;
         
+        // Netlify serverless proxy (primary - most reliable, no CORS issues)
+        // External proxies as fallbacks only
         this.proxies = [
+            { name: 'netlify', url: '/.netlify/functions/cors-proxy?url=' },
             { name: 'corsproxy', url: 'https://corsproxy.io/?' },
             { name: 'allorigins', url: 'https://api.allorigins.win/raw?url=' }
         ];
@@ -65,9 +68,7 @@ class RaceFacerScraper {
                 const response = await fetch(proxyUrl, {
                     method: 'GET',
                     headers: { 
-                        'Accept': 'application/json',
-                        'Cache-Control': 'no-cache, no-store, must-revalidate',
-                        'Pragma': 'no-cache'
+                        'Accept': 'application/json'
                     },
                     signal: controller.signal
                 });

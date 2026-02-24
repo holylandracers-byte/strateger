@@ -96,7 +96,12 @@ window.testLiveTiming = function() {
 window.fetchLiveTimingFromProxy = async function() {
     if (!window.liveTimingConfig.url) return;
     
-    window.updateSearchConfig();
+    // Only read from DOM if the setup inputs exist and have values
+    // After refresh+continue, the inputs are empty but searchConfig is already restored
+    const searchValueEl = document.getElementById('searchValue');
+    if (searchValueEl && searchValueEl.value) {
+        window.updateSearchConfig();
+    }
     
     // יצירת מנהל אם לא קיים (LiveTimingManager נטען ב-HTML)
     if (!window.liveTimingManager && typeof LiveTimingManager !== 'undefined') {
@@ -501,6 +506,10 @@ window.startLiveTimingUpdates = function() {
     window.__liveTimingStarted = true;
     
     if (window.liveTimingConfig.demoMode) {
+        // Re-initialize demo competitors if empty (e.g. after page refresh)
+        if (!window.demoState.competitors || window.demoState.competitors.length === 0) {
+            window.initializeDemoCompetitors();
+        }
         window.liveTimingInterval = setInterval(window.updateDemoData, 1000);
     } else if (window.liveTimingConfig.url) {
         window.startProxyLiveTiming();
