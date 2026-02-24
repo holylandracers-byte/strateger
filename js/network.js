@@ -445,6 +445,29 @@ window.copyInviteLink = function() {
     });
 };
 
+// === Copy Driver Link (opens directly into Driver Mode HUD) ===
+window.copyDriverLink = function() {
+    const id = window.myId;
+    if (!id) return alert("No connection ID yet");
+    
+    const link = `${window.location.origin}${window.location.pathname}?driver=${id}`;
+    
+    navigator.clipboard.writeText(link).then(() => {
+        const btn = document.getElementById('driverLinkBtn');
+        if (!btn) return;
+        const original = btn.innerHTML;
+        btn.innerHTML = '✅ Copied!';
+        btn.classList.add('bg-green-700', 'text-white');
+        
+        setTimeout(() => {
+            btn.innerHTML = original;
+            btn.classList.remove('bg-green-700', 'text-white');
+        }, 2000);
+    }).catch(err => {
+        prompt("Copy this driver link:", link);
+    });
+};
+
 window.updateSyncStatus = function() {
     const count = window.connections.filter(c => c.open).length;
     const el = document.getElementById('syncControls');
@@ -549,9 +572,21 @@ window.connectToHost = function(hostId) {
                     document.getElementById('setupScreen').classList.add('hidden');
                     document.getElementById('raceDashboard').classList.remove('hidden');
 
-                    // Show chat button for viewers
-                    const chatBtn = document.getElementById('chatToggleBtn');
-                    if (chatBtn) chatBtn.style.display = 'block';
+                    // Show chat button for viewers (but NOT for driver mode)
+                    if (!window._autoDriverMode) {
+                        const chatBtn = document.getElementById('chatToggleBtn');
+                        if (chatBtn) chatBtn.style.display = 'block';
+                    }
+
+                    // Auto-open Driver Mode if opened via driver link
+                    if (window._autoDriverMode && !window._driverModeOpened) {
+                        window._driverModeOpened = true;
+                        setTimeout(() => {
+                            if (typeof window.toggleDriverMode === 'function') {
+                                window.toggleDriverMode();
+                            }
+                        }, 300);
+                    }
 
                     if (typeof window.renderFrame === 'function') window.renderFrame();
                 } else if (data.type === 'CHAT') {

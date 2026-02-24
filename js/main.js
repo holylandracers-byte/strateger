@@ -36,8 +36,17 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const urlParams = new URLSearchParams(window.location.search);
     const joinCode = urlParams.get('join');
+    const driverCode = urlParams.get('driver');
 
-    if (joinCode) {
+    if (driverCode) {
+        // Driver link — connect as viewer + auto-open Driver Mode HUD
+        window.role = 'client';
+        window._autoDriverMode = true;
+        window._driverModeOpened = false;
+        document.getElementById('setupScreen').classList.add('hidden');
+        document.getElementById('clientWaitScreen').classList.remove('hidden');
+        if (typeof window.connectToHost === 'function') window.connectToHost(driverCode);
+    } else if (joinCode) {
         window.role = 'client';
         document.getElementById('setupScreen').classList.add('hidden');
         document.getElementById('clientWaitScreen').classList.remove('hidden');
@@ -1370,9 +1379,19 @@ window.toggleDriverMode = function() {
         }
         // Unlock screen orientation
         try { screen.orientation?.unlock(); } catch(e) {}
+        // Restore chat button (only if NOT auto-driver-mode link)
+        if (!window._autoDriverMode) {
+            const chatBtn = document.getElementById('chatToggleBtn');
+            if (chatBtn) chatBtn.style.display = 'block';
+        }
     } else {
         panel.classList.remove('hidden');
         window.alertState.driverModeActive = true;
+        // Hide chat button & panel in driver mode
+        const chatBtn = document.getElementById('chatToggleBtn');
+        const chatPanel = document.getElementById('chatPanel');
+        if (chatBtn) chatBtn.style.display = 'none';
+        if (chatPanel) chatPanel.classList.add('hidden');
         // Show demo badge if in demo mode
         const badge = document.getElementById('driverDemoBadge');
         if (badge) badge.classList.toggle('hidden', !window.liveTimingConfig.demoMode);
@@ -1432,6 +1451,14 @@ window.updateDriverMode = function() {
         }
     }
 
+    // === Target stint time (prominent display) ===
+    const targetTimeEl = document.getElementById('driverTargetTime');
+    if (targetTimeEl) {
+        let tStr = window.formatTimeHMS(targetMs);
+        if (tStr.startsWith('00:')) tStr = tStr.substring(3);
+        targetTimeEl.innerText = tStr;
+    }
+
     // === Delta ===
     const deltaLabel = document.getElementById('driverDelta');
     if (deltaLabel && !window.state.isInPit) {
@@ -1485,7 +1512,6 @@ window.updateDriverMode = function() {
     // === Progress bar ===
     const bar = document.getElementById('driverProgressBar');
     const targetLine = document.getElementById('driverTargetLine');
-    const targetLabel = document.getElementById('driverTargetLabel');
 
     if (bar) {
         const pct = Math.min(100, (currentStintMs / maxStintMs) * 100);
@@ -1498,11 +1524,6 @@ window.updateDriverMode = function() {
         const tPct = Math.min(100, (targetMs / maxStintMs) * 100);
         targetLine.style.left = `${tPct}%`;
         targetLine.classList.remove('hidden');
-    }
-    if (targetLabel) {
-        let tStr = window.formatTimeHMS(targetMs);
-        if (tStr.startsWith('00:')) tStr = tStr.substring(3);
-        targetLabel.innerText = `TGT ${tStr}`;
     }
 
     // === STATUS ZONE (top half) ===
@@ -1518,14 +1539,14 @@ window.updateDriverMode = function() {
     sub.className = 'driver-sub';
 
     if (window.state.isInPit) {
-        zone.style.background = 'linear-gradient(180deg, rgba(153,27,27,0.8) 0%, rgba(0,0,0,0.95) 100%)';
+        zone.style.background = 'linear-gradient(180deg, rgb(100,18,18) 0%, rgb(0,0,0) 100%)';
         zone.classList.remove('driver-zone-box');
         emoji.innerText = '🛑';
         msg.innerText = t('inPit');
         msg.style.color = '#f87171';
         sub.innerText = '';
     } else if (raceRemaining <= 0) {
-        zone.style.background = 'linear-gradient(180deg, rgba(57,255,20,0.3) 0%, rgba(0,0,0,0.95) 100%)';
+        zone.style.background = 'linear-gradient(180deg, rgb(15,70,8) 0%, rgb(0,0,0) 100%)';
         zone.classList.remove('driver-zone-box');
         emoji.innerText = '🏁';
         emoji.className = 'driver-emoji animate-pulse';
@@ -1535,14 +1556,14 @@ window.updateDriverMode = function() {
     } else if (window.state.mode === 'bad') {
         const belowMin = minStintMs > 0 && currentStintMs < minStintMs;
         if (belowMin) {
-            zone.style.background = 'linear-gradient(180deg, rgba(133,100,0,0.6) 0%, rgba(0,0,0,0.95) 100%)';
+            zone.style.background = 'linear-gradient(180deg, rgb(80,60,0) 0%, rgb(0,0,0) 100%)';
             zone.classList.remove('driver-zone-box');
             emoji.innerText = '⚠️';
             msg.innerText = t('stayOnTrackUntilFurther');
             msg.style.color = '#facc15';
             sub.innerText = '';
         } else {
-            zone.style.background = 'linear-gradient(180deg, rgba(220,38,38,0.6) 0%, rgba(0,0,0,0.95) 100%)';
+            zone.style.background = 'linear-gradient(180deg, rgb(130,22,22) 0%, rgb(0,0,0) 100%)';
             zone.classList.add('driver-zone-box');
             emoji.innerText = '🔴';
             emoji.className = 'driver-emoji animate-bounce';
@@ -1552,7 +1573,7 @@ window.updateDriverMode = function() {
             sub.innerText = '';
         }
     } else if (window.state.mode === 'push') {
-        zone.style.background = 'linear-gradient(180deg, rgba(22,101,52,0.7) 0%, rgba(0,0,0,0.95) 100%)';
+        zone.style.background = 'linear-gradient(180deg, rgb(14,65,34) 0%, rgb(0,0,0) 100%)';
         zone.classList.remove('driver-zone-box');
         emoji.innerText = '🔥';
         msg.innerText = 'PUSH!';
@@ -1560,7 +1581,7 @@ window.updateDriverMode = function() {
         sub.innerText = '';
     } else if (currentStintMs > targetMs) {
         // Over target — BOX
-        zone.style.background = 'linear-gradient(180deg, rgba(220,38,38,0.5) 0%, rgba(0,0,0,0.95) 100%)';
+        zone.style.background = 'linear-gradient(180deg, rgb(110,20,20) 0%, rgb(0,0,0) 100%)';
         zone.classList.add('driver-zone-box');
         emoji.innerText = '🏁';
         emoji.className = 'driver-emoji animate-bounce';
@@ -1569,7 +1590,7 @@ window.updateDriverMode = function() {
         sub.innerText = '';
     } else if (currentStintMs > targetMs - (window.getEstimatedLapMs() || 60000) * 2) {
         // Approaching — 2 laps left
-        zone.style.background = 'linear-gradient(180deg, rgba(133,100,0,0.4) 0%, rgba(0,0,0,0.95) 100%)';
+        zone.style.background = 'linear-gradient(180deg, rgb(55,42,0) 0%, rgb(0,0,0) 100%)';
         zone.classList.remove('driver-zone-box');
         emoji.innerText = '📢';
         msg.innerText = window.getBoxMessage();
@@ -1577,7 +1598,7 @@ window.updateDriverMode = function() {
         sub.innerText = '';
     } else {
         // Normal — on track
-        zone.style.background = 'linear-gradient(180deg, rgba(22,101,52,0.4) 0%, rgba(0,0,0,0.95) 100%)';
+        zone.style.background = 'linear-gradient(180deg, rgb(10,42,22) 0%, rgb(0,0,0) 100%)';
         zone.classList.remove('driver-zone-box');
         emoji.innerText = '🏎️';
         msg.innerText = t('onTrack');

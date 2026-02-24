@@ -949,8 +949,14 @@ window.enforceViewerMode = function() {
     const penaltyDisplay = document.getElementById('dashboardPitAdjDisplay');
     if (penaltyDisplay) penaltyDisplay.classList.remove('hidden');
 
-    // וידוא שהצ'אט זמין
-    document.getElementById('chatToggleBtn').classList.remove('hidden');
+    // Hide driver link button for viewers (host-only feature)
+    const driverLinkBtn = document.getElementById('driverLinkBtn');
+    if (driverLinkBtn) driverLinkBtn.classList.add('hidden');
+
+    // וידוא שהצ'אט זמין (לא במצב נהג)
+    if (!window._autoDriverMode) {
+        document.getElementById('chatToggleBtn').classList.remove('hidden');
+    }
 };
 
 // ==========================================
