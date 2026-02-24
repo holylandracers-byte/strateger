@@ -1,65 +1,76 @@
 class ApexTimingScraper {
-    constructor() {
+    constructor(config) {
+        config = config || {};
         this.ws = null;
         this.competitors = new Map();
-        this.onUpdate = null;
-        this.onError = null;
         this.isRunning = false;
-        this.raceUrl = '';
+        this.raceUrl = config.raceUrl || '';
         this.wsUrl = '';
         this.pollInterval = null;
         this.consecutiveErrors = 0;
         this.maxConsecutiveErrors = 5;
-        this.searchConfig = { type: 'team', value: '' };
+        this.searchTerm = config.searchTerm || '';
         this.gridHtml = '';
         this.sessionId = '';
+        this.debug = config.debug || false;
+
+        // Callbacks from LiveTimingManager
+        this.onUpdate = config.onUpdate || null;
+        this.onError = config.onError || null;
     }
 
     log(level, msg) {
-        const ts = new Date().toLocaleTimeString();
         const prefix = `[Apex ${level}]`;
         if (level === 'ERROR') console.error(`${prefix} ${msg}`);
         else if (level === 'WARN') console.warn(`${prefix} ${msg}`);
+        else if (this.debug || level !== 'INFO') console.log(`${prefix} ${msg}`);
         else console.log(`${prefix} ${msg}`);
     }
 
     async start(url, searchConfig) {
-        this.raceUrl = url;
-        this.searchConfig = searchConfig || this.searchConfig;
+        // Support both: start() with no args (manager style) or start(url) with args
+        if (url) this.raceUrl = url;
+        if (searchConfig) this.searchTerm = searchConfig.value || searchConfig;
+        
+        if (!this.raceUrl) {
+            this.log('ERROR', 'No race URL provided');
+            return;
+        }
+
         this.isRunning = true;
         this.consecutiveErrors = 0;
 
-        // Detect WebSocket URL from the page URL
-        // Apex timing uses wss://<domain>:<port>/
-        // The port is typically found in the page's JavaScript
+        // Build WSS URL from the race page URL
         try {
-            this.wsUrl = await this.detectWebSocketUrl(url);
-        } catch (e) {
-            this.log('WARN', `Could not auto-detect WS URL, using default port 8523: ${e.message}`);
-            const urlObj = new URL(url);
+            const urlObj = new URL(this.raceUrl);
             this.wsUrl = `wss://${urlObj.hostname}:8523/`;
+        } catch (e) {
+            this.log('ERROR', `Invalid race URL: ${this.raceUrl}`);
+            return;
         }
+
+        this.log('INFO', `🔌 Race URL: ${this.raceUrl}`);
+        this.log('INFO', `🔌 WS URL: ${this.wsUrl}`);
+        this.log('INFO', `🔍 Search term: "${this.searchTerm}"`);
 
         this.connectWebSocket();
         this.scrapeInitialGrid();
     }
 
-    async detectWebSocketUrl(pageUrl) {
-        const urlObj = new URL(pageUrl);
-        // Try to fetch the page and find the WebSocket port
-        try {
-            const html = await this.fetchWithProxy(pageUrl);
-            // Look for patterns like: wsPort = 8523, ws_port: 8523, :8523/
-            const portMatch = html.match(/(?:wsPort|ws_port|WebSocket.*?:)\s*(\d{4})/i) ||
-                              html.match(/:(\d{4})\//);
-            if (portMatch) {
-                return `wss://${urlObj.hostname}:${portMatch[1]}/`;
-            }
-        } catch (e) {
-            this.log('WARN', `Page fetch for WS detection failed: ${e.message}`);
-        }
-        return `wss://${urlObj.hostname}:8523/`;
+    extractHost(url) {
+        try { return new URL(url).hostname; } catch (e) { return 'www.apex-timing.com'; }
     }
+
+    extractRaceId(url) {
+        try {
+            const parts = new URL(url).pathname.split('/').filter(Boolean);
+            const ltIdx = parts.indexOf('live-timing');
+            return (ltIdx >= 0 && parts[ltIdx + 1]) ? parts[ltIdx + 1] : (parts[parts.length - 1] || 'race');
+        } catch (e) { return 'race'; }
+    }
+
+    /* REMOVED: detectWebSocketUrl - was causing Invalid URL errors
+    */
 
     connectWebSocket() {
         if (!this.isRunning) return;
@@ -436,61 +447,51 @@ class ApexTimingScraper {
         const allCompetitors = Array.from(this.competitors.values())
             .sort((a, b) => (a.position || 999) - (b.position || 999));
 
-        // Find our team based on search config
+        // Find our team using searchTerm (plain string — matches driver name, team, or kart #)
         let ourTeam = null;
-        const sv = (this.searchConfig.value || '').toLowerCase();
+        const term = (this.searchTerm || '').toUpperCase().trim();
 
-        if (sv) {
-            for (const comp of allCompetitors) {
-                const fullName = `${comp.driverName} ${comp.firstName} ${comp.lastName}`.toLowerCase();
-                const kart = (comp.kartNumber || '').toLowerCase();
-
-                switch (this.searchConfig.type) {
-                    case 'team':
-                    case 'driver':
-                        if (fullName.includes(sv)) ourTeam = comp;
-                        break;
-                    case 'kart':
-                        if (kart === sv) ourTeam = comp;
-                        break;
-                }
-                if (ourTeam) break;
-            }
+        if (term) {
+            ourTeam = allCompetitors.find(c => {
+                const nameMatch = (c.driverName || '').toUpperCase().includes(term);
+                const firstMatch = (c.firstName || '').toUpperCase().includes(term);
+                const lastMatch = (c.lastName || '').toUpperCase().includes(term);
+                const kartMatch = (c.kartNumber || '') === term || String(parseInt(c.kartNumber)) === String(parseInt(term));
+                return nameMatch || firstMatch || lastMatch || kartMatch;
+            }) || null;
         }
 
+        // Map to field names LiveTimingManager expects: kart, laps, found
+        const mapComp = c => ({
+            position: c.position,
+            name: c.driverName || `${c.firstName} ${c.lastName}`.trim(),
+            team: c.lastName || '',
+            kart: c.kartNumber || '',
+            lastLap: c.lastLap || '',
+            lastLapMs: c.lastLapMs || 0,
+            bestLap: c.bestLap || '',
+            bestLapMs: c.bestLapMs || 0,
+            gap: c.gap || '-',
+            laps: c.totalLaps || 0,
+            totalLaps: c.totalLaps || 0,
+            inPit: c.inPit || false,
+            previousPosition: c.previousPosition || c.position
+        });
+
         const result = {
-            competitors: allCompetitors.map(c => ({
-                position: c.position,
-                name: c.driverName || `${c.firstName} ${c.lastName}`.trim(),
-                kartNumber: c.kartNumber,
-                lastLap: c.lastLap,
-                lastLapMs: c.lastLapMs,
-                bestLap: c.bestLap,
-                bestLapMs: c.bestLapMs,
-                gap: c.gap,
-                totalLaps: c.totalLaps,
-                inPit: c.inPit,
-                previousPosition: c.previousPosition
-            })),
+            competitors: allCompetitors.map(mapComp),
             ourTeam: ourTeam ? {
-                position: ourTeam.position,
-                previousPosition: ourTeam.previousPosition,
-                name: ourTeam.driverName || `${ourTeam.firstName} ${ourTeam.lastName}`.trim(),
-                kartNumber: ourTeam.kartNumber,
-                lastLap: ourTeam.lastLap,
-                lastLapMs: ourTeam.lastLapMs,
-                bestLap: ourTeam.bestLap,
-                bestLapMs: ourTeam.bestLapMs,
-                gap: ourTeam.gap,
-                totalLaps: ourTeam.totalLaps,
-                inPit: ourTeam.inPit,
-                sector1: ourTeam.sector1,
-                sector2: ourTeam.sector2,
-                sector3: ourTeam.sector3
+                ...mapComp(ourTeam),
+                sector1: ourTeam.sector1 || '',
+                sector2: ourTeam.sector2 || '',
+                sector3: ourTeam.sector3 || ''
             } : null,
-            totalCompetitors: allCompetitors.length
+            found: !!ourTeam,
+            totalCompetitors: allCompetitors.length,
+            provider: 'apex-ws'
         };
 
+        this.log('INFO', `📊 Update: ${allCompetitors.length} competitors, ourTeam: ${ourTeam ? ourTeam.driverName : 'not found'}`);
         this.onUpdate(result);
     }
 
