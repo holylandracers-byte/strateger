@@ -270,9 +270,8 @@ window.updateCompetitorsTable = function() {
     }
     
     const ourTeam = window.liveData.competitors.find(c => c.isOurTeam);
-    let html = '';
     
-    // Show context around our team: 3 before, us, 3 after (or top 10 if no team found)
+    // Show context around our team: 3 before, us, 3 after (or top 7 if no team found)
     let displayList = [];
     if (ourTeam) {
         const ourIndex = window.liveData.competitors.findIndex(c => c.isOurTeam);
@@ -280,74 +279,124 @@ window.updateCompetitorsTable = function() {
         const endIdx = Math.min(window.liveData.competitors.length, ourIndex + 4);
         displayList = window.liveData.competitors.slice(startIdx, endIdx);
     } else {
-        displayList = window.liveData.competitors.slice(0, 10);
+        displayList = window.liveData.competitors.slice(0, 7);
     }
     
+    // Pad to exactly 7 rows for stable height
+    const FIXED_ROWS = 7;
+    while (displayList.length < FIXED_ROWS) {
+        displayList.push(null); // placeholder empty row
+    }
+
+    // Reuse existing rows if count matches, otherwise rebuild
+    const existingRows = tableEl.querySelectorAll('.competitor-row');
+    const needsRebuild = existingRows.length !== FIXED_ROWS;
+    
+    if (needsRebuild) {
+        let html = '';
+        for (let i = 0; i < FIXED_ROWS; i++) {
+            html += `<div class="competitor-row py-1 px-2 rounded flex justify-between items-center" style="height:28px;min-height:28px;">
+                <div class="flex items-center gap-1" style="min-width:0;">
+                    <span class="comp-pos font-bold" style="width:20px;text-align:right;"></span>
+                    <span class="comp-name text-[11px] truncate" style="width:80px;"></span>
+                    <span class="comp-pit text-[10px]" style="width:24px;"></span>
+                </div>
+                <div class="flex items-center gap-2 text-[10px]" style="min-width:0;">
+                    <span class="comp-lap text-gray-400" style="width:60px;text-align:right;"></span>
+                    <span class="comp-gap" style="width:60px;text-align:right;"></span>
+                </div>
+            </div>`;
+        }
+        tableEl.innerHTML = html;
+    }
+    
+    const rows = tableEl.querySelectorAll('.competitor-row');
+    
     displayList.forEach((comp, idx) => {
+        const row = rows[idx];
+        if (!row) return;
+        
+        if (!comp) {
+            // Empty placeholder row — keep it invisible but sized
+            row.className = 'competitor-row py-1 px-2 rounded flex justify-between items-center opacity-0';
+            row.style.height = '28px';
+            row.style.minHeight = '28px';
+            return;
+        }
+        
         const isUs = comp.isOurTeam;
         const isDanger = !isUs && window.liveData.position && Math.abs(comp.position - window.liveData.position) <= 2;
         
-        let posClass = 'text-gray-400';
-        if (comp.position === 1) posClass = 'text-gold';
-        else if (comp.position === 2) posClass = 'text-silver';
-        else if (comp.position === 3) posClass = 'text-bronze';
+        // Row class — stable, no flash/pulse for our team
+        let rowCls = 'competitor-row py-1 px-2 rounded flex justify-between items-center';
+        if (isUs) rowCls += ' our-team';
+        else if (isDanger) rowCls += ' danger-zone';
+        row.className = rowCls;
+        row.style.height = '28px';
+        row.style.minHeight = '28px';
+        row.style.opacity = '1';
         
-        let rowClass = 'competitor-row py-1 px-2 rounded flex justify-between items-center mb-1';
-        if (isUs) rowClass += ' our-team';
-        else if (isDanger) rowClass += ' danger-zone';
+        // Position
+        const posEl = row.querySelector('.comp-pos');
+        if (posEl) {
+            posEl.innerText = comp.position;
+            if (comp.position === 1) posEl.className = 'comp-pos font-bold text-gold';
+            else if (comp.position === 2) posEl.className = 'comp-pos font-bold text-silver';
+            else if (comp.position === 3) posEl.className = 'comp-pos font-bold text-bronze';
+            else posEl.className = 'comp-pos font-bold text-gray-400';
+            posEl.style.width = '20px';
+            posEl.style.textAlign = 'right';
+        }
         
-        const pitIndicator = comp.inPit ? '<span class="text-fuel animate-pulse">🔧</span>' : '';
+        // Name
+        const nameEl = row.querySelector('.comp-name');
+        if (nameEl) {
+            nameEl.innerText = comp.name;
+            nameEl.className = isUs ? 'comp-name text-[11px] truncate text-ice font-bold' : 'comp-name text-[11px] truncate text-white';
+            nameEl.style.width = '80px';
+        }
         
-        // Gap Calculation
-        let gapDisplay = '';
-        if (comp.position === 1) {
-            gapDisplay = '<span class="text-gold">Leader</span>';
-        } else if (comp.gapToLeader) {
-            if (ourTeam && !isUs) {
-                const gapToUs = comp.totalRaceTime - ourTeam.totalRaceTime;
-                // לוגיקה מקוצרת להצגת פערים (שניות או הקפות)
-                const gapSec = (gapToUs / 1000).toFixed(1);
-                gapDisplay = `<span class="${gapToUs > 0 ? 'text-green-400' : 'text-red-400'}">${gapToUs > 0 ? '+' : ''}${gapSec}s</span>`;
-            } else if (!isUs) {
-                const gapSec = (comp.gapToLeader / 1000).toFixed(1);
-                gapDisplay = `<span class="text-gray-500">+${gapSec}s</span>`;
+        // Pit indicator
+        const pitEl = row.querySelector('.comp-pit');
+        if (pitEl) {
+            if (comp.inPit) {
+                pitEl.innerHTML = '<span class="text-fuel font-bold">PIT</span>';
+            } else {
+                pitEl.innerHTML = '';
             }
         }
         
-        const lastLapDisplay = comp.lastLap ? `<span class="text-gray-400">${window.formatLapTime(comp.lastLap)}</span>` : '';
+        // Last lap
+        const lapEl = row.querySelector('.comp-lap');
+        if (lapEl) {
+            lapEl.innerText = comp.lastLap ? window.formatLapTime(comp.lastLap) : '';
+        }
         
-        html += `
-            <div class="${rowClass}">
-                <div class="flex items-center gap-2">
-                    <span class="${posClass} font-bold w-5">${comp.position}</span>
-                    <span class="text-white text-[11px] truncate w-20">${comp.name}</span>
-                    ${pitIndicator}
-                </div>
-                <div class="flex items-center gap-2 text-[10px]">
-                    ${lastLapDisplay}
-                    <span class="w-16 text-right">${gapDisplay}</span>
-                </div>
-            </div>
-        `;
+        // Gap
+        const gapEl = row.querySelector('.comp-gap');
+        if (gapEl) {
+            if (comp.position === 1) {
+                gapEl.innerHTML = '<span class="text-gold">P1</span>';
+            } else if (comp.gapToLeader) {
+                if (ourTeam && !isUs) {
+                    const gapToUs = comp.totalRaceTime - ourTeam.totalRaceTime;
+                    const gapSec = (gapToUs / 1000).toFixed(1);
+                    gapEl.innerHTML = `<span class="${gapToUs > 0 ? 'text-green-400' : 'text-red-400'}">${gapToUs > 0 ? '+' : ''}${gapSec}s</span>`;
+                } else if (!isUs) {
+                    const gapSec = (comp.gapToLeader / 1000).toFixed(1);
+                    gapEl.innerHTML = `<span class="text-gray-500">+${gapSec}s</span>`;
+                } else {
+                    gapEl.innerHTML = '';
+                }
+            } else {
+                gapEl.innerHTML = '';
+            }
+        }
     });
-    
-    tableEl.innerHTML = html;
-    
-    // גלילה אוטומטית לשורה שלנו
-    if (window.liveData.competitors.some(c => c.isOurTeam)) {
-        setTimeout(window.scrollToOurTeam, 500);
-    }
 };
 
 window.scrollToOurTeam = function() {
-    const rows = document.querySelectorAll('.competitor-row');
-    rows.forEach(row => {
-        if (row.classList.contains('our-team')) {
-            row.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            row.classList.add('flash-alert');
-            setTimeout(() => row.classList.remove('flash-alert'), 2000);
-        }
-    });
+    // No-op: our team is always centered in the view, no scroll/flash needed
 };
 
 // ==================== LIVE TIMING EMBED (IFRAME) ====================
@@ -469,7 +518,9 @@ window.initializeDemoCompetitors = function() {
     const teamNames = [
         'Your Team', 'Racing Stars', 'Speed Demons', 'Track Masters', 
         'Nitro Force', 'Apex Racing', 'Thunder Karts', 'Pro Racers',
-        'Fast Lane', 'Grid Warriors'
+        'Fast Lane', 'Grid Warriors', 'Velocity', 'Turbo Squad',
+        'Drift Kings', 'Iron Wheels', 'Storm Racing', 'Pole Hunters',
+        'Circuit Wolves', 'Checkered Flag', 'Rev Limit', 'Slipstream'
     ];
     
     // Shuffle base speeds so "Your Team" isn't always P1
@@ -495,15 +546,18 @@ window.updateDemoData = function() {
     if (!window.liveTimingConfig.demoMode || !window.state.isRunning) return;
     
     const raceElapsed = Date.now() - window.state.startTime;
+    const raceDurationMs = (window.config.duration || window.config.raceDuration || 0.5) * 3600000;
+    const configPitTimeSec = window.config.pitTime || 60;
+    const configStops = window.config.reqStops || window.config.stops || 2;
     
     window.demoState.competitors.forEach((comp, idx) => {
         if (!comp.baseLapTime) {
-            // Base time 60-63s range with random spread
-            comp.baseLapTime = 60000 + (comp.speedOffset || idx * 400) + (Math.random() * 500);
+            // Base time 58-63s range with random spread per team
+            comp.baseLapTime = 58000 + (comp.speedOffset || idx * 400) + (Math.random() * 500);
         }
         
         // Add per-lap variance (tire degradation, traffic, mistakes)
-        const lapVariance = (Math.random() - 0.4) * 2000; // slightly biased slower
+        const lapVariance = (Math.random() - 0.4) * 2000;
         const currentLapTime = comp.baseLapTime + lapVariance;
         
         const expectedLaps = Math.floor(raceElapsed / comp.baseLapTime);
@@ -513,24 +567,35 @@ window.updateDemoData = function() {
             if (!comp.bestLap || comp.lastLap < comp.bestLap) comp.bestLap = comp.lastLap;
         }
         
-        // סימולציית פיטס פשוטה
-        const raceDurationMs = (window.config.raceDuration || 0.5) * 3600000;
-        const basePitInterval = raceDurationMs < 3600000 ? 8 * 60 * 1000 : 50 * 60 * 1000;
-        const pitInterval = basePitInterval + (idx * 30 * 1000);
-        const expectedPits = Math.floor(raceElapsed / pitInterval);
-        if (expectedPits > comp.pitStops) comp.pitStops = expectedPits;
+        // Pit simulation: spread pits evenly across race, staggered per team
+        const pitTimeMs = configPitTimeSec * 1000;
+        const segmentLength = raceDurationMs / (configStops + 1);
+        const teamOffset = idx * 15000; // 15s stagger between teams
         
-        const pitTimePenalty = raceDurationMs < 3600000 ? 30000 : 120000;
-        const timeSinceLastPit = raceElapsed - (comp.pitStops * pitInterval);
-        comp.inPit = timeSinceLastPit >= 0 && timeSinceLastPit < pitTimePenalty && comp.pitStops > 0;
+        let pitsDone = 0;
+        let isCurrentlyInPit = false;
+        let totalPitPenalty = 0;
         
-        let currentPitPenalty = comp.pitStops * pitTimePenalty;
-        if (comp.inPit) currentPitPenalty = ((comp.pitStops - 1) * pitTimePenalty) + timeSinceLastPit;
+        for (let p = 1; p <= configStops; p++) {
+            const pitEntryTime = (segmentLength * p) + teamOffset;
+            if (raceElapsed >= pitEntryTime) {
+                pitsDone++;
+                const timeSincePitEntry = raceElapsed - pitEntryTime;
+                if (timeSincePitEntry < pitTimeMs) {
+                    isCurrentlyInPit = true;
+                    totalPitPenalty += timeSincePitEntry;
+                } else {
+                    totalPitPenalty += pitTimeMs;
+                }
+            }
+        }
         
-        comp.totalRaceTime = (comp.laps * comp.baseLapTime) + currentPitPenalty;
+        comp.pitStops = pitsDone;
+        comp.inPit = isCurrentlyInPit;
+        comp.totalRaceTime = (comp.laps * comp.baseLapTime) + totalPitPenalty;
     });
     
-    // מיון לפי זמן מירוץ כולל (קובע את המיקום)
+    // Sort by race progress (most laps, then least total time)
     window.demoState.competitors.sort((a, b) => {
         if (b.laps !== a.laps) return b.laps - a.laps;
         return a.totalRaceTime - b.totalRaceTime;
@@ -543,7 +608,7 @@ window.updateDemoData = function() {
         c.gapToLeader = (i === 0) ? 0 : (c.totalRaceTime - leader.totalRaceTime);
     });
     
-    // עדכון Live Data
+    // Update Live Data from our team
     const ourTeam = window.demoState.competitors.find(c => c.isOurTeam);
     if (ourTeam) {
         window.liveData.previousPosition = window.liveData.position;

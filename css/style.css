@@ -205,9 +205,9 @@ header {
 .position-up { color: #22c55e; }
 .position-down { color: #ef4444; }
 .position-same { color: #9ca3af; }
-.competitor-row { transition: background 0.3s ease; }
-.competitor-row.our-team { background: rgba(34, 211, 238, 0.2); border: 1px solid var(--ice); }
-.competitor-row.danger-zone { background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); }
+.competitor-row { transition: background 0.3s ease; box-sizing: border-box; }
+.competitor-row.our-team { background: rgba(34, 211, 238, 0.15); border: 1px solid var(--ice); border-radius: 4px; }
+.competitor-row.danger-zone { background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.35); }
 .competitor-row:hover { background: rgba(255, 255, 255, 0.05); }
 
 /* Scrollbar for competitors table */
@@ -215,6 +215,111 @@ header {
 .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
 .scrollbar-thin::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 2px; }
 .scrollbar-thin::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.3); }
+
+/* ==================== DRIVER MODE HUD ==================== */
+#driverModePanel {
+    -webkit-user-select: none;
+    user-select: none;
+    touch-action: manipulation;
+    overflow: hidden;
+}
+
+/* Status zone (top half) */
+.driver-status-zone {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.6s ease, background 0.6s ease;
+    background: rgba(16, 40, 16, 0.8);
+}
+
+/* Consistency background overlays */
+.driver-consistency-green  { background: linear-gradient(180deg, rgba(22, 101, 52, 0.7) 0%, rgba(0,0,0,0.95) 100%) !important; }
+.driver-consistency-yellow { background: linear-gradient(180deg, rgba(133, 100, 0, 0.5) 0%, rgba(0,0,0,0.95) 100%) !important; }
+.driver-consistency-red    { background: linear-gradient(180deg, rgba(153, 27, 27, 0.5) 0%, rgba(0,0,0,0.95) 100%) !important; }
+
+.driver-zone-box {
+    animation: driverBoxPulse 1.2s ease-in-out infinite;
+}
+@keyframes driverBoxPulse {
+    0%, 100% { opacity: 0.85; }
+    50% { opacity: 1; }
+}
+
+/* Race timer (top-right) */
+.driver-race-timer {
+    font-family: monospace;
+    font-size: 3vw;
+    color: rgba(255,255,255,0.5);
+}
+
+/* Big emoji */
+.driver-emoji {
+    font-size: 18vw;
+    line-height: 1;
+    margin-bottom: 1vh;
+}
+
+/* Status message */
+.driver-msg {
+    font-size: 8vw;
+    font-weight: 900;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    text-align: center;
+    color: white;
+    text-shadow: 0 0 20px rgba(0,0,0,0.8);
+}
+
+/* Sub-message */
+.driver-sub {
+    font-size: 5vw;
+    font-family: monospace;
+    color: rgba(255,255,255,0.5);
+    margin-top: 0.5vh;
+}
+
+/* Labels */
+.driver-label {
+    font-size: 2.5vw;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: rgba(255,255,255,0.35);
+}
+
+/* STINT timer — hero number */
+.driver-stint-timer {
+    font-family: monospace;
+    font-size: 16vw;
+    font-weight: 800;
+    color: white;
+    line-height: 1;
+}
+
+/* Delta */
+.driver-delta {
+    font-family: monospace;
+    font-size: 5vw;
+    font-weight: 700;
+    color: #4ade80;
+}
+
+/* Data cells (LAST / BEST / POS) */
+.driver-data {
+    font-family: monospace;
+    font-size: 7vw;
+    font-weight: 800;
+    line-height: 1.1;
+}
+
+/* Position change arrow */
+.driver-pos-change {
+    font-size: 3.5vw;
+    font-weight: 700;
+}
 
 .hidden { display: none !important; }
 

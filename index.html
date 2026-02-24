@@ -498,9 +498,14 @@
     <div id="raceDashboard" class="hidden flex flex-col h-full min-h-0 bg-navy-950 w-full relative">
 
         <div class="bg-navy-900 border-b border-gray-800 shrink-0 p-2 flex justify-between items-center z-10 shadow-md">
-            <button id="btnRain" onclick="window.toggleRain()" class="bg-navy-800 border border-blue-500/50 rounded px-3 py-1 hover:bg-navy-700 transition">
-                <span id="rainIcon">☀️</span> <span id="rainText" class="text-xs font-bold text-yellow-400">Dry</span>
-            </button>
+            <div class="flex items-center gap-1">
+                <button id="btnRain" onclick="window.toggleRain()" class="bg-navy-800 border border-blue-500/50 rounded px-3 py-1 hover:bg-navy-700 transition">
+                    <span id="rainIcon">☀️</span> <span id="rainText" class="text-xs font-bold text-yellow-400">Dry</span>
+                </button>
+                <button onclick="window.toggleDriverMode()" class="bg-navy-800 border border-ice/30 rounded px-2 py-1 hover:bg-navy-700 transition text-ice text-xs font-bold" title="Driver Mode">
+                    🏎️
+                </button>
+            </div>
             <div class="text-center">
                 <div class="text-[10px] text-gray-500 uppercase font-bold" data-i18n="raceTime">Race Time</div>
                 <div id="raceTimerDisplay" class="text-xl font-mono font-bold text-white tracking-wider">00:00:00</div>
@@ -556,7 +561,7 @@
                         <div id="liveTotalCars" class="text-sm font-bold text-gray-300">-</div>
                     </div>
                 </div>
-                <div id="competitorsTable" class="mt-2 max-h-48 overflow-y-auto scrollbar-thin"></div>
+                <div id="competitorsTable" class="mt-2 overflow-hidden" style="min-height:196px;max-height:196px;"></div>
             </div>
 
             <div id="strategyBox" class="p-2 text-center bg-navy-900 border border-gray-700 rounded-lg shadow-sm">
@@ -675,6 +680,72 @@
         </div>
     </div>
 
+    <!-- ==================== DRIVER MODE HUD ==================== -->
+    <div id="driverModePanel" class="hidden fixed inset-0 z-40 flex flex-col bg-black">
+
+        <!-- ===== TOP HALF: STATUS ZONE (50vh) ===== -->
+        <div id="driverStatusZone" class="driver-status-zone" style="height:50vh;">
+            <!-- Exit button (top-left, small) -->
+            <button onclick="window.toggleDriverMode()" class="absolute top-2 left-2 z-10 text-white/30 text-lg px-2 py-1">✕</button>
+            <!-- Race timer (top-right, small) -->
+            <div class="absolute top-2 right-2 z-10 flex items-center gap-2">
+                <div id="driverDemoBadge" class="hidden text-[10px] bg-neon/20 text-neon border border-neon/50 px-1.5 py-0.5 rounded-full font-bold">DEMO</div>
+                <div id="driverRaceTimer" class="driver-race-timer">00:00:00</div>
+            </div>
+            <!-- Big status content (centered) -->
+            <div class="flex flex-col items-center justify-center h-full px-4">
+                <div id="driverStatusEmoji" class="driver-emoji">🏎️</div>
+                <div id="driverStatusMsg" class="driver-msg">ON TRACK</div>
+                <div id="driverStatusSub" class="driver-sub"></div>
+            </div>
+        </div>
+
+        <!-- ===== BOTTOM HALF: DATA (50vh) ===== -->
+        <div class="flex flex-col justify-between bg-black" style="height:50vh;">
+
+            <!-- STINT TIMER — the hero number -->
+            <div class="flex flex-col items-center justify-center pt-2" style="flex:2;">
+                <div class="driver-label" data-i18n="stintTime">STINT</div>
+                <div id="driverStintTimer" class="driver-stint-timer">--:--</div>
+                <!-- Delta under stint -->
+                <div id="driverDelta" class="driver-delta">+0:00</div>
+            </div>
+
+            <!-- LAST / BEST / POS — 3 columns -->
+            <div class="grid grid-cols-3 gap-0 border-t border-gray-800" style="flex:1.2;">
+                <div class="flex flex-col items-center justify-center border-r border-gray-800">
+                    <div class="driver-label" data-i18n="last">LAST</div>
+                    <div id="driverLastLap" class="driver-data text-gray-300">--</div>
+                </div>
+                <div class="flex flex-col items-center justify-center border-r border-gray-800">
+                    <div class="driver-label" data-i18n="best">BEST</div>
+                    <div id="driverBestLap" class="driver-data text-neon">--</div>
+                </div>
+                <div class="flex flex-col items-center justify-center">
+                    <div class="driver-label" data-i18n="pos">POS</div>
+                    <div class="flex items-baseline gap-1">
+                        <span id="driverPosition" class="driver-data text-ice">-</span>
+                        <span id="driverPosChange" class="driver-pos-change"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Progress bar — bottom strip -->
+            <div class="px-3 pb-2 pt-1">
+                <div class="relative rounded-full overflow-hidden border border-gray-700" style="height:2.5vh;min-height:12px;">
+                    <div id="driverProgressBar" class="absolute top-0 left-0 h-full bg-gradient-to-r from-green-600 to-neon transition-all duration-500" style="width:0%"></div>
+                    <div id="driverTargetLine" class="absolute top-0 bottom-0 w-0.5 bg-white z-10 hidden"></div>
+                </div>
+                <div class="flex justify-between mt-0.5">
+                    <span id="driverTargetLabel" class="text-[2.2vw] text-gray-600 font-mono">TGT --:--</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Hidden consistency value holder -->
+        <div id="driverConsistency" class="hidden"></div>
+    </div>
+
     <div id="pitModal" class="hidden fixed inset-0 bg-navy-950/95 z-50 flex flex-col items-center justify-center p-4">
         <h2 class="text-ice text-3xl font-bold mb-2 tracking-widest animate-pulse" data-i18n="inPit">IN PIT</h2>
         <p class="text-gray-400 mb-4"><span data-i18n="nextLabel">Next:</span> <span id="modalNextDriverName" class="text-white font-bold text-xl">---</span></p>
@@ -690,7 +761,7 @@
         <button id="notifyBtn" class="hidden w-full max-w-xs bg-fuel text-black font-bold py-3 rounded-lg text-lg mb-2" data-i18n="notifyDriver">📢 Notify Driver</button>
         <div id="notifiedMsg" class="hidden text-fuel font-bold mb-4" data-i18n="driverNotified">✓ Driver Notified</div>
 
-        <div id="pitWarningBox" class="hidden w-full max-w-xs bg-orange-600/50 border border-orange-500 text-white font-bold py-3 rounded-lg mb-2 text-center text-sm">⚠️ Orange zone - NOTIFY only</div>
+        <div id="pitWarningBox" class="hidden w-full max-w-xs bg-orange-600/50 border border-orange-500 text-white font-bold py-3 rounded-lg mb-2 text-center text-sm" data-i18n="orangeZone">⚠️ Orange zone - NOTIFY only</div>
 
         <button id="confirmExitBtn" disabled onclick="window.confirmPitExit()" class="w-full max-w-xs bg-gray-800 text-gray-500 font-bold py-4 rounded-lg text-2xl border border-gray-700 transition-all">Wait...</button>
         

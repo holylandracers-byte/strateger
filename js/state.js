@@ -51,6 +51,17 @@ window.searchConfig = { teamName: '', driverName: '', kartNumber: '' };
 window.liveData = { position: null, previousPosition: null, lastLap: null, bestLap: null, laps: null, gapToLeader: null, competitors: [] };
 window.demoState = { competitors: [], updateInterval: null };
 
+// Alert state tracking — prevents re-firing same alerts every frame
+window.alertState = {
+    lastZone: 'green',        // green | yellow | red | over
+    lastMode: 'normal',       // normal | push | bad
+    boxAlertFired: false,     // "BOX THIS LAP" already shown
+    overTargetFired: false,   // over-target beep already played
+    driverModeActive: false,  // driver HUD mode
+    estimatedLapMs: null,     // estimated lap time from live data
+    lastDriverNotification: null // last notification sent to driver
+};
+
 window.cachedStrategy = null;
 window.previewData = null;
 
@@ -113,6 +124,7 @@ window.translations = {
         wait: "WAIT...",
         getReady: "GET READY",
         go: "GO! GO! GO!",
+        orangeZone: "⚠️ Orange zone - NOTIFY only",
         googleLoginBtn: "Login",
         testBtn: "Test",
         demoBtn: "Demo",
@@ -147,6 +159,7 @@ window.translations = {
         squadOff: "Off", squad2: "2 Squads", squad3: "3 Squads", squad4: "4 Squads",
         lblAppearance: "🎨 Appearance", lblPageBg: "Page Background",
         laps: "LAPS", gap: "GAP", totalCompetitors: "CARS", waitingData: "Waiting for data...",
+        boxThisLap: "🏁 BOX THIS LAP", boxNextLap: "📢 BOX NEXT LAP", stayOut: "STAY OUT", onTrack: "ON TRACK", inPit: "IN PIT",
     },
     he: {
         ltSearchType: "סנן לפי:", ltTeam: "קבוצה", ltDriver: "נהג", ltKart: "מספר קארט", ltPlaceholder: "הכנס ערך לחיפוש...",
@@ -200,6 +213,7 @@ window.translations = {
         wait: "המתן...",
         getReady: "היכון...",
         go: "סע! סע! סע!",
+        orangeZone: "⚠️ אזור כתום - הודע לנהג בלבד",
         googleLoginBtn: "כניסה",
         testBtn: "בדיקה",
         demoBtn: "דמו",
@@ -235,6 +249,7 @@ window.translations = {
         squadOff: "כבוי", squad2: "2 חוליות", squad3: "3 חוליות", squad4: "4 חוליות",
         lblAppearance: "🎨 מראה", lblPageBg: "רקע עמוד",
         laps: "הקפות", gap: "פער", totalCompetitors: "מכוניות", waitingData: "ממתין לנתונים...",
+        boxThisLap: "🏁 היכנס להקפה הזו", boxNextLap: "📢 היכנס בהקפה הבאה", stayOut: "הישאר בחוץ", onTrack: "על המסלול", inPit: "בפיטס",
     },
     fr: {
         ltSearchType: "Filtrer par:", ltTeam: "Équipe", ltDriver: "Pilote", ltKart: "Kart n°", ltPlaceholder: "Rechercher...",
@@ -288,6 +303,7 @@ window.translations = {
         wait: "ATTENDEZ...",
         getReady: "PRÊT...",
         go: "GO! GO! GO!",
+        orangeZone: "⚠️ Zone orange - NOTIFIER seulement",
         googleLoginBtn: "Connexion",
         testBtn: "Test",
         demoBtn: "Démo",
@@ -322,6 +338,7 @@ window.translations = {
         squadOff: "Désactivé", squad2: "2 Équipes", squad3: "3 Équipes", squad4: "4 Équipes",
         lblAppearance: "🎨 Apparence", lblPageBg: "Fond de page",
         laps: "TOURS", gap: "ÉCART", totalCompetitors: "VOITURES", waitingData: "En attente de données...",
+        boxThisLap: "🏁 BOX CE TOUR", boxNextLap: "📢 BOX PROCHAIN TOUR", stayOut: "RESTEZ EN PISTE", onTrack: "EN PISTE", inPit: "AUX STANDS",
     },
     pt: {
         ltSearchType: "Filtrar por:", ltTeam: "Equipe", ltDriver: "Piloto", ltKart: "Kart nº", ltPlaceholder: "Pesquisar...",
@@ -370,6 +387,7 @@ window.translations = {
         wait: "AGUARDE...",
         getReady: "PREPARAR...",
         go: "VAI! VAI! VAI!",
+        orangeZone: "⚠️ Zona laranja - NOTIFICAR apenas",
         googleLoginBtn: "Conexão",
         testBtn: "Teste",
         demoBtn: "Demo",
@@ -404,6 +422,7 @@ window.translations = {
         squadOff: "Desligado", squad2: "2 Esquadrões", squad3: "3 Esquadrões", squad4: "4 Esquadrões",
         lblAppearance: "🎨 Aparência", lblPageBg: "Fundo da página",
         laps: "VOLTAS", gap: "DIFERENÇA", totalCompetitors: "CARROS", waitingData: "Aguardando dados...",
+        boxThisLap: "🏁 BOX NESTA VOLTA", boxNextLap: "📢 BOX PRÓXIMA VOLTA", stayOut: "FIQUE FORA", onTrack: "NA PISTA", inPit: "NOS BOXES",
     },
     ru: {
         ltSearchType: "Фильтр по:", ltTeam: "Команда", ltDriver: "Пилот", ltKart: "Карт №", ltPlaceholder: "Поиск...",
@@ -456,6 +475,7 @@ window.translations = {
         wait: "ЖДИТЕ...",
         getReady: "ГОТОВЬТЕСЬ...",
         go: "ВПЕРЕД! ВПЕРЕД!",
+        orangeZone: "⚠️ Оранжевая зона - только УВЕДОМИТЬ",
         googleLoginBtn: "Вход",
         testBtn: "Тест",
         demoBtn: "Демо",
@@ -491,6 +511,7 @@ window.translations = {
         squadOff: "Выкл", squad2: "2 Группы", squad3: "3 Группы", squad4: "4 Группы",
         lblAppearance: "🎨 Внешний вид", lblPageBg: "Фон страницы",
         laps: "КРУГИ", gap: "РАЗРЫВ", totalCompetitors: "МАШИНЫ", waitingData: "Ожидание данных...",
+        boxThisLap: "🏁 ЗАЕЗД В БОКСЫ ЭТОТ КРУГ", boxNextLap: "📢 БОКСЫ СЛЕДУЮЩИЙ КРУГ", stayOut: "ОСТАВАЙТЕСЬ НА ТРАССЕ", onTrack: "НА ТРАССЕ", inPit: "В БОКСАХ",
     },
     ar: {
         ltSearchType: "تصفية حسب:", ltTeam: "الفريق", ltDriver: "السائق", ltKart: "رقم الكارت", ltPlaceholder: "البحث...",
@@ -543,6 +564,7 @@ window.translations = {
         wait: "انتظر...",
         getReady: "تحضر...",
         go: "يلا! يلا!",
+        orangeZone: "⚠️ المنطقة البرتقالية - أبلغ فقط",
         googleLoginBtn: "تسجيل الدخول",
         testBtn: "اختبار",
         demoBtn: "عرض توضيحي",
@@ -578,6 +600,7 @@ window.translations = {
         squadOff: "إيقاف", squad2: "فريقان", squad3: "3 فرق", squad4: "4 فرق",
         lblAppearance: "🎨 المظهر", lblPageBg: "خلفية الصفحة",
         laps: "لفات", gap: "فارق", totalCompetitors: "سيارات", waitingData: "في انتظار البيانات...",
+        boxThisLap: "🏁 ادخل هذه اللفة", boxNextLap: "📢 ادخل اللفة القادمة", stayOut: "ابقَ على المسار", onTrack: "على المسار", inPit: "في الحفرة",
     },
     es: {
         ltSearchType: "Filtrar por:", ltTeam: "Equipo", ltDriver: "Piloto", ltKart: "Kart nº", ltPlaceholder: "Buscar...",
@@ -630,6 +653,7 @@ window.translations = {
         wait: "ESPERA...",
         getReady: "PREPÁRATE...",
         go: "¡A POR ÉL!",
+        orangeZone: "⚠️ Zona naranja - solo NOTIFICAR",
         googleLoginBtn: "Iniciar sesión",
         testBtn: "Prueba",
         demoBtn: "Demostración",
@@ -664,6 +688,7 @@ window.translations = {
         squadOff: "Desactivado", squad2: "2 Escuadrones", squad3: "3 Escuadrones", squad4: "4 Escuadrones",
         lblAppearance: "🎨 Apariencia", lblPageBg: "Fondo de página",
         laps: "VUELTAS", gap: "BRECHA", totalCompetitors: "COCHES", waitingData: "Esperando datos...",
+        boxThisLap: "🏁 BOX ESTA VUELTA", boxNextLap: "📢 BOX SIGUIENTE VUELTA", stayOut: "SIGUE EN PISTA", onTrack: "EN PISTA", inPit: "EN BOXES",
     },
     it: {
         ltSearchType: "Filtra per:", ltTeam: "Squadra", ltDriver: "Pilota", ltKart: "Kart n°", ltPlaceholder: "Ricerca...", previewTitle: "Anteprima strategia", addToCalendar: "Aggiungi al calendario", timeline: "Cronologia", driverSchedule: "Orario piloti", totalTime: "Tempo totale", close: "Chiudi",
@@ -675,7 +700,7 @@ window.translations = {
         saveStratTitle: "Salva", libTitle: "Libreria", aiPlaceholder: "es: 'Il pilota 1 preferisce...'", thStart: "Inizio", thEnd: "Fine", thType: "Tipo", thDriver: "Pilota", thDuration: "Durata", liveTiming: "Cronometraggio live", liveTimingUrl: "URL cronometraggio...", connectLive: "Connetti", disconnectLive: "Disconnetti", searchTeam: "Cerca squadra...", searchDriver: "Cerca pilota...", searchKart: "Cerca kart...", demoMode: "Modalità demo",
         sendEmail: "Invia", cancel: "Annulla", create: "Crea", save: "Salva", load: "Carica", delete: "Elimina", activeRaceFound: "Gara attiva trovata", continueRace: "Continua", discardRace: "Scarta", areYouSure: "Sei sicuro?", deleteWarning: "Questo eliminerà i dati in modo permanente.", yesDelete: "Sì, elimina", noKeep: "No, conserva", invite: "Invita", synced: "Sincronizzato",
         chatTitle: "Chat gara / D&R", enterName: "Inserisci il tuo nome", startChat: "Inizia chat", typeMessage: "Scrivi un suggerimento...", send: "Invia", viewer: "Spettatore", host: "OSPITE", suggestion: "Suggerimento", strategyOutlook: "PROSPETTIVA STRATEGICA", timeLeft: "TEMPO RIMANENTE", penalty: "PENALITÀ", enterPit: "ENTRA IN PIT", nextDriverLabel: "PROSSIMO PILOTA", totalHeader: "TOTALE", stopsHeader: "STINT", driverHeader: "PILOTA",
-        stintsLeft: "STINT RIMANENTI", future: "FUTURO", max: "MAX", min: "MIN", rest: "RIPOSO", buffer: "Buffer", impossible: "IMPOSSIBILE", addStop: "AGGIUNGI SOSTA", avg: "MEDIA", finalLap: "ULTIMO GIRO", inPit: "IN PIT", nextLabel: "Prossimo:", shortStintMsg: "⚠️ STINT CORTO! Rischio penalità", cancelEntry: "Annulla", notifyDriver: "📢 Notifica pilota", driverNotified: "✓ Pilota notificato", includesAdj: "Include aggiustamento:", missingSeconds: "Mancante", proceedToPit: "Procedere al pit?", wait: "ATTENDI...", getReady: "PREPARATI...", go: "VAI! VAI!",
+        stintsLeft: "STINT RIMANENTI", future: "FUTURO", max: "MAX", min: "MIN", rest: "RIPOSO", buffer: "Buffer", impossible: "IMPOSSIBILE", addStop: "AGGIUNGI SOSTA", avg: "MEDIA", finalLap: "ULTIMO GIRO", inPit: "IN PIT", nextLabel: "Prossimo:", shortStintMsg: "⚠️ STINT CORTO! Rischio penalità", cancelEntry: "Annulla", notifyDriver: "📢 Notifica pilota", driverNotified: "✓ Pilota notificato", includesAdj: "Include aggiustamento:", missingSeconds: "Mancante", proceedToPit: "Procedere al pit?", wait: "ATTENDI...", getReady: "PREPARATI...", go: "VAI! VAI!", orangeZone: "⚠️ Zona arancione - solo NOTIFICA",
         googleLoginBtn: "Accedi",
         testBtn: "Prova",
         demoBtn: "Demo",
@@ -710,6 +735,7 @@ window.translations = {
         squadOff: "Disattivato", squad2: "2 Squadre", squad3: "3 Squadre", squad4: "4 Squadre",
         lblAppearance: "🎨 Aspetto", lblPageBg: "Sfondo pagina",
         laps: "GIRI", gap: "DISTACCO", totalCompetitors: "AUTO", waitingData: "In attesa di dati...",
+        boxThisLap: "🏁 BOX QUESTO GIRO", boxNextLap: "📢 BOX PROSSIMO GIRO", stayOut: "RIMANI IN PISTA", onTrack: "IN PISTA", inPit: "AI BOX",
     },
     ka: {
         ltSearchType: "ფილტრი:", ltTeam: "გუნდი", ltDriver: "მძღოლი", ltKart: "კარტი #", ltPlaceholder: "ძებნა...",
@@ -762,6 +788,7 @@ window.translations = {
         wait: "დაელოდე...",
         getReady: "მზადყოფილება...",
         go: "წინ! წინ!",
+        orangeZone: "⚠️ ფორთოქლის ზონა - მხოლოდ შეატყობინეთ",
         googleLoginBtn: "ლოგინი",
         testBtn: "ტესტი",
         demoBtn: "დემო",
@@ -796,6 +823,7 @@ window.translations = {
         lblSquadWindowStart: "ფანჯრის დასაწყისი", lblSquadWindowEnd: "ფანჯრის დასასრული",
         squadOff: "გამორთული", squad2: "2 ჯგუფი", squad3: "3 ჯგუფი", squad4: "4 ჯგუფი",
         lblAppearance: "🎨 გარეგნობა", lblPageBg: "გვერდის ფონი",
+        boxThisLap: "🏁 შედი ამ წრეზე", boxNextLap: "📢 შედი მომდევნო წრეზე", stayOut: "დარჩი ტრასაზე", onTrack: "ტრასაზე", inPit: "ბოქსში",
     },
     de: {
         ltSearchType: "Filter nach:", ltTeam: "Team", ltDriver: "Fahrer", ltKart: "Kart Nr.", ltPlaceholder: "Suchen...", previewTitle: "Strategievorschau", addToCalendar: "Zum Kalender hinzufügen", timeline: "Zeitleiste", driverSchedule: "Fahrerplan", totalTime: "Gesamtzeit", close: "Schließen",
@@ -807,7 +835,7 @@ window.translations = {
         saveStratTitle: "Speichern", libTitle: "Bibliothek", aiPlaceholder: "z.B.: 'Fahrer 1 bevorzugt...'", thStart: "Start", thEnd: "Ende", thType: "Typ", thDriver: "Fahrer", thDuration: "Dauer", liveTiming: "Live-Zeitmessung", liveTimingUrl: "Zeitmessung URL...", connectLive: "Verbinden", disconnectLive: "Trennen", searchTeam: "Team suchen...", searchDriver: "Fahrer suchen...", searchKart: "Kart suchen...", demoMode: "Demo-Modus",
         sendEmail: "Senden", cancel: "Abbrechen", create: "Erstellen", save: "Speichern", load: "Laden", delete: "Löschen", activeRaceFound: "Aktives Rennen gefunden", continueRace: "Fortfahren", discardRace: "Verwerfen", areYouSure: "Bist du sicher?", deleteWarning: "Dies löscht Daten dauerhaft.", yesDelete: "Ja, löschen", noKeep: "Nein, behalten", invite: "Einladen", synced: "Synchronisiert",
         chatTitle: "Renn-Chat / Q&A", enterName: "Geben Sie Ihren Namen ein", startChat: "Chat starten", typeMessage: "Schreibe einen Vorschlag...", send: "Senden", viewer: "Zuschauer", host: "HOST", suggestion: "Vorschlag", strategyOutlook: "STRATEGIEAUSBLICK", timeLeft: "VERBLEIBENDE ZEIT", penalty: "STRAFE", enterPit: "BOXEN FAHREN", nextDriverLabel: "NÄCHSTER FAHRER", totalHeader: "GESAMT", stopsHeader: "STINTS", driverHeader: "FAHRER",
-        stintsLeft: "STINTS VERBLEIBEND", future: "ZUKUNFT", max: "MAX", min: "MIN", rest: "RUHE", buffer: "Puffer", impossible: "UNMÖGLICH", addStop: "STOP HINZUFÜGEN", avg: "DURCHSCHN.", finalLap: "LETZTE RUNDE", inPit: "IN DEN BOXEN", nextLabel: "Nächster:", shortStintMsg: "⚠️ KURZER STINT! Strafrisiko", cancelEntry: "Abbrechen", notifyDriver: "📢 Fahrer benachrichtigen", driverNotified: "✓ Fahrer benachrichtigt", includesAdj: "Enthält Anpassung:", missingSeconds: "Fehlend", proceedToPit: "Zu den Boxen fahren?", wait: "WARTEN...", getReady: "VORBEREITEN...", go: "VIEL ERFOLG!",
+        stintsLeft: "STINTS VERBLEIBEND", future: "ZUKUNFT", max: "MAX", min: "MIN", rest: "RUHE", buffer: "Puffer", impossible: "UNMÖGLICH", addStop: "STOP HINZUFÜGEN", avg: "DURCHSCHN.", finalLap: "LETZTE RUNDE", inPit: "IN DEN BOXEN", nextLabel: "Nächster:", shortStintMsg: "⚠️ KURZER STINT! Strafrisiko", cancelEntry: "Abbrechen", notifyDriver: "📢 Fahrer benachrichtigen", driverNotified: "✓ Fahrer benachrichtigt", includesAdj: "Enthält Anpassung:", missingSeconds: "Fehlend", proceedToPit: "Zu den Boxen fahren?", wait: "WARTEN...", getReady: "VORBEREITEN...", go: "VIEL ERFOLG!", orangeZone: "⚠️ Orangezone - nur BENACHRICHTIGEN",
         googleLoginBtn: "Anmelden",
         testBtn: "Test",
         demoBtn: "Demo",
@@ -843,6 +871,7 @@ window.translations = {
         squadOff: "Aus", squad2: "2 Staffeln", squad3: "3 Staffeln", squad4: "4 Staffeln",
         lblAppearance: "🎨 Darstellung", lblPageBg: "Seitenhintergrund",
         laps: "RUNDEN", gap: "ABSTAND", totalCompetitors: "AUTOS", waitingData: "Warte auf Daten...",
+        boxThisLap: "🏁 BOX DIESE RUNDE", boxNextLap: "📢 BOX NÄCHSTE RUNDE", stayOut: "DRAUSSEN BLEIBEN", onTrack: "AUF DER STRECKE", inPit: "IN DER BOX",
     },
     ja: {
         ltSearchType: "フィルタリング:", ltTeam: "チーム", ltDriver: "ドライバー", ltKart: "カート番号", ltPlaceholder: "検索...", previewTitle: "戦略プレビュー", addToCalendar: "カレンダーに追加", timeline: "タイムライン", driverSchedule: "ドライバースケジュール", totalTime: "総時間", close: "閉じる",
@@ -854,7 +883,7 @@ window.translations = {
         saveStratTitle: "保存", libTitle: "ライブラリ", aiPlaceholder: "例: 'ドライバー1は...を好む'", thStart: "開始", thEnd: "終了", thType: "タイプ", thDriver: "ドライバー", thDuration: "期間", liveTiming: "ライブタイミング", liveTimingUrl: "ライブタイミングURL...", connectLive: "接続", disconnectLive: "切断", searchTeam: "チームを検索...", searchDriver: "ドライバーを検索...", searchKart: "カートを検索...", demoMode: "デモモード",
         sendEmail: "送信", cancel: "キャンセル", create: "作成", save: "保存", load: "読み込み", delete: "削除", activeRaceFound: "アクティブなレースが見つかりました", continueRace: "続行", discardRace: "破棄", areYouSure: "本当にしますか?", deleteWarning: "これはデータを永久に削除します。", yesDelete: "はい、削除", noKeep: "いいえ、保持", invite: "招待", synced: "同期済み",
         chatTitle: "レースチャット / Q&A", enterName: "名前を入力", startChat: "チャットを開始", typeMessage: "提案を入力...", send: "送信", viewer: "視聴者", host: "ホスト", suggestion: "提案", strategyOutlook: "戦略見通し", timeLeft: "残り時間", penalty: "ペナルティ", enterPit: "ピット進入", nextDriverLabel: "次のドライバー", totalHeader: "合計", stopsHeader: "スティント", driverHeader: "ドライバー",
-        stintsLeft: "残りスティント", future: "将来", max: "最大", min: "最小", rest: "休息", buffer: "バッファ", impossible: "不可能", addStop: "ピットストップ追加", avg: "平均", finalLap: "ファイナルラップ", inPit: "ピット内", nextLabel: "次:", shortStintMsg: "⚠️ 短いスティント!ペナルティリスク", cancelEntry: "キャンセル", notifyDriver: "📢 ドライバーに通知", driverNotified: "✓ ドライバーに通知済み", includesAdj: "調整を含む:", missingSeconds: "不足", proceedToPit: "ピットに進む?", wait: "待機中...", getReady: "準備中...", go: "頑張れ!",
+        stintsLeft: "残りスティント", future: "将来", max: "最大", min: "最小", rest: "休息", buffer: "バッファ", impossible: "不可能", addStop: "ピットストップ追加", avg: "平均", finalLap: "ファイナルラップ", inPit: "ピット内", nextLabel: "次:", shortStintMsg: "⚠️ 短いスティント!ペナルティリスク", cancelEntry: "キャンセル", notifyDriver: "📢 ドライバーに通知", driverNotified: "✓ ドライバーに通知済み", includesAdj: "調整を含む:", missingSeconds: "不足", proceedToPit: "ピットに進む?", wait: "待機中...", getReady: "準備中...", go: "頑張れ!", orangeZone: "⚠️ オレンジゾーン - 通知のみ",
         googleLoginBtn: "ログイン",
         testBtn: "テスト",
         demoBtn: "デモ",
@@ -889,6 +918,7 @@ window.translations = {
         squadOff: "オフ", squad2: "2スクワッド", squad3: "3スクワッド", squad4: "4スクワッド",
         lblAppearance: "🎨 外観", lblPageBg: "ページ背景",
         laps: "周回", gap: "差", totalCompetitors: "台数", waitingData: "データ待機中...",
+        boxThisLap: "🏁 今周ピットイン", boxNextLap: "📢 次周ピットイン", stayOut: "ステイアウト", onTrack: "走行中", inPit: "ピット内",
     }
 };
 

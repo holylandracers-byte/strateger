@@ -220,35 +220,63 @@ window.requestNotificationPermission = function() {
 window.startDemoRace = function() {
     const t = window.t || (k => k);
 
-    // Set demo config defaults if fields are empty/default
-    const durEl = document.getElementById('raceDuration');
-    if (durEl && (!durEl.value || parseFloat(durEl.value) > 1)) {
-        durEl.value = '0.5'; // 30 min demo
-    }
+    // === 1. RACE PARAMETERS — 30 min kart endurance demo ===
+    const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+    const setChecked = (id, val) => { const el = document.getElementById(id); if (el) el.checked = val; };
 
-    const timeEl = document.getElementById('raceStartTime');
-    if (timeEl && !timeEl.value) {
-        const now = new Date();
-        timeEl.value = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-    }
-    const dateEl = document.getElementById('raceStartDate');
-    if (dateEl && !dateEl.value) {
-        dateEl.value = new Date().toISOString().split('T')[0];
-    }
+    setVal('raceDuration', '0.5');       // 30 minutes
+    setVal('reqPitStops', '2');          // 2 mandatory pit stops
+    setVal('minStint', '5');             // min stint 5 min
+    setVal('maxStint', '15');            // max stint 15 min
+    setVal('minPitTime', '60');          // 1 minute pit time
+    setVal('pitClosedStart', '2');       // pit closed first 2 min
+    setVal('pitClosedEnd', '2');         // pit closed last 2 min
+    setVal('minDriverTime', '0');        // no min driver total
+    setVal('maxDriverTime', '15');       // max 15 min per driver
+    setVal('releaseBuffer', '5');        // 5 sec buffer alert
+    setChecked('allowDouble', false);    // no double stints
+    setChecked('trackFuel', false);      // fuel off for demo
 
-    // Ensure we have at least 2 drivers
-    if (!window.drivers || window.drivers.length < 2) {
-        if (typeof window.addDriverField === 'function') {
-            while (document.querySelectorAll('.driver-row').length < 3) window.addDriverField();
+    // Squad off for demo
+    const squadsEl = document.getElementById('numSquads');
+    if (squadsEl) { squadsEl.value = '0'; if (typeof window.toggleSquadsInput === 'function') window.toggleSquadsInput(); }
+
+    // === 2. START TIME — now ===
+    const now = new Date();
+    setVal('raceStartTime', `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`);
+    setVal('raceStartDate', now.toISOString().split('T')[0]);
+
+    // === 3. DRIVERS — 3 demo drivers with colors ===
+    const demoDrivers = [
+        { name: 'Alex', color: '#22d3ee' },   // ice blue
+        { name: 'Jordan', color: '#f59e0b' },  // amber
+        { name: 'Sam', color: '#10b981' }       // green
+    ];
+
+    // Ensure we have the right number of driver rows
+    const rows = document.querySelectorAll('.driver-row');
+    if (rows.length < demoDrivers.length) {
+        while (document.querySelectorAll('.driver-row').length < demoDrivers.length) {
+            if (typeof window.addDriverField === 'function') window.addDriverField();
         }
-        // Name them for demo
-        const demoNames = ['Alex', 'Jordan', 'Sam'];
-        document.querySelectorAll('.driver-row input[type="text"]').forEach((inp, i) => {
-            if (!inp.value) inp.value = demoNames[i] || `Driver ${i+1}`;
-        });
+    }
+    // Remove excess rows
+    while (document.querySelectorAll('.driver-row').length > demoDrivers.length) {
+        if (typeof window.removeDriverField === 'function') window.removeDriverField();
     }
 
-    // Generate strategy
+    // Fill driver names and colors
+    document.querySelectorAll('.driver-row').forEach((row, i) => {
+        const driver = demoDrivers[i];
+        if (!driver) return;
+        const nameInput = row.querySelector('input[type="text"]');
+        if (nameInput) nameInput.value = driver.name;
+        const colorInput = row.querySelector('input[type="color"]');
+        if (colorInput) colorInput.value = driver.color;
+    });
+
+    // === 4. GENERATE & RUN ===
+    // Generate strategy with all the configured parameters
     if (typeof window.runSim === 'function') window.runSim();
 
     // Activate demo live timing
@@ -320,14 +348,25 @@ function updateModeUI() {
 
     if (adviceText) {
         if (window.state.mode === 'bad') {
-            adviceText.innerText = "⚠️ " + (belowMinStint ? t('stayOnTrackUntilFurther') : t('boxNow'));
+            const boxMsg = belowMinStint ? t('stayOnTrackUntilFurther') : window.getBoxMessage();
+            adviceText.innerText = "⚠️ " + boxMsg;
             adviceText.className = "text-xs font-bold text-red-500 animate-pulse uppercase tracking-widest";
+            // Play alert sound only on mode transition
+            if (window.alertState.lastMode !== 'bad') {
+                window.alertState.lastMode = 'bad';
+                window.playAlertBeep('warning');
+            }
         } else if (window.state.mode === 'push') {
             adviceText.innerText = "🔥 " + t('pushMode');
             adviceText.className = "text-[10px] font-bold text-green-400 uppercase tracking-widest";
+            if (window.alertState.lastMode !== 'push') {
+                window.alertState.lastMode = 'push';
+                window.playAlertBeep('info');
+            }
         } else {
             adviceText.innerText = t('buildTime');
             adviceText.className = "text-[10px] text-gray-500 font-bold uppercase tracking-widest";
+            window.alertState.lastMode = 'normal';
         }
     }
 
@@ -354,9 +393,22 @@ window.recalculateTargetStint = function() {
         const minStintMs = (window.config.minStintMs) || (window.config.minStint * 60000) || (30 * 60000);
         window.state.targetStintMs = minStintMs;
     } else {
-        const currentStintIdx = window.state.globalStintNumber - 1;
-        if (window.state.stintTargets && window.state.stintTargets[currentStintIdx]) {
-            window.state.targetStintMs = window.state.stintTargets[currentStintIdx];
+        const totalStops = parseInt(window.config.reqStops) || 0;
+        const stopsDone = window.state.pitCount || 0;
+        const isLastStint = stopsDone >= totalStops;
+
+        if (isLastStint) {
+            // Last stint: target = remaining race time from stint start
+            const raceMs = window.config.raceMs || (parseFloat(window.config.duration) * 3600000);
+            const now = Date.now();
+            const raceRemaining = raceMs - (now - window.state.startTime);
+            const stintElapsed = (now - window.state.stintStart) + (window.state.stintOffset || 0);
+            window.state.targetStintMs = stintElapsed + Math.max(0, raceRemaining);
+        } else {
+            const currentStintIdx = window.state.globalStintNumber - 1;
+            if (window.state.stintTargets && window.state.stintTargets[currentStintIdx]) {
+                window.state.targetStintMs = window.state.stintTargets[currentStintIdx];
+            }
         }
     }
 };
@@ -523,6 +575,9 @@ window.tick = function() {
 
 window.renderFrame = function() {
     if (!window.state || !window.state.isRunning) return;
+
+    // Recalculate target every frame (needed for last stint = remaining time)
+    if (typeof window.recalculateTargetStint === 'function') window.recalculateTargetStint();
     
     // בודק שפה כל פריים לוודא סינכרון
     const currentLang = localStorage.getItem('strateger_lang') || 'en';
@@ -610,9 +665,17 @@ window.renderFrame = function() {
                 
                 deltaEl.innerText = `${sign}${dm}:${ds.toString().padStart(2, '0')}`;
                 
-                // צבעים: אדום אם חרגנו מהיעד, ירוק אם אנחנו מתחתיו
-                if (diff > 0) deltaEl.className = "text-sm font-bold text-red-500 animate-pulse";
-                else deltaEl.className = "text-sm font-bold text-green-500";
+                // Colors: red if over target, green if under — only pulse on first transition
+                if (diff > 0) {
+                    deltaEl.className = "text-sm font-bold text-red-500 animate-pulse";
+                    if (!window.alertState.overTargetFired) {
+                        window.alertState.overTargetFired = true;
+                        window.playAlertBeep('warning');
+                    }
+                } else {
+                    deltaEl.className = "text-sm font-bold text-green-500";
+                    window.alertState.overTargetFired = false;
+                }
             }
             // === ⬆️ סוף התיקון ⬆️ ===
 
@@ -788,34 +851,42 @@ window.updatePitModalLogic = function() {
     const releaseBtn = document.getElementById('confirmExitBtn');
     if (!releaseBtn) return;
 
-    if (timeRemaining > buffer) {
+    // Determine current zone
+    let pitZone = 'wait';
+    if (timeRemaining <= 0) pitZone = 'go';
+    else if (timeRemaining <= buffer) pitZone = 'ready';
+
+    if (pitZone === 'wait') {
         if (timerDisplay) timerDisplay.className = "text-6xl font-bold font-mono text-red-500";
-        releaseBtn.innerText = t('wait'); // תרגום: "המתן..."
+        releaseBtn.innerText = t('wait');
         releaseBtn.disabled = true;
         releaseBtn.className = "w-full max-w-xs bg-gray-800 text-gray-500 font-bold py-4 rounded-lg text-2xl border border-gray-700 cursor-not-allowed";
-        
-        // Hide pit warning box when not in orange zone
         const pitWarningBox = document.getElementById('pitWarningBox');
         if (pitWarningBox) pitWarningBox.classList.add('hidden');
-    } else if (timeRemaining <= buffer && timeRemaining > 0) {
+    } else if (pitZone === 'ready') {
         if (timerDisplay) timerDisplay.className = "text-6xl font-bold font-mono text-yellow-400 animate-pulse";
-        releaseBtn.innerText = t('getReady'); // תרגום: "היכון..."
+        releaseBtn.innerText = t('getReady');
         releaseBtn.disabled = false;
         releaseBtn.className = "w-full max-w-xs bg-yellow-600 hover:bg-yellow-500 text-black font-bold py-4 rounded-lg text-2xl border border-yellow-400 animate-pulse cursor-pointer";
-        
-        // Show pit warning box in orange zone
         const pitWarningBox = document.getElementById('pitWarningBox');
         if (pitWarningBox) pitWarningBox.classList.remove('hidden');
+        // Sound only on transition to ready zone
+        if (window.alertState.lastZone !== 'ready') {
+            window.playAlertBeep('info');
+        }
     } else {
         if (timerDisplay) timerDisplay.className = "text-6xl font-bold font-mono text-green-500";
-        releaseBtn.innerText = t('go'); // תרגום: "סע!"
+        releaseBtn.innerText = t('go');
         releaseBtn.disabled = false;
         releaseBtn.className = "w-full max-w-xs bg-green-600 hover:bg-green-500 text-white font-bold py-4 rounded-lg text-3xl border border-green-400 shadow-[0_0_20px_rgba(34,197,94,0.6)] cursor-pointer";
-        
-        // Hide pit warning box when ready to go
         const pitWarningBox = document.getElementById('pitWarningBox');
         if (pitWarningBox) pitWarningBox.classList.add('hidden');
+        // Sound only on transition to go zone
+        if (window.alertState.lastZone !== 'go') {
+            window.playReleaseSound();
+        }
     }
+    window.alertState.lastZone = pitZone;
 };
 
 // ==========================================
@@ -1002,6 +1073,109 @@ window.playReleaseSound = function() {
     }
 };
 
+// ==========================================
+// 🔊 ALERT BEEP SYSTEM (state-change only)
+// ==========================================
+
+window.playAlertBeep = function(type) {
+    try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        if (type === 'warning') {
+            osc.frequency.value = 660;
+            osc.type = 'square';
+        } else if (type === 'info') {
+            osc.frequency.value = 880;
+            osc.type = 'sine';
+        } else if (type === 'boxNow') {
+            // Urgent double-beep for BOX THIS LAP
+            osc.frequency.value = 1000;
+            osc.type = 'square';
+            gain.gain.setValueAtTime(0.25, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.12);
+            osc.start(ctx.currentTime);
+            osc.stop(ctx.currentTime + 0.12);
+            // Second beep
+            const osc2 = ctx.createOscillator();
+            const g2 = ctx.createGain();
+            osc2.connect(g2); g2.connect(ctx.destination);
+            osc2.frequency.value = 1200; osc2.type = 'square';
+            g2.gain.setValueAtTime(0.25, ctx.currentTime + 0.18);
+            g2.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+            osc2.start(ctx.currentTime + 0.18);
+            osc2.stop(ctx.currentTime + 0.3);
+            return;
+        } else {
+            osc.frequency.value = 440;
+            osc.type = 'sine';
+        }
+
+        gain.gain.setValueAtTime(0.2, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.15);
+    } catch (e) {}
+};
+
+// ==========================================
+// 🏁 LAP-AWARE BOX MESSAGE
+// ==========================================
+
+window.getEstimatedLapMs = function() {
+    // Priority: live timing data > demo data > default
+    if (window.liveData && window.liveData.lastLap && window.liveData.lastLap > 0) {
+        return window.liveData.lastLap;
+    }
+    if (window.liveData && window.liveData.bestLap && window.liveData.bestLap > 0) {
+        return window.liveData.bestLap;
+    }
+    // Estimate from demo competitors
+    if (window.demoState && window.demoState.competitors) {
+        const ourTeam = window.demoState.competitors.find(c => c.isOurTeam);
+        if (ourTeam && ourTeam.lastLap) return ourTeam.lastLap;
+    }
+    return null;
+};
+
+window.getBoxMessage = function() {
+    const t = window.t || (k => k);
+    const now = Date.now();
+    const currentStintMs = (now - window.state.stintStart) + (window.state.stintOffset || 0);
+    const targetMs = window.state.targetStintMs || 0;
+    const timeToTarget = targetMs - currentStintMs;
+    const lapMs = window.getEstimatedLapMs();
+
+    // If we have lap time data, give lap-aware instructions
+    if (lapMs && lapMs > 0) {
+        if (timeToTarget <= 0) {
+            // Already over target
+            return t('boxThisLap') || '🏁 BOX THIS LAP';
+        } else if (timeToTarget <= lapMs) {
+            // Less than one lap to target — box THIS lap
+            return t('boxThisLap') || '🏁 BOX THIS LAP';
+        } else if (timeToTarget <= lapMs * 2) {
+            // 1-2 laps to target — box NEXT lap
+            return t('boxNextLap') || '📢 BOX NEXT LAP';
+        } else {
+            // More than 2 laps — stay out with countdown
+            const lapsLeft = Math.ceil(timeToTarget / lapMs);
+            return `${t('stayOut') || 'STAY OUT'} (${lapsLeft} ${t('laps') || 'laps'})`;
+        }
+    }
+    
+    // Fallback: no lap data, use time-based message
+    if (timeToTarget <= 0) {
+        return t('boxNow');
+    } else if (timeToTarget <= 60000) {
+        return t('boxThisLap') || '🏁 BOX THIS LAP';
+    }
+    return t('boxNow');
+};
+
 window.confirmPitExit = function() {
     // Play release sound
     if (typeof window.playReleaseSound === 'function') window.playReleaseSound();
@@ -1176,4 +1350,263 @@ window.submitFeedback = async () => {
             alert(`Error sending feedback: ${error.message}. Feedback was saved locally.`);
         }
     }
+};
+
+// ==========================================
+// 🏎️ DRIVER MODE (In-Car HUD)
+// ==========================================
+
+window.toggleDriverMode = function() {
+    const panel = document.getElementById('driverModePanel');
+    if (!panel) return;
+    
+    const isActive = !panel.classList.contains('hidden');
+    if (isActive) {
+        panel.classList.add('hidden');
+        window.alertState.driverModeActive = false;
+        if (window._driverModeInterval) {
+            clearInterval(window._driverModeInterval);
+            window._driverModeInterval = null;
+        }
+        // Unlock screen orientation
+        try { screen.orientation?.unlock(); } catch(e) {}
+    } else {
+        panel.classList.remove('hidden');
+        window.alertState.driverModeActive = true;
+        // Show demo badge if in demo mode
+        const badge = document.getElementById('driverDemoBadge');
+        if (badge) badge.classList.toggle('hidden', !window.liveTimingConfig.demoMode);
+        // Request wake lock for driver
+        if ('wakeLock' in navigator) {
+            navigator.wakeLock.request('screen').catch(e => {});
+        }
+        // Update at higher frequency for responsiveness
+        window._driverModeInterval = setInterval(window.updateDriverMode, 500);
+        window.updateDriverMode();
+    }
+};
+
+window.updateDriverMode = function() {
+    if (!window.state || !window.state.isRunning) return;
+    
+    const now = Date.now();
+    const t = window.t || (k => k);
+    const raceMs = window.config.raceMs || (parseFloat(window.config.duration) * 3600000);
+    const raceRemaining = raceMs - (now - window.state.startTime);
+    const maxStintMs = (window.config.maxStint * 60000) || (60 * 60000);
+    const minStintMs = (window.config.minStint * 60000) || 0;
+    const targetMs = window.state.targetStintMs || maxStintMs;
+    const currentStintMs = (now - window.state.stintStart) + (window.state.stintOffset || 0);
+
+    // === Race timer (top-right, small) ===
+    const timerEl = document.getElementById('driverRaceTimer');
+    if (timerEl) {
+        if (raceRemaining <= 0) {
+            timerEl.innerText = '🏁 FINISH';
+            timerEl.style.color = '#39ff14';
+        } else {
+            timerEl.innerText = window.formatTimeHMS(Math.ceil(raceRemaining / 1000) * 1000);
+            timerEl.style.color = '';
+        }
+    }
+
+    // === Stint timer (hero number) ===
+    const stintTimerEl = document.getElementById('driverStintTimer');
+    if (stintTimerEl) {
+        if (window.state.isInPit) {
+            // Show pit elapsed time
+            const pitMs = now - (window.state.pitStart || now);
+            let str = window.formatTimeHMS(Math.max(0, pitMs));
+            if (str.startsWith('00:')) str = str.substring(3);
+            stintTimerEl.innerText = str;
+            stintTimerEl.style.color = '#f87171';
+        } else {
+            const stintMs = currentStintMs;
+            let str = window.formatTimeHMS(Math.max(0, stintMs));
+            if (str.startsWith('00:')) str = str.substring(3);
+            stintTimerEl.innerText = str;
+            // Color by zone
+            if (stintMs > targetMs) stintTimerEl.style.color = '#ef4444';
+            else if (stintMs > targetMs - (window.getEstimatedLapMs() || 60000) * 2) stintTimerEl.style.color = '#facc15';
+            else stintTimerEl.style.color = '#ffffff';
+        }
+    }
+
+    // === Delta ===
+    const deltaLabel = document.getElementById('driverDelta');
+    if (deltaLabel && !window.state.isInPit) {
+        const diff = currentStintMs - targetMs;
+        const sign = diff >= 0 ? '+' : '-';
+        const abs = Math.abs(diff);
+        const dm = Math.floor(abs / 60000);
+        const ds = Math.floor((abs % 60000) / 1000);
+        deltaLabel.innerText = `${sign}${dm}:${ds.toString().padStart(2, '0')}`;
+        deltaLabel.style.color = diff > 0 ? '#ef4444' : '#4ade80';
+    } else if (deltaLabel && window.state.isInPit) {
+        deltaLabel.innerText = '';
+    }
+
+    // === Live timing data ===
+    const lastEl = document.getElementById('driverLastLap');
+    const bestEl = document.getElementById('driverBestLap');
+    const posEl = document.getElementById('driverPosition');
+    const posChangeEl = document.getElementById('driverPosChange');
+
+    if (window.liveData) {
+        if (lastEl && window.liveData.lastLap) {
+            lastEl.innerText = window.formatLapTime ? window.formatLapTime(window.liveData.lastLap) : '--';
+        }
+        if (bestEl && window.liveData.bestLap) {
+            bestEl.innerText = window.formatLapTime ? window.formatLapTime(window.liveData.bestLap) : '--';
+        }
+        if (posEl && window.liveData.position) {
+            posEl.innerText = window.liveData.position;
+        }
+        if (posChangeEl && window.liveData.previousPosition && window.liveData.position) {
+            const diff = window.liveData.previousPosition - window.liveData.position;
+            if (diff > 0) { posChangeEl.innerText = `▲${diff}`; posChangeEl.className = 'driver-pos-change'; posChangeEl.style.color = '#4ade80'; }
+            else if (diff < 0) { posChangeEl.innerText = `▼${Math.abs(diff)}`; posChangeEl.className = 'driver-pos-change'; posChangeEl.style.color = '#ef4444'; }
+            else { posChangeEl.innerText = ''; }
+        }
+    }
+
+    // === Consistency → background tint on the ENTIRE panel ===
+    const panel = document.getElementById('driverModePanel');
+    const consistency = window.calculateConsistency();
+    if (panel) {
+        panel.classList.remove('driver-consistency-green', 'driver-consistency-yellow', 'driver-consistency-red');
+        if (consistency !== null) {
+            if (consistency <= 0.5) panel.classList.add('driver-consistency-green');
+            else if (consistency <= 1.5) panel.classList.add('driver-consistency-yellow');
+            else panel.classList.add('driver-consistency-red');
+        }
+    }
+
+    // === Progress bar ===
+    const bar = document.getElementById('driverProgressBar');
+    const targetLine = document.getElementById('driverTargetLine');
+    const targetLabel = document.getElementById('driverTargetLabel');
+
+    if (bar) {
+        const pct = Math.min(100, (currentStintMs / maxStintMs) * 100);
+        bar.style.width = `${pct}%`;
+        if (currentStintMs < minStintMs) bar.className = 'absolute top-0 left-0 h-full bg-gradient-to-r from-orange-600 to-yellow-500 transition-all duration-500';
+        else if (currentStintMs < targetMs) bar.className = 'absolute top-0 left-0 h-full bg-gradient-to-r from-green-600 to-neon transition-all duration-500';
+        else bar.className = 'absolute top-0 left-0 h-full bg-red-600 transition-all duration-500';
+    }
+    if (targetLine) {
+        const tPct = Math.min(100, (targetMs / maxStintMs) * 100);
+        targetLine.style.left = `${tPct}%`;
+        targetLine.classList.remove('hidden');
+    }
+    if (targetLabel) {
+        let tStr = window.formatTimeHMS(targetMs);
+        if (tStr.startsWith('00:')) tStr = tStr.substring(3);
+        targetLabel.innerText = `TGT ${tStr}`;
+    }
+
+    // === STATUS ZONE (top half) ===
+    const zone = document.getElementById('driverStatusZone');
+    const emoji = document.getElementById('driverStatusEmoji');
+    const msg = document.getElementById('driverStatusMsg');
+    const sub = document.getElementById('driverStatusSub');
+    if (!zone || !emoji || !msg || !sub) return;
+
+    // Reset base classes
+    emoji.className = 'driver-emoji';
+    msg.className = 'driver-msg';
+    sub.className = 'driver-sub';
+
+    if (window.state.isInPit) {
+        zone.style.background = 'linear-gradient(180deg, rgba(153,27,27,0.8) 0%, rgba(0,0,0,0.95) 100%)';
+        zone.classList.remove('driver-zone-box');
+        emoji.innerText = '🛑';
+        msg.innerText = t('inPit');
+        msg.style.color = '#f87171';
+        sub.innerText = '';
+    } else if (raceRemaining <= 0) {
+        zone.style.background = 'linear-gradient(180deg, rgba(57,255,20,0.3) 0%, rgba(0,0,0,0.95) 100%)';
+        zone.classList.remove('driver-zone-box');
+        emoji.innerText = '🏁';
+        emoji.className = 'driver-emoji animate-pulse';
+        msg.innerText = 'FINISH';
+        msg.style.color = '#39ff14';
+        sub.innerText = '';
+    } else if (window.state.mode === 'bad') {
+        const belowMin = minStintMs > 0 && currentStintMs < minStintMs;
+        if (belowMin) {
+            zone.style.background = 'linear-gradient(180deg, rgba(133,100,0,0.6) 0%, rgba(0,0,0,0.95) 100%)';
+            zone.classList.remove('driver-zone-box');
+            emoji.innerText = '⚠️';
+            msg.innerText = t('stayOnTrackUntilFurther');
+            msg.style.color = '#facc15';
+            sub.innerText = '';
+        } else {
+            zone.style.background = 'linear-gradient(180deg, rgba(220,38,38,0.6) 0%, rgba(0,0,0,0.95) 100%)';
+            zone.classList.add('driver-zone-box');
+            emoji.innerText = '🔴';
+            emoji.className = 'driver-emoji animate-bounce';
+            msg.innerText = window.getBoxMessage();
+            msg.style.color = '#f87171';
+            msg.className = 'driver-msg animate-pulse';
+            sub.innerText = '';
+        }
+    } else if (window.state.mode === 'push') {
+        zone.style.background = 'linear-gradient(180deg, rgba(22,101,52,0.7) 0%, rgba(0,0,0,0.95) 100%)';
+        zone.classList.remove('driver-zone-box');
+        emoji.innerText = '🔥';
+        msg.innerText = 'PUSH!';
+        msg.style.color = '#4ade80';
+        sub.innerText = '';
+    } else if (currentStintMs > targetMs) {
+        // Over target — BOX
+        zone.style.background = 'linear-gradient(180deg, rgba(220,38,38,0.5) 0%, rgba(0,0,0,0.95) 100%)';
+        zone.classList.add('driver-zone-box');
+        emoji.innerText = '🏁';
+        emoji.className = 'driver-emoji animate-bounce';
+        msg.innerText = window.getBoxMessage();
+        msg.style.color = '#fde047';
+        sub.innerText = '';
+    } else if (currentStintMs > targetMs - (window.getEstimatedLapMs() || 60000) * 2) {
+        // Approaching — 2 laps left
+        zone.style.background = 'linear-gradient(180deg, rgba(133,100,0,0.4) 0%, rgba(0,0,0,0.95) 100%)';
+        zone.classList.remove('driver-zone-box');
+        emoji.innerText = '📢';
+        msg.innerText = window.getBoxMessage();
+        msg.style.color = '#fde047';
+        sub.innerText = '';
+    } else {
+        // Normal — on track
+        zone.style.background = 'linear-gradient(180deg, rgba(22,101,52,0.4) 0%, rgba(0,0,0,0.95) 100%)';
+        zone.classList.remove('driver-zone-box');
+        emoji.innerText = '🏎️';
+        msg.innerText = t('onTrack');
+        msg.style.color = '#4ade80';
+        // Laps / time remaining to target
+        const lapMs = window.getEstimatedLapMs();
+        const timeToTarget = targetMs - currentStintMs;
+        if (lapMs && lapMs > 0) {
+            const lapsLeft = Math.max(0, Math.ceil(timeToTarget / lapMs));
+            sub.innerText = `${lapsLeft} ${t('laps') || 'laps'} → 🏁`;
+        } else {
+            let tStr = window.formatTimeHMS(Math.max(0, timeToTarget));
+            if (tStr.startsWith('00:')) tStr = tStr.substring(3);
+            sub.innerText = `→ ${tStr}`;
+        }
+    }
+};
+
+// === CONSISTENCY CALCULATOR ===
+window.calculateConsistency = function() {
+    // Calculate std deviation of last 5 lap times from live data
+    if (!window.liveData || !window.liveData.competitors) return null;
+    const ourTeam = window.liveData.competitors.find(c => c.isOurTeam);
+    if (!ourTeam) return null;
+    
+    // We only have lastLap + bestLap, calculate rough consistency
+    if (ourTeam.lastLap && ourTeam.bestLap) {
+        const diffSec = Math.abs(ourTeam.lastLap - ourTeam.bestLap) / 1000;
+        return diffSec; // Returns seconds of variance
+    }
+    return null;
 };
