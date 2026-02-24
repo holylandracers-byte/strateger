@@ -115,8 +115,15 @@ class ApexTimingScraper {
 
     async scrapeInitialGrid() {
         try {
-            this.log('🌐 Fetching initial grid via HTTP');
-            const response = await fetch(this.config.raceUrl);
+            this.log('🌐 Fetching initial grid via HTTP (with CORS proxy)');
+            const proxy = this.proxies[this.currentProxyIndex];
+            const proxyUrl = proxy.url + encodeURIComponent(this.config.raceUrl);
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000);
+            
+            const response = await fetch(proxyUrl, { signal: controller.signal });
+            clearTimeout(timeoutId);
+            
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}`);
             }

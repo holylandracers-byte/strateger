@@ -529,7 +529,20 @@ window.connectToHost = function(hostId) {
             console.log(`Client Peer ID initialized: ${id}`);
             window.conn = window.peer.connect(hostId, { reliable: true });
 
+            // Connection timeout — if host is unreachable, don't hang forever
+            const connTimeout = setTimeout(() => {
+                if (window.conn && !window.conn.open) {
+                    console.warn('Connection to host timed out after 15s');
+                    try { window.conn.close(); } catch(e) {}
+                    const waitScreen = document.getElementById('clientWaitScreen');
+                    if (waitScreen) {
+                        waitScreen.innerHTML = '<div class="flex flex-col items-center justify-center gap-2"><div class="text-xl text-yellow-400 font-bold">⏱️ Connection Timed Out</div><div class="text-xs text-gray-400 mt-2">Host may be offline or link expired</div><button onclick="location.reload()" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-500">Try Again</button></div>';
+                    }
+                }
+            }, 15000);
+
             window.conn.on('open', () => {
+                clearTimeout(connTimeout);
                 console.log("Connected to Host");
                 // Reset reconnection state on successful connection
                 window.resetReconnectionState();
@@ -641,15 +654,19 @@ window.connectToHost = function(hostId) {
                     }, 500);
                 }
             });
-        });
 
-        window.conn.on('close', () => {
-            console.log("Disconnected from Host");
-            window.conn = null;
-            // Attempt automatic reconnection
-            if (window.role === 'viewer' && !window.reconnectState.isReconnecting) {
-                window.attemptReconnection();
-            }
+            window.conn.on('close', () => {
+                console.log("Disconnected from Host");
+                window.conn = null;
+                // Attempt automatic reconnection
+                if ((window.role === 'client' || window.role === 'viewer') && !window.reconnectState.isReconnecting) {
+                    window.attemptReconnection();
+                }
+            });
+
+            window.conn.on('error', (err) => {
+                console.error("Connection error:", err);
+            });
         });
 
         window.peer.on('error', (err) => {
@@ -658,6 +675,13 @@ window.connectToHost = function(hostId) {
                 console.error(`Peer ID "${clientId}" is already taken. Generating a new ID.`);
                 localStorage.removeItem('strateger_client_id'); // Clear the stored ID
                 startConn(); // Retry with a new ID
+            } else if (err.type === 'peer-unavailable') {
+                // Host ID doesn't exist on the signaling server
+                console.error('Host peer not found — link may be expired');
+                const waitScreen = document.getElementById('clientWaitScreen');
+                if (waitScreen) {
+                    waitScreen.innerHTML = '<div class="flex flex-col items-center justify-center gap-2"><div class="text-xl text-red-400 font-bold">❌ Host Not Found</div><div class="text-xs text-gray-400 mt-2">The race link may have expired or the host is offline</div><button onclick="location.reload()" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-500">Try Again</button></div>';
+                }
             }
         });
     };

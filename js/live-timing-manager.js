@@ -265,6 +265,39 @@ class LiveTimingManager {
         }
 
         // עבור ספקים אחרים - פשוט החזר את הדאטה כמו שהיא
+        if (provider === 'apex') {
+            return {
+                race: data.race || {},
+                ourTeam: data.ourTeam ? {
+                    position: parseInt(data.ourTeam.position) || 0,
+                    name: data.ourTeam.name || '',
+                    team: data.ourTeam.team || '',
+                    kart: data.ourTeam.kart || '',
+                    lastLap: data.ourTeam.lastLapMs || null,
+                    bestLap: data.ourTeam.bestLapMs || null,
+                    totalLaps: parseInt(data.ourTeam.laps) || 0,
+                    gap: data.ourTeam.gap || '-',
+                    inPit: data.ourTeam.inPit || false,
+                    pitCount: data.ourTeam.pitCount || 0
+                } : null,
+                competitors: (data.competitors || []).map(c => ({
+                    position: parseInt(c.position) || 0,
+                    name: c.name || '',
+                    team: c.team || '',
+                    kart: c.kart || '',
+                    lastLap: c.lastLapMs || null,
+                    bestLap: c.bestLapMs || null,
+                    laps: parseInt(c.laps) || 0,
+                    gap: c.gap || '-',
+                    inPit: c.inPit || false,
+                    isOurTeam: data.ourTeam ? (c.name === data.ourTeam.name && c.kart === data.ourTeam.kart) : false
+                })),
+                found: data.found,
+                provider: 'apex',
+                timestamp: Date.now()
+            };
+        }
+
         return {
             ...data,
             provider: provider,

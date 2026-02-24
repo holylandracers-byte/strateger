@@ -46,20 +46,50 @@ window.testLiveTiming = function() {
     window.updateSearchConfig();
     
     statusEl.innerText = window.t('testing');
-    statusEl.className = "text-[10px] text-yellow-500 text-center";
+    statusEl.className = "text-[10px] text-yellow-500 text-center animate-pulse";
     
-    window.fetchLiveTimingFromProxy().then(() => {
+    // Stop existing scraper to force fresh test
+    if (window.liveTimingManager) {
+        window.liveTimingManager.stop();
+        window.liveTimingManager = null;
+    }
+    
+    // Clear previous results to detect fresh data
+    const prevPosition = window.liveData.position;
+    window.liveData.position = null;
+    
+    // Start the scraper (async — data arrives via callbacks)
+    window.fetchLiveTimingFromProxy();
+    
+    // Poll for data arrival with timeout
+    let elapsed = 0;
+    const pollInterval = 500;
+    const maxWait = 15000; // 15 seconds
+    
+    const checkTimer = setInterval(() => {
+        elapsed += pollInterval;
+        
         if (window.liveData.position) {
-            statusEl.innerText = `${window.t('found')} ${window.liveData.position}`;
+            clearInterval(checkTimer);
+            statusEl.innerText = `${window.t('found')} P${window.liveData.position}`;
             statusEl.className = "text-[10px] text-green-500 text-center font-bold";
-        } else {
-            statusEl.innerText = window.t('notFound');
-            statusEl.className = "text-[10px] text-yellow-500 text-center";
+            return;
         }
-    }).catch(e => {
-        statusEl.innerText = `${window.t('error')} ${e.message}`;
-        statusEl.className = "text-[10px] text-red-500 text-center";
-    });
+        
+        // Update status with elapsed time
+        const secs = Math.floor(elapsed / 1000);
+        statusEl.innerText = `🔄 ${window.t('testing')} (${secs}s...)`;
+        
+        if (elapsed >= maxWait) {
+            clearInterval(checkTimer);
+            // Restore previous position if we had one
+            if (prevPosition && !window.liveData.position) {
+                window.liveData.position = prevPosition;
+            }
+            statusEl.innerText = window.t('notFound');
+            statusEl.className = "text-[10px] text-red-500 text-center";
+        }
+    }, pollInterval);
 };
 
 // הפונקציה הראשית שמושכת נתונים

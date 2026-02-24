@@ -612,15 +612,18 @@ window.renderFrame = function() {
         }
         
         const timerEl = document.getElementById('raceTimerDisplay');
-        if (raceRemaining <= 0) {
+        if (raceRemaining <= -1000) {
             timerEl.innerText = "FINISH";
             timerEl.classList.add("text-neon", "animate-pulse");
             return;
         }
-        // Ceil to nearest second so the countdown doesn't drop a visual
-        // second the instant the race starts (avoids 1s offset vs stint timer).
-        const raceRemainingDisplay = Math.ceil(raceRemaining / 1000) * 1000;
-        timerEl.innerText = window.formatTimeHMS(raceRemainingDisplay);
+        if (raceRemaining <= 0) {
+            timerEl.innerText = "0:00:00";
+            timerEl.classList.add("text-neon");
+        } else {
+            // Floor so the last visible second is 0:00:00 (not stuck on 0:00:01)
+            timerEl.innerText = window.formatTimeHMS(Math.floor(raceRemaining / 1000) * 1000);
+        }
 
         const totalPlannedStops = window.config.reqStops || 0;
         document.getElementById('pitCountDisplay').innerHTML = 
@@ -1442,11 +1445,14 @@ window.updateDriverMode = function() {
     // === Race timer (top-right, small) ===
     const timerEl = document.getElementById('driverRaceTimer');
     if (timerEl) {
-        if (raceRemaining <= 0) {
+        if (raceRemaining <= -1000) {
             timerEl.innerText = '🏁 FINISH';
             timerEl.style.color = '#39ff14';
+        } else if (raceRemaining <= 0) {
+            timerEl.innerText = '0:00:00';
+            timerEl.style.color = '#39ff14';
         } else {
-            timerEl.innerText = window.formatTimeHMS(Math.ceil(raceRemaining / 1000) * 1000);
+            timerEl.innerText = window.formatTimeHMS(Math.floor(raceRemaining / 1000) * 1000);
             timerEl.style.color = '';
         }
     }
