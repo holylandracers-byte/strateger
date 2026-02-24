@@ -205,6 +205,24 @@ window.removeViewer = function(peerId, name) {
 // Update the UI for viewer approval modal
 window.updateViewerApprovalUI = function() {
     const modal = document.getElementById('viewerApprovalModal');
+    const badge = document.getElementById('viewerPendingBadge');
+    const manageBtn = document.getElementById('viewerManageBtn');
+    
+    // Always update the pending badge (even if modal is closed)
+    const pendingCount = window.pendingViewerApprovals.size;
+    if (badge) {
+        if (pendingCount > 0) {
+            badge.innerText = pendingCount;
+            badge.classList.remove('hidden');
+        } else {
+            badge.classList.add('hidden');
+        }
+    }
+    // Ensure manage button is visible when there are pending or approved viewers
+    if (manageBtn && window.role === 'host' && window.myId) {
+        manageBtn.classList.remove('hidden');
+    }
+    
     if (!modal) return;
     
     const pendingList = document.getElementById('pendingViewersList');
@@ -385,6 +403,14 @@ window.initHostPeer = function() {
                     
                     // Alert host that someone is requesting approval
                     console.log(`🔔 Viewer approval request from ${name} (#${c.peer.substring(0, 8)})`);
+                    
+                    // Update pending badge
+                    window.updateViewerApprovalUI();
+                    
+                    // Play alert sound to notify admin
+                    if (typeof window.playAlertBeep === 'function') {
+                        window.playAlertBeep('info');
+                    }
                     
                     // Auto-show approval modal if host is viewing
                     if (window.role === 'host') {
