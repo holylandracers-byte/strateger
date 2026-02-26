@@ -2434,6 +2434,106 @@ window.handleActivatePro = async function() {
     }
 };
 
+// ==========================================
+// 🎟️ COUPON CODE LOGIC
+// ==========================================
+
+window._appliedCoupon = null;
+
+window.applyCoupon = async function() {
+    const input = document.getElementById('couponInput');
+    const resultEl = document.getElementById('couponResult');
+    const btn = document.getElementById('applyCouponBtn');
+    if (!input || !resultEl) return;
+
+    const code = input.value.trim().toUpperCase();
+    if (!code) return;
+
+    btn.disabled = true;
+    btn.innerText = '...';
+    resultEl.classList.add('hidden');
+
+    try {
+        const res = await fetch('/.netlify/functions/verify-coupon', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code })
+        });
+        const data = await res.json();
+
+        if (data.valid) {
+            // 100% coupon = FREE key → auto-activate
+            if (data.freeKey) {
+                resultEl.innerText = '🎉 ' + data.message;
+                resultEl.className = 'text-xs mt-1.5 text-center font-bold text-green-400';
+                resultEl.classList.remove('hidden');
+
+                // Auto-fill and activate the key
+                const keyInput = document.getElementById('proLicenseInput');
+                if (keyInput) keyInput.value = data.freeKey;
+                const result = await window.activateProLicense(data.freeKey);
+                if (result.success) {
+                    const successEl = document.getElementById('proActivateSuccess');
+                    if (successEl) {
+                        successEl.innerText = '🎟️ Free coupon applied — Pro activated!';
+                        successEl.classList.remove('hidden');
+                    }
+                    setTimeout(() => {
+                        document.getElementById('proUpgradeModal').classList.add('hidden');
+                    }, 2000);
+                }
+                return;
+            }
+
+            // Partial discount
+            window._appliedCoupon = data;
+            resultEl.innerText = '✅ ' + data.message;
+            resultEl.className = 'text-xs mt-1.5 text-center font-bold text-green-400';
+            resultEl.classList.remove('hidden');
+
+            // Update prices in the modal
+            const priceOrigEl = document.getElementById('proPriceOriginal');
+            const buyPriceEl = document.getElementById('proBuyPrice');
+            const bannerEl = document.getElementById('couponAppliedBanner');
+            const bannerText = document.getElementById('couponAppliedText');
+
+            if (priceOrigEl) priceOrigEl.innerHTML = `<s class="text-gray-500">$19</s> <span class="text-green-400 font-bold">$${data.discountedPrice}</span>`;
+            if (buyPriceEl) buyPriceEl.innerHTML = `$${data.discountedPrice}`;
+            if (bannerText) bannerText.innerText = `🎟️ Coupon "${code}" applied: ${data.discount}% off!`;
+            if (bannerEl) bannerEl.classList.remove('hidden');
+
+            // Hide coupon input section after success
+            document.getElementById('couponSection').classList.add('hidden');
+        } else {
+            resultEl.innerText = '❌ ' + data.message;
+            resultEl.className = 'text-xs mt-1.5 text-center font-bold text-red-400';
+            resultEl.classList.remove('hidden');
+        }
+    } catch (e) {
+        resultEl.innerText = '❌ Connection error';
+        resultEl.className = 'text-xs mt-1.5 text-center font-bold text-red-400';
+        resultEl.classList.remove('hidden');
+    } finally {
+        btn.disabled = false;
+        btn.innerText = window.t ? window.t('proApplyCoupon') : 'Apply';
+    }
+};
+
+window.removeCoupon = function() {
+    window._appliedCoupon = null;
+    const priceOrigEl = document.getElementById('proPriceOriginal');
+    const buyPriceEl = document.getElementById('proBuyPrice');
+    const bannerEl = document.getElementById('couponAppliedBanner');
+    const couponInput = document.getElementById('couponInput');
+    const resultEl = document.getElementById('couponResult');
+
+    if (priceOrigEl) priceOrigEl.innerText = '$19';
+    if (buyPriceEl) buyPriceEl.innerText = '$19';
+    if (bannerEl) bannerEl.classList.add('hidden');
+    if (couponInput) couponInput.value = '';
+    if (resultEl) resultEl.classList.add('hidden');
+};
+
 window.showProStatus = function() {
     if (!window._proUnlocked) return window.showProGate();
     const t = window.t || ((k) => k);

@@ -67,6 +67,8 @@ app.all('/.netlify/functions/send-feedback', netlifyFunctionWrapper('send-feedba
 app.all('/.netlify/functions/verify-license', netlifyFunctionWrapper('verify-license'));
 app.all('/.netlify/functions/generate-license', netlifyFunctionWrapper('generate-license'));
 app.all('/.netlify/functions/manage-licenses', netlifyFunctionWrapper('manage-licenses'));
+app.all('/.netlify/functions/manage-coupons', netlifyFunctionWrapper('manage-coupons'));
+app.all('/.netlify/functions/verify-coupon', netlifyFunctionWrapper('verify-coupon'));
 
 // נתיב ראשי - מגיש את ה-HTML
 app.get('*', (req, res) => {

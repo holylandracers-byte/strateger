@@ -76,6 +76,61 @@
                 <p class="text-gray-500 text-center py-4">Loading...</p>
             </div>
         </div>
+
+        <!-- ============ COUPON CODES ============ -->
+        <hr class="border-slate-700 my-8">
+        <div class="flex items-center justify-between mb-6">
+            <h1 class="text-xl font-bold">🎟️ Coupon Codes</h1>
+            <span id="couponCount" class="text-gray-400 text-sm"></span>
+        </div>
+
+        <!-- Create New Coupon -->
+        <div class="card mb-6">
+            <h2 class="font-bold mb-3 text-lg">➕ Create New Coupon</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                <div>
+                    <label class="text-xs text-gray-400 mb-1 block">Code (leave blank for auto-generate)</label>
+                    <input type="text" id="couponCode" placeholder="e.g. LAUNCH50 (auto if empty)" style="text-transform: uppercase;">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400 mb-1 block">Discount %</label>
+                    <input type="number" id="couponDiscount" placeholder="e.g. 25" min="1" max="100" value="">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400 mb-1 block">Max uses (blank = unlimited)</label>
+                    <input type="number" id="couponMaxUses" placeholder="e.g. 50" min="1">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400 mb-1 block">Expires at (optional)</label>
+                    <input type="datetime-local" id="couponExpires">
+                </div>
+            </div>
+            <div class="mb-3">
+                <label class="text-xs text-gray-400 mb-1 block">Notes (optional)</label>
+                <input type="text" id="couponNotes" placeholder="e.g. YouTube launch promo">
+            </div>
+            <div class="flex items-center gap-3">
+                <button onclick="createCoupon()" class="btn btn-primary" id="createCouponBtn">🎟️ Create Coupon</button>
+                <span id="couponCreateResult" class="text-sm"></span>
+            </div>
+            <!-- Show new coupon -->
+            <div id="newCouponDisplay" class="hidden mt-4 p-4 bg-cyan-900/20 border border-cyan-500/30 rounded-lg fade-in">
+                <p class="text-sm text-gray-400 mb-1">New coupon code (click to copy):</p>
+                <div class="key-text text-lg cursor-pointer" id="newCouponText" onclick="copyKey(this.innerText)"></div>
+                <p class="text-cyan-400 text-sm mt-1" id="newCouponInfo"></p>
+            </div>
+        </div>
+
+        <!-- Coupon List -->
+        <div class="card">
+            <div class="flex items-center justify-between mb-3">
+                <h2 class="font-bold text-lg">📋 All Coupons</h2>
+                <button onclick="loadCoupons()" class="btn text-sm text-gray-400 hover:text-white">🔄 Refresh</button>
+            </div>
+            <div id="couponList" class="space-y-2">
+                <p class="text-gray-500 text-center py-4">Loading...</p>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -93,6 +148,7 @@
                         document.getElementById('dashboard').classList.remove('hidden');
                         sessionStorage.setItem('strat_admin', _secret);
                         renderLicenses(data.licenses);
+                        loadCoupons();
                     } else {
                         document.getElementById('authError').innerText = 'Invalid admin secret';
                         document.getElementById('authError').classList.remove('hidden');
@@ -229,6 +285,160 @@
             _secret = saved;
             document.getElementById('adminSecretInput').value = saved;
             authenticate();
+        }
+
+        // ============ COUPON FUNCTIONS ============
+
+        function loadCoupons() {
+            fetch(`/.netlify/functions/manage-coupons?secret=${encodeURIComponent(_secret)}`)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) renderCoupons(data.coupons);
+                    else document.getElementById('couponList').innerHTML = '<p class="text-gray-500 text-center py-4">Could not load coupons</p>';
+                })
+                .catch(() => {
+                    document.getElementById('couponList').innerHTML = '<p class="text-red-400 text-center py-4">Server error</p>';
+                });
+        }
+
+        function renderCoupons(coupons) {
+            const el = document.getElementById('couponList');
+            const active = coupons.filter(c => c.is_active).length;
+            document.getElementById('couponCount').innerText = `${active} active / ${coupons.length} total`;
+
+            if (coupons.length === 0) {
+                el.innerHTML = '<p class="text-gray-500 text-center py-4">No coupons yet. Create one above!</p>';
+                return;
+            }
+
+            el.innerHTML = coupons.map(c => {
+                const created = new Date(c.created_at).toLocaleDateString();
+                const expires = c.expires_at ? new Date(c.expires_at).toLocaleDateString() : 'Never';
+                const isExpired = c.expires_at && new Date(c.expires_at) < new Date();
+                const usesText = c.max_uses ? `${c.current_uses}/${c.max_uses}` : `${c.current_uses}/∞`;
+                const isFull = c.max_uses && c.current_uses >= c.max_uses;
+                const discountedPrice = (19 * (1 - c.discount_percent / 100)).toFixed(2);
+
+                let statusBadge;
+                if (!c.is_active) statusBadge = '<span class="badge-inactive">Disabled</span>';
+                else if (isExpired) statusBadge = '<span class="badge-inactive">Expired</span>';
+                else if (isFull) statusBadge = '<span class="badge-inactive">Used Up</span>';
+                else statusBadge = '<span class="badge-active">Active</span>';
+
+                const toggleBtn = c.is_active
+                    ? `<button onclick="toggleCoupon(${c.id},'deactivate')" class="btn btn-danger text-xs py-1 px-2">Disable</button>`
+                    : `<button onclick="toggleCoupon(${c.id},'activate')" class="btn btn-success text-xs py-1 px-2">Enable</button>`;
+
+                return `
+                    <div class="flex flex-col md:flex-row md:items-center gap-2 p-3 bg-slate-800/50 rounded-lg border border-slate-700/50">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="key-text text-sm cursor-pointer" onclick="copyKey('${c.code}')">${c.code}</span>
+                                <span class="text-cyan-400 font-bold text-sm">${c.discount_percent}% off → $${discountedPrice}</span>
+                                ${c.discount_percent === 100 ? '<span class="text-yellow-400 text-xs font-bold">🆓 FREE KEY</span>' : ''}
+                            </div>
+                            <div class="flex flex-wrap gap-2 text-xs text-gray-400">
+                                <span>📊 Uses: ${usesText}</span>
+                                <span>📅 Created: ${created}</span>
+                                <span>⏰ Expires: ${expires}</span>
+                                ${c.notes ? `<span>📝 ${c.notes}</span>` : ''}
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            ${statusBadge}
+                            ${toggleBtn}
+                            <button onclick="deleteCoupon(${c.id},'${c.code}')" class="btn text-xs py-1 px-2 text-gray-500 hover:text-red-400">🗑️</button>
+                        </div>
+                    </div>`;
+            }).join('');
+        }
+
+        async function createCoupon() {
+            const btn = document.getElementById('createCouponBtn');
+            btn.disabled = true;
+            btn.innerText = '⏳ Creating...';
+
+            const code = document.getElementById('couponCode').value.trim().toUpperCase() || null;
+            const discount = parseInt(document.getElementById('couponDiscount').value);
+            const maxUses = document.getElementById('couponMaxUses').value ? parseInt(document.getElementById('couponMaxUses').value) : null;
+            const expiresRaw = document.getElementById('couponExpires').value;
+            const expires = expiresRaw ? new Date(expiresRaw).toISOString() : null;
+            const notes = document.getElementById('couponNotes').value.trim() || null;
+
+            if (!discount || discount < 1 || discount > 100) {
+                document.getElementById('couponCreateResult').innerHTML = '<span class="text-red-400">❌ Discount must be 1-100%</span>';
+                btn.disabled = false;
+                btn.innerText = '🎟️ Create Coupon';
+                return;
+            }
+
+            try {
+                const res = await fetch('/.netlify/functions/manage-coupons', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        secret: _secret,
+                        action: 'create',
+                        code, discount, maxUses, expires, notes
+                    })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    const c = data.coupon;
+                    const price = (19 * (1 - c.discount_percent / 100)).toFixed(2);
+                    document.getElementById('newCouponText').innerText = c.code;
+                    document.getElementById('newCouponInfo').innerText = `${c.discount_percent}% off → Customer pays $${price}${c.discount_percent === 100 ? ' (FREE — auto-generates key!)' : ''}`;
+                    document.getElementById('newCouponDisplay').classList.remove('hidden');
+                    document.getElementById('couponCreateResult').innerHTML = '<span class="text-green-400">✅ Coupon created!</span>';
+                    // Clear inputs
+                    document.getElementById('couponCode').value = '';
+                    document.getElementById('couponDiscount').value = '';
+                    document.getElementById('couponMaxUses').value = '';
+                    document.getElementById('couponExpires').value = '';
+                    document.getElementById('couponNotes').value = '';
+                    loadCoupons();
+                } else {
+                    document.getElementById('couponCreateResult').innerHTML = `<span class="text-red-400">❌ ${data.message}</span>`;
+                }
+            } catch (e) {
+                document.getElementById('couponCreateResult').innerHTML = `<span class="text-red-400">❌ ${e.message}</span>`;
+            } finally {
+                btn.disabled = false;
+                btn.innerText = '🎟️ Create Coupon';
+            }
+        }
+
+        async function toggleCoupon(id, action) {
+            if (!confirm(`${action === 'deactivate' ? 'Disable' : 'Enable'} this coupon?`)) return;
+            try {
+                const res = await fetch('/.netlify/functions/manage-coupons', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ secret: _secret, action, id })
+                });
+                const data = await res.json();
+                if (data.success) loadCoupons();
+                else alert('Error: ' + data.message);
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        async function deleteCoupon(id, code) {
+            if (!confirm(`DELETE coupon "${code}" permanently? This cannot be undone.`)) return;
+            try {
+                const res = await fetch('/.netlify/functions/manage-coupons', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ secret: _secret, action: 'delete', id })
+                });
+                const data = await res.json();
+                if (data.success) loadCoupons();
+                else alert('Error: ' + data.message);
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
         }
     </script>
 </body>

@@ -134,6 +134,25 @@ window.updateStarterVisuals = function() {
 window.toggleSquadsInput = function() {
     const numSquads = parseInt(document.getElementById('numSquads')?.value) || 0;
     const useSquads = numSquads > 0;
+
+    // Pro gate: squads is a Pro feature
+    if (useSquads && !window.checkProFeature('squads')) {
+        document.getElementById('numSquads').value = '0';
+        window.showProGate(window.t('lblSquads'));
+        return;
+    }
+
+    // Update hint text dynamically based on selected count
+    const hintEl = document.querySelector('[data-i18n="lblSquadsHint"]');
+    if (hintEl) {
+        const t = window.t || (k => k);
+        if (numSquads >= 2) {
+            hintEl.innerText = t('lblSquadsHintActive').replace('{n}', numSquads);
+        } else {
+            hintEl.innerText = t('lblSquadsHint');
+        }
+    }
+
     document.querySelectorAll('.squad-toggle-container').forEach(el => 
         el.classList.toggle('hidden', !useSquads)
     );
@@ -209,9 +228,16 @@ window.autoAssignSquads = function(numSquads) {
 window.toggleFuelInput = function() {
     const trackFuel = document.getElementById('trackFuel');
     const fuelDiv = document.getElementById('fuelInputDiv');
-    if (trackFuel && fuelDiv) {
-        trackFuel.checked ? fuelDiv.classList.remove('hidden') : fuelDiv.classList.add('hidden');
+    if (!trackFuel || !fuelDiv) return;
+
+    // Pro gate: fuel tracking is a Pro feature
+    if (trackFuel.checked && !window.checkProFeature('fuelTracking')) {
+        trackFuel.checked = false;
+        window.showProGate(window.t('lblFuel'));
+        return;
     }
+
+    trackFuel.checked ? fuelDiv.classList.remove('hidden') : fuelDiv.classList.add('hidden');
 };
 
 const _BG_THEMES = {
