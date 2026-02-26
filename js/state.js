@@ -76,6 +76,8 @@ window.checkProFeature = function(featureName) {
  * Show Pro upgrade prompt when user tries to access a locked feature.
  */
 window.showProGate = function(featureName) {
+    // If already Pro, never show the upgrade modal
+    if (window._proUnlocked) return;
     const t = window.t || ((k) => k);
     const modal = document.getElementById('proUpgradeModal');
     if (modal) {

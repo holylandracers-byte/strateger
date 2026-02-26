@@ -2434,16 +2434,26 @@ window.handleActivatePro = async function() {
     }
 };
 
+window.showProStatus = function() {
+    if (!window._proUnlocked) return window.showProGate();
+    const t = window.t || ((k) => k);
+    if (confirm('⭐ Pro License Active\n\nAll Pro features are unlocked.\n\nClick OK to deactivate your license.')) {
+        window.deactivateProLicense();
+    }
+};
+
 window.updateProUI = function() {
     const banner = document.getElementById('proUpgradeBanner');
     const proBtn = document.getElementById('proStatusBtn');
     const lockLT = document.getElementById('proLockLiveTiming');
+    const modal = document.getElementById('proUpgradeModal');
     
     if (window._proUnlocked) {
-        // Pro active
+        // Pro active — hide all upgrade prompts
         if (banner) banner.classList.add('hidden');
         if (proBtn) { proBtn.classList.remove('hidden'); proBtn.innerHTML = '⭐ <span>PRO</span>'; }
         if (lockLT) lockLT.classList.add('hidden');
+        if (modal) modal.classList.add('hidden'); // close modal if it was open during activation
     } else {
         // Free tier
         if (banner) banner.classList.remove('hidden');
