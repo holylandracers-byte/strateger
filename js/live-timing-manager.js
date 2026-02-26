@@ -4,6 +4,38 @@
  * For Strateger - Netlify Deployment
  */
 
+/**
+ * Convert any gap value (string or number) to milliseconds.
+ * Handles: Apex time strings ("1:05.387", "5.387"), 
+ *          RaceFacer strings ("+12.345"), laps ("2 Laps"), 
+ *          and numeric seconds from parseGap.
+ */
+function gapToMs(gapValue) {
+    if (gapValue == null) return 0;
+    // Number → treat as seconds (from parseGap or raw float), convert to ms
+    if (typeof gapValue === 'number') return Math.round(gapValue * 1000);
+    let str = String(gapValue).trim().replace(/^\+/, '');
+    if (!str || str === '-') return 0;
+    // "M:SS.mmm" (e.g., "1:05.387" or "0:05.387")
+    const mmss = str.match(/^(\d+):(\d{2})\.(\d{1,3})$/);
+    if (mmss) {
+        const ms = mmss[3].padEnd(3, '0');
+        return (parseInt(mmss[1]) * 60 + parseInt(mmss[2])) * 1000 + parseInt(ms);
+    }
+    // "SS.mmm" (e.g., "5.387" or "65.123")
+    const ss = str.match(/^(\d+)\.(\d{1,3})$/);
+    if (ss) {
+        const ms = ss[2].padEnd(3, '0');
+        return parseInt(ss[1]) * 1000 + parseInt(ms);
+    }
+    // Laps behind: "2 Laps", "1 Lap"
+    const laps = str.match(/^(\d+)\s*[Ll]ap/);
+    if (laps) return parseInt(laps[1]) * 90000; // ~90s estimate per lap
+    // Fallback: parse as seconds
+    const num = parseFloat(str);
+    return !isNaN(num) ? Math.round(num * 1000) : 0;
+}
+
 class LiveTimingManager {
     constructor() {
         this.currentScraper = null;
@@ -44,6 +76,7 @@ class LiveTimingManager {
         // שמור config
         this.config = {
             searchTerm: searchTerm || '',
+            searchType: callbacks.searchType || 'team',
             onUpdate: callbacks.onUpdate || null,
             onError: callbacks.onError || null,
             onFatalError: callbacks.onFatalError || null,
@@ -96,6 +129,7 @@ class LiveTimingManager {
         this.currentScraper = new RaceFacerScraper({
             raceSlug: slug,
             searchTerm: this.config.searchTerm,
+            searchType: this.config.searchType || 'team',
             updateInterval: this.config.updateInterval,
             debug: false, // כבוי בפרודקשן
 
@@ -145,6 +179,7 @@ class LiveTimingManager {
     this.currentScraper = new ApexTimingScraper({
         raceUrl: url,
         searchTerm: this.config.searchTerm,
+        searchType: this.config.searchType || 'team',
         updateInterval: this.config.updateInterval,
         debug: true,
 
@@ -230,8 +265,8 @@ class LiveTimingManager {
                     bestLap: data.ourTeam.bestLapMs,
                     avgLap: data.ourTeam.avgLapMs,
                     totalLaps: data.ourTeam.totalLaps,
-                    gap: parseGap(data.ourTeam.gap),
-                    interval: parseGap(data.ourTeam.interval),
+                    gap: gapToMs(data.ourTeam.gap),
+                    interval: gapToMs(data.ourTeam.interval),
                     inPit: data.ourTeam.inPit,
                     pitCount: data.ourTeam.pitCount,
                     consistency: data.ourTeam.consistency
@@ -247,8 +282,8 @@ class LiveTimingManager {
                     bestLap: c.bestLapMs,
                     avgLap: c.avgLapMs,
                     laps: c.totalLaps,
-                    gap: parseGap(c.gap),
-                    interval: parseGap(c.interval),
+                    gap: gapToMs(c.gap),
+                    interval: gapToMs(c.interval),
                     inPit: c.inPit,
                     pitCount: c.pitCount,
                     consistency: c.consistency,
@@ -276,7 +311,7 @@ class LiveTimingManager {
                     lastLap: data.ourTeam.lastLapMs || null,
                     bestLap: data.ourTeam.bestLapMs || null,
                     totalLaps: parseInt(data.ourTeam.laps) || 0,
-                    gap: data.ourTeam.gap || '-',
+                    gap: gapToMs(data.ourTeam.gap),
                     inPit: data.ourTeam.inPit || false,
                     pitCount: data.ourTeam.pitCount || 0
                 } : null,
@@ -288,7 +323,7 @@ class LiveTimingManager {
                     lastLap: c.lastLapMs || null,
                     bestLap: c.bestLapMs || null,
                     laps: parseInt(c.laps) || 0,
-                    gap: c.gap || '-',
+                    gap: gapToMs(c.gap),
                     inPit: c.inPit || false,
                     isOurTeam: data.ourTeam ? (c.name === data.ourTeam.name && c.kart === data.ourTeam.kart) : false
                 })),

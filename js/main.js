@@ -88,6 +88,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Start race countdown monitor
     window.startRaceCountdown();
+
+    // Initialize Pro UI (show/hide lock icons, banner)
+    if (typeof window.updateProUI === 'function') window.updateProUI();
+    
+    // Initialize mute button icon
+    const muteBtn = document.getElementById('muteToggleBtn');
+    if (muteBtn && window._soundMuted) {
+        muteBtn.innerHTML = '<i class="fas fa-volume-mute"></i>';
+        muteBtn.title = 'Unmute';
+    }
+
+    // Start onboarding for first-time visitors (host only, no join code)
+    if (window.role === 'host' && typeof window.startOnboarding === 'function') {
+        setTimeout(() => window.startOnboarding(), 800);
+    }
 });
 
 // ==========================================
@@ -387,22 +402,32 @@ function updateModeUI() {
 
     const baseClass = "btn-press bg-navy-800 border rounded-lg text-sm text-gray-300 font-bold shadow-md transition flex flex-col items-center justify-center";
 
+    // For viewers: show mode state visually but keep buttons disabled
+    const isViewer = window.role === 'client';
+    const viewerExtra = isViewer ? ' opacity-60 cursor-not-allowed' : '';
+
     if (btnPush) {
-        btnPush.className = baseClass + " border-green-500/30 hover:bg-navy-700";
+        btnPush.className = baseClass + " border-green-500/30 hover:bg-navy-700" + viewerExtra;
         if (window.state.mode === 'push') {
-            btnPush.className = "btn-press bg-green-600 border-green-400 rounded-lg text-sm text-white font-bold shadow-[0_0_15px_rgba(34,197,94,0.4)] flex flex-col items-center justify-center scale-105";
+            btnPush.className = "btn-press bg-green-600 border-green-400 rounded-lg text-sm text-white font-bold shadow-[0_0_15px_rgba(34,197,94,0.4)] flex flex-col items-center justify-center scale-105" + viewerExtra;
         }
+        if (isViewer) { btnPush.style.pointerEvents = 'none'; btnPush.removeAttribute('onclick'); }
     }
 
     if (btnBad) {
-        btnBad.className = baseClass + " border-red-500/30 hover:bg-navy-700";
+        btnBad.className = baseClass + " border-red-500/30 hover:bg-navy-700" + viewerExtra;
         if (window.state.mode === 'bad') {
-            btnBad.className = "btn-press bg-red-600 border-red-400 rounded-lg text-sm text-white font-bold shadow-[0_0_15px_rgba(239,68,68,0.4)] flex flex-col items-center justify-center scale-105";
+            btnBad.className = "btn-press bg-red-600 border-red-400 rounded-lg text-sm text-white font-bold shadow-[0_0_15px_rgba(239,68,68,0.4)] flex flex-col items-center justify-center scale-105" + viewerExtra;
         }
+        if (isViewer) { btnBad.style.pointerEvents = 'none'; btnBad.removeAttribute('onclick'); }
     }
 
     if (btnReset) {
-        btnReset.classList.toggle('hidden', window.state.mode === 'normal');
+        if (isViewer) {
+            btnReset.classList.add('hidden'); // Viewers never see reset button
+        } else {
+            btnReset.classList.toggle('hidden', window.state.mode === 'normal');
+        }
     }
 
     // In problem mode: if min stint not reached, show "stay on track" instead of "box now"
@@ -790,6 +815,11 @@ window.renderFrame = function() {
 
         updateRemainingStrategyLogic(raceRemaining);
 
+        // Strategy-based notifications (upcoming driver changes, squad alerts)
+        if (typeof window.updateStrategyNotifications === 'function') {
+            window.updateStrategyNotifications();
+        }
+
         if (typeof window.updateStats === 'function' && !window.state.isInPit) {
             let t = (now - window.state.stintStart) + (window.state.stintOffset || 0);
             window.updateStats(t);
@@ -1012,7 +1042,17 @@ window.adjustPitTime = function(seconds) {
 };
 
 window.confirmPitEntry = function(autoDetected) {
+    // Guard: prevent re-entry if already in pit
+    if (window.state.isInPit) return;
+    
+    // Guard: cooldown to prevent rapid pit cycling (min 10s between manual pit entries)
+    // Skip cooldown if auto-detected from live timing — live timing is authoritative
     const now = Date.now();
+    if (!autoDetected && window._lastPitEntryTime && (now - window._lastPitEntryTime) < 10000) {
+        console.warn('⚠️ confirmPitEntry blocked — too soon after last pit entry');
+        return;
+    }
+    
     const currentStintMs = (now - window.state.stintStart) + (window.state.stintOffset || 0);
     const minStintMs = (window.config.minStint || 0) * 60000;
     let isShortStint = false;
@@ -1029,6 +1069,12 @@ window.confirmPitEntry = function(autoDetected) {
     window.state.isInPit = true;
     window.state.pitStart = now;
     window.state.pitCount++; // === UP COUNT ===
+    window._lastPitEntryTime = now; // Record for cooldown guard
+
+    // Save snapshot for undo functionality
+    if (typeof window._saveUndoPitSnapshot === 'function') {
+        window._saveUndoPitSnapshot();
+    }
 
     const modal = document.getElementById('pitModal');
     const warningEl = document.getElementById('pitStintWarning');
@@ -1084,9 +1130,58 @@ window.cancelPitStop = function() {
     window.renderFrame();
 };
 
-window.cycleNextDriver = function(forceValidation = false) {
+window.cycleNextDriver = function(forceValidation = false, manualOverride = false) {
     if (!window.drivers || window.drivers.length === 0) return;
 
+    // === Strategy-following logic: look at the planned schedule ===
+    // Skip strategy if host manually clicked to cycle (override)
+    if (!manualOverride) {
+        const schedule = window.state.stintSchedule;
+        const nextStintIdx = (window.state.globalStintNumber || 1); // 0-based index for next stint
+        
+        if (schedule && schedule.length > nextStintIdx) {
+            const planned = schedule[nextStintIdx];
+            const plannedDriverIdx = planned.driverIdx;
+            
+            // Validate the planned driver is still valid
+            if (plannedDriverIdx >= 0 && plannedDriverIdx < window.drivers.length) {
+                let isValid = true;
+                
+                // Night mode squad check
+                if (window.config.useSquads && window.state.isNightMode) {
+                    if (window.drivers[plannedDriverIdx].squad !== window.state.activeSquad) {
+                        isValid = false;
+                    }
+                }
+                
+                // Double stint check (only if same as current)
+                if (plannedDriverIdx === window.state.currentDriverIdx) {
+                    const allowDouble = window.config.allowDouble || document.getElementById('allowDouble')?.checked;
+                    if (!allowDouble || window.state.consecutiveStints >= 2) {
+                        isValid = false;
+                    }
+                }
+                
+                if (isValid) {
+                    window.state.nextDriverIdx = plannedDriverIdx;
+                    
+                    // Also update the squad info from the strategy if applicable
+                    if (planned.squadModeActive && planned.activeSquad && !window.state.isNightMode) {
+                        // Strategy had a squad plan — inform the system
+                        window.state._plannedSquad = planned.activeSquad;
+                    }
+                    
+                    const nextDriver = window.drivers[window.state.nextDriverIdx];
+                    const nextEls = [document.getElementById('nextDriverName'), document.getElementById('modalNextDriverName')];
+                    nextEls.forEach(el => { if(el && nextDriver) el.innerText = nextDriver.name; });
+                    if (typeof window.broadcast === 'function') window.broadcast();
+                    return;
+                }
+            }
+        }
+    }
+
+    // === Fallback: original cycling logic (when strategy doesn't cover this stint) ===
     let candidate = window.state.nextDriverIdx;
     if (!forceValidation) {
         candidate = (candidate + 1) % window.drivers.length;
@@ -1126,6 +1221,8 @@ window.cycleNextDriver = function(forceValidation = false) {
 };
 
 window.playReleaseSound = function() {
+    // Respect global mute setting
+    if (window._soundMuted) return;
     try {
         const audioContext = new (window.AudioContext || window.webkitAudioContext)();
         
@@ -1166,6 +1263,8 @@ window.playReleaseSound = function() {
 // ==========================================
 
 window.playAlertBeep = function(type) {
+    // Respect global mute setting
+    if (window._soundMuted) return;
     try {
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
         const osc = ctx.createOscillator();
@@ -1265,6 +1364,12 @@ window.getBoxMessage = function() {
 };
 
 window.confirmPitExit = function() {
+    // Guard: only exit if actually in pit
+    if (!window.state.isInPit) return;
+    
+    // Hide undo toast — can't undo after exit
+    if (typeof window._hideUndoPitToast === 'function') window._hideUndoPitToast();
+    
     // Play release sound
     if (typeof window.playReleaseSound === 'function') window.playReleaseSound();
     
@@ -1310,9 +1415,24 @@ window.confirmPitExit = function() {
         window.state.consecutiveStints = 1; 
         if (window.config.useSquads && window.drivers[newDriverIdx]) {
             if (!window.state.isNightMode) {
-                window.state.activeSquad = window.drivers[newDriverIdx].squad;
+                // Use strategy-planned squad if available, else driver's squad
+                const currentStintIdx = (window.state.globalStintNumber || 1) - 1;
+                const schedule = window.state.stintSchedule;
+                if (schedule && schedule[currentStintIdx] && schedule[currentStintIdx].activeSquad) {
+                    window.state.activeSquad = schedule[currentStintIdx].activeSquad;
+                } else {
+                    window.state.activeSquad = window.drivers[newDriverIdx].squad;
+                }
             }
         }
+    }
+
+    // Reset strategy notification state for the new stint
+    if (window._strategyNotifState) {
+        window._strategyNotifState.pitAlert5Fired = false;
+        window._strategyNotifState.pitAlert2Fired = false;
+        window._strategyNotifState.squadChangeNotified = false;
+        window._strategyNotifState.driverChangeNotified = false;
     }
 
     if (typeof window.saveRaceState === 'function') window.saveRaceState();
@@ -1321,7 +1441,21 @@ window.confirmPitExit = function() {
 };
 
 // ==========================================
-// 💬 FEEDBACK SYSTEM (BUG REPORTS & SUGGESTIONS)
+// � CONTACT US MODAL
+// ==========================================
+
+window.openContactUsModal = function() {
+    const modal = document.getElementById('contactUsModal');
+    if (modal) modal.classList.remove('hidden');
+};
+
+window.closeContactUsModal = function() {
+    const modal = document.getElementById('contactUsModal');
+    if (modal) modal.classList.add('hidden');
+};
+
+// ==========================================
+// �💬 FEEDBACK SYSTEM (BUG REPORTS & SUGGESTIONS)
 // ==========================================
 
 window.feedbackType = 'bug'; // 'bug' or 'feature'
@@ -1538,16 +1672,77 @@ window.submitDriverId = function() {
 };
 
 // Driver pit tap — tap the status zone to enter/exit pits (when radio is unavailable)
+// Double-tap to confirm pit entry: first tap shows confirmation, second tap commits
+window._driverPitPending = false;
+window._driverPitPendingTimer = null;
+
 window.driverPitTap = function() {
     if (!window.state || !window.state.isRunning) return;
     
     if (window.state.isInPit) {
         // Only allow exit if in green zone
         if (window.alertState.lastZone === 'go') {
+            // For client driver mode: send pit exit request to host
+            if (window.role === 'client' && window.conn && window.conn.open) {
+                window.conn.send({ type: 'DRIVER_PIT_EXIT', driverIdx: window._myDriverIdx, timestamp: Date.now() });
+            }
             window.confirmPitExit();
         }
     } else {
-        window.confirmPitEntry();
+        // === Double-tap confirmation for pit entry ===
+        const t = window.t || ((k) => k);
+        if (!window._driverPitPending) {
+            // ─── FIRST TAP: show big "PITS?" in chosen language ───
+            window._driverPitPending = true;
+            
+            const statusMsg = document.getElementById('driverStatusMsg');
+            const statusSub = document.getElementById('driverStatusSub');
+            const statusEmoji = document.getElementById('driverStatusEmoji');
+            const tapHint = document.getElementById('driverTapHint');
+            const zone = document.getElementById('driverStatusZone');
+            
+            if (statusEmoji) statusEmoji.textContent = '🅿️';
+            if (statusMsg) {
+                statusMsg.textContent = t('pitsConfirm') || 'PITS?';
+                statusMsg.style.color = '#f59e0b';
+                statusMsg.style.fontSize = '';
+            }
+            if (statusSub) {
+                statusSub.textContent = t('tapAgainConfirm') || 'TAP AGAIN TO CONFIRM';
+                statusSub.style.color = '#fbbf24';
+            }
+            if (tapHint) {
+                tapHint.textContent = '⚠️ ' + (t('tapAgainConfirm') || 'TAP AGAIN TO CONFIRM');
+                tapHint.style.color = '#f59e0b';
+            }
+            // Flash the zone background amber
+            if (zone) zone.style.background = 'linear-gradient(180deg, rgba(245,158,11,0.25) 0%, rgba(0,0,0,1) 100%)';
+            
+            // Auto-cancel after 4 seconds
+            if (window._driverPitPendingTimer) clearTimeout(window._driverPitPendingTimer);
+            window._driverPitPendingTimer = setTimeout(() => {
+                window._driverPitPending = false;
+                // Restore normal display — renderFrame will handle it
+                if (tapHint) { tapHint.textContent = ''; tapHint.style.color = ''; }
+                if (zone) zone.style.background = '';
+            }, 4000);
+        } else {
+            // ─── SECOND TAP: confirm pit entry ───
+            window._driverPitPending = false;
+            if (window._driverPitPendingTimer) { clearTimeout(window._driverPitPendingTimer); window._driverPitPendingTimer = null; }
+            
+            const tapHint = document.getElementById('driverTapHint');
+            const zone = document.getElementById('driverStatusZone');
+            if (tapHint) { tapHint.textContent = ''; tapHint.style.color = ''; }
+            if (zone) zone.style.background = '';
+            
+            // For client driver mode: send pit entry request to host so admin sees team in pits
+            if (window.role === 'client' && window.conn && window.conn.open) {
+                window.conn.send({ type: 'DRIVER_PIT_ENTRY', driverIdx: window._myDriverIdx, timestamp: Date.now() });
+            }
+            
+            window.confirmPitEntry();
+        }
     }
 };
 
@@ -1782,6 +1977,163 @@ window._fireDriverAlert = function(message, minutesBefore) {
     } else if ('Notification' in window && Notification.permission !== 'denied') {
         Notification.requestPermission();
     }
+};
+
+// ==========================================
+// 📋 STRATEGY-FOLLOWING NOTIFICATIONS (HOST)
+// ==========================================
+
+// Notification state for strategy alerts
+window._strategyNotifState = {
+    lastNotifiedStint: 0,
+    pitAlert5Fired: false,
+    pitAlert2Fired: false,
+    squadChangeNotified: false,
+    driverChangeNotified: false
+};
+
+window.updateStrategyNotifications = function() {
+    if (!window.state || !window.state.isRunning || window.state.isInPit) return;
+    if (window.role === 'client') return; // Only for host
+    
+    const schedule = window.state.stintSchedule;
+    if (!schedule || schedule.length === 0) return;
+    
+    const t = window.t || (k => k);
+    const now = window.getSyncedNow();
+    const currentStintMs = (now - window.state.stintStart) + (window.state.stintOffset || 0);
+    const targetMs = window.state.targetStintMs || 0;
+    const timeToTarget = targetMs - currentStintMs;
+    const currentStintIdx = (window.state.globalStintNumber || 1) - 1; // 0-based
+    const nextStintIdx = currentStintIdx + 1;
+    
+    // Reset alerts when stint changes
+    if (currentStintIdx !== window._strategyNotifState.lastNotifiedStint) {
+        window._strategyNotifState.lastNotifiedStint = currentStintIdx;
+        window._strategyNotifState.pitAlert5Fired = false;
+        window._strategyNotifState.pitAlert2Fired = false;
+        window._strategyNotifState.squadChangeNotified = false;
+        window._strategyNotifState.driverChangeNotified = false;
+    }
+    
+    // No next stint in schedule? Nothing to notify about
+    if (nextStintIdx >= schedule.length) return;
+    
+    const nextPlanned = schedule[nextStintIdx];
+    const nextDriverName = nextPlanned.driverName;
+    const nextSquad = nextPlanned.activeSquad;
+    const currentSquad = window.state.activeSquad;
+    
+    // Update the strategy info banner
+    const banner = document.getElementById('strategyScheduleBanner');
+    if (banner) {
+        const nextDriverDisplay = window.drivers[nextPlanned.driverIdx]?.name || nextDriverName;
+        const stintsLeft = schedule.length - nextStintIdx;
+        
+        let bannerHtml = `<span class="text-gray-400 text-[10px]">${t('nextLabel') || 'Next:'}</span> `;
+        bannerHtml += `<span class="text-ice font-bold text-xs">${nextDriverDisplay}</span>`;
+        
+        if (nextPlanned.squadModeActive && nextSquad) {
+            bannerHtml += ` <span class="text-[9px] px-1 rounded bg-purple-600/30 text-purple-300">Squad ${nextSquad}</span>`;
+        }
+        
+        // Show time to pit
+        if (timeToTarget > 0) {
+            const minLeft = Math.ceil(timeToTarget / 60000);
+            bannerHtml += ` <span class="text-gray-500 text-[10px]">(${minLeft}m)</span>`;
+        }
+        
+        banner.innerHTML = bannerHtml;
+        banner.classList.remove('hidden');
+    }
+    
+    // === 5 minutes before pit: notify upcoming driver ===
+    if (timeToTarget > 0 && timeToTarget <= 300000 && !window._strategyNotifState.pitAlert5Fired) {
+        window._strategyNotifState.pitAlert5Fired = true;
+        
+        const msg = `📢 ${nextDriverName} — ${t('getReady') || 'GET READY'} (5m)`;
+        window._fireStrategyNotification(msg, 'info');
+        
+        // Squad change warning
+        if (window.config.useSquads && nextSquad && nextSquad !== currentSquad) {
+            const sleepMsg = `😴 Squad ${currentSquad} → ${t('sleepOk') || 'can sleep'} | 🟢 Squad ${nextSquad} → ${t('stayAwake') || 'wake up'}`;
+            window._fireStrategyNotification(sleepMsg, 'warning');
+            window._strategyNotifState.squadChangeNotified = true;
+        }
+    }
+    
+    // === 2 minutes before pit: urgent driver notification ===
+    if (timeToTarget > 0 && timeToTarget <= 120000 && !window._strategyNotifState.pitAlert2Fired) {
+        window._strategyNotifState.pitAlert2Fired = true;
+        
+        const msg = `🏎️ ${nextDriverName} — ${t('getReady') || 'GET READY'} (2m)`;
+        window._fireStrategyNotification(msg, 'warning');
+    }
+    
+    // === Squad sleep/wake info display (continuous) ===
+    const squadInfoEl = document.getElementById('squadStatusInfo');
+    if (squadInfoEl && window.config.useSquads) {
+        const allLabels = window.getSquadLabelsInUse ? window.getSquadLabelsInUse() : ['A', 'B'];
+        const active = window.state.activeSquad;
+        const sleeping = allLabels.filter(l => l !== active);
+        
+        let html = `<span class="text-green-400">🟢 Squad ${active}</span>`;
+        if (sleeping.length > 0) {
+            html += ` <span class="text-gray-500">|</span> <span class="text-gray-400">😴 ${sleeping.join(', ')}</span>`;
+        }
+        
+        // Show upcoming squad change if different
+        if (nextSquad && nextSquad !== active && nextPlanned.squadModeActive) {
+            const minLeft = Math.max(0, Math.ceil(timeToTarget / 60000));
+            html += ` <span class="text-purple-400 text-[10px] ml-1">→ Squad ${nextSquad} in ${minLeft}m</span>`;
+        }
+        
+        squadInfoEl.innerHTML = html;
+        squadInfoEl.classList.remove('hidden');
+    } else if (squadInfoEl) {
+        squadInfoEl.classList.add('hidden');
+    }
+};
+
+// Fire a strategy notification (sound + browser notification + optional toast)
+window._fireStrategyNotification = function(message, type) {
+    // Play beep
+    if (typeof window.playAlertBeep === 'function') {
+        window.playAlertBeep(type || 'info');
+    }
+    
+    // Browser notification
+    if ('Notification' in window && Notification.permission === 'granted') {
+        try {
+            new Notification('🏁 Strateger', { 
+                body: message, 
+                icon: '/favicon.ico', 
+                tag: 'strategy-' + Date.now(),
+                requireInteraction: false
+            });
+        } catch(e) {}
+    }
+    
+    // Toast notification on dashboard
+    window._showStrategyToast(message);
+};
+
+// Show a temporary toast message on the race dashboard
+window._showStrategyToast = function(message) {
+    let container = document.getElementById('strategyToastContainer');
+    if (!container) return;
+    
+    const toast = document.createElement('div');
+    toast.className = 'bg-navy-800 border border-ice/50 text-white text-xs px-3 py-2 rounded-lg shadow-lg animate-flash mb-1';
+    toast.innerText = message;
+    container.appendChild(toast);
+    
+    // Auto-remove after 8 seconds
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transition = 'opacity 0.5s';
+        setTimeout(() => toast.remove(), 500);
+    }, 8000);
 };
 
 window.updateDriverMode = function() {
@@ -2052,4 +2404,273 @@ window.calculatePaceTrend = function() {
     if (diffMs < -thresholdMs) return 'improving';
     if (diffMs > thresholdMs) return 'declining';
     return 'stable';
+};
+
+// ==========================================
+// ⭐ PRO LICENSE UI
+// ==========================================
+
+window.handleActivatePro = async function() {
+    const input = document.getElementById('proLicenseInput');
+    const errorEl = document.getElementById('proActivateError');
+    const successEl = document.getElementById('proActivateSuccess');
+    if (!input) return;
+    
+    errorEl.classList.add('hidden');
+    successEl.classList.add('hidden');
+    
+    const key = input.value.trim();
+    const result = await window.activateProLicense(key);
+    
+    if (result.success) {
+        successEl.innerText = result.message;
+        successEl.classList.remove('hidden');
+        setTimeout(() => {
+            document.getElementById('proUpgradeModal').classList.add('hidden');
+        }, 1500);
+    } else {
+        errorEl.innerText = result.message;
+        errorEl.classList.remove('hidden');
+    }
+};
+
+window.updateProUI = function() {
+    const banner = document.getElementById('proUpgradeBanner');
+    const proBtn = document.getElementById('proStatusBtn');
+    const lockLT = document.getElementById('proLockLiveTiming');
+    
+    if (window._proUnlocked) {
+        // Pro active
+        if (banner) banner.classList.add('hidden');
+        if (proBtn) { proBtn.classList.remove('hidden'); proBtn.innerHTML = '⭐ <span>PRO</span>'; }
+        if (lockLT) lockLT.classList.add('hidden');
+    } else {
+        // Free tier
+        if (banner) banner.classList.remove('hidden');
+        if (proBtn) proBtn.classList.add('hidden');
+        if (lockLT) lockLT.classList.remove('hidden');
+    }
+};
+
+// ==========================================
+// 🎓 ONBOARDING TUTORIAL
+// ==========================================
+
+window._onboardStep = 0;
+const ONBOARD_STEPS = [
+    { emoji: '🏁', title: 'onboardTitle1', text: 'onboardDesc1' },
+    { emoji: '👥', title: 'onboardTitle2', text: 'onboardDesc2' },
+    { emoji: '📊', title: 'onboardTitle3', text: 'onboardDesc3' },
+    { emoji: '🚀', title: 'onboardTitle4', text: 'onboardDesc4' }
+];
+
+window.startOnboarding = function() {
+    if (localStorage.getItem('strateger_onboarded') === 'true') return;
+    window._onboardStep = 0;
+    window._renderOnboardStep();
+    document.getElementById('onboardingOverlay').classList.remove('hidden');
+};
+
+window._renderOnboardStep = function() {
+    const step = ONBOARD_STEPS[window._onboardStep];
+    const t = window.t || ((k) => k);
+    
+    document.getElementById('onboardEmoji').innerText = step.emoji;
+    document.getElementById('onboardTitle').innerText = t(step.title);
+    document.getElementById('onboardText').innerText = t(step.text);
+    
+    // Update dots
+    const dots = document.getElementById('onboardDots');
+    if (dots) {
+        dots.innerHTML = ONBOARD_STEPS.map((_, i) => 
+            `<span class="w-2 h-2 rounded-full ${i === window._onboardStep ? 'bg-ice' : 'bg-gray-600'}"></span>`
+        ).join('');
+    }
+    
+    // Update button text
+    const nextBtn = document.getElementById('onboardNextBtn');
+    if (nextBtn) {
+        const isLast = window._onboardStep === ONBOARD_STEPS.length - 1;
+        nextBtn.innerText = isLast ? t('onboardDone') : t('onboardNext');
+    }
+};
+
+window.nextOnboardStep = function() {
+    window._onboardStep++;
+    if (window._onboardStep >= ONBOARD_STEPS.length) {
+        window.skipOnboarding();
+        return;
+    }
+    window._renderOnboardStep();
+};
+
+window.skipOnboarding = function() {
+    localStorage.setItem('strateger_onboarded', 'true');
+    document.getElementById('onboardingOverlay').classList.add('hidden');
+};
+
+// ==========================================
+// 📄 PDF / IMAGE EXPORT
+// ==========================================
+
+window.exportStrategyImage = async function() {
+    if (!window.checkProFeature('pdfExport')) {
+        window.showProGate('Image Export');
+        return;
+    }
+    
+    const target = document.querySelector('#previewScreen > div');
+    if (!target || typeof html2canvas === 'undefined') {
+        alert('Export not available. Please try again.');
+        return;
+    }
+    
+    try {
+        const canvas = await html2canvas(target, {
+            backgroundColor: '#020617',
+            scale: 2,
+            useCORS: true,
+            logging: false
+        });
+        
+        // Download as PNG
+        const link = document.createElement('a');
+        link.download = `strateger-strategy-${Date.now()}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+    } catch (e) {
+        console.error('Image export failed:', e);
+        alert('Export failed: ' + e.message);
+    }
+};
+
+window.exportStrategyPdf = async function() {
+    if (!window.checkProFeature('pdfExport')) {
+        window.showProGate('PDF Export');
+        return;
+    }
+    
+    const target = document.querySelector('#previewScreen > div');
+    if (!target || typeof html2canvas === 'undefined' || typeof jspdf === 'undefined') {
+        alert('PDF export not available. Please try again.');
+        return;
+    }
+    
+    const t = window.t || ((k) => k);
+    const btn = event?.target?.closest?.('button');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ' + t('exportingPdf'); }
+    
+    try {
+        const canvas = await html2canvas(target, {
+            backgroundColor: '#020617',
+            scale: 2,
+            useCORS: true,
+            logging: false
+        });
+        
+        const imgData = canvas.toDataURL('image/png');
+        const { jsPDF } = jspdf;
+        const pdf = new jsPDF({
+            orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
+            unit: 'px',
+            format: [canvas.width, canvas.height]
+        });
+        
+        pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+        pdf.save(`strateger-strategy-${Date.now()}.pdf`);
+    } catch (e) {
+        console.error('PDF export failed:', e);
+        alert('PDF export failed: ' + e.message);
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-file-pdf"></i> <span class="hidden sm:inline">PDF</span>'; }
+    }
+};
+
+// ==========================================
+// ↩️ UNDO PIT ACTION
+// ==========================================
+
+window._undoPitSnapshot = null;
+window._undoPitTimer = null;
+
+/**
+ * Save a snapshot of the current state before pit entry (called from confirmPitEntry).
+ */
+window._saveUndoPitSnapshot = function() {
+    window._undoPitSnapshot = {
+        isInPit: false,
+        pitCount: window.state.pitCount - 1, // before increment
+        pitStart: 0,
+        stintStart: window.state.stintStart,
+        stintOffset: window.state.stintOffset,
+        currentDriverIdx: window.state.currentDriverIdx,
+        globalStintNumber: window.state.globalStintNumber,
+        consecutiveStints: window.state.consecutiveStints,
+        timestamp: Date.now()
+    };
+    
+    // Show undo toast with countdown
+    window._showUndoPitToast();
+};
+
+window._showUndoPitToast = function() {
+    const toast = document.getElementById('undoPitToast');
+    if (!toast) return;
+    
+    toast.classList.remove('hidden');
+    let remaining = 10;
+    const countEl = document.getElementById('undoPitCountdown');
+    
+    if (window._undoPitTimer) clearInterval(window._undoPitTimer);
+    
+    window._undoPitTimer = setInterval(() => {
+        remaining--;
+        if (countEl) countEl.innerText = remaining + 's';
+        if (remaining <= 0) {
+            window._hideUndoPitToast();
+        }
+    }, 1000);
+};
+
+window._hideUndoPitToast = function() {
+    if (window._undoPitTimer) clearInterval(window._undoPitTimer);
+    window._undoPitTimer = null;
+    window._undoPitSnapshot = null;
+    const toast = document.getElementById('undoPitToast');
+    if (toast) toast.classList.add('hidden');
+};
+
+window.executeUndoPit = function() {
+    const snap = window._undoPitSnapshot;
+    if (!snap) return;
+    
+    // Restore state
+    if (window.pitInterval) clearInterval(window.pitInterval);
+    
+    window.state.isInPit = snap.isInPit;
+    window.state.pitCount = snap.pitCount;
+    window.state.pitStart = snap.pitStart;
+    window.state.stintStart = snap.stintStart;
+    window.state.stintOffset = snap.stintOffset;
+    window.state.currentDriverIdx = snap.currentDriverIdx;
+    window.state.globalStintNumber = snap.globalStintNumber;
+    window.state.consecutiveStints = snap.consecutiveStints;
+    window.state.pendingPitEntry = false;
+    
+    // Close pit modal
+    const modal = document.getElementById('pitModal');
+    if (modal) modal.classList.add('hidden');
+    
+    // Reset pit adjustment
+    if (typeof window.adjustPitTime === 'function' && window.currentPitAdjustment !== 0) {
+        window.adjustPitTime(-window.currentPitAdjustment);
+    }
+    
+    window._hideUndoPitToast();
+    
+    if (typeof window.broadcast === 'function') window.broadcast();
+    if (typeof window.renderFrame === 'function') window.renderFrame();
+    if (typeof window.saveRaceState === 'function') window.saveRaceState();
+    
+    console.log('↩️ Pit entry undone');
 };

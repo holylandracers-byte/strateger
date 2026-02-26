@@ -509,6 +509,25 @@ window.initHostPeer = function() {
                         recipientConn.send({ type: 'PRIVATE_MESSAGE', sender: c.viewerName, message });
                     }
                 }
+
+                // === Handle Driver Pit Entry/Exit requests from client driver mode ===
+                if (data.type === 'DRIVER_PIT_ENTRY') {
+                    console.log(`🔧 Driver ${data.driverIdx} requested PIT ENTRY from client`);
+                    if (!window.state.isInPit && window.state.isRunning) {
+                        window.confirmPitEntry();
+                        if (typeof window.broadcast === 'function') window.broadcast();
+                    }
+                }
+                if (data.type === 'DRIVER_PIT_EXIT') {
+                    console.log(`🔧 Driver ${data.driverIdx} requested PIT EXIT from client`);
+                    if (window.state.isInPit && window.state.isRunning) {
+                        // Only allow exit if release timer is ready (green zone)
+                        if (window.alertState && window.alertState.lastZone === 'go') {
+                            window.confirmPitExit();
+                            if (typeof window.broadcast === 'function') window.broadcast();
+                        }
+                    }
+                }
             });
             
             c.on('close', () => {
@@ -636,6 +655,7 @@ window.connectToHost = function(hostId) {
         window.peer = new Peer(clientId, PEER_CONFIG);
         window.peer.on('open', (id) => {
             console.log(`Client Peer ID initialized: ${id}`);
+            window.myId = id; // Store our peer ID so DM recipient filtering works
             window.conn = window.peer.connect(hostId, { reliable: true });
 
             // Connection timeout — if host is unreachable, don't hang forever

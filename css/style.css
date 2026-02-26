@@ -271,10 +271,75 @@ header {
 .position-up { color: #22c55e; }
 .position-down { color: #ef4444; }
 .position-same { color: #9ca3af; }
-.competitor-row { transition: background 0.3s ease; box-sizing: border-box; }
-.competitor-row.our-team { background: rgba(34, 211, 238, 0.15); border: 1px solid var(--ice); border-radius: 4px; }
+
+/* ---- Competitor rows: stable flex layout ---- */
+.competitor-row {
+    display: flex; justify-content: space-between; align-items: center;
+    height: 28px; min-height: 28px; box-sizing: border-box;
+    padding: 1px 6px; border-radius: 4px;
+    transition: background-color 0.3s ease;
+    contain: layout style; /* perf: isolate repaints */
+}
+.competitor-row .cr-left {
+    display: flex; align-items: center; gap: 4px; min-width: 0; overflow: hidden;
+}
+.competitor-row .cr-right {
+    display: flex; align-items: center; gap: 6px; flex-shrink: 0;
+}
+.cr-pos  { width: 20px; text-align: right; font-weight: 700; font-size: 11px; color: #9ca3af; flex-shrink: 0; }
+.cr-kart { font-size: 9px; color: #6b7280; flex-shrink: 0; min-width: 22px; }
+.cr-kart.fast-kart { color: var(--neon); font-weight: 700; text-shadow: 0 0 4px rgba(163,230,53,0.4); }
+.cr-name { font-size: 11px; color: #e5e7eb; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80px; }
+.cr-badges { font-size: 9px; display: flex; gap: 2px; flex-shrink: 0; }
+.cr-gap  { font-size: 10px; text-align: right; width: 58px; font-family: monospace; flex-shrink: 0; }
+.cr-lap  { font-size: 10px; text-align: right; width: 58px; font-family: monospace; color: #9ca3af; flex-shrink: 0; }
+
+/* Gap colors */
+.gap-behind  { color: #4ade80; }  /* competitor behind us — safe */
+.gap-ahead   { color: #f87171; }  /* competitor ahead of us — threat */
+.gap-neutral  { color: #9ca3af; }
+.gap-us       { color: var(--ice); }
+
+/* Badges */
+.badge-pit  { color: var(--fuel); font-weight: 700; }
+.badge-fast { color: var(--neon); font-weight: 700; }
+
+/* Personal best glow on last lap */
+.cr-lap.lap-pb {
+    color: #c084fc !important;
+    font-weight: 700;
+    text-shadow: 0 0 6px rgba(192,132,252,0.7), 0 0 12px rgba(192,132,252,0.3);
+    animation: pb-pulse 1.5s ease-in-out 3;
+}
+@keyframes pb-pulse {
+    0%, 100% { text-shadow: 0 0 6px rgba(192,132,252,0.7); }
+    50% { text-shadow: 0 0 14px rgba(192,132,252,1), 0 0 28px rgba(192,132,252,0.5); }
+}
+
+/* Medal colors for top 3 */
+.text-gold   { color: #fbbf24; }
+.text-silver { color: #d1d5db; }
+.text-bronze { color: #d97706; }
+
+/* Row highlights */
+.competitor-row.our-team { background: rgba(34, 211, 238, 0.15); border: 1px solid var(--ice); }
 .competitor-row.danger-zone { background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.35); }
 .competitor-row:hover { background: rgba(255, 255, 255, 0.05); }
+
+/* Kart ranking panel — foldable header */
+.kart-panel-header {
+    display: flex; justify-content: space-between; align-items: center;
+    cursor: pointer; user-select: none;
+    font-size: 9px; color: #6b7280; font-weight: 700; letter-spacing: 0.1em;
+    padding: 2px 0; margin-bottom: 2px;
+}
+.kart-panel-header:hover { color: #9ca3af; }
+
+/* Good pace indicator — competitors with fast lap times */
+#competitorsTable::-webkit-scrollbar { width: 4px; }
+#competitorsTable::-webkit-scrollbar-track { background: transparent; }
+#competitorsTable::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 2px; }
+#competitorsTable::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.3); }
 
 /* Scrollbar for competitors table */
 .scrollbar-thin::-webkit-scrollbar { width: 4px; }
@@ -432,4 +497,36 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 /* הגדלת הכותרת */
 .header-title {
     font-size: 2rem !important; /* גדול יותר ממה שהיה */
+}
+
+/* ==================== PRO & NEW FEATURES ==================== */
+
+/* Pro lock badge */
+#proLockLiveTiming {
+    pointer-events: none;
+}
+
+/* Undo pit toast slide-in animation */
+#undoPitToast {
+    transform: translateX(-50%);
+    backdrop-filter: blur(8px);
+}
+
+/* Onboarding overlay */
+#onboardingOverlay {
+    backdrop-filter: blur(4px);
+}
+#onboardStep {
+    transition: opacity 0.3s ease;
+}
+
+/* Pro upgrade modal glow */
+#proUpgradeModal .border-gold\/50 {
+    box-shadow: 0 0 30px rgba(251, 191, 36, 0.1);
+}
+
+/* Mute button active state */
+#muteToggleBtn.muted {
+    color: #ef4444 !important;
+    border-color: #ef4444 !important;
 }

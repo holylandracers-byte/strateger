@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Strateger Admin — License Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background: #0f172a; color: #e2e8f0; font-family: system-ui, sans-serif; }
+        .card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 20px; }
+        input, textarea { background: #0f172a; border: 1px solid #475569; color: white; border-radius: 8px; padding: 8px 12px; width: 100%; }
+        input:focus, textarea:focus { outline: none; border-color: #22d3ee; }
+        .btn { padding: 8px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s; }
+        .btn-primary { background: #22d3ee; color: #0f172a; }
+        .btn-primary:hover { background: #06b6d4; }
+        .btn-danger { background: #ef4444; color: white; }
+        .btn-danger:hover { background: #dc2626; }
+        .btn-success { background: #22c55e; color: white; }
+        .btn-success:hover { background: #16a34a; }
+        .badge-active { background: #22c55e20; color: #4ade80; border: 1px solid #22c55e40; padding: 2px 8px; border-radius: 12px; font-size: 11px; }
+        .badge-inactive { background: #ef444420; color: #f87171; border: 1px solid #ef444440; padding: 2px 8px; border-radius: 12px; font-size: 11px; }
+        .key-text { font-family: 'Courier New', monospace; font-size: 14px; letter-spacing: 1px; color: #22d3ee; background: #0f172a; padding: 6px 10px; border-radius: 6px; user-select: all; }
+        .fade-in { animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-8">
+    <!-- Auth Screen -->
+    <div id="authScreen" class="max-w-md mx-auto mt-20">
+        <div class="card text-center">
+            <h1 class="text-2xl font-bold mb-1">🔑 Strateger Admin</h1>
+            <p class="text-gray-400 text-sm mb-6">License Key Management</p>
+            <input type="password" id="adminSecretInput" placeholder="Enter admin secret..." class="mb-4" onkeydown="if(event.key==='Enter')authenticate()">
+            <button onclick="authenticate()" class="btn btn-primary w-full">Login</button>
+            <p id="authError" class="text-red-400 text-sm mt-2 hidden"></p>
+        </div>
+    </div>
+
+    <!-- Admin Dashboard -->
+    <div id="dashboard" class="max-w-4xl mx-auto hidden">
+        <div class="flex items-center justify-between mb-6">
+            <h1 class="text-xl font-bold">🔑 License Manager</h1>
+            <div class="flex gap-2 items-center">
+                <span id="totalCount" class="text-gray-400 text-sm"></span>
+                <button onclick="logout()" class="btn text-gray-400 text-sm hover:text-white">Logout</button>
+            </div>
+        </div>
+
+        <!-- Generate New Key -->
+        <div class="card mb-6">
+            <h2 class="font-bold mb-3 text-lg">➕ Generate New License</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+                <input type="email" id="newEmail" placeholder="Customer email (optional)">
+                <input type="text" id="newName" placeholder="Customer name (optional)">
+                <input type="text" id="newNotes" placeholder="Notes (e.g. PayPal #1234)">
+            </div>
+            <div class="flex items-center gap-3">
+                <button onclick="generateKey()" class="btn btn-primary" id="generateBtn">🔑 Generate Key</button>
+                <span id="generateResult" class="text-sm"></span>
+            </div>
+            <!-- Show new key prominently -->
+            <div id="newKeyDisplay" class="hidden mt-4 p-4 bg-green-900/20 border border-green-500/30 rounded-lg fade-in">
+                <p class="text-sm text-gray-400 mb-1">New license key (click to copy):</p>
+                <div class="key-text text-lg cursor-pointer" id="newKeyText" onclick="copyKey(this.innerText)"></div>
+                <p id="copyConfirm" class="text-green-400 text-xs mt-1 hidden">✅ Copied to clipboard!</p>
+            </div>
+        </div>
+
+        <!-- License List -->
+        <div class="card">
+            <div class="flex items-center justify-between mb-3">
+                <h2 class="font-bold text-lg">📋 All Licenses</h2>
+                <button onclick="loadLicenses()" class="btn text-sm text-gray-400 hover:text-white">🔄 Refresh</button>
+            </div>
+            <div id="licenseList" class="space-y-2">
+                <p class="text-gray-500 text-center py-4">Loading...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let _secret = '';
+
+        function authenticate() {
+            _secret = document.getElementById('adminSecretInput').value.trim();
+            if (!_secret) return;
+            // Test auth by trying to list licenses
+            fetch(`/.netlify/functions/manage-licenses?secret=${encodeURIComponent(_secret)}`)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById('authScreen').classList.add('hidden');
+                        document.getElementById('dashboard').classList.remove('hidden');
+                        sessionStorage.setItem('strat_admin', _secret);
+                        renderLicenses(data.licenses);
+                    } else {
+                        document.getElementById('authError').innerText = 'Invalid admin secret';
+                        document.getElementById('authError').classList.remove('hidden');
+                    }
+                })
+                .catch(() => {
+                    document.getElementById('authError').innerText = 'Server error — check connection';
+                    document.getElementById('authError').classList.remove('hidden');
+                });
+        }
+
+        function logout() {
+            _secret = '';
+            sessionStorage.removeItem('strat_admin');
+            document.getElementById('dashboard').classList.add('hidden');
+            document.getElementById('authScreen').classList.remove('hidden');
+            document.getElementById('adminSecretInput').value = '';
+        }
+
+        function loadLicenses() {
+            fetch(`/.netlify/functions/manage-licenses?secret=${encodeURIComponent(_secret)}`)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) renderLicenses(data.licenses);
+                    else alert('Error: ' + data.message);
+                });
+        }
+
+        function renderLicenses(licenses) {
+            const el = document.getElementById('licenseList');
+            const total = licenses.length;
+            const active = licenses.filter(l => l.is_active).length;
+            document.getElementById('totalCount').innerText = `${active} active / ${total} total`;
+
+            if (licenses.length === 0) {
+                el.innerHTML = '<p class="text-gray-500 text-center py-4">No licenses yet. Generate one above!</p>';
+                return;
+            }
+
+            el.innerHTML = licenses.map(l => {
+                const date = new Date(l.created_at).toLocaleDateString();
+                const activated = l.activated_at ? new Date(l.activated_at).toLocaleDateString() : 'Never';
+                const badge = l.is_active
+                    ? '<span class="badge-active">Active</span>'
+                    : '<span class="badge-inactive">Inactive</span>';
+                const toggleBtn = l.is_active
+                    ? `<button onclick="toggleLicense(${l.id},'deactivate')" class="btn btn-danger text-xs py-1 px-2">Deactivate</button>`
+                    : `<button onclick="toggleLicense(${l.id},'activate')" class="btn btn-success text-xs py-1 px-2">Reactivate</button>`;
+
+                return `
+                    <div class="flex flex-col md:flex-row md:items-center gap-2 p-3 bg-slate-800/50 rounded-lg border border-slate-700/50">
+                        <div class="flex-1 min-w-0">
+                            <div class="key-text text-sm cursor-pointer mb-1" onclick="copyKey('${l.license_key}')">${l.license_key}</div>
+                            <div class="flex flex-wrap gap-2 text-xs text-gray-400">
+                                ${l.customer_email ? `<span>📧 ${l.customer_email}</span>` : ''}
+                                ${l.customer_name ? `<span>👤 ${l.customer_name}</span>` : ''}
+                                <span>📅 Created: ${date}</span>
+                                <span>⚡ Activated: ${activated}</span>
+                                ${l.notes ? `<span>📝 ${l.notes}</span>` : ''}
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            ${badge}
+                            ${toggleBtn}
+                        </div>
+                    </div>`;
+            }).join('');
+        }
+
+        async function generateKey() {
+            const btn = document.getElementById('generateBtn');
+            btn.disabled = true;
+            btn.innerText = '⏳ Generating...';
+
+            const email = document.getElementById('newEmail').value.trim();
+            const name = document.getElementById('newName').value.trim();
+            const notes = document.getElementById('newNotes').value.trim();
+
+            try {
+                const res = await fetch('/.netlify/functions/generate-license', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ secret: _secret, email, name, notes })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    document.getElementById('newKeyText').innerText = data.key;
+                    document.getElementById('newKeyDisplay').classList.remove('hidden');
+                    document.getElementById('generateResult').innerHTML = '<span class="text-green-400">✅ Key generated!</span>';
+                    // Clear inputs
+                    document.getElementById('newEmail').value = '';
+                    document.getElementById('newName').value = '';
+                    document.getElementById('newNotes').value = '';
+                    // Refresh list
+                    loadLicenses();
+                } else {
+                    document.getElementById('generateResult').innerHTML = `<span class="text-red-400">❌ ${data.message}</span>`;
+                }
+            } catch (e) {
+                document.getElementById('generateResult').innerHTML = `<span class="text-red-400">❌ ${e.message}</span>`;
+            } finally {
+                btn.disabled = false;
+                btn.innerText = '🔑 Generate Key';
+            }
+        }
+
+        async function toggleLicense(id, action) {
+            if (!confirm(`${action === 'deactivate' ? 'Deactivate' : 'Reactivate'} this license?`)) return;
+            try {
+                const res = await fetch('/.netlify/functions/manage-licenses', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ secret: _secret, id, action })
+                });
+                const data = await res.json();
+                if (data.success) loadLicenses();
+                else alert('Error: ' + data.message);
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        function copyKey(key) {
+            navigator.clipboard.writeText(key).then(() => {
+                const el = document.getElementById('copyConfirm');
+                if (el) { el.classList.remove('hidden'); setTimeout(() => el.classList.add('hidden'), 2000); }
+            });
+        }
+
+        // Auto-login from session
+        const saved = sessionStorage.getItem('strat_admin');
+        if (saved) {
+            _secret = saved;
+            document.getElementById('adminSecretInput').value = saved;
+            authenticate();
+        }
+    </script>
+</body>
+</html>

@@ -14,6 +14,10 @@
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 
+    <!-- PDF/Image export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
+
     <script src="js/racefacer-scraper.js"></script>
     <script src="js/apex-scraper.js"></script>
     <script src="js/live-timing-manager.js"></script>
@@ -95,6 +99,14 @@
                 <i class="fas fa-palette"></i>
             </button>
 
+            <button id="muteToggleBtn" onclick="window.toggleMute()" class="bg-navy-800 hover:bg-navy-700 text-gray-300 hover:text-white text-xs font-bold px-2 py-1.5 rounded-full border border-gray-700 hover:border-gray-500 transition transform active:scale-95 flex items-center gap-1" title="Mute">
+                <i class="fas fa-volume-up"></i>
+            </button>
+
+            <button id="proStatusBtn" onclick="window.showProGate()" class="hidden bg-gradient-to-r from-gold/20 to-amber-500/20 hover:from-gold/30 hover:to-amber-500/30 text-gold text-[10px] font-bold px-2 py-1 rounded-full border border-gold/50 transition flex items-center gap-1">
+                ⭐ <span data-i18n="proBadge">PRO</span>
+            </button>
+
             <button id="viewerManageBtn" onclick="window.openViewerApprovalModal()" class="hidden bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg transition transform active:scale-95 flex items-center gap-1 relative">
                 <i class="fas fa-users-cog"></i>
                 <span class="hidden sm:inline">Manage Viewers</span>
@@ -134,7 +146,8 @@
 
         <div id="configPanel" class="space-y-4 transition-opacity duration-300">
     
-           <div class="bg-gradient-to-r from-red-900/30 to-navy-800 p-3 rounded-lg border border-red-500/50">
+           <div class="bg-gradient-to-r from-red-900/30 to-navy-800 p-3 rounded-lg border border-red-500/50 relative">
+                <span id="proLockLiveTiming" class="hidden absolute top-2 right-2 text-[10px] bg-gold/20 text-gold px-1.5 py-0.5 rounded-full font-bold border border-gold/30">🔒 PRO</span>
                 <div class="flex items-center gap-2 mb-2">
                     <span class="sync-dot live-dot"></span>
                     <span class="text-sm font-bold text-white" data-i18n="liveTiming">Live Timing</span>
@@ -165,7 +178,6 @@
 
                 <div class="flex gap-2">
                     <button onclick="window.testLiveTiming()" class="flex-1 bg-red-900/50 border border-red-500/50 text-red-300 text-xs py-1.5 rounded hover:bg-red-900" data-i18n="testBtn">Test</button>
-                    <button onclick="window.startDemoMode()" class="flex-1 bg-neon/20 border border-neon/50 text-neon text-xs py-1.5 rounded hover:bg-neon/30" data-i18n="demoBtn">Demo</button>
                     <button onclick="window.openManualInput()" class="flex-1 bg-fuel/20 border border-fuel/50 text-fuel text-xs py-1.5 rounded hover:bg-fuel/30" data-i18n="manualInput">Manual</button>
                 </div>
                 <div id="liveTimingStatus" class="text-[10px] text-gray-500 text-center mt-1"></div>
@@ -195,14 +207,8 @@
                         <label class="text-xs text-gray-400 font-bold" data-i18n="lblStops">Req. Stops</label>
                         <input type="number" id="reqPitStops" value="15" onchange="window.runSim()" class="input-field text-neon text-lg font-bold">
                     </div>
-                    <div>
-                        <label class="text-xs text-gray-400 font-bold" data-i18n="lblStartTime">🕐 Race Start Time</label>
-                        <input type="time" id="raceStartTime" onchange="window.runSim()" class="input-field">
-                    </div>
-                    <div>
-                        <label class="text-xs text-gray-400 font-bold" data-i18n="lblStartDate">📅 Race Date</label>
-                        <input type="date" id="raceStartDate" onchange="window.runSim()" class="input-field">
-                    </div>
+                </div>
+                <div class="grid grid-cols-3 gap-3 mt-3">
                     <div>
                         <label class="text-xs text-gray-400" data-i18n="lblMinStint">Min Stint (min)</label>
                         <input type="number" id="minStint" value="30" onchange="window.runSim()" class="input-field">
@@ -214,6 +220,16 @@
                     <div>
                         <label class="text-xs text-gray-400" data-i18n="lblPitTime">Pit Time (sec)</label>
                         <input type="number" id="minPitTime" value="120" onchange="window.runSim()" class="input-field">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4 mt-3">
+                    <div>
+                        <label class="text-xs text-gray-400 font-bold" data-i18n="lblStartTime">🕐 Race Start Time</label>
+                        <input type="time" id="raceStartTime" onchange="window.runSim()" class="input-field">
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-400 font-bold" data-i18n="lblStartDate">📅 Race Date</label>
+                        <input type="date" id="raceStartDate" onchange="window.runSim()" class="input-field">
                     </div>
                 </div>
                 </div>
@@ -319,20 +335,7 @@
                 </div>
             </div>
             
-            <!-- AI STRATEGY (collapsible) -->
-            <div class="collapsible-section">
-                <h2 class="text-ice text-lg font-bold mb-2 flex items-center gap-2 cursor-pointer select-none" onclick="this.parentElement.classList.toggle('collapsed')">
-                    <i class="fas fa-robot"></i> <span data-i18n="aiTitle">AI Strategy</span>
-                    <i class="fas fa-chevron-down ml-auto text-xs text-gray-500 collapse-icon transition-transform"></i>
-                </h2>
-                <div class="collapse-body">
-                <textarea id="strategyInstructions" rows="2" class="input-field text-xs mb-2" data-i18n="aiPlaceholder"></textarea>
-                
-                <button onclick="window.callAIStrategy(this)" class="w-full bg-indigo-900/50 hover:bg-indigo-800 border border-indigo-500/30 text-indigo-200 text-xs py-2 rounded transition" data-i18n="generateStrategy">
-                    Generate Strategy (AI)
-                </button>
-                </div>
-            </div>
+
 
 
 
@@ -365,24 +368,20 @@
                 </button>
             </div>
 
-            <!-- FEEDBACK (collapsible, starts collapsed) -->
-            <div class="collapsible-section collapsed">
-                <h2 class="text-ice text-lg font-bold mb-3 flex items-center gap-2 cursor-pointer select-none" onclick="this.parentElement.classList.toggle('collapsed')">
-                    <i class="fas fa-comments"></i> <span data-i18n="feedbackTitle">Feedback</span>
-                    <i class="fas fa-chevron-down ml-auto text-xs text-gray-500 collapse-icon transition-transform"></i>
-                </h2>
-                <div class="collapse-body">
-                <div class="flex gap-2 mb-2">
-                    <button onclick="window.showFeedbackTab('bug')" id="bugReportTabBtn" class="flex-1 bg-red-900/50 hover:bg-red-800 border border-red-500/50 text-red-200 font-bold py-2 rounded transition" data-i18n="bugReport">Report Bug</button>
-                    <button onclick="window.showFeedbackTab('feature')" id="featureTabBtn" class="flex-1 bg-blue-900/50 hover:bg-blue-800 border border-blue-500/50 text-blue-200 font-bold py-2 rounded transition" data-i18n="featureSuggestion">Suggest Feature</button>
+            <!-- PRO UPGRADE BANNER (free tier only) -->
+            <div id="proUpgradeBanner" class="hidden bg-gradient-to-r from-gold/10 to-amber-500/10 border border-gold/30 rounded-lg p-3 text-center cursor-pointer hover:border-gold/50 transition" onclick="window.showProGate()">
+                <div class="flex items-center justify-center gap-2">
+                    <span class="text-lg">⭐</span>
+                    <span class="text-sm font-bold text-gold" data-i18n="proUpgradeTitle">Upgrade to Pro</span>
                 </div>
-                
-                <div id="feedbackForm" class="bg-navy-900 border border-gray-700 p-3 rounded">
-                    <div class="text-xs text-gray-400 font-bold mb-2" id="feedbackTitle" data-i18n="bugReportTitle">Bug Report</div>
-                    <textarea id="feedbackText" class="input-field text-xs mb-2 resize-none" rows="3" data-i18n="describeIssue" placeholder="Describe the issue or suggestion..."></textarea>
-                    <button onclick="window.submitFeedback()" class="w-full bg-gradient-to-r from-neon to-green-500 hover:from-green-400 hover:to-green-600 text-black font-bold py-2 rounded transition" data-i18n="send">Send</button>
-                </div>
-                </div>
+                <div class="text-[10px] text-gray-500 mt-1">Live Timing • AI Strategy • Squads • Unlimited Drivers</div>
+            </div>
+
+            <!-- CONTACT US BUTTON -->
+            <div class="pt-1">
+                <button onclick="window.openContactUsModal()" class="w-full bg-navy-800 border border-gray-700 hover:border-ice text-gray-300 hover:text-white text-xs py-2 rounded transition flex items-center justify-center gap-2">
+                    <i class="fas fa-envelope"></i> <span data-i18n="contactUs">Contact Us</span>
+                </button>
             </div>
 
         </div>
@@ -420,8 +419,18 @@
                 </button>
             </div>
 
-            <div class="flex-1 overflow-hidden flex flex-col md:flex-row gap-4 min-h-0">
-                
+            <div class="flex-1 overflow-hidden flex flex-col gap-3 min-h-0">
+
+                <!-- DRIVER SUMMARY (variable height, sits on top) -->
+                <div class="shrink-0 bg-navy-900 rounded-lg border border-gray-700 overflow-hidden">
+                    <div class="p-2 bg-navy-800 border-b border-gray-700 font-bold text-xs text-gray-300 uppercase tracking-wider" data-i18n="driverSchedule">
+                        Driver Summary
+                    </div>
+                    <div id="strategySummary" class="p-2">
+                        </div>
+                </div>
+
+                <!-- TIMELINE (scrollable, fills remaining space) -->
                 <div class="flex-1 flex flex-col min-h-0 bg-navy-900 rounded-lg border border-gray-700 overflow-hidden">
                     <div class="p-2 bg-navy-800 border-b border-gray-700 font-bold text-xs text-gray-300 uppercase tracking-wider" data-i18n="timeline">
                         Timeline
@@ -429,19 +438,17 @@
                     <div id="driverScheduleList" class="flex-1 overflow-y-auto p-2 space-y-1">
                         </div>
                 </div>
-
-                <div class="flex flex-col min-h-0 bg-navy-900 rounded-lg border border-gray-700 overflow-hidden shrink-0">
-                    <div class="p-2 bg-navy-800 border-b border-gray-700 font-bold text-xs text-gray-300 uppercase tracking-wider" data-i18n="driverSchedule">
-                        Driver Summary
-                    </div>
-                    <div id="strategySummary" class="flex-1 overflow-y-auto p-2 space-y-2 grid grid-cols-2 md:grid-cols-1 gap-2">
-                        </div>
-                </div>
             </div>
 
             <div class="mt-4 flex gap-3 shrink-0">
                 <button onclick="document.getElementById('previewScreen').classList.add('hidden'); document.getElementById('setupScreen').classList.remove('hidden');" class="flex-1 bg-navy-700 hover:bg-navy-600 text-gray-300 font-bold py-3 rounded transition" data-i18n="close">
                     Close
+                </button>
+                <button onclick="window.exportStrategyImage()" class="bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/50 text-purple-300 font-bold py-3 px-4 rounded transition text-sm flex items-center gap-1" title="Share as Image">
+                    <i class="fas fa-image"></i>
+                </button>
+                <button onclick="window.exportStrategyPdf()" class="bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/50 text-blue-300 font-bold py-3 px-4 rounded transition text-sm flex items-center gap-1" title="Export PDF">
+                    <i class="fas fa-file-pdf"></i> <span class="hidden sm:inline" data-i18n="exportPdf">PDF</span>
                 </button>
                 <button onclick="window.saveStrategy()" class="flex-1 bg-gold/20 hover:bg-gold/30 text-gold font-bold py-3 rounded border border-gold/50 transition" data-i18n="saveStratTitle">
                     Save
@@ -516,7 +523,8 @@
                         <div id="liveTotalCars" class="text-sm font-bold text-gray-300">-</div>
                     </div>
                 </div>
-                <div id="competitorsTable" class="mt-2 overflow-hidden" style="min-height:196px;max-height:196px;"></div>
+                <div id="competitorsTable" class="mt-2 overflow-y-auto scroll-smooth scrollbar-thin" style="min-height:196px;max-height:280px;"></div>
+                <div id="kartRankingPanel" class="hidden mt-1 p-2 bg-navy-950 rounded border border-gray-700/50"></div>
             </div>
 
             <div id="strategyBox" class="p-2 text-center bg-navy-900 border border-gray-700 rounded-lg shadow-sm">
@@ -526,7 +534,13 @@
                     <span id="strategyDelta" class="text-sm font-bold text-gray-400">--</span>
                 </div>
                 <div id="strategyAdvice" class="text-[10px] text-gray-500 font-bold uppercase tracking-widest" data-i18n="buildTime">BUILD TIME</div>
+                <!-- Strategy schedule: next driver + squad info -->
+                <div id="strategyScheduleBanner" class="hidden mt-1 pt-1 border-t border-gray-700/50 text-center"></div>
+                <div id="squadStatusInfo" class="hidden mt-1 text-[10px]"></div>
             </div>
+
+            <!-- Strategy notification toasts -->
+            <div id="strategyToastContainer" class="space-y-1"></div>
 
             <div class="p-3 bg-navy-900 border border-gray-700 rounded-lg">
                 <div class="flex justify-between items-center mb-2">
@@ -610,7 +624,7 @@
                 <div class="flex justify-between items-center">
                     <div class="text-xs text-gray-400 flex flex-col">
                         <span class="font-bold text-[9px] uppercase tracking-wider" data-i18n="nextDriverLabel">Next Driver</span>
-                        <span id="nextDriverName" class="text-lg font-bold text-neon cursor-pointer hover:text-white transition truncate max-w-[120px]" onclick="window.cycleNextDriver()">---</span>
+                        <span id="nextDriverName" class="text-lg font-bold text-neon cursor-pointer hover:text-white transition truncate max-w-[120px]" onclick="window.cycleNextDriver(false, true)">---</span>
                     </div>
 
                     <div class="flex items-center gap-2 bg-navy-950 p-1.5 rounded border border-gray-700">
@@ -1035,8 +1049,118 @@
                     <div class="absolute inset-0" style="background: linear-gradient(180deg, #15181e 0%, #1e2530 50%, #15181e 100%);"></div>
                     <span class="absolute bottom-0 inset-x-0 text-[8px] text-gray-300 bg-black/70 text-center py-0.5 opacity-0 group-hover:opacity-100 transition">⚙️ Steel</span>
                 </button>
+                <button class="bg-swatch w-full aspect-[3/2] rounded-lg border-2 border-gray-600 hover:border-cyan-300 transition overflow-hidden relative group" data-bg="neon-grid" title="Neon Grid" onclick="window.setPageBackground('neon-grid')">
+                    <div class="absolute inset-0" style="background-color:#050510; background-image: linear-gradient(rgba(0,255,200,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(0,255,200,0.08) 1px, transparent 1px); background-size: 8px 8px;"></div>
+                    <span class="absolute bottom-0 inset-x-0 text-[8px] text-cyan-300 bg-black/70 text-center py-0.5 opacity-0 group-hover:opacity-100 transition">🔲 Grid</span>
+                </button>
+                <button class="bg-swatch w-full aspect-[3/2] rounded-lg border-2 border-gray-600 hover:border-orange-400 transition overflow-hidden relative group" data-bg="sunset-racing" title="Sunset Racing" onclick="window.setPageBackground('sunset-racing')">
+                    <div class="absolute inset-0" style="background: linear-gradient(180deg, #1a0520 0%, #2d0a15 25%, #4a1a08 50%, #2d0a15 75%, #1a0520 100%);"></div>
+                    <span class="absolute bottom-0 inset-x-0 text-[8px] text-orange-300 bg-black/70 text-center py-0.5 opacity-0 group-hover:opacity-100 transition">🌅 Sunset</span>
+                </button>
+                <button class="bg-swatch w-full aspect-[3/2] rounded-lg border-2 border-gray-600 hover:border-blue-300 transition overflow-hidden relative group" data-bg="gulf-blue" title="Gulf Blue" onclick="window.setPageBackground('gulf-blue')">
+                    <div class="absolute inset-0" style="background: linear-gradient(135deg, #0a2540 0%, #1a4a7a 30%, #0d3560 60%, #0a2540 100%);"></div>
+                    <span class="absolute bottom-0 inset-x-0 text-[8px] text-blue-200 bg-black/70 text-center py-0.5 opacity-0 group-hover:opacity-100 transition">🏆 Gulf</span>
+                </button>
+                <button class="bg-swatch w-full aspect-[3/2] rounded-lg border-2 border-gray-600 hover:border-green-400 transition overflow-hidden relative group" data-bg="british-green" title="British Racing Green" onclick="window.setPageBackground('british-green')">
+                    <div class="absolute inset-0" style="background: linear-gradient(180deg, #0a1a10 0%, #0d2818 30%, #102d1d 50%, #0d2818 70%, #0a1a10 100%);"></div>
+                    <span class="absolute bottom-0 inset-x-0 text-[8px] text-green-300 bg-black/70 text-center py-0.5 opacity-0 group-hover:opacity-100 transition">🇬🇧 BRG</span>
+                </button>
+                <button class="bg-swatch w-full aspect-[3/2] rounded-lg border-2 border-gray-600 hover:border-blue-400 transition overflow-hidden relative group" data-bg="martini-stripe" title="Martini Stripe" onclick="window.setPageBackground('martini-stripe')">
+                    <div class="absolute inset-0" style="background: linear-gradient(180deg, #0e0e14 0%, #0e0e14 44%, #1a3a6e 44.5%, #1a3a6e 47%, #cc2222 47.5%, #cc2222 50.5%, #1a3a6e 51%, #1a3a6e 53.5%, #0e0e14 54%, #0e0e14 100%);"></div>
+                    <span class="absolute bottom-0 inset-x-0 text-[8px] text-blue-200 bg-black/70 text-center py-0.5 opacity-0 group-hover:opacity-100 transition">🏎️ Martini</span>
+                </button>
+                <button class="bg-swatch w-full aspect-[3/2] rounded-lg border-2 border-gray-600 hover:border-cyan-300 transition overflow-hidden relative group" data-bg="arctic-ice" title="Arctic Ice" onclick="window.setPageBackground('arctic-ice')">
+                    <div class="absolute inset-0" style="background: linear-gradient(180deg, #0a1520 0%, #102535 30%, #1a3a50 50%, #102535 70%, #0a1520 100%);"></div>
+                    <span class="absolute bottom-0 inset-x-0 text-[8px] text-cyan-200 bg-black/70 text-center py-0.5 opacity-0 group-hover:opacity-100 transition">❄️ Arctic</span>
+                </button>
             </div>
         </div>
+    </div>
+
+    <!-- CONTACT US MODAL -->
+    <div id="contactUsModal" class="hidden fixed inset-0 bg-navy-950/95 z-[120] flex items-center justify-center p-4">
+        <div class="bg-navy-900 border border-gray-700 rounded-xl p-6 max-w-md w-full shadow-2xl">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-bold text-ice flex items-center gap-2">
+                    <i class="fas fa-envelope"></i> <span data-i18n="contactUs">Contact Us</span>
+                </h2>
+                <button onclick="window.closeContactUsModal()" class="text-gray-400 hover:text-white text-xl">&times;</button>
+            </div>
+
+            <div class="flex gap-2 mb-3">
+                <button onclick="window.showFeedbackTab('bug')" id="bugReportTabBtn" class="flex-1 bg-red-900/50 hover:bg-red-800 border border-red-500/50 text-red-200 font-bold py-2 rounded transition text-sm" data-i18n="bugReport">Report Bug</button>
+                <button onclick="window.showFeedbackTab('feature')" id="featureTabBtn" class="flex-1 bg-blue-900/50 hover:bg-blue-800 border border-blue-500/50 text-blue-200 font-bold py-2 rounded transition text-sm" data-i18n="featureSuggestion">Suggest Feature</button>
+            </div>
+
+            <div id="feedbackForm" class="bg-navy-800 border border-gray-600 p-3 rounded">
+                <div class="text-xs text-gray-400 font-bold mb-2" id="feedbackTitle" data-i18n="bugReportTitle">Bug Report</div>
+                <textarea id="feedbackText" class="input-field text-xs mb-2 resize-none" rows="4" data-i18n="describeIssue" placeholder="Describe the issue or suggestion..."></textarea>
+                <button onclick="window.submitFeedback()" class="w-full bg-gradient-to-r from-neon to-green-500 hover:from-green-400 hover:to-green-600 text-black font-bold py-2 rounded transition" data-i18n="send">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PRO UPGRADE MODAL -->
+    <div id="proUpgradeModal" class="hidden fixed inset-0 bg-navy-950/95 z-[130] flex items-center justify-center p-4">
+        <div class="bg-navy-900 border border-gold/50 rounded-xl p-6 max-w-md w-full shadow-2xl">
+            <div class="text-center mb-4">
+                <div class="text-4xl mb-2">⭐</div>
+                <h2 class="text-xl font-bold text-gold" data-i18n="proUpgradeTitle">Upgrade to Pro</h2>
+                <p class="text-sm text-gray-400 mt-2" data-i18n="proUpgradeMsg">Unlock Live Timing, AI Strategy, Squads, unlimited drivers & themes, and more!</p>
+                <div id="proGateFeature" class="text-xs text-red-400 mt-1 font-bold"></div>
+            </div>
+
+            <!-- Step 1: Buy -->
+            <div class="bg-navy-950/50 rounded-lg p-4 mb-4 border border-gray-700/50">
+                <p class="text-xs font-bold text-gray-300 mb-2">① Purchase a license ($19 one-time)</p>
+                <a id="proBuyLink" href="https://paypal.me/strategerapp" target="_blank" rel="noopener"
+                   class="block w-full text-center bg-gradient-to-r from-blue-600 to-blue-500 text-white font-bold py-2.5 rounded-lg hover:from-blue-500 hover:to-blue-400 transition text-sm">
+                    💳 Buy with PayPal — $19
+                </a>
+                <p class="text-[10px] text-gray-500 mt-1.5 text-center">After payment, you'll receive your license key by email within minutes.</p>
+            </div>
+
+            <!-- Step 2: Enter key -->
+            <div class="space-y-3">
+                <p class="text-xs font-bold text-gray-300">② Already have a key? Enter it below:</p>
+                <div class="flex gap-2">
+                    <input type="text" id="proLicenseInput" data-i18n="proEnterKey" placeholder="STRAT-XXXX-XXXX-XXXX-XXXX" class="input-field text-sm flex-1 font-mono tracking-wide">
+                    <button onclick="window.handleActivatePro()" class="bg-gradient-to-r from-gold to-amber-500 text-black font-bold px-4 py-2 rounded transition hover:from-amber-400 hover:to-gold text-sm whitespace-nowrap" data-i18n="proActivate">Activate</button>
+                </div>
+                <div id="proActivateError" class="hidden text-red-400 text-xs text-center"></div>
+                <div id="proActivateSuccess" class="hidden text-green-400 text-xs text-center font-bold"></div>
+            </div>
+
+            <button onclick="document.getElementById('proUpgradeModal').classList.add('hidden')" class="w-full bg-navy-800 text-gray-400 py-2 rounded mt-4 hover:bg-navy-700 transition text-sm">Close</button>
+        </div>
+    </div>
+
+    <!-- ONBOARDING OVERLAY -->
+    <div id="onboardingOverlay" class="hidden fixed inset-0 bg-black/80 z-[140] flex items-center justify-center p-4">
+        <div class="bg-navy-900 border border-ice/50 rounded-xl p-6 max-w-sm w-full shadow-2xl text-center">
+            <div id="onboardStep" class="transition-opacity duration-300">
+                <div id="onboardEmoji" class="text-5xl mb-3">🏁</div>
+                <h2 id="onboardTitle" class="text-xl font-bold text-ice mb-2" data-i18n="onboardWelcome">Welcome to Strateger!</h2>
+                <p id="onboardText" class="text-sm text-gray-400 mb-4"></p>
+                <div id="onboardDots" class="flex justify-center gap-2 mb-4">
+                    <span class="w-2 h-2 rounded-full bg-ice"></span>
+                    <span class="w-2 h-2 rounded-full bg-gray-600"></span>
+                    <span class="w-2 h-2 rounded-full bg-gray-600"></span>
+                    <span class="w-2 h-2 rounded-full bg-gray-600"></span>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="window.skipOnboarding()" class="flex-1 bg-navy-800 text-gray-400 py-2 rounded hover:bg-navy-700 transition text-sm" data-i18n="onboardSkip">Skip</button>
+                <button onclick="window.nextOnboardStep()" id="onboardNextBtn" class="flex-1 bg-ice text-navy-950 font-bold py-2 rounded hover:bg-cyan-300 transition text-sm" data-i18n="onboardNext">Next</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- UNDO PIT TOAST (fixed bottom-center) -->
+    <div id="undoPitToast" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] bg-navy-900 border border-amber-500/50 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 animate-slide-up">
+        <span class="text-sm font-bold" data-i18n="undoPit">Undo Pit</span>
+        <span id="undoPitCountdown" class="text-xs text-amber-400 font-mono">10s</span>
+        <button onclick="window.executeUndoPit()" class="bg-amber-500 text-black font-bold px-3 py-1 rounded text-sm hover:bg-amber-400 transition" data-i18n="undoCountdown">Undo</button>
     </div>
 
     <script src="js/state.js"></script>

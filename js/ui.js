@@ -229,7 +229,14 @@ const _BG_THEMES = {
     'forest': 'background: linear-gradient(180deg, #051a0a 0%, #0a2d15 50%, #051a0a 100%);',
     'purple-night': 'background: linear-gradient(180deg, #0d0520 0%, #1a0a35 50%, #0d0520 100%);',
     'amber-heat': 'background: linear-gradient(180deg, #1a1000 0%, #2d1a05 50%, #1a1000 100%);',
-    'steel': 'background: linear-gradient(180deg, #15181e 0%, #1e2530 50%, #15181e 100%);'
+    'steel': 'background: linear-gradient(180deg, #15181e 0%, #1e2530 50%, #15181e 100%);',
+    // === NEW THEMES ===
+    'neon-grid': 'background-color:#050510; background-image: linear-gradient(rgba(0,255,200,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0,255,200,0.05) 1px, transparent 1px); background-size: 40px 40px;',
+    'sunset-racing': 'background: linear-gradient(180deg, #1a0520 0%, #2d0a15 25%, #4a1a08 50%, #2d0a15 75%, #1a0520 100%);',
+    'gulf-blue': 'background: linear-gradient(135deg, #0a2540 0%, #1a4a7a 30%, #0d3560 60%, #0a2540 100%);',
+    'british-green': 'background: linear-gradient(180deg, #0a1a10 0%, #0d2818 30%, #102d1d 50%, #0d2818 70%, #0a1a10 100%);',
+    'martini-stripe': 'background: linear-gradient(180deg, #0e0e14 0%, #0e0e14 44%, #1a3a6e 44.5%, #1a3a6e 47%, #cc2222 47.5%, #cc2222 50.5%, #1a3a6e 51%, #1a3a6e 53.5%, #0e0e14 54%, #0e0e14 100%);',
+    'arctic-ice': 'background: linear-gradient(180deg, #0a1520 0%, #102535 30%, #1a3a50 50%, #102535 70%, #0a1520 100%);'
 };
 
 // Dashboard tint colors per theme — applied to dashboard elements
@@ -247,7 +254,14 @@ const _THEME_TINTS = {
     'forest': { main: '#051a0a', panel: '#082510', border: '#104020' },
     'purple-night': { main: '#0d0520', panel: '#150a30', border: '#251545' },
     'amber-heat': { main: '#1a1000', panel: '#221805', border: '#403015' },
-    'steel': { main: '#15181e', panel: '#1c2028', border: '#2a3040' }
+    'steel': { main: '#15181e', panel: '#1c2028', border: '#2a3040' },
+    // === NEW THEME TINTS ===
+    'neon-grid': { main: '#050510', panel: '#0a0a1a', border: '#0f2a25' },
+    'sunset-racing': { main: '#1a0520', panel: '#250a18', border: '#401530' },
+    'gulf-blue': { main: '#0a2540', panel: '#103060', border: '#1a4a7a' },
+    'british-green': { main: '#0a1a10', panel: '#0d2818', border: '#1a4030' },
+    'martini-stripe': { main: '#0e0e14', panel: '#15151e', border: '#252535' },
+    'arctic-ice': { main: '#0a1520', panel: '#102535', border: '#1a3a50' }
 };
 
 window.setPageBackground = function(bg) {
@@ -473,7 +487,7 @@ window.renderPreview = function() {
     
     const summaryEl = document.getElementById('strategySummary');
     if (summaryEl) {
-        summaryEl.className = "grid grid-cols-3 sm:grid-cols-4 gap-2 p-2 max-h-40 overflow-y-auto";
+        summaryEl.className = "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 p-2";
         summaryEl.innerHTML = summaryHtml;
     }
 };
@@ -975,35 +989,44 @@ window.enforceViewerMode = function() {
 
     console.log("🔒 Enforcing Viewer Read-Only Mode");
 
-    // רשימת אלמנטים שאסור ל-Viewer לגעת בהם
+    // Buttons that should be VISIBLE but DISABLED (view-only indicators)
+    const viewOnlySelectors = ['#btnPush', '#btnBad', '#btnResetMode'];
+    viewOnlySelectors.forEach(sel => {
+        document.querySelectorAll(sel).forEach(el => {
+            el.disabled = true;
+            el.style.pointerEvents = 'none';
+            el.classList.add('opacity-60', 'cursor-not-allowed');
+            el.removeAttribute('onclick');
+            el.dataset.viewerDisabled = 'true';
+        });
+    });
+
+    // Elements that should be completely HIDDEN for viewers
     const hideSelectors = [
-        '#btnPush', 
-        '#btnBad', 
-        '#btnResetMode', 
         '#pitEntryBtn', 
-        '#btnRain', // מזג אוויר
-        '.starter-radio', // בחירת נהג התחלתי
-        '#addDriverBtn', // אם קיים
-        '.penalty-btn', // כפתורי PENALTY
+        '#btnRain',
+        '.starter-radio',
+        '#addDriverBtn',
+        '.penalty-btn',
         '#penaltyBtnMinus5',
         '#penaltyBtnPlus5',
         '#penaltyBtnPlus10',
-        'input', // חוסם את כל האינפוטים
+        'input',
         'select',
-        'button.btn-press' // כפתורי שליטה
+        'button.btn-press'
     ];
 
     hideSelectors.forEach(sel => {
         document.querySelectorAll(sel).forEach(el => {
-            // לא מסתירים את הצ'אט והלוגין
+            // Don't hide chat, push/problem (view-only), or google sign-in
             if (el.closest('#chatPanel') || el.closest('#chatToggleBtn') || el.id === 'googleSignInBtn') return;
+            if (el.dataset.viewerDisabled === 'true') return; // Already handled as view-only
             
-            // או שמסתירים לגמרי או שמנטרלים
             if (el.tagName === 'INPUT' || el.tagName === 'SELECT') {
                 el.disabled = true;
                 el.classList.add('opacity-50', 'cursor-not-allowed');
             } else {
-                el.classList.add('hidden'); // עדיף להסתיר כדי שלא יבלבל
+                el.classList.add('hidden');
             }
         });
     });
@@ -1393,8 +1416,11 @@ window.renderChatMessage = function(msg) {
     if (msg.recipient && msg.recipient !== 'broadcast') {
         if (window.role !== 'host') {
             const myName = localStorage.getItem('strateger_chat_name');
-            // Viewer only sees private messages addressed to them
-            if (msg.recipient !== window.myId && msg.sender !== myName) {
+            const myPeerId = window.myId || localStorage.getItem('strateger_client_id');
+            // Viewer only sees private messages addressed to them (by peerId or by name)
+            const isForMe = msg.recipient === myPeerId || msg.recipient === myName;
+            const isFromMe = msg.sender === myName;
+            if (!isForMe && !isFromMe) {
                 return;
             }
         }

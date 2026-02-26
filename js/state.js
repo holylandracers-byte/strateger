@@ -8,6 +8,151 @@ window.connections = [];
 window.myId = null;
 window.role = null;
 
+// ==========================================
+// ⭐ PRO LICENSE SYSTEM
+// ==========================================
+window._proUnlocked = false;
+window._proLicenseKey = null;
+
+// Free-tier limits
+window.FREE_LIMITS = {
+    maxDrivers: 3,
+    maxViewers: 1,
+    maxCloudSaves: 3,
+    maxThemes: 5,        // first 5 themes only
+    liveTiming: false,
+    aiStrategy: false,
+    squads: false,
+    kartTracking: false,
+    pdfExport: false,
+    googleCalendar: false,
+    googleEmail: false
+};
+
+// Restore Pro license from localStorage on load
+(function() {
+    const savedKey = localStorage.getItem('strateger_pro_license');
+    const savedValid = localStorage.getItem('strateger_pro_valid');
+    if (savedKey && savedValid === 'true') {
+        window._proUnlocked = true;
+        window._proLicenseKey = savedKey;
+        
+        // Silent re-validation against server (don't block load)
+        setTimeout(() => {
+            fetch('/.netlify/functions/verify-license', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ key: savedKey })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (!data.valid) {
+                    console.warn('⚠️ Cached Pro license is no longer valid — deactivating');
+                    window.deactivateProLicense();
+                }
+            })
+            .catch(() => { /* offline — keep cached state */ });
+        }, 3000);
+    }
+})();
+
+/**
+ * Check if a Pro feature is available. Returns true if Pro or if the feature is free.
+ */
+window.checkProFeature = function(featureName) {
+    if (window._proUnlocked) return true;
+    // Free features are things NOT in the limits or explicitly allowed
+    if (featureName === 'liveTiming') return window.FREE_LIMITS.liveTiming;
+    if (featureName === 'aiStrategy') return window.FREE_LIMITS.aiStrategy;
+    if (featureName === 'squads') return window.FREE_LIMITS.squads;
+    if (featureName === 'kartTracking') return window.FREE_LIMITS.kartTracking;
+    if (featureName === 'pdfExport') return window.FREE_LIMITS.pdfExport;
+    if (featureName === 'googleCalendar') return window.FREE_LIMITS.googleCalendar;
+    if (featureName === 'googleEmail') return window.FREE_LIMITS.googleEmail;
+    return true; // default: free
+};
+
+/**
+ * Show Pro upgrade prompt when user tries to access a locked feature.
+ */
+window.showProGate = function(featureName) {
+    const t = window.t || ((k) => k);
+    const modal = document.getElementById('proUpgradeModal');
+    if (modal) {
+        const featureLabel = document.getElementById('proGateFeature');
+        if (featureLabel) featureLabel.innerText = featureName || t('proFeature');
+        modal.classList.remove('hidden');
+    }
+};
+
+/**
+ * Activate a Pro license key — validates against the server, then persists locally.
+ */
+window.activateProLicense = async function(key) {
+    if (!key || key.length < 16 || !key.startsWith('STRAT-')) {
+        return { success: false, message: 'Invalid license key format' };
+    }
+    
+    try {
+        const res = await fetch('/.netlify/functions/verify-license', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key })
+        });
+        const data = await res.json();
+        
+        if (!data.valid) {
+            return { success: false, message: data.message || 'Invalid license key' };
+        }
+    } catch (err) {
+        console.error('License verification failed:', err);
+        return { success: false, message: 'Could not reach license server. Try again.' };
+    }
+    
+    window._proUnlocked = true;
+    window._proLicenseKey = key;
+    localStorage.setItem('strateger_pro_license', key);
+    localStorage.setItem('strateger_pro_valid', 'true');
+    
+    // Update UI
+    if (typeof window.updateProUI === 'function') window.updateProUI();
+    
+    return { success: true, message: '⭐ Pro unlocked!' };
+};
+
+window.deactivateProLicense = function() {
+    window._proUnlocked = false;
+    window._proLicenseKey = null;
+    localStorage.removeItem('strateger_pro_license');
+    localStorage.removeItem('strateger_pro_valid');
+    if (typeof window.updateProUI === 'function') window.updateProUI();
+};
+
+// ==========================================
+// 🔊 SOUND SYSTEM
+// ==========================================
+window._soundMuted = localStorage.getItem('strateger_muted') === 'true';
+
+/**
+ * Play a sound only if not muted.
+ */
+window.playSound = function(soundFn) {
+    if (window._soundMuted) return;
+    try { soundFn(); } catch(e) { /* ignore audio errors */ }
+};
+
+window.toggleMute = function() {
+    window._soundMuted = !window._soundMuted;
+    localStorage.setItem('strateger_muted', window._soundMuted);
+    const btn = document.getElementById('muteToggleBtn');
+    if (btn) {
+        btn.innerHTML = window._soundMuted 
+            ? '<i class="fas fa-volume-mute"></i>' 
+            : '<i class="fas fa-volume-up"></i>';
+        btn.title = window._soundMuted ? 'Unmute' : 'Mute';
+    }
+};
+
 window.config = {}; 
 window.drivers = []; 
 window.savedHostConfig = null;
@@ -43,6 +188,7 @@ window.state = {
     globalStintNumber: 1,
     raceSaved: false,
     stintTargets: [],
+    stintSchedule: [],
     consecutiveStints: 1
 };
 
@@ -129,6 +275,8 @@ window.translations = {
         driverLink: "Driver Link",
         tapToPit: "TAP TO ENTER PIT",
         tapToExit: "TAP TO EXIT PIT",
+        pitsConfirm: "PITS?",
+        tapAgainConfirm: "TAP AGAIN TO CONFIRM",
         stintBest: "S.BEST",
         googleLoginBtn: "Login",
         testBtn: "Test",
@@ -139,6 +287,7 @@ window.translations = {
         countdownAlert: "⏰ Race starts in {min} minutes!",
         autoStarting: "Auto-starting race...",
         lblAutoStart: "Auto-start at race time",
+        lblDoublesHint: "Same driver back-to-back",
         lblSquadsHint: "Separate drivers into two teams",
         lblFuelHint: "Track fuel tank capacity",
         statusHeader: "Status",
@@ -158,6 +307,8 @@ window.translations = {
         describeIssue: "Describe the issue or suggestion...",
         send: "Send",
         feedbackTitle: "Feedback",
+        contactUs: "Contact Us",
+        goodPace: "Good Pace",
         lblStartTime: "🕐 Race Start Time", lblStartDate: "📅 Race Date",
         lblSquadSchedule: "🔄 Squad Window", lblSquadScheduleHint: "Outside this window all drivers share equally. Inside, squads rotate evenly.",
         lblSquadWindowStart: "Window Start", lblSquadWindowEnd: "Window End",
@@ -168,6 +319,16 @@ window.translations = {
         driverEntryHint: "Enter the race ID to connect", driverEntryLabel: "Race ID", driverConnect: "Connect as Driver", driverIdTooShort: "ID is too short", joinAsDriver: "Join as Driver", backToSetup: "← Back to Setup",
         nextStintIn: "Your next stint in", stayAwake: "Stay awake", sleepOk: "You can sleep", yourStints: "Your Stints", noStintsFound: "No stints found for you", wakeUpAlert: "⏰ Wake up! Your stint is coming",
         viewerNameHint: "Enter your name to join the race", viewerNameLabel: "Your Name", requestToJoin: "Request to Join", waitingForApproval: "Waiting for host approval...", waitingForApprovalHint: "The race admin will approve your request", viewerNameTooShort: "Name must be at least 2 characters",
+        // Pro & New Features
+        proFeature: "Pro Feature", proUpgradeTitle: "⭐ Upgrade to Pro", proUpgradeMsg: "Unlock Live Timing, AI Strategy, Squads, unlimited drivers & themes, and more!", proActivate: "Activate License", proDeactivate: "Deactivate", proEnterKey: "Enter license key...", proInvalidKey: "Invalid license key", proActivated: "⭐ Pro Activated!", proBadge: "PRO", proRequired: "requires Pro",
+        undoPit: "Undo Pit", undoPitToast: "Pit entry undone", undoCountdown: "Undo",
+        exportPdf: "Export PDF", exportImage: "Share as Image", exportingPdf: "Generating PDF...",
+        onboardTitle1: "Welcome to Strateger!", onboardDesc1: "Your pit strategy assistant for endurance karting. Set up your first race in 3 easy steps.",
+        onboardTitle2: "Set Up Your Race", onboardDesc2: "Enter race duration, required pit stops & min/max stint times at the top. Then add your drivers below — pick a starter and assign squads if you have night shifts.",
+        onboardTitle3: "Preview & Fine-Tune", onboardDesc3: "Tap 'Preview Strategy' to see your full stint timeline. Drag stints to reorder, adjust durations, or save your plan to the cloud for later.",
+        onboardTitle4: "Go Race!", onboardDesc4: "Hit 'Start Race' and the live dashboard takes over — track stint timers, get pit-window alerts, share a live link with your team, and manage driver swaps in real time.",
+        onboardSkip: "Skip", onboardNext: "Next", onboardDone: "Let's Go!",
+        soundMute: "Mute", soundUnmute: "Unmute",
     },
     he: {
         ltSearchType: "סנן לפי:", ltTeam: "קבוצה", ltDriver: "נהג", ltKart: "מספר קארט", ltPlaceholder: "הכנס ערך לחיפוש...",
@@ -226,6 +387,8 @@ window.translations = {
         driverLink: "קישור נהג",
         tapToPit: "לחץ לכניסה לפיטס",
         tapToExit: "לחץ ליציאה מהפיטס",
+        pitsConfirm: "פיטס?",
+        tapAgainConfirm: "לחץ שוב לאישור",
         stintBest: "מיטב סטינט",
         googleLoginBtn: "כניסה",
         testBtn: "בדיקה",
@@ -256,6 +419,8 @@ window.translations = {
         describeIssue: "תאר את הבעיה או ההצעה...",
         send: "שלח",
         feedbackTitle: "משוב",
+        contactUs: "צור קשר",
+        goodPace: "קצב טוב",
         lblStartTime: "🕐 שעת התחלה", lblStartDate: "📅 תאריך מירוץ",
         lblSquadSchedule: "🔄 חלון חוליות", lblSquadScheduleHint: "מחוץ לחלון כל הנהגים מתחלקים שווה. בתוך החלון, חוליות מתחלפות בחלוקה שווה.",
         lblSquadWindowStart: "תחילת חלון", lblSquadWindowEnd: "סוף חלון",
@@ -266,6 +431,11 @@ window.translations = {
         driverEntryHint: "הזן את קוד המירוץ להתחברות", driverEntryLabel: "קוד מירוץ", driverConnect: "התחבר כנהג", driverIdTooShort: "הקוד קצר מדי", joinAsDriver: "הצטרף כנהג", backToSetup: "← חזרה להגדרות",
         nextStintIn: "הסטינט הבא שלך בעוד", stayAwake: "הישאר ער", sleepOk: "אפשר לישון", yourStints: "הסטינטים שלך", noStintsFound: "לא נמצאו סטינטים עבורך", wakeUpAlert: "⏰ התעורר! הסטינט שלך מתקרב",
         viewerNameHint: "הכנס את שמך כדי להצטרף למירוץ", viewerNameLabel: "השם שלך", requestToJoin: "בקש להצטרף", waitingForApproval: "ממתין לאישור מנהל...", waitingForApprovalHint: "מנהל המירוץ יאשר את בקשתך", viewerNameTooShort: "השם חייב להכיל לפחות 2 תווים",
+        onboardTitle1: "ברוכים הבאים ל-Strateger!", onboardDesc1: "העוזר האישי שלך לאסטרטגיית פיטים במירוצי סיבולת. הגדר את המירוץ הראשון שלך ב-3 צעדים פשוטים.",
+        onboardTitle2: "הגדר את המירוץ", onboardDesc2: "הזן משך מירוץ, עצירות פיט נדרשות וזמני סטינט מינימום/מקסימום למעלה. אחר כך הוסף נהגים — בחר מתניע והקצה חוליות אם יש לך משמרות לילה.",
+        onboardTitle3: "תצוגה מקדימה וכיוונון", onboardDesc3: "לחץ על 'תצוגה מקדימה' כדי לראות את ציר הזמן המלא. גרור סטינטים לסידור מחדש, שנה משכי זמן, או שמור את התוכנית לענן.",
+        onboardTitle4: "צא למירוץ!", onboardDesc4: "לחץ 'התחל מירוץ' והדשבורד החי נכנס לפעולה — עקוב אחרי טיימרים, קבל התראות פיט, שתף קישור חי עם הצוות, ונהל החלפות נהגים בזמן אמת.",
+        onboardSkip: "דלג", onboardNext: "הבא", onboardDone: "יאללה!",
     },
     fr: {
         ltSearchType: "Filtrer par:", ltTeam: "Équipe", ltDriver: "Pilote", ltKart: "Kart n°", ltPlaceholder: "Rechercher...",
@@ -324,6 +494,8 @@ window.translations = {
         driverLink: "Lien pilote",
         tapToPit: "APPUYER POUR ENTRER AUX STANDS",
         tapToExit: "APPUYER POUR SORTIR DES STANDS",
+        pitsConfirm: "STANDS ?",
+        tapAgainConfirm: "APPUYER DE NOUVEAU POUR CONFIRMER",
         stintBest: "M.STINT",
         googleLoginBtn: "Connexion",
         testBtn: "Test",
@@ -334,6 +506,7 @@ window.translations = {
         countdownAlert: "⏰ Course dans {min} minutes !",
         autoStarting: "Démarrage auto...",
         lblAutoStart: "Démarrage auto à l'heure",
+        lblDoublesHint: "Même pilote consécutivement",
         lblSquadsHint: "Séparer les pilotes en deux équipes",
         lblFuelHint: "Tracker la capacité du réservoir",
         statusHeader: "Statut",
@@ -353,6 +526,8 @@ window.translations = {
         describeIssue: "Décrivez le problème ou la suggestion...",
         send: "Envoyer",
         feedbackTitle: "Retours",
+        contactUs: "Nous Contacter",
+        goodPace: "Bon Rythme",
         lblStartTime: "🕐 Heure de Départ", lblStartDate: "📅 Date de Course",
         lblSquadSchedule: "🔄 Fenêtre Équipes", lblSquadScheduleHint: "Hors fenêtre, tous les pilotes partagent. Dedans, les équipes tournent à parts égales.",
         lblSquadWindowStart: "Début fenêtre", lblSquadWindowEnd: "Fin fenêtre",
@@ -363,6 +538,11 @@ window.translations = {
         driverEntryHint: "Entrez l'ID de course pour vous connecter", driverEntryLabel: "ID de course", driverConnect: "Se connecter comme pilote", driverIdTooShort: "L'ID est trop court", joinAsDriver: "Rejoindre en tant que pilote", backToSetup: "← Retour aux réglages",
         nextStintIn: "Votre prochain stint dans", stayAwake: "Restez éveillé", sleepOk: "Vous pouvez dormir", yourStints: "Vos Stints", noStintsFound: "Aucun stint trouvé pour vous", wakeUpAlert: "⏰ Réveillez-vous! Votre stint approche",
         viewerNameHint: "Entrez votre nom pour rejoindre la course", viewerNameLabel: "Votre Nom", requestToJoin: "Demander à rejoindre", waitingForApproval: "En attente d'approbation...", waitingForApprovalHint: "L'administrateur de la course approuvera votre demande", viewerNameTooShort: "Le nom doit contenir au moins 2 caractères",
+        onboardTitle1: "Bienvenue sur Strateger !", onboardDesc1: "Votre assistant stratégie pour les courses d'endurance en karting. Configurez votre première course en 3 étapes.",
+        onboardTitle2: "Configurez votre course", onboardDesc2: "Entrez la durée, les arrêts obligatoires et les temps de stint min/max en haut. Ajoutez vos pilotes en dessous — choisissez un départ et assignez des équipes pour les relais de nuit.",
+        onboardTitle3: "Aperçu et ajustements", onboardDesc3: "Appuyez sur 'Aperçu' pour voir le plan complet des stints. Glissez-déposez pour réorganiser, ajustez les durées ou sauvegardez dans le cloud.",
+        onboardTitle4: "En piste !", onboardDesc4: "Lancez la course et le tableau de bord prend le relais — suivez les chronos, recevez les alertes pit, partagez un lien live avec votre équipe et gérez les relais en temps réel.",
+        onboardSkip: "Passer", onboardNext: "Suivant", onboardDone: "C'est parti !",
     },
     pt: {
         ltSearchType: "Filtrar por:", ltTeam: "Equipe", ltDriver: "Piloto", ltKart: "Kart nº", ltPlaceholder: "Pesquisar...",
@@ -416,6 +596,8 @@ window.translations = {
         driverLink: "Link do piloto",
         tapToPit: "TOQUE PARA ENTRAR NO BOX",
         tapToExit: "TOQUE PARA SAIR DO BOX",
+        pitsConfirm: "BOX?",
+        tapAgainConfirm: "TOQUE NOVAMENTE PARA CONFIRMAR",
         stintBest: "M.STINT",
         googleLoginBtn: "Conexão",
         testBtn: "Teste",
@@ -426,6 +608,7 @@ window.translations = {
         countdownAlert: "⏰ Corrida começa em {min} minutos!",
         autoStarting: "Iniciando automaticamente...",
         lblAutoStart: "Início automático no horário",
+        lblDoublesHint: "Mesmo piloto consecutivamente",
         lblSquadsHint: "Separar pilotos em dois times",
         lblFuelHint: "Rastrear capacidade do tanque",
         statusHeader: "Status",
@@ -445,6 +628,8 @@ window.translations = {
         describeIssue: "Descreva o problema ou sugestão...",
         send: "Enviar",
         feedbackTitle: "Feedback",
+        contactUs: "Contacte-nos",
+        goodPace: "Bom Ritmo",
         lblStartTime: "🕐 Hora de Início", lblStartDate: "📅 Data da Corrida",
         lblSquadSchedule: "🔄 Janela de Esquadrões", lblSquadScheduleHint: "Fora da janela, todos pilotos compartilham. Dentro, esquadrões revezam igualmente.",
         lblSquadWindowStart: "Início janela", lblSquadWindowEnd: "Fim janela",
@@ -455,6 +640,11 @@ window.translations = {
         driverEntryHint: "Digite o ID da corrida para conectar", driverEntryLabel: "ID da corrida", driverConnect: "Conectar como piloto", driverIdTooShort: "ID muito curto", joinAsDriver: "Entrar como piloto", backToSetup: "← Voltar às configurações",
         nextStintIn: "Seu próximo stint em", stayAwake: "Fique acordado", sleepOk: "Pode dormir", yourStints: "Seus Stints", noStintsFound: "Nenhum stint encontrado para você", wakeUpAlert: "⏰ Acorde! Seu stint está chegando",
         viewerNameHint: "Digite seu nome para participar da corrida", viewerNameLabel: "Seu Nome", requestToJoin: "Solicitar Entrada", waitingForApproval: "Aguardando aprovação...", waitingForApprovalHint: "O administrador da corrida aprovará sua solicitação", viewerNameTooShort: "O nome deve ter pelo menos 2 caracteres",
+        onboardTitle1: "Bem-vindo ao Strateger!", onboardDesc1: "Seu assistente de estratégia de pit para corridas de endurance de kart. Configure sua primeira corrida em 3 passos simples.",
+        onboardTitle2: "Configure sua corrida", onboardDesc2: "Insira duração da corrida, paradas obrigatórias e tempos de stint mín/máx no topo. Adicione seus pilotos abaixo — escolha quem larga e atribua equipes para turnos noturnos.",
+        onboardTitle3: "Visualize e ajuste", onboardDesc3: "Toque em 'Visualizar Estratégia' para ver o cronograma completo. Arraste stints para reordenar, ajuste durações ou salve seu plano na nuvem.",
+        onboardTitle4: "Hora da corrida!", onboardDesc4: "Aperte 'Iniciar Corrida' e o painel ao vivo assume — acompanhe cronômetros, receba alertas de pit, compartilhe um link ao vivo com a equipe e gerencie trocas de pilotos em tempo real.",
+        onboardSkip: "Pular", onboardNext: "Próximo", onboardDone: "Vamos lá!",
     },
     ru: {
         ltSearchType: "Фильтр по:", ltTeam: "Команда", ltDriver: "Пилот", ltKart: "Карт №", ltPlaceholder: "Поиск...",
@@ -512,6 +702,8 @@ window.translations = {
         driverLink: "Ссылка для пилота",
         tapToPit: "НАЖМИТЕ ДЛЯ ЗАЕЗДА В БОКС",
         tapToExit: "НАЖМИТЕ ДЛЯ ВЫЕЗДА ИЗ БОКСА",
+        pitsConfirm: "БОКСЫ?",
+        tapAgainConfirm: "НАЖМИТЕ СНОВА ДЛЯ ПОДТВЕРЖДЕНИЯ",
         stintBest: "Л.СТИНТ",
         googleLoginBtn: "Вход",
         testBtn: "Тест",
@@ -542,6 +734,8 @@ window.translations = {
         describeIssue: "Опишите проблему или предложение...",
         send: "Отправить",
         feedbackTitle: "Обратная Связь",
+        contactUs: "Связаться с Нами",
+        goodPace: "Хороший Темп",
         lblStartTime: "🕐 Время старта", lblStartDate: "📅 Дата гонки",
         lblSquadSchedule: "🔄 Окно групп", lblSquadScheduleHint: "Вне окна все водители делят поровну. В окне группы чередуются равномерно.",
         lblSquadWindowStart: "Начало окна", lblSquadWindowEnd: "Конец окна",
@@ -552,6 +746,11 @@ window.translations = {
         driverEntryHint: "Введите ID гонки для подключения", driverEntryLabel: "ID гонки", driverConnect: "Подключиться как пилот", driverIdTooShort: "ID слишком короткий", joinAsDriver: "Войти как пилот", backToSetup: "← Назад к настройкам",
         nextStintIn: "Ваш следующий стинт через", stayAwake: "Не спите", sleepOk: "Можно спать", yourStints: "Ваши стинты", noStintsFound: "Стинты для вас не найдены", wakeUpAlert: "⏰ Проснитесь! Ваш стинт скоро",
         viewerNameHint: "Введите имя, чтобы присоединиться к гонке", viewerNameLabel: "Ваше имя", requestToJoin: "Запросить доступ", waitingForApproval: "Ожидание одобрения...", waitingForApprovalHint: "Администратор гонки одобрит ваш запрос", viewerNameTooShort: "Имя должно содержать минимум 2 символа",
+        onboardTitle1: "Добро пожаловать в Strateger!", onboardDesc1: "Ваш помощник по стратегии пит-стопов для картинговых гонок на выносливость. Настройте первую гонку за 3 простых шага.",
+        onboardTitle2: "Настройте гонку", onboardDesc2: "Введите длительность, обязательные пит-стопы и мин/макс время стинта вверху. Добавьте пилотов ниже — выберите стартового и назначьте группы для ночных смен.",
+        onboardTitle3: "Предпросмотр и корректировка", onboardDesc3: "Нажмите 'Предпросмотр' чтобы увидеть полный план стинтов. Перетаскивайте для изменения порядка, корректируйте длительность или сохраните план в облаке.",
+        onboardTitle4: "На старт!", onboardDesc4: "Нажмите 'Старт' и панель управления заработает — следите за таймерами, получайте оповещения о пит-стопах, делитесь ссылкой с командой и управляйте сменами пилотов в реальном времени.",
+        onboardSkip: "Пропустить", onboardNext: "Далее", onboardDone: "Поехали!",
     },
     ar: {
         ltSearchType: "تصفية حسب:", ltTeam: "الفريق", ltDriver: "السائق", ltKart: "رقم الكارت", ltPlaceholder: "البحث...",
@@ -609,6 +808,8 @@ window.translations = {
         driverLink: "رابط السائق",
         tapToPit: "اضغط للدخول للحفرة",
         tapToExit: "اضغط للخروج من الحفرة",
+        pitsConfirm: "حفرة؟",
+        tapAgainConfirm: "اضغط مرة أخرى للتأكيد",
         stintBest: "أفضل فترة",
         googleLoginBtn: "تسجيل الدخول",
         testBtn: "اختبار",
@@ -639,6 +840,8 @@ window.translations = {
         describeIssue: "صف المشكلة أو الاقتراح...",
         send: "إرسال",
         feedbackTitle: "التعليقات",
+        contactUs: "اتصل بنا",
+        goodPace: "وتيرة جيدة",
         lblStartTime: "🕐 وقت البدء", lblStartDate: "📅 تاريخ السباق",
         lblSquadSchedule: "🔄 نافذة الفرق", lblSquadScheduleHint: "خارج النافذة يتشارك جميع السائقين بالتساوي. داخلها، تتناوب الفرق بالتساوي.",
         lblSquadWindowStart: "بداية النافذة", lblSquadWindowEnd: "نهاية النافذة",
@@ -649,6 +852,11 @@ window.translations = {
         driverEntryHint: "أدخل رقم السباق للاتصال", driverEntryLabel: "رقم السباق", driverConnect: "اتصل كسائق", driverIdTooShort: "الرقم قصير جداً", joinAsDriver: "انضم كسائق", backToSetup: "← العودة للإعدادات",
         nextStintIn: "فترتك القادمة خلال", stayAwake: "ابقَ مستيقظاً", sleepOk: "يمكنك النوم", yourStints: "فتراتك", noStintsFound: "لم يتم العثور على فترات لك", wakeUpAlert: "⏰ استيقظ! فترتك قادمة",
         viewerNameHint: "أدخل اسمك للانضمام إلى السباق", viewerNameLabel: "اسمك", requestToJoin: "طلب الانضمام", waitingForApproval: "في انتظار الموافقة...", waitingForApprovalHint: "سيوافق مدير السباق على طلبك", viewerNameTooShort: "يجب أن يحتوي الاسم على حرفين على الأقل",
+        onboardTitle1: "مرحباً بك في Strateger!", onboardDesc1: "مساعدك في استراتيجية البيت لسباقات التحمل بالكارت. أعد سباقك الأول في 3 خطوات سهلة.",
+        onboardTitle2: "إعداد السباق", onboardDesc2: "أدخل مدة السباق، التوقفات المطلوبة وأوقات الفترات الدنيا/القصوى في الأعلى. أضف السائقين أدناه — اختر من يبدأ وعيّن الفرق للمناوبات الليلية.",
+        onboardTitle3: "معاينة وضبط", onboardDesc3: "اضغط 'معاينة الاستراتيجية' لرؤية الجدول الزمني الكامل. اسحب الفترات لإعادة الترتيب، عدّل المدد أو احفظ خطتك في السحابة.",
+        onboardTitle4: "انطلق!", onboardDesc4: "اضغط 'ابدأ السباق' ولوحة القيادة الحية تتولى الأمر — تتبع المؤقتات، واستلم تنبيهات البيت، وشارك رابطاً مباشراً مع فريقك وأدر تبديلات السائقين في الوقت الفعلي.",
+        onboardSkip: "تخطي", onboardNext: "التالي", onboardDone: "هيا بنا!",
     },
     es: {
         ltSearchType: "Filtrar por:", ltTeam: "Equipo", ltDriver: "Piloto", ltKart: "Kart nº", ltPlaceholder: "Buscar...",
@@ -706,6 +914,8 @@ window.translations = {
         driverLink: "Enlace del piloto",
         tapToPit: "TOCA PARA ENTRAR A BOXES",
         tapToExit: "TOCA PARA SALIR DE BOXES",
+        pitsConfirm: "BOXES?",
+        tapAgainConfirm: "TOCA DE NUEVO PARA CONFIRMAR",
         stintBest: "M.STINT",
         googleLoginBtn: "Iniciar sesión",
         testBtn: "Prueba",
@@ -716,6 +926,7 @@ window.translations = {
         countdownAlert: "⏰ ¡Carrera en {min} minutos!",
         autoStarting: "Iniciando automáticamente...",
         lblAutoStart: "Inicio automático a la hora",
+        lblDoublesHint: "Mismo piloto consecutivamente",
         lblSquadsHint: "Separar pilotos en dos equipos",
         lblFuelHint: "Rastrear capacidad del depósito",
         statusHeader: "Estado",
@@ -735,6 +946,8 @@ window.translations = {
         describeIssue: "Describe el problema o sugerencia...",
         send: "Enviar",
         feedbackTitle: "Retroalimentación",
+        contactUs: "Contáctenos",
+        goodPace: "Buen Ritmo",
         lblStartTime: "🕐 Hora de Inicio", lblStartDate: "📅 Fecha de Carrera",
         lblSquadSchedule: "🔄 Ventana de Escuadrones", lblSquadScheduleHint: "Fuera de la ventana, todos comparten por igual. Dentro, los escuadrones rotan equitativamente.",
         lblSquadWindowStart: "Inicio ventana", lblSquadWindowEnd: "Fin ventana",
@@ -745,6 +958,11 @@ window.translations = {
         driverEntryHint: "Ingresa el ID de carrera para conectarte", driverEntryLabel: "ID de carrera", driverConnect: "Conectar como piloto", driverIdTooShort: "El ID es muy corto", joinAsDriver: "Unirse como piloto", backToSetup: "← Volver a configuración",
         nextStintIn: "Tu próximo stint en", stayAwake: "Mantente despierto", sleepOk: "Puedes dormir", yourStints: "Tus Stints", noStintsFound: "No se encontraron stints para ti", wakeUpAlert: "⏰ ¡Despierta! Tu stint se acerca",
         viewerNameHint: "Ingresa tu nombre para unirte a la carrera", viewerNameLabel: "Tu Nombre", requestToJoin: "Solicitar Unirse", waitingForApproval: "Esperando aprobación...", waitingForApprovalHint: "El administrador de la carrera aprobará tu solicitud", viewerNameTooShort: "El nombre debe tener al menos 2 caracteres",
+        onboardTitle1: "¡Bienvenido a Strateger!", onboardDesc1: "Tu asistente de estrategia de boxes para carreras de resistencia en karting. Configura tu primera carrera en 3 pasos sencillos.",
+        onboardTitle2: "Configura tu carrera", onboardDesc2: "Ingresa la duración, paradas obligatorias y tiempos de stint mín/máx arriba. Añade tus pilotos abajo — elige quién sale y asigna escuadras para los turnos nocturnos.",
+        onboardTitle3: "Vista previa y ajustes", onboardDesc3: "Pulsa 'Vista previa' para ver el plan completo de stints. Arrastra para reordenar, ajusta duraciones o guarda tu plan en la nube.",
+        onboardTitle4: "¡A correr!", onboardDesc4: "Pulsa 'Iniciar Carrera' y el panel en vivo toma el control — sigue los cronómetros, recibe alertas de boxes, comparte un enlace en vivo con tu equipo y gestiona los cambios de piloto en tiempo real.",
+        onboardSkip: "Saltar", onboardNext: "Siguiente", onboardDone: "¡Vamos!",
     },
     it: {
         ltSearchType: "Filtra per:", ltTeam: "Squadra", ltDriver: "Pilota", ltKart: "Kart n°", ltPlaceholder: "Ricerca...", previewTitle: "Anteprima strategia", addToCalendar: "Aggiungi al calendario", timeline: "Cronologia", driverSchedule: "Orario piloti", totalTime: "Tempo totale", close: "Chiudi",
@@ -756,7 +974,7 @@ window.translations = {
         saveStratTitle: "Salva", libTitle: "Libreria", aiPlaceholder: "es: 'Il pilota 1 preferisce...'", thStart: "Inizio", thEnd: "Fine", thType: "Tipo", thDriver: "Pilota", thDuration: "Durata", liveTiming: "Cronometraggio live", liveTimingUrl: "URL cronometraggio...", connectLive: "Connetti", disconnectLive: "Disconnetti", searchTeam: "Cerca squadra...", searchDriver: "Cerca pilota...", searchKart: "Cerca kart...", demoMode: "Modalità demo",
         sendEmail: "Invia", cancel: "Annulla", create: "Crea", save: "Salva", load: "Carica", delete: "Elimina", activeRaceFound: "Gara attiva trovata", continueRace: "Continua", discardRace: "Scarta", areYouSure: "Sei sicuro?", deleteWarning: "Questo eliminerà i dati in modo permanente.", yesDelete: "Sì, elimina", noKeep: "No, conserva", invite: "Invita", synced: "Sincronizzato",
         chatTitle: "Chat gara / D&R", enterName: "Inserisci il tuo nome", startChat: "Inizia chat", typeMessage: "Scrivi un suggerimento...", send: "Invia", viewer: "Spettatore", host: "OSPITE", suggestion: "Suggerimento", strategyOutlook: "PROSPETTIVA STRATEGICA", timeLeft: "TEMPO RIMANENTE", penalty: "PENALITÀ", enterPit: "ENTRA IN PIT", nextDriverLabel: "PROSSIMO PILOTA", totalHeader: "TOTALE", stopsHeader: "STINT", driverHeader: "PILOTA",
-        stintsLeft: "STINT RIMANENTI", future: "FUTURO", max: "MAX", min: "MIN", rest: "RIPOSO", buffer: "Buffer", impossible: "IMPOSSIBILE", addStop: "AGGIUNGI SOSTA", avg: "MEDIA", finalLap: "ULTIMO GIRO", inPit: "IN PIT", nextLabel: "Prossimo:", shortStintMsg: "⚠️ STINT CORTO! Rischio penalità", cancelEntry: "Annulla", notifyDriver: "📢 Notifica pilota", driverNotified: "✓ Pilota notificato", includesAdj: "Include aggiustamento:", missingSeconds: "Mancante", proceedToPit: "Procedere al pit?", wait: "ATTENDI...", getReady: "PREPARATI...", go: "VAI! VAI!", orangeZone: "⚠️ Zona arancione - solo NOTIFICA", targetLabel: "OBIETTIVO", driverLink: "Link pilota", tapToPit: "TOCCA PER ENTRARE AI BOX", tapToExit: "TOCCA PER USCIRE DAI BOX", stintBest: "M.STINT",
+        stintsLeft: "STINT RIMANENTI", future: "FUTURO", max: "MAX", min: "MIN", rest: "RIPOSO", buffer: "Buffer", impossible: "IMPOSSIBILE", addStop: "AGGIUNGI SOSTA", avg: "MEDIA", finalLap: "ULTIMO GIRO", inPit: "IN PIT", nextLabel: "Prossimo:", shortStintMsg: "⚠️ STINT CORTO! Rischio penalità", cancelEntry: "Annulla", notifyDriver: "📢 Notifica pilota", driverNotified: "✓ Pilota notificato", includesAdj: "Include aggiustamento:", missingSeconds: "Mancante", proceedToPit: "Procedere al pit?", wait: "ATTENDI...", getReady: "PREPARATI...", go: "VAI! VAI!", orangeZone: "⚠️ Zona arancione - solo NOTIFICA", targetLabel: "OBIETTIVO", driverLink: "Link pilota", tapToPit: "TOCCA PER ENTRARE AI BOX", tapToExit: "TOCCA PER USCIRE DAI BOX", pitsConfirm: "BOX?", tapAgainConfirm: "TOCCA DI NUOVO PER CONFERMARE", stintBest: "M.STINT",
         googleLoginBtn: "Accedi",
         testBtn: "Prova",
         demoBtn: "Demo",
@@ -766,6 +984,7 @@ window.translations = {
         countdownAlert: "⏰ Gara tra {min} minuti!",
         autoStarting: "Avvio automatico...",
         lblAutoStart: "Avvio automatico all'orario",
+        lblDoublesHint: "Stesso pilota consecutivamente",
         lblSquadsHint: "Separare i piloti in due squadre",
         lblFuelHint: "Traccia la capacità del serbatoio",
         statusHeader: "Stato",
@@ -785,6 +1004,8 @@ window.translations = {
         describeIssue: "Descrivi il problema o il suggerimento...",
         send: "Invia",
         feedbackTitle: "Feedback",
+        contactUs: "Contattaci",
+        goodPace: "Buon Ritmo",
         lblStartTime: "🕐 Ora di Partenza", lblStartDate: "📅 Data della Gara",
         lblSquadSchedule: "🔄 Finestra Squadre", lblSquadScheduleHint: "Fuori dalla finestra tutti i piloti condividono. Dentro, le squadre ruotano equamente.",
         lblSquadWindowStart: "Inizio finestra", lblSquadWindowEnd: "Fine finestra",
@@ -795,6 +1016,11 @@ window.translations = {
         driverEntryHint: "Inserisci l'ID gara per connetterti", driverEntryLabel: "ID gara", driverConnect: "Connetti come pilota", driverIdTooShort: "L'ID è troppo corto", joinAsDriver: "Unisciti come pilota", backToSetup: "← Torna alle impostazioni",
         nextStintIn: "Il tuo prossimo stint tra", stayAwake: "Resta sveglio", sleepOk: "Puoi dormire", yourStints: "I Tuoi Stint", noStintsFound: "Nessuno stint trovato per te", wakeUpAlert: "⏰ Svegliati! Il tuo stint si avvicina",
         viewerNameHint: "Inserisci il tuo nome per unirti alla gara", viewerNameLabel: "Il Tuo Nome", requestToJoin: "Richiedi di unirti", waitingForApproval: "In attesa di approvazione...", waitingForApprovalHint: "L'amministratore della gara approverà la tua richiesta", viewerNameTooShort: "Il nome deve avere almeno 2 caratteri",
+        onboardTitle1: "Benvenuto su Strateger!", onboardDesc1: "Il tuo assistente strategico per le gare di endurance in kart. Configura la tua prima gara in 3 semplici passi.",
+        onboardTitle2: "Configura la gara", onboardDesc2: "Inserisci durata, soste obbligatorie e tempi stint min/max in alto. Aggiungi i tuoi piloti sotto — scegli chi parte e assegna le squadre per i turni notturni.",
+        onboardTitle3: "Anteprima e regolazioni", onboardDesc3: "Tocca 'Anteprima Strategia' per vedere il piano completo. Trascina gli stint per riordinare, modifica le durate o salva il piano nel cloud.",
+        onboardTitle4: "Si corre!", onboardDesc4: "Premi 'Inizia Gara' e la dashboard live prende il comando — monitora i timer, ricevi avvisi pit, condividi un link live con il team e gestisci i cambi pilota in tempo reale.",
+        onboardSkip: "Salta", onboardNext: "Avanti", onboardDone: "Andiamo!",
     },
     ka: {
         ltSearchType: "ფილტრი:", ltTeam: "გუნდი", ltDriver: "მძღოლი", ltKart: "კარტი #", ltPlaceholder: "ძებნა...",
@@ -852,6 +1078,8 @@ window.translations = {
         driverLink: "მძღოლის ბმული",
         tapToPit: "შეეხეთ პიტში შესასვლელად",
         tapToExit: "შეეხეთ პიტიდან გამოსასვლელად",
+        pitsConfirm: "პიტი?",
+        tapAgainConfirm: "შეეხეთ ხელმეორედ დასადასტურებლად",
         stintBest: "ს.საუკეთესო",
         googleLoginBtn: "ლოგინი",
         testBtn: "ტესტი",
@@ -882,6 +1110,8 @@ window.translations = {
         describeIssue: "აღწერეთ პრობლემა ან გამოთქმა...",
         send: "გაგზავნა",
         feedbackTitle: "მოტეხილობა",
+        contactUs: "დაგვიკავშირდით",
+        goodPace: "კარგი ტემპი",
         lblStartTime: "🕐 დაწყების დრო", lblStartDate: "📅 რბოლის თარიღი",
         lblSquadSchedule: "🔄 ჯგუფების ფანჯარა", lblSquadScheduleHint: "ფანჯრის გარეთ ყველა მძღოლი თანაბრად ინაწილებს. შიგნით ჯგუფები თანაბრად მონაცვლეობენ.",
         lblSquadWindowStart: "ფანჯრის დასაწყისი", lblSquadWindowEnd: "ფანჯრის დასასრული",
@@ -892,6 +1122,11 @@ window.translations = {
         driverEntryHint: "შეიყვანეთ რბოლის ID დასაკავშირებლად", driverEntryLabel: "რბოლის ID", driverConnect: "დაკავშირება მძღოლად", driverIdTooShort: "ID ძალიან მოკლეა", joinAsDriver: "შეუერთდი მძღოლად", backToSetup: "← უკან პარამეტრებზე",
         nextStintIn: "შენი შემდეგი სტინტი", stayAwake: "დარჩი ფხიზლად", sleepOk: "შეგიძლია დაიძინო", yourStints: "შენი სტინტები", noStintsFound: "სტინტები ვერ მოიძებნა", wakeUpAlert: "⏰ გაიღვიძე! შენი სტინტი ახლოვდება",
         viewerNameHint: "შეიყვანე სახელი რბოლაში შესაერთებლად", viewerNameLabel: "შენი სახელი", requestToJoin: "მოითხოვე შეერთება", waitingForApproval: "მოლოდინში ადმინის თანხმობაზე...", waitingForApprovalHint: "რბოლის ადმინისტრატორი დაამტკიცებს თქვენს მოთხოვნას", viewerNameTooShort: "სახელი უნდა შეიცავდეს მინიმუმ 2 სიმბოლოს",
+        onboardTitle1: "კეთილი იყოს თქვენი მობრძანება Strateger-ში!", onboardDesc1: "თქვენი პიტ-სტრატეგიის ასისტენტი გამძლეობის კარტინგის რბოლებისთვის. დააყენეთ პირველი რბოლა 3 მარტივ ნაბიჯში.",
+        onboardTitle2: "დააყენეთ რბოლა", onboardDesc2: "შეიყვანეთ რბოლის ხანგრძლივობა, სავალდებულო გაჩერებები და სტინტის მინ/მაქს დროები ზემოთ. დაამატეთ მძღოლები ქვემოთ — აირჩიეთ სტარტერი და მიანიჭეთ ჯგუფები ღამის ცვლებისთვის.",
+        onboardTitle3: "წინასწარი ხედვა და კორექტირება", onboardDesc3: "დააჭირეთ 'სტრატეგიის ნახვა' სრული გეგმის სანახავად. გადაათრიეთ სტინტები თანმიმდევრობის შესაცვლელად, შეცვალეთ ხანგრძლივობა ან შეინახეთ ღრუბელში.",
+        onboardTitle4: "რბოლაზე!", onboardDesc4: "დააჭირეთ 'რბოლის დაწყება' და ლაივ დაფა ჩაირთვება — თვალი ადევნეთ ტაიმერებს, მიიღეთ პიტ-შეტყობინებები, გააზიარეთ ლინკი გუნდთან და მართეთ მძღოლთა ცვლა რეალურ დროში.",
+        onboardSkip: "გამოტოვება", onboardNext: "შემდეგი", onboardDone: "წავედით!",
     },
     de: {
         ltSearchType: "Filter nach:", ltTeam: "Team", ltDriver: "Fahrer", ltKart: "Kart Nr.", ltPlaceholder: "Suchen...", previewTitle: "Strategievorschau", addToCalendar: "Zum Kalender hinzufügen", timeline: "Zeitleiste", driverSchedule: "Fahrerplan", totalTime: "Gesamtzeit", close: "Schließen",
@@ -903,7 +1138,7 @@ window.translations = {
         saveStratTitle: "Speichern", libTitle: "Bibliothek", aiPlaceholder: "z.B.: 'Fahrer 1 bevorzugt...'", thStart: "Start", thEnd: "Ende", thType: "Typ", thDriver: "Fahrer", thDuration: "Dauer", liveTiming: "Live-Zeitmessung", liveTimingUrl: "Zeitmessung URL...", connectLive: "Verbinden", disconnectLive: "Trennen", searchTeam: "Team suchen...", searchDriver: "Fahrer suchen...", searchKart: "Kart suchen...", demoMode: "Demo-Modus",
         sendEmail: "Senden", cancel: "Abbrechen", create: "Erstellen", save: "Speichern", load: "Laden", delete: "Löschen", activeRaceFound: "Aktives Rennen gefunden", continueRace: "Fortfahren", discardRace: "Verwerfen", areYouSure: "Bist du sicher?", deleteWarning: "Dies löscht Daten dauerhaft.", yesDelete: "Ja, löschen", noKeep: "Nein, behalten", invite: "Einladen", synced: "Synchronisiert",
         chatTitle: "Renn-Chat / Q&A", enterName: "Geben Sie Ihren Namen ein", startChat: "Chat starten", typeMessage: "Schreibe einen Vorschlag...", send: "Senden", viewer: "Zuschauer", host: "HOST", suggestion: "Vorschlag", strategyOutlook: "STRATEGIEAUSBLICK", timeLeft: "VERBLEIBENDE ZEIT", penalty: "STRAFE", enterPit: "BOXEN FAHREN", nextDriverLabel: "NÄCHSTER FAHRER", totalHeader: "GESAMT", stopsHeader: "STINTS", driverHeader: "FAHRER",
-        stintsLeft: "STINTS VERBLEIBEND", future: "ZUKUNFT", max: "MAX", min: "MIN", rest: "RUHE", buffer: "Puffer", impossible: "UNMÖGLICH", addStop: "STOP HINZUFÜGEN", avg: "DURCHSCHN.", finalLap: "LETZTE RUNDE", inPit: "IN DEN BOXEN", nextLabel: "Nächster:", shortStintMsg: "⚠️ KURZER STINT! Strafrisiko", cancelEntry: "Abbrechen", notifyDriver: "📢 Fahrer benachrichtigen", driverNotified: "✓ Fahrer benachrichtigt", includesAdj: "Enthält Anpassung:", missingSeconds: "Fehlend", proceedToPit: "Zu den Boxen fahren?", wait: "WARTEN...", getReady: "VORBEREITEN...", go: "VIEL ERFOLG!", orangeZone: "⚠️ Orangezone - nur BENACHRICHTIGEN", targetLabel: "ZIEL", driverLink: "Fahrer-Link", tapToPit: "TIPPEN ZUM BOXEN", tapToExit: "TIPPEN ZUM AUSFAHREN", stintBest: "S.BEST",
+        stintsLeft: "STINTS VERBLEIBEND", future: "ZUKUNFT", max: "MAX", min: "MIN", rest: "RUHE", buffer: "Puffer", impossible: "UNMÖGLICH", addStop: "STOP HINZUFÜGEN", avg: "DURCHSCHN.", finalLap: "LETZTE RUNDE", inPit: "IN DEN BOXEN", nextLabel: "Nächster:", shortStintMsg: "⚠️ KURZER STINT! Strafrisiko", cancelEntry: "Abbrechen", notifyDriver: "📢 Fahrer benachrichtigen", driverNotified: "✓ Fahrer benachrichtigt", includesAdj: "Enthält Anpassung:", missingSeconds: "Fehlend", proceedToPit: "Zu den Boxen fahren?", wait: "WARTEN...", getReady: "VORBEREITEN...", go: "VIEL ERFOLG!", orangeZone: "⚠️ Orangezone - nur BENACHRICHTIGEN", targetLabel: "ZIEL", driverLink: "Fahrer-Link", tapToPit: "TIPPEN ZUM BOXEN", tapToExit: "TIPPEN ZUM AUSFAHREN", pitsConfirm: "BOXEN?", tapAgainConfirm: "ERNEUT TIPPEN ZUM BESTÄTIGEN", stintBest: "S.BEST",
         googleLoginBtn: "Anmelden",
         testBtn: "Test",
         demoBtn: "Demo",
@@ -933,6 +1168,8 @@ window.translations = {
         describeIssue: "Beschreiben Sie das Problem oder den Vorschlag...",
         send: "Senden",
         feedbackTitle: "Rückmeldung",
+        contactUs: "Kontakt",
+        goodPace: "Gutes Tempo",
         lblStartTime: "🕐 Startzeit", lblStartDate: "📅 Renndatum",
         lblSquadSchedule: "🔄 Staffelfenster", lblSquadScheduleHint: "Außerhalb des Fensters teilen alle Fahrer gleich. Innerhalb rotieren Staffeln gleichmäßig.",
         lblSquadWindowStart: "Fenster Beginn", lblSquadWindowEnd: "Fenster Ende",
@@ -943,6 +1180,11 @@ window.translations = {
         driverEntryHint: "Rennen-ID eingeben zum Verbinden", driverEntryLabel: "Rennen-ID", driverConnect: "Als Fahrer verbinden", driverIdTooShort: "ID ist zu kurz", joinAsDriver: "Als Fahrer beitreten", backToSetup: "← Zurück zur Einrichtung",
         nextStintIn: "Dein nächster Stint in", stayAwake: "Bleib wach", sleepOk: "Du kannst schlafen", yourStints: "Deine Stints", noStintsFound: "Keine Stints für dich gefunden", wakeUpAlert: "⏰ Aufwachen! Dein Stint kommt",
         viewerNameHint: "Gib deinen Namen ein, um dem Rennen beizutreten", viewerNameLabel: "Dein Name", requestToJoin: "Beitritt anfragen", waitingForApproval: "Warte auf Genehmigung...", waitingForApprovalHint: "Der Rennadministrator wird deine Anfrage genehmigen", viewerNameTooShort: "Name muss mindestens 2 Zeichen haben",
+        onboardTitle1: "Willkommen bei Strateger!", onboardDesc1: "Dein Boxenstrategie-Assistent für Langstrecken-Kartrennen. Richte dein erstes Rennen in 3 einfachen Schritten ein.",
+        onboardTitle2: "Rennen einrichten", onboardDesc2: "Gib Renndauer, Pflichtstopps und Stint-Zeiten (min/max) oben ein. Füge deine Fahrer unten hinzu — wähle den Startfahrer und weise Staffeln für Nachtschichten zu.",
+        onboardTitle3: "Vorschau & Feintuning", onboardDesc3: "Tippe auf 'Strategie-Vorschau' für den kompletten Stint-Plan. Ziehe Stints zum Umordnen, passe Dauern an oder speichere deinen Plan in der Cloud.",
+        onboardTitle4: "Los geht's!", onboardDesc4: "Drücke 'Rennen starten' und das Live-Dashboard übernimmt — verfolge Timer, erhalte Box-Warnungen, teile einen Live-Link mit deinem Team und manage Fahrerwechsel in Echtzeit.",
+        onboardSkip: "Überspringen", onboardNext: "Weiter", onboardDone: "Auf geht's!",
     },
     ja: {
         ltSearchType: "フィルタリング:", ltTeam: "チーム", ltDriver: "ドライバー", ltKart: "カート番号", ltPlaceholder: "検索...", previewTitle: "戦略プレビュー", addToCalendar: "カレンダーに追加", timeline: "タイムライン", driverSchedule: "ドライバースケジュール", totalTime: "総時間", close: "閉じる",
@@ -954,7 +1196,7 @@ window.translations = {
         saveStratTitle: "保存", libTitle: "ライブラリ", aiPlaceholder: "例: 'ドライバー1は...を好む'", thStart: "開始", thEnd: "終了", thType: "タイプ", thDriver: "ドライバー", thDuration: "期間", liveTiming: "ライブタイミング", liveTimingUrl: "ライブタイミングURL...", connectLive: "接続", disconnectLive: "切断", searchTeam: "チームを検索...", searchDriver: "ドライバーを検索...", searchKart: "カートを検索...", demoMode: "デモモード",
         sendEmail: "送信", cancel: "キャンセル", create: "作成", save: "保存", load: "読み込み", delete: "削除", activeRaceFound: "アクティブなレースが見つかりました", continueRace: "続行", discardRace: "破棄", areYouSure: "本当にしますか?", deleteWarning: "これはデータを永久に削除します。", yesDelete: "はい、削除", noKeep: "いいえ、保持", invite: "招待", synced: "同期済み",
         chatTitle: "レースチャット / Q&A", enterName: "名前を入力", startChat: "チャットを開始", typeMessage: "提案を入力...", send: "送信", viewer: "視聴者", host: "ホスト", suggestion: "提案", strategyOutlook: "戦略見通し", timeLeft: "残り時間", penalty: "ペナルティ", enterPit: "ピット進入", nextDriverLabel: "次のドライバー", totalHeader: "合計", stopsHeader: "スティント", driverHeader: "ドライバー",
-        stintsLeft: "残りスティント", future: "将来", max: "最大", min: "最小", rest: "休息", buffer: "バッファ", impossible: "不可能", addStop: "ピットストップ追加", avg: "平均", finalLap: "ファイナルラップ", inPit: "ピット内", nextLabel: "次:", shortStintMsg: "⚠️ 短いスティント!ペナルティリスク", cancelEntry: "キャンセル", notifyDriver: "📢 ドライバーに通知", driverNotified: "✓ ドライバーに通知済み", includesAdj: "調整を含む:", missingSeconds: "不足", proceedToPit: "ピットに進む?", wait: "待機中...", getReady: "準備中...", go: "頑張れ!", orangeZone: "⚠️ オレンジゾーン - 通知のみ", targetLabel: "ターゲット", driverLink: "ドライバーリンク", tapToPit: "タップしてピットイン", tapToExit: "タップしてピットアウト", stintBest: "S.ベスト",
+        stintsLeft: "残りスティント", future: "将来", max: "最大", min: "最小", rest: "休息", buffer: "バッファ", impossible: "不可能", addStop: "ピットストップ追加", avg: "平均", finalLap: "ファイナルラップ", inPit: "ピット内", nextLabel: "次:", shortStintMsg: "⚠️ 短いスティント!ペナルティリスク", cancelEntry: "キャンセル", notifyDriver: "📢 ドライバーに通知", driverNotified: "✓ ドライバーに通知済み", includesAdj: "調整を含む:", missingSeconds: "不足", proceedToPit: "ピットに進む?", wait: "待機中...", getReady: "準備中...", go: "頑張れ!", orangeZone: "⚠️ オレンジゾーン - 通知のみ", targetLabel: "ターゲット", driverLink: "ドライバーリンク", tapToPit: "タップしてピットイン", tapToExit: "タップしてピットアウト", pitsConfirm: "ピット?", tapAgainConfirm: "もう一度タップして確認", stintBest: "S.ベスト",
         googleLoginBtn: "ログイン",
         testBtn: "テスト",
         demoBtn: "デモ",
@@ -964,6 +1206,7 @@ window.translations = {
         countdownAlert: "⏰ レースまで{min}分！",
         autoStarting: "自動スタート中...",
         lblAutoStart: "レース時間に自動スタート",
+        lblDoublesHint: "同じドライバーが連続",
         lblSquadsHint: "ドライバーを2つのチームに分ける",
         lblFuelHint: "燃料タンク容量を追跡",
         statusHeader: "ステータス",
@@ -983,6 +1226,8 @@ window.translations = {
         describeIssue: "問題または提案を説明してください...",
         send: "送信",
         feedbackTitle: "フィードバック",
+        contactUs: "お問い合わせ",
+        goodPace: "良いペース",
         lblStartTime: "🕐 レース開始時刻", lblStartDate: "📅 レース日",
         lblSquadSchedule: "🔄 スクワッドウィンドウ", lblSquadScheduleHint: "ウィンドウ外は全ドライバーが均等に分担。ウィンドウ内はスクワッドが均等にローテーション。",
         lblSquadWindowStart: "開始時刻", lblSquadWindowEnd: "終了時刻",
@@ -993,6 +1238,11 @@ window.translations = {
         driverEntryHint: "レースIDを入力して接続", driverEntryLabel: "レースID", driverConnect: "ドライバーとして接続", driverIdTooShort: "IDが短すぎます", joinAsDriver: "ドライバーとして参加", backToSetup: "← セットアップに戻る",
         nextStintIn: "次のスティントまで", stayAwake: "起きていて", sleepOk: "寝ても大丈夫", yourStints: "あなたのスティント", noStintsFound: "スティントが見つかりません", wakeUpAlert: "⏰ 起きて！スティントが近づいています",
         viewerNameHint: "レースに参加するために名前を入力してください", viewerNameLabel: "あなたの名前", requestToJoin: "参加をリクエスト", waitingForApproval: "承認を待っています...", waitingForApprovalHint: "レース管理者があなたのリクエストを承認します", viewerNameTooShort: "名前は2文字以上必要です",
+        onboardTitle1: "Strategerへようこそ！", onboardDesc1: "耐久カートレース用のピット戦略アシスタントです。3つの簡単なステップで最初のレースをセットアップしましょう。",
+        onboardTitle2: "レースを設定", onboardDesc2: "上部でレース時間、必須ピットストップ数、スティントの最小/最大時間を入力。下にドライバーを追加 — スターターを選び、夜間シフト用にスクワッドを割り当てます。",
+        onboardTitle3: "プレビューと調整", onboardDesc3: "「戦略プレビュー」をタップして完全なスティント計画を確認。ドラッグで並べ替え、時間を調整、またはクラウドに保存できます。",
+        onboardTitle4: "レーススタート！", onboardDesc4: "「レース開始」を押すとライブダッシュボードが起動 — タイマーを追跡、ピットアラートを受信、チームとライブリンクを共有、ドライバー交代をリアルタイムで管理。",
+        onboardSkip: "スキップ", onboardNext: "次へ", onboardDone: "始めよう！",
     }
 };
 
@@ -1131,6 +1381,8 @@ window.saveRaceState = function() {
         config: window.config,
         state: window.state,
         drivers: window.drivers,
+        strategy: window.cachedStrategy || null,
+        previewData: window.previewData || null,
         liveTimingConfig: window.liveTimingConfig,
         searchConfig: window.searchConfig,
         liveData: window.liveData,
@@ -1156,6 +1408,9 @@ if (!window.__racePersistenceHooksAttached) {
 window.checkForSavedRace = function() {
     // 1. טעינת טיוטה (Draft) למסך ההגדרות
     window.loadDraftConfig();
+
+    // 1b. Always re-run simulation with current (restored) params
+    if (typeof window.runSim === 'function') window.runSim();
 
     // 2. בדיקת מירוץ פעיל
     const savedData = localStorage.getItem(window.RACE_STATE_KEY);
@@ -1199,6 +1454,7 @@ window.continueRace = function() {
         window.config = data.config;
         window.drivers = data.drivers;
         window.cachedStrategy = data.strategy; 
+        if (data.previewData) window.previewData = data.previewData;
 
         if (data.liveTimingConfig) window.liveTimingConfig = data.liveTimingConfig;
         if (data.searchConfig) window.searchConfig = data.searchConfig;

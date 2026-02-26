@@ -22,6 +22,11 @@ window.updateSearchConfig = function() {
 
 // פונקציית הבדיקה (Test Connection)
 window.testLiveTiming = function() {
+    // Pro gate check for live timing
+    if (!window.checkProFeature('liveTiming')) {
+        window.showProGate('Live Timing');
+        return;
+    }
     const url = document.getElementById('liveTimingUrl').value;
     const searchValue = document.getElementById('searchValue')?.value || '';
     const searchType = document.querySelector('input[name="searchType"]:checked')?.value || 'team';
@@ -114,6 +119,7 @@ window.fetchLiveTimingFromProxy = async function() {
     const url = window.liveTimingConfig.url;
     // איחוד פרמטרים לחיפוש חכם
     const searchTerm = window.searchConfig.driverName || window.searchConfig.teamName || window.searchConfig.kartNumber || '';
+    const searchType = window.searchConfig.kartNumber ? 'kart' : (window.searchConfig.driverName ? 'driver' : 'team');
     
     // Check if already running with same config - don't restart
     const stats = window.liveTimingManager.getStats();
@@ -126,6 +132,7 @@ window.fetchLiveTimingFromProxy = async function() {
 
     // התחלת הסקרייפר דרך המנהל
     window.liveTimingManager.start(url, searchTerm, {
+        searchType: searchType,
         updateInterval: 2000, 
         
         onUpdate: (data) => {
@@ -159,16 +166,19 @@ window.fetchLiveTimingFromProxy = async function() {
                 window.liveData.ourTeamInPit = !!data.ourTeam.inPit;
                 window.liveData.ourTeamPitCount = data.ourTeam.pitCount ?? null;
 
-                // Auto-detect pit entry from live timing
-                if (window.state && window.state.isRunning && !window.state.isInPit && wasInPit === false && data.ourTeam.inPit) {
-                    console.log('[LiveTiming] 🛑 Auto-detected PIT ENTRY from live data');
+                // Auto-detect pit entry from live timing — AUTHORITATIVE: live timing always wins
+                const now = Date.now();
+
+                if (window.state && window.state.isRunning && !window.state.isInPit && data.ourTeam.inPit) {
+                    // Live timing says we are in pit — override everything
+                    console.log('[LiveTiming] 🛑 AUTHORITATIVE PIT ENTRY from live data');
                     if (typeof window.confirmPitEntry === 'function') {
                         window.confirmPitEntry(true); // true = auto-detected, skip confirm dialog
                     }
                 }
-                // Auto-detect pit exit from live timing
-                if (window.state && window.state.isRunning && window.state.isInPit && wasInPit === true && !data.ourTeam.inPit) {
-                    console.log('[LiveTiming] ✅ Auto-detected PIT EXIT from live data');
+                // Auto-detect pit exit from live timing — AUTHORITATIVE
+                if (window.state && window.state.isRunning && window.state.isInPit && !data.ourTeam.inPit && wasInPit === true) {
+                    console.log('[LiveTiming] ✅ AUTHORITATIVE PIT EXIT from live data');
                     // Reset stint lap tracking for new stint
                     window.liveData.stintLapHistory = [];
                     window.liveData.stintBestLap = null;
@@ -338,140 +348,295 @@ window.updateLiveTimingUI = function() {
 window.updateCompetitorsTable = function() {
     const tableEl = document.getElementById('competitorsTable');
     if (!tableEl) return;
-    
-    if (!window.liveData.competitors || window.liveData.competitors.length === 0) {
+
+    // ---- Stable data: cache last known so table never flickers ----
+    const fresh = window.liveData.competitors;
+    if (fresh && fresh.length > 0) {
+        window._lastKnownCompetitors = fresh;
+    }
+    const allCompetitors = window._lastKnownCompetitors;
+    if (!allCompetitors || allCompetitors.length === 0) {
         tableEl.innerHTML = `<div class="text-gray-500 text-center py-2">${window.t('waitingData')}</div>`;
         return;
     }
-    
-    const ourTeam = window.liveData.competitors.find(c => c.isOurTeam);
-    
-    // Show context around our team: 3 before, us, 3 after (or top 7 if no team found)
-    let displayList = [];
-    if (ourTeam) {
-        const ourIndex = window.liveData.competitors.findIndex(c => c.isOurTeam);
-        const startIdx = Math.max(0, ourIndex - 3);
-        const endIdx = Math.min(window.liveData.competitors.length, ourIndex + 4);
-        displayList = window.liveData.competitors.slice(startIdx, endIdx);
-    } else {
-        displayList = window.liveData.competitors.slice(0, 7);
-    }
-    
-    // Pad to exactly 7 rows for stable height
-    const FIXED_ROWS = 7;
-    while (displayList.length < FIXED_ROWS) {
-        displayList.push(null); // placeholder empty row
+
+    // ---- Auto-refocus state (once) ----
+    if (!window._ltScroll) {
+        window._ltScroll = { userScrolled: false, refocusTimer: null };
+        tableEl.addEventListener('scroll', () => {
+            if (window._ltScroll._programmaticScroll) return;
+            window._ltScroll.userScrolled = true;
+            if (window._ltScroll.refocusTimer) clearTimeout(window._ltScroll.refocusTimer);
+            window._ltScroll.refocusTimer = setTimeout(() => {
+                window._ltScroll.userScrolled = false;
+                window._scrollToOurTeamRow();
+            }, 60000);
+        }, { passive: true });
     }
 
-    // Reuse existing rows if count matches, otherwise rebuild
+    const totalRows = allCompetitors.length;
+    const goodPaceThreshold = window._calcGoodPaceThreshold(allCompetitors);
+
+    // ---- Update kart performance tracking ----
+    window._updateKartStats(allCompetitors);
+
+    // ---- Stable DOM: only rebuild when row count changes ----
     const existingRows = tableEl.querySelectorAll('.competitor-row');
-    const needsRebuild = existingRows.length !== FIXED_ROWS;
-    
-    if (needsRebuild) {
-        let html = '';
-        for (let i = 0; i < FIXED_ROWS; i++) {
-            html += `<div class="competitor-row py-1 px-2 rounded flex justify-between items-center" style="height:28px;min-height:28px;">
-                <div class="flex items-center gap-1" style="min-width:0;">
-                    <span class="comp-pos font-bold" style="width:20px;text-align:right;"></span>
-                    <span class="comp-name text-[11px] truncate" style="width:80px;"></span>
-                    <span class="comp-pit text-[10px]" style="width:24px;"></span>
-                </div>
-                <div class="flex items-center gap-2 text-[10px]" style="min-width:0;">
-                    <span class="comp-lap text-gray-400" style="width:60px;text-align:right;"></span>
-                    <span class="comp-gap" style="width:60px;text-align:right;"></span>
-                </div>
-            </div>`;
+    if (existingRows.length !== totalRows) {
+        const frag = document.createDocumentFragment();
+        for (let i = 0; i < totalRows; i++) {
+            const row = document.createElement('div');
+            row.className = 'competitor-row';
+            row.dataset.compIdx = i;
+            row.innerHTML = `<div class="cr-left">
+<span class="cr-pos"></span><span class="cr-kart"></span><span class="cr-name"></span><span class="cr-badges"></span>
+</div><div class="cr-right">
+<span class="cr-gap"></span><span class="cr-lap"></span>
+</div>`;
+            frag.appendChild(row);
         }
-        tableEl.innerHTML = html;
+        tableEl.textContent = ''; // clear without layout thrash
+        tableEl.appendChild(frag);
     }
-    
+
+    const ourTeam = allCompetitors.find(c => c.isOurTeam);
     const rows = tableEl.querySelectorAll('.competitor-row');
-    
-    displayList.forEach((comp, idx) => {
+    let ourTeamRow = null;
+
+    allCompetitors.forEach((comp, idx) => {
         const row = rows[idx];
         if (!row) return;
-        
-        if (!comp) {
-            // Empty placeholder row — keep it invisible but sized
-            row.className = 'competitor-row py-1 px-2 rounded flex justify-between items-center opacity-0';
-            row.style.height = '28px';
-            row.style.minHeight = '28px';
-            return;
-        }
-        
+
         const isUs = comp.isOurTeam;
+        if (isUs) ourTeamRow = row;
+
         const isDanger = !isUs && window.liveData.position && Math.abs(comp.position - window.liveData.position) <= 2;
-        
-        // Row class — stable, no flash/pulse for our team
-        let rowCls = 'competitor-row py-1 px-2 rounded flex justify-between items-center';
+        const isGoodPace = !isUs && goodPaceThreshold && comp.bestLap && comp.bestLap <= goodPaceThreshold;
+        const isPB = comp.lastLap && comp.bestLap && comp.lastLap > 0 && comp.lastLap <= comp.bestLap;
+        const kartKey = comp.kart || '';
+        const isTopKart = kartKey && window._fastKarts && window._fastKarts.has(kartKey);
+
+        // ---- Row class (only update if changed) ----
+        let rowCls = 'competitor-row';
         if (isUs) rowCls += ' our-team';
         else if (isDanger) rowCls += ' danger-zone';
-        row.className = rowCls;
-        row.style.height = '28px';
-        row.style.minHeight = '28px';
-        row.style.opacity = '1';
-        
-        // Position
-        const posEl = row.querySelector('.comp-pos');
+        if (row.className !== rowCls) row.className = rowCls;
+
+        // ---- Position ----
+        const posEl = row.querySelector('.cr-pos');
         if (posEl) {
-            posEl.innerText = comp.position;
-            if (comp.position === 1) posEl.className = 'comp-pos font-bold text-gold';
-            else if (comp.position === 2) posEl.className = 'comp-pos font-bold text-silver';
-            else if (comp.position === 3) posEl.className = 'comp-pos font-bold text-bronze';
-            else posEl.className = 'comp-pos font-bold text-gray-400';
-            posEl.style.width = '20px';
-            posEl.style.textAlign = 'right';
+            const posTxt = String(comp.position);
+            if (posEl.textContent !== posTxt) posEl.textContent = posTxt;
+            let posCls = 'cr-pos';
+            if (comp.position === 1) posCls += ' text-gold';
+            else if (comp.position === 2) posCls += ' text-silver';
+            else if (comp.position === 3) posCls += ' text-bronze';
+            if (posEl.className !== posCls) posEl.className = posCls;
         }
-        
-        // Name
-        const nameEl = row.querySelector('.comp-name');
+
+        // ---- Kart number ----
+        const kartEl = row.querySelector('.cr-kart');
+        if (kartEl) {
+            const kartTxt = kartKey ? `#${kartKey}` : '';
+            if (kartEl.textContent !== kartTxt) kartEl.textContent = kartTxt;
+            let kartCls = 'cr-kart';
+            if (isTopKart) kartCls += ' fast-kart';
+            if (kartEl.className !== kartCls) kartEl.className = kartCls;
+        }
+
+        // ---- Name ----
+        const nameEl = row.querySelector('.cr-name');
         if (nameEl) {
-            nameEl.innerText = comp.name;
-            nameEl.className = isUs ? 'comp-name text-[11px] truncate text-ice font-bold' : 'comp-name text-[11px] truncate text-white';
-            nameEl.style.width = '80px';
+            if (nameEl.textContent !== comp.name) nameEl.textContent = comp.name;
+            const nameCls = isUs ? 'cr-name text-ice font-bold' : 'cr-name';
+            if (nameEl.className !== nameCls) nameEl.className = nameCls;
         }
-        
-        // Pit indicator
-        const pitEl = row.querySelector('.comp-pit');
-        if (pitEl) {
-            if (comp.inPit) {
-                pitEl.innerHTML = '<span class="text-fuel font-bold">PIT</span>';
-            } else {
-                pitEl.innerHTML = '';
-            }
+
+        // ---- Badges (pit + good pace) ----
+        const badgesEl = row.querySelector('.cr-badges');
+        if (badgesEl) {
+            let badges = '';
+            if (comp.inPit) badges += '<span class="badge-pit">PIT</span>';
+            if (isGoodPace) badges += '<span class="badge-fast" title="' + (window.t('goodPace') || 'Good Pace') + '">⚡</span>';
+            if (badgesEl.innerHTML !== badges) badgesEl.innerHTML = badges;
         }
-        
-        // Last lap
-        const lapEl = row.querySelector('.comp-lap');
-        if (lapEl) {
-            lapEl.innerText = comp.lastLap ? window.formatLapTime(comp.lastLap) : '';
-        }
-        
-        // Gap
-        const gapEl = row.querySelector('.comp-gap');
+
+        // ---- Gap from P1 (always from leader) ----
+        const gapEl = row.querySelector('.cr-gap');
         if (gapEl) {
+            let gapHTML = '';
             if (comp.position === 1) {
-                gapEl.innerHTML = '<span class="text-gold">P1</span>';
-            } else if (comp.gapToLeader) {
-                if (ourTeam && !isUs) {
-                    const gapToUs = comp.totalRaceTime - ourTeam.totalRaceTime;
-                    const gapSec = (gapToUs / 1000).toFixed(1);
-                    gapEl.innerHTML = `<span class="${gapToUs > 0 ? 'text-green-400' : 'text-red-400'}">${gapToUs > 0 ? '+' : ''}${gapSec}s</span>`;
-                } else if (!isUs) {
-                    const gapSec = (comp.gapToLeader / 1000).toFixed(1);
-                    gapEl.innerHTML = `<span class="text-gray-500">+${gapSec}s</span>`;
-                } else {
-                    gapEl.innerHTML = '';
-                }
+                gapHTML = '<span class="text-gold">P1</span>';
             } else {
-                gapEl.innerHTML = '';
+                const gapMs = comp.gap ?? comp.gapToLeader ?? 0;
+                if (gapMs > 0) {
+                    const sec = gapMs / 1000;
+                    let gapStr;
+                    if (sec >= 60) {
+                        const m = Math.floor(sec / 60);
+                        const s = (sec % 60).toFixed(1);
+                        gapStr = `+${m}:${s.padStart(4, '0')}`;
+                    } else {
+                        gapStr = `+${sec.toFixed(1)}s`;
+                    }
+                    // Color: green if behind us, red if ahead, gray if we aren't found
+                    const ourGapMs = ourTeam ? (ourTeam.gap ?? ourTeam.gapToLeader ?? 0) : null;
+                    let color = 'gap-neutral';
+                    if (ourGapMs != null) {
+                        if (gapMs > ourGapMs) color = 'gap-behind';    // behind us (good)
+                        else if (gapMs < ourGapMs) color = 'gap-ahead'; // ahead of us (bad)
+                        else color = 'gap-us';                          // same = us
+                    }
+                    gapHTML = `<span class="${color}">${gapStr}</span>`;
+                }
             }
+            if (gapEl.innerHTML !== gapHTML) gapEl.innerHTML = gapHTML;
+        }
+
+        // ---- Last lap + personal best glow ----
+        const lapEl = row.querySelector('.cr-lap');
+        if (lapEl) {
+            const lapTxt = comp.lastLap ? window.formatLapTime(comp.lastLap) : '';
+            if (lapEl.textContent !== lapTxt) lapEl.textContent = lapTxt;
+            const lapCls = isPB ? 'cr-lap lap-pb' : 'cr-lap';
+            if (lapEl.className !== lapCls) lapEl.className = lapCls;
         }
     });
+
+    // ---- Auto-scroll to our team ----
+    if (!window._ltScroll.userScrolled && ourTeamRow) {
+        window._scrollToOurTeamRow();
+    }
+
+    // ---- Update kart ranking mini-panel ----
+    window._updateKartRankingPanel();
+};
+
+// ==================== KART PERFORMANCE TRACKING ====================
+window._kartStatsMap = window._kartStatsMap || {};
+window._fastKarts = window._fastKarts || new Set();
+
+window._updateKartStats = function(competitors) {
+    if (!competitors || competitors.length === 0) return;
+    const stats = window._kartStatsMap;
+
+    competitors.forEach(c => {
+        const kart = (c.kart || '').trim();
+        if (!kart) return;
+
+        if (!stats[kart]) {
+            stats[kart] = { bestLapMs: Infinity, recentLaps: [], team: '', pos: 0, laps: 0, inPit: false, pitCount: 0 };
+        }
+        const s = stats[kart];
+        s.team = c.name || s.team;
+        s.pos = c.position || s.pos;
+        s.laps = c.laps || c.totalLaps || s.laps;
+        s.inPit = !!c.inPit;
+        if (c.pitCount != null) s.pitCount = c.pitCount;
+
+        if (c.bestLap && c.bestLap > 0 && c.bestLap < s.bestLapMs) {
+            s.bestLapMs = c.bestLap;
+        }
+        if (c.lastLap && c.lastLap > 0) {
+            s.recentLaps.push(c.lastLap);
+            if (s.recentLaps.length > 30) s.recentLaps.shift();
+        }
+    });
+
+    // Determine fast karts: within 101.5% of the best kart's best lap
+    let bestKartLap = Infinity;
+    Object.values(stats).forEach(s => {
+        if (s.bestLapMs < bestKartLap) bestKartLap = s.bestLapMs;
+    });
+    const threshold = bestKartLap < Infinity ? bestKartLap * 1.015 : null;
+    const fastSet = new Set();
+    if (threshold) {
+        Object.entries(stats).forEach(([kart, s]) => {
+            if (s.bestLapMs <= threshold) fastSet.add(kart);
+        });
+    }
+    window._fastKarts = fastSet;
+};
+
+// Foldable state for kart panel (persisted in session)
+if (window._kartPanelOpen == null) window._kartPanelOpen = true;
+
+window._toggleKartPanel = function() {
+    window._kartPanelOpen = !window._kartPanelOpen;
+    const body = document.getElementById('kartRankingBody');
+    const arrow = document.getElementById('kartRankingArrow');
+    if (body) body.style.display = window._kartPanelOpen ? '' : 'none';
+    if (arrow) arrow.textContent = window._kartPanelOpen ? '▾' : '▸';
+};
+
+window._updateKartRankingPanel = function() {
+    const panel = document.getElementById('kartRankingPanel');
+    if (!panel) return;
+    const stats = window._kartStatsMap;
+    const entries = Object.entries(stats).filter(([, s]) => s.bestLapMs < Infinity);
+    if (entries.length === 0) { panel.classList.add('hidden'); return; }
+
+    panel.classList.remove('hidden');
+    entries.sort((a, b) => a[1].bestLapMs - b[1].bestLapMs);
+    const top = entries.slice(0, 5);
+    const ourKart = window.liveData.competitors?.find(c => c.isOurTeam)?.kart || '';
+
+    const arrowChar = window._kartPanelOpen ? '▾' : '▸';
+    const bodyDisplay = window._kartPanelOpen ? '' : 'display:none;';
+    let html = `<div class="kart-panel-header" onclick="window._toggleKartPanel()">`;
+    html += `<span>🏎️ TOP KARTS</span><span id="kartRankingArrow">${arrowChar}</span></div>`;
+    html += `<div id="kartRankingBody" style="${bodyDisplay}">`;
+    top.forEach(([kart, s]) => {
+        const isFast = window._fastKarts.has(kart);
+        const isOurs = kart === ourKart;
+        const avg = s.recentLaps.length >= 3
+            ? (s.recentLaps.slice(-5).reduce((a, b) => a + b, 0) / Math.min(s.recentLaps.length, 5))
+            : null;
+        const avgStr = avg ? window.formatLapTime(Math.round(avg)) : '-';
+        const cls = isOurs ? 'text-ice font-bold' : isFast ? 'text-neon' : 'text-gray-400';
+        const pitInfo = s.pitCount > 0 ? `<span class="text-[8px] text-fuel"> P${s.pitCount}</span>` : '';
+        html += `<div class="flex justify-between items-center text-[10px] ${cls}">`;
+        html += `<span>#${kart} <span class="text-[9px] text-gray-500">${s.team.substring(0, 12)}</span>${pitInfo}</span>`;
+        html += `<span>${window.formatLapTime(s.bestLapMs)} <span class="text-[9px] text-gray-600">(avg ${avgStr})</span></span>`;
+        html += `</div>`;
+    });
+    html += `</div>`;
+    panel.innerHTML = html;
+};
+
+// Scroll to our team row in competitors table
+window._scrollToOurTeamRow = function() {
+    const tableEl = document.getElementById('competitorsTable');
+    if (!tableEl) return;
+    const ourRow = tableEl.querySelector('.our-team');
+    if (!ourRow) return;
+
+    window._ltScroll._programmaticScroll = true;
+    ourRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setTimeout(() => { if (window._ltScroll) window._ltScroll._programmaticScroll = false; }, 500);
+};
+
+// Calculate good pace threshold: competitors whose best lap is within 102% of the overall best
+window._calcGoodPaceThreshold = function(competitors) {
+    if (!competitors || competitors.length < 2) return null;
+
+    let overallBest = Infinity;
+    competitors.forEach(c => {
+        if (c.bestLap && c.bestLap > 0 && c.bestLap < overallBest) {
+            overallBest = c.bestLap;
+        }
+    });
+
+    if (overallBest === Infinity) return null;
+    return overallBest * 1.02;
 };
 
 window.scrollToOurTeam = function() {
-    // No-op: our team is always centered in the view, no scroll/flash needed
+    if (window._ltScroll) {
+        window._ltScroll.userScrolled = false;
+        if (window._ltScroll.refocusTimer) clearTimeout(window._ltScroll.refocusTimer);
+    }
+    window._scrollToOurTeamRow();
 };
 
 // ==================== LIVE TIMING EMBED (IFRAME) ====================
@@ -537,6 +702,11 @@ window.stopLiveTiming = function() {
         laps: 0, gapToLeader: 0, competitors: [] 
     };
     
+    // Reset caches
+    window._lastKnownCompetitors = null;
+    window._kartStatsMap = {};
+    window._fastKarts = new Set();
+    
     // Reset demo state
     window.demoState = { competitors: [], updateInterval: null };
     
@@ -560,6 +730,8 @@ window.stopLiveTiming = function() {
     if (changeEl) { changeEl.innerText = ''; changeEl.className = 'text-[10px] position-same'; }
     const tableEl = document.getElementById('competitorsTable');
     if (tableEl) tableEl.innerHTML = '';
+    const kartPanel = document.getElementById('kartRankingPanel');
+    if (kartPanel) { kartPanel.innerHTML = ''; kartPanel.classList.add('hidden'); }
     
     // Hide demo badge
     const badge = document.getElementById('demoBadge');
@@ -595,100 +767,164 @@ window.startDemoMode = function() {
 
 window.initializeDemoCompetitors = function() {
     const teamNames = [
-        'Your Team', 'Racing Stars', 'Speed Demons', 'Track Masters', 
+        'Your Team', 'Racing Stars', 'Speed Demons', 'Track Masters',
         'Nitro Force', 'Apex Racing', 'Thunder Karts', 'Pro Racers',
         'Fast Lane', 'Grid Warriors', 'Velocity', 'Turbo Squad',
         'Drift Kings', 'Iron Wheels', 'Storm Racing', 'Pole Hunters',
         'Circuit Wolves', 'Checkered Flag', 'Rev Limit', 'Slipstream'
     ];
-    
-    // Shuffle base speeds so "Your Team" isn't always P1
-    const speedOffsets = teamNames.map(() => Math.random() * 3000);
-    
-    window.demoState.competitors = teamNames.map((name, idx) => ({
-        name: name,
-        position: idx + 1,
-        previousPosition: idx + 1,
-        laps: 0,
-        lastLap: null,
-        bestLap: null,
-        baseLapTime: null,
-        speedOffset: speedOffsets[idx],
-        totalRaceTime: 0,
-        pitStops: 0,
-        inPit: false,
-        isOurTeam: idx === 0
-    }));
+
+    const raceDurationMs = (window.config.duration || window.config.raceDuration || 0.5) * 3600000;
+    const configStops = window.config.reqStops || window.config.stops || 2;
+    const configPitTimeSec = window.config.pitTime || 60;
+    const stintCount = configStops + 1;
+
+    // Seeded-random helper for deterministic per-team variety
+    const rng = (seed) => { let s = seed; return () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; }; };
+
+    window.demoState.competitors = teamNames.map((name, idx) => {
+        const r = rng(idx * 7919 + 42);
+
+        // Base pace: 58–63s, tighter spread = more realistic endurance
+        const basePace = 58000 + r() * 5000;
+        // Consistency: some teams are very consistent, others vary a lot
+        const consistency = 300 + r() * 1500; // ms standard deviation per lap
+
+        // Pre-plan pit windows: evenly spaced stints with per-team jitter
+        const pitEntryTimes = [];
+        for (let p = 1; p <= configStops; p++) {
+            const idealTime = (raceDurationMs / stintCount) * p;
+            const jitter = (r() - 0.5) * 60000; // ±30s random offset
+            pitEntryTimes.push(Math.max(60000, idealTime + jitter));
+        }
+        pitEntryTimes.sort((a, b) => a - b);
+
+        return {
+            name, kart: String(10 + idx), isOurTeam: idx === 0,
+            position: idx + 1, previousPosition: idx + 1,
+            basePace, consistency, pitEntryTimes,
+            pitTimeMs: configPitTimeSec * 1000,
+            // Cumulative state — built lap-by-lap
+            lapTimes: [],       // every completed lap (ms)
+            lastLap: null,
+            bestLap: null,
+            laps: 0,
+            elapsed: 0,         // total elapsed time including pits (ms)
+            pitsDone: 0,
+            pitTimeSpent: 0,    // total ms spent in pits so far
+            inPit: false,
+            gapToLeader: 0,
+            pitCount: 0,
+            _lastSimTime: 0     // last wall-clock we simulated up to
+        };
+    });
 };
 
+/**
+ * Core demo engine: advances each competitor lap-by-lap up to current wall time.
+ * Positions and gaps are derived from elapsed time (driving + pits).
+ */
 window.updateDemoData = function() {
     if (!window.liveTimingConfig.demoMode || !window.state.isRunning) return;
-    
-    const raceElapsed = Date.now() - window.state.startTime;
-    const raceDurationMs = (window.config.duration || window.config.raceDuration || 0.5) * 3600000;
-    const configPitTimeSec = window.config.pitTime || 60;
-    const configStops = window.config.reqStops || window.config.stops || 2;
-    
-    window.demoState.competitors.forEach((comp, idx) => {
-        if (!comp.baseLapTime) {
-            // Base time 58-63s range with random spread per team
-            comp.baseLapTime = 58000 + (comp.speedOffset || idx * 400) + (Math.random() * 500);
-        }
-        
-        // Add per-lap variance (tire degradation, traffic, mistakes)
-        const lapVariance = (Math.random() - 0.4) * 2000;
-        const currentLapTime = comp.baseLapTime + lapVariance;
-        
-        const expectedLaps = Math.floor(raceElapsed / comp.baseLapTime);
-        if (expectedLaps > comp.laps) {
-            comp.laps = expectedLaps;
-            comp.lastLap = currentLapTime;
-            if (!comp.bestLap || comp.lastLap < comp.bestLap) comp.bestLap = comp.lastLap;
-        }
-        
-        // Pit simulation: spread pits evenly across race, staggered per team
-        const pitTimeMs = configPitTimeSec * 1000;
-        const segmentLength = raceDurationMs / (configStops + 1);
-        const teamOffset = idx * 15000; // 15s stagger between teams
-        
-        let pitsDone = 0;
-        let isCurrentlyInPit = false;
-        let totalPitPenalty = 0;
-        
-        for (let p = 1; p <= configStops; p++) {
-            const pitEntryTime = (segmentLength * p) + teamOffset;
-            if (raceElapsed >= pitEntryTime) {
-                pitsDone++;
-                const timeSincePitEntry = raceElapsed - pitEntryTime;
-                if (timeSincePitEntry < pitTimeMs) {
-                    isCurrentlyInPit = true;
-                    totalPitPenalty += timeSincePitEntry;
+
+    const now = Date.now();
+    const raceStart = window.state.startTime;
+    const raceElapsed = now - raceStart;
+
+    // --- Advance each competitor ---
+    window.demoState.competitors.forEach(comp => {
+        // Simulate laps until their elapsed time catches up to raceElapsed
+        while (comp.elapsed < raceElapsed) {
+            // Check if this competitor should be in pit
+            if (!comp.inPit && comp.pitsDone < comp.pitEntryTimes.length) {
+                const nextPitAt = comp.pitEntryTimes[comp.pitsDone];
+                if (comp.elapsed >= nextPitAt) {
+                    // Enter pit
+                    comp.inPit = true;
+                    comp._pitEnterTime = comp.elapsed;
+                }
+            }
+
+            if (comp.inPit) {
+                // In pit: advance time by the pit duration
+                const pitEnd = comp._pitEnterTime + comp.pitTimeMs;
+                if (pitEnd <= raceElapsed) {
+                    // Pit stop finished
+                    comp.elapsed = pitEnd;
+                    comp.pitTimeSpent += comp.pitTimeMs;
+                    comp.pitsDone++;
+                    comp.pitCount = comp.pitsDone;
+                    comp.inPit = false;
                 } else {
-                    totalPitPenalty += pitTimeMs;
+                    // Still in pit, jump to current time
+                    comp.elapsed = raceElapsed;
+                    break;
+                }
+            } else {
+                // Driving: complete one lap
+                // Variance: gaussian-ish using Box-Muller approximation
+                const u1 = Math.random() || 0.001;
+                const u2 = Math.random();
+                const gauss = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+                const lapTime = Math.max(comp.basePace * 0.92, comp.basePace + gauss * comp.consistency);
+
+                if (comp.elapsed + lapTime > raceElapsed) {
+                    // Mid-lap: don't complete it yet
+                    break;
+                }
+
+                comp.elapsed += lapTime;
+                comp.laps++;
+                comp.lastLap = Math.round(lapTime);
+                comp.lapTimes.push(comp.lastLap);
+                if (!comp.bestLap || comp.lastLap < comp.bestLap) {
+                    comp.bestLap = comp.lastLap;
                 }
             }
         }
-        
-        comp.pitStops = pitsDone;
-        comp.inPit = isCurrentlyInPit;
-        comp.totalRaceTime = (comp.laps * comp.baseLapTime) + totalPitPenalty;
     });
-    
-    // Sort by race progress (most laps, then least total time)
-    window.demoState.competitors.sort((a, b) => {
+
+    // --- Sort by distance covered: most elapsed time = furthest ahead ---
+    // In endurance, the leader is whoever has driven the most distance.
+    // elapsed = driving time + pit time, but position = laps then tie-break on elapsed driving.
+    const sorted = [...window.demoState.competitors].sort((a, b) => {
+        // Primary: most laps
         if (b.laps !== a.laps) return b.laps - a.laps;
-        return a.totalRaceTime - b.totalRaceTime;
+        // Tie-break: less total elapsed (= finished the lap earlier)
+        return a.elapsed - b.elapsed;
     });
-    
-    const leader = window.demoState.competitors[0];
-    window.demoState.competitors.forEach((c, i) => {
-        c.previousPosition = c.position;
-        c.position = i + 1;
-        c.gapToLeader = (i === 0) ? 0 : (c.totalRaceTime - leader.totalRaceTime);
+
+    // --- Assign positions and gap-to-leader ---
+    const leader = sorted[0];
+    sorted.forEach((comp, i) => {
+        comp.previousPosition = comp.position;
+        comp.position = i + 1;
+
+        if (i === 0) {
+            comp.gapToLeader = 0;
+        } else {
+            // Gap = how much more time this competitor has consumed vs the leader
+            // A bigger elapsed means further behind in real-time
+            // But if they have fewer laps, the gap is even larger
+            const lapDiff = leader.laps - comp.laps;
+            if (lapDiff > 0) {
+                // Estimate: each lap behind ≈ leader's average lap time
+                const leaderAvg = leader.elapsed / Math.max(leader.laps, 1);
+                comp.gapToLeader = (comp.elapsed - leader.elapsed) + lapDiff * leaderAvg;
+            } else {
+                // Same lap count: gap = difference in elapsed
+                comp.gapToLeader = comp.elapsed - leader.elapsed;
+            }
+            // Ensure gap is positive (behind leader)
+            if (comp.gapToLeader < 0) comp.gapToLeader = Math.abs(comp.gapToLeader);
+        }
     });
-    
-    // Update Live Data from our team
-    const ourTeam = window.demoState.competitors.find(c => c.isOurTeam);
+
+    // Write sorted order back
+    window.demoState.competitors = sorted;
+
+    // --- Update live data from our team ---
+    const ourTeam = sorted.find(c => c.isOurTeam);
     if (ourTeam) {
         window.liveData.previousPosition = window.liveData.position;
         window.liveData.position = ourTeam.position;
@@ -697,8 +933,9 @@ window.updateDemoData = function() {
         window.liveData.laps = ourTeam.laps;
         window.liveData.gapToLeader = ourTeam.gapToLeader;
 
-        // Track stint lap history in demo mode
+        // Track stint lap history
         if (ourTeam.lastLap && ourTeam.lastLap !== window.liveData.lastRecordedLap) {
+            if (!window.liveData.stintLapHistory) window.liveData.stintLapHistory = [];
             window.liveData.stintLapHistory.push(ourTeam.lastLap);
             window.liveData.lastRecordedLap = ourTeam.lastLap;
             if (!window.liveData.stintBestLap || ourTeam.lastLap < window.liveData.stintBestLap) {
@@ -706,7 +943,7 @@ window.updateDemoData = function() {
             }
         }
 
-        // Reset stint on pit exit in demo
+        // Reset stint on pit exit
         if (ourTeam._wasInPit && !ourTeam.inPit) {
             window.liveData.stintLapHistory = [];
             window.liveData.stintBestLap = null;
@@ -714,7 +951,7 @@ window.updateDemoData = function() {
         }
         ourTeam._wasInPit = ourTeam.inPit;
     }
-    
-    window.liveData.competitors = window.demoState.competitors;
+
+    window.liveData.competitors = sorted;
     window.updateLiveTimingUI();
 };

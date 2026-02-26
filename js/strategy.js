@@ -637,11 +637,21 @@ window.initRace = function() {
     window.state.globalStintNumber = 1;
 
     if (window.cachedStrategy && window.cachedStrategy.timeline) {
-        window.state.stintTargets = window.cachedStrategy.timeline
-            .filter(t => t.type === 'stint')
-            .map(t => t.duration);
+        const stints = window.cachedStrategy.timeline.filter(t => t.type === 'stint');
+        window.state.stintTargets = stints.map(t => t.duration);
+        // Store full stint schedule: driver + squad + duration for each planned stint
+        window.state.stintSchedule = stints.map(t => ({
+            driverIdx: t.driverIdx,
+            driverName: t.driverName,
+            squad: t.squad,
+            activeSquad: t.activeSquad,
+            squadModeActive: t.squadModeActive,
+            duration: t.duration,
+            stintNumber: t.stintNumber
+        }));
     } else {
         window.state.stintTargets = [];
+        window.state.stintSchedule = [];
     }
     
     window.state.targetStintMs = window.state.stintTargets[0] || (window.config.maxStint * 60000);
@@ -691,51 +701,6 @@ window.initRace = function() {
     
     if (typeof window.renderFrame === 'function') window.renderFrame(); 
     if (typeof window.broadcast === 'function') window.broadcast();
-};
-
-window.callAIStrategy = async function(btn) {
-    if (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost') {
-        alert(window.t('localhostError'));
-        return;
-    }
-
-    window.updateDriversFromUI();
-    const cfg = {
-        duration: document.getElementById('raceDuration').value,
-        stops: document.getElementById('reqPitStops').value,
-        minStint: document.getElementById('minStint').value,
-        maxStint: document.getElementById('maxStint').value,
-        drivers: window.drivers.map(d => d.name)
-    };
-
-    // קבלת הטקסט מהמשתמש
-    const userInstructions = document.getElementById('strategyInstructions')?.value || '';
-    
-    // בניית ה-prompt עם הנתונים וההוראות
-    let promptText = `Analyze this endurance race strategy configuration:\n${JSON.stringify(cfg, null, 2)}`;
-    if (userInstructions.trim()) {
-        promptText += `\n\nAdditional instructions from the user:\n${userInstructions}`;
-    }
-    promptText += `\n\nPlease provide strategic recommendations for this race, considering the configuration and any specific instructions provided.`;
-
-    const buttonEl = btn || document.querySelector('button[onclick*="callAIStrategy"]');
-    let originalText = "✨ Ask AI";
-    if (buttonEl) { originalText = buttonEl.innerText; buttonEl.innerText = "..."; buttonEl.disabled = true; }
-
-    try {
-        const response = await fetch('/.netlify/functions/ai-strategy', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt: promptText })
-        });
-        const data = await response.json();
-        if (data.error) throw new Error(data.error);
-        if (data.success && data.content?.[0]) {
-            if (data.content[0].stints) window.applyAIStrategyToTimeline(data.content[0].stints);
-            alert("🤖 " + (data.content[0].text || "Done"));
-        }
-    } catch (e) { alert("Error: " + e.message); }
-    finally { if (buttonEl) { buttonEl.innerText = originalText; buttonEl.disabled = false; } }
 };
 
 window.recalculateTimelineTimes = function() {

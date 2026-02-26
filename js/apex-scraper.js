@@ -10,6 +10,7 @@ class ApexTimingScraper {
         this.consecutiveErrors = 0;
         this.maxConsecutiveErrors = 5;
         this.searchTerm = config.searchTerm || '';
+        this.searchType = config.searchType || 'team';
         this.gridHtml = '';
         this.sessionId = '';
         this.debug = config.debug || false;
@@ -355,6 +356,9 @@ class ApexTimingScraper {
             comp.bestLapMs = this.parseTimeToMs(comp.bestLap);
             comp.previousPosition = comp.position;
 
+            // Skip invalid/header rows (position 0 or no data)
+            if (comp.position <= 0 && !comp.driverName && !comp.kartNumber) continue;
+
             // Check pit status from hidden cells (cells 0 and 1)
             const statusCell = cells[0]?.textContent?.trim() || cells[1]?.textContent?.trim() || '';
             if (statusCell.includes('P') || statusCell.includes('pit')) {
@@ -418,6 +422,9 @@ class ApexTimingScraper {
             comp.bestLapMs = this.parseTimeToMs(comp.bestLap);
             comp.previousPosition = comp.position;
 
+            // Skip invalid/header rows
+            if (comp.position <= 0 && !comp.driverName && !comp.kartNumber) continue;
+
             this.competitors.set(rowId, comp);
         }
 
@@ -445,20 +452,38 @@ class ApexTimingScraper {
         if (!this.onUpdate || this.competitors.size === 0) return;
 
         const allCompetitors = Array.from(this.competitors.values())
+            .filter(c => c.position > 0) // Filter out invalid/header rows (position 0)
             .sort((a, b) => (a.position || 999) - (b.position || 999));
 
-        // Find our team using searchTerm (plain string — matches driver name, team, or kart #)
+        // Find our team using searchTerm + searchType for precision
         let ourTeam = null;
         const term = (this.searchTerm || '').toUpperCase().trim();
 
         if (term) {
-            ourTeam = allCompetitors.find(c => {
-                const nameMatch = (c.driverName || '').toUpperCase().includes(term);
-                const firstMatch = (c.firstName || '').toUpperCase().includes(term);
-                const lastMatch = (c.lastName || '').toUpperCase().includes(term);
-                const kartMatch = (c.kartNumber || '') === term || String(parseInt(c.kartNumber)) === String(parseInt(term));
-                return nameMatch || firstMatch || lastMatch || kartMatch;
-            }) || null;
+            if (this.searchType === 'kart') {
+                // Kart search: ONLY match by kart number (exact or parsed int)
+                ourTeam = allCompetitors.find(c => {
+                    return (c.kartNumber || '').trim() === term ||
+                           String(parseInt(c.kartNumber)) === String(parseInt(term));
+                }) || null;
+            } else if (this.searchType === 'driver') {
+                // Driver search: match driver/first/last name only
+                ourTeam = allCompetitors.find(c => {
+                    const nameMatch = (c.driverName || '').toUpperCase().includes(term);
+                    const firstMatch = (c.firstName || '').toUpperCase().includes(term);
+                    const lastMatch = (c.lastName || '').toUpperCase().includes(term);
+                    return nameMatch || firstMatch || lastMatch;
+                }) || null;
+            } else {
+                // Team/generic search: check all fields (name, team, kart)
+                ourTeam = allCompetitors.find(c => {
+                    const nameMatch = (c.driverName || '').toUpperCase().includes(term);
+                    const firstMatch = (c.firstName || '').toUpperCase().includes(term);
+                    const lastMatch = (c.lastName || '').toUpperCase().includes(term);
+                    const kartMatch = (c.kartNumber || '').trim() === term || String(parseInt(c.kartNumber)) === String(parseInt(term));
+                    return nameMatch || firstMatch || lastMatch || kartMatch;
+                }) || null;
+            }
         }
 
         // Map to field names LiveTimingManager expects: kart, laps, found

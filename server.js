@@ -59,12 +59,14 @@ const netlifyFunctionWrapper = (functionName) => async (req, res) => {
 
 // --- הגדרת הנתיבים (Routes) ---
 // אלו בדיוק אותם נתיבים שה-Frontend שלך מחפש
-app.all('/.netlify/functions/ai-strategy', netlifyFunctionWrapper('ai-strategy'));
 app.all('/.netlify/functions/save-race', netlifyFunctionWrapper('save-race'));
 app.all('/.netlify/functions/save-strategy', netlifyFunctionWrapper('save-strategy'));
 app.all('/.netlify/functions/load-strategies', netlifyFunctionWrapper('load-strategies'));
 app.all('/.netlify/functions/get-strategies', netlifyFunctionWrapper('get-strategies'));
 app.all('/.netlify/functions/send-feedback', netlifyFunctionWrapper('send-feedback'));
+app.all('/.netlify/functions/verify-license', netlifyFunctionWrapper('verify-license'));
+app.all('/.netlify/functions/generate-license', netlifyFunctionWrapper('generate-license'));
+app.all('/.netlify/functions/manage-licenses', netlifyFunctionWrapper('manage-licenses'));
 
 // נתיב ראשי - מגיש את ה-HTML
 app.get('*', (req, res) => {
