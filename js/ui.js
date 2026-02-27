@@ -448,7 +448,7 @@ window.renderPreview = function() {
         return `
             <div class="flex items-center gap-1 bg-navy-950 p-2 rounded border-l-4 mb-1 text-xs cursor-grab active:cursor-grabbing ${borderWarning}" 
                  style="border-left-color: ${stint.color}" 
-                 draggable="true" data-index="${index}"
+                 draggable="${window._isTouchDevice ? 'false' : 'true'}" data-index="${index}"
                  ondragstart="window.handleDragStart(event)" 
                  ondragover="window.handleDragOver(event)" 
                  ondragleave="window.handleDragLeave(event)" 
@@ -491,7 +491,11 @@ window.renderPreview = function() {
     `;
     
     const scheduleEl = document.getElementById('driverScheduleList');
-    if (scheduleEl) scheduleEl.innerHTML = listHtml + totalBar;
+    if (scheduleEl) {
+        scheduleEl.innerHTML = listHtml + totalBar;
+        // Re-init touch drag for mobile reorder
+        window.initTouchDrag(scheduleEl);
+    }
 
     // === 7. סיכום נהגים ===
     const summary = {};
@@ -503,17 +507,17 @@ window.renderPreview = function() {
 
     const summaryHtml = Object.entries(summary).map(([name, data]) => {
         return `
-            <div class="bg-navy-950 p-2 rounded border-t-2 flex flex-col items-center justify-center text-center shadow-md h-20" style="border-color: ${data.color}">
-                <div class="text-[10px] font-bold text-gray-300 truncate w-full">${name}</div>
-                <div class="text-sm text-white font-mono font-bold my-1">${window.formatTimeHMS(data.time)}</div>
-                <div class="text-[9px] text-gray-500 bg-navy-900 px-2 rounded-full">${data.stints} stints</div>
+            <div class="bg-navy-950 p-1.5 sm:p-2 rounded border-t-2 flex flex-col items-center justify-center text-center shadow-md h-14 sm:h-20" style="border-color: ${data.color}">
+                <div class="text-[9px] sm:text-[10px] font-bold text-gray-300 truncate w-full">${name}</div>
+                <div class="text-xs sm:text-sm text-white font-mono font-bold my-0.5 sm:my-1">${window.formatTimeHMS(data.time)}</div>
+                <div class="text-[8px] sm:text-[9px] text-gray-500 bg-navy-900 px-1.5 sm:px-2 rounded-full">${data.stints} stints</div>
             </div>
         `;
     }).join('');
     
     const summaryEl = document.getElementById('strategySummary');
     if (summaryEl) {
-        summaryEl.className = "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 p-2";
+        summaryEl.className = "grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-1.5 sm:gap-2 p-2";
         summaryEl.innerHTML = summaryHtml;
     }
 };
@@ -633,6 +637,97 @@ window.handleDrop = function(e) {
     }
     window.draggedStintIndex = null;
 };
+
+// === Touch-based reorder (long-press on mobile) ===
+window._touchDragState = null;
+
+window.initTouchDrag = function(container) {
+    if (!container || !window._isTouchDevice) return;
+    
+    let longPressTimer = null;
+    let touchItem = null;
+    
+    container.addEventListener('touchstart', function(e) {
+        const item = e.target.closest('[data-index]');
+        if (!item) return;
+        // Don't start drag on input elements or buttons
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') return;
+        
+        touchItem = item;
+        longPressTimer = setTimeout(() => {
+            // Long press activated — start drag
+            window.haptic && window.haptic('medium');
+            const idx = parseInt(item.getAttribute('data-index'));
+            window._touchDragState = { fromIdx: idx, el: item };
+            item.style.opacity = '0.5';
+            item.style.outline = '2px solid #22d3ee';
+            window.showToast('🔀 Drag to reorder, or use ▲▼', 'info', 2000);
+        }, 500); // 500ms long press
+    }, { passive: true });
+    
+    container.addEventListener('touchmove', function(e) {
+        // Cancel long-press if finger moves (user is scrolling)
+        if (longPressTimer && !window._touchDragState) {
+            clearTimeout(longPressTimer);
+            longPressTimer = null;
+        }
+        
+        if (!window._touchDragState) return;
+        e.preventDefault(); // Prevent scroll while dragging
+        
+        // Find which item we're over
+        const touch = e.touches[0];
+        const el = document.elementFromPoint(touch.clientX, touch.clientY);
+        const targetItem = el?.closest('[data-index]');
+        
+        // Highlight drop target
+        container.querySelectorAll('[data-index]').forEach(i => i.classList.remove('drag-over'));
+        if (targetItem && targetItem !== window._touchDragState.el) {
+            targetItem.classList.add('drag-over');
+        }
+    }, { passive: false });
+    
+    container.addEventListener('touchend', function(e) {
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
+        
+        if (!window._touchDragState) return;
+        
+        // Find drop target
+        const touch = e.changedTouches[0];
+        const el = document.elementFromPoint(touch.clientX, touch.clientY);
+        const targetItem = el?.closest('[data-index]');
+        
+        // Clean up highlights
+        container.querySelectorAll('[data-index]').forEach(i => {
+            i.classList.remove('drag-over');
+            i.style.opacity = '';
+            i.style.outline = '';
+        });
+        
+        if (targetItem) {
+            const toIdx = parseInt(targetItem.getAttribute('data-index'));
+            if (toIdx !== window._touchDragState.fromIdx) {
+                window.haptic && window.haptic('light');
+                window.swapStints(window._touchDragState.fromIdx, toIdx);
+            }
+        }
+        
+        window._touchDragState = null;
+    }, { passive: true });
+    
+    container.addEventListener('touchcancel', function() {
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
+        if (window._touchDragState) {
+            window._touchDragState.el.style.opacity = '';
+            window._touchDragState.el.style.outline = '';
+            window._touchDragState = null;
+        }
+        container.querySelectorAll('[data-index]').forEach(i => i.classList.remove('drag-over'));
+    });
+};
+
 window.swapStints = function(fromIdx, toIdx) {
     if (!window.previewData || !window.previewData.timeline) return;
     const stints = window.previewData.timeline.filter(t => t.type === 'stint');

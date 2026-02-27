@@ -2,6 +2,9 @@
 // 🚀 MAIN ENTRY POINT & RACE LOOP
 // ==========================================
 
+// Touch device detection — used to disable HTML5 drag on mobile (allows native scroll)
+window._isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+
 document.addEventListener('DOMContentLoaded', () => {
     console.log("🚀 Strateger Initializing...");
     window._autoStartFired = false;
