@@ -529,15 +529,18 @@ window.updateStats = function(currentStintMs) {
     
     tb.innerHTML = '';
     
+    // Calculate total race driving time for % bar
+    let grandTotal = 0;
+    const driverTimes = window.drivers.map((d, i) => {
+        let t = d.totalTime || 0;
+        if (i === window.state.currentDriverIdx && !window.state.isInPit) t += currentStintMs;
+        grandTotal += t;
+        return t;
+    });
+    
     window.drivers.forEach((d, i) => {
         // חישוב זמן כולל לתצוגה
-        let displayTotalTime = d.totalTime || 0;
-        
-        // אם זה הנהג שנוהג כרגע (ולא בפיטס), נוסיף לו את הזמן שרץ עכשיו
-        // זה רק לתצוגה, לא שומרים את זה ב-DB עדיין
-        if (i === window.state.currentDriverIdx && !window.state.isInPit) {
-            displayTotalTime += currentStintMs;
-        }
+        let displayTotalTime = driverTimes[i];
         
         const mainRow = document.createElement('tr');
         const isCurrent = (i === window.state.currentDriverIdx);
@@ -557,10 +560,17 @@ window.updateStats = function(currentStintMs) {
             squadBadge = `<span class="text-[9px] font-bold px-1.5 py-0.5 rounded ml-1" style="background:${SQUAD_COLOR_MAP[driverSquad] || '#3b82f6'}; color:#fff">${driverSquad}</span>`;
         }
         
+        // Driver colour dot
+        const colorDot = `<span class="inline-block w-2.5 h-2.5 rounded-full mr-1.5 shrink-0" style="background:${d.color || '#3b82f6'}"></span>`;
+        
+        // Driver % share
+        const pct = grandTotal > 0 ? Math.round((displayTotalTime / grandTotal) * 100) : 0;
+        const pctBar = `<div class="w-full bg-gray-800 rounded-full h-1 mt-0.5"><div class="h-1 rounded-full" style="width:${pct}%;background:${d.color || '#3b82f6'}"></div></div>`;
+        
         mainRow.innerHTML = `
             <td class="text-center cursor-pointer p-2 hover:text-ice" onclick="window.toggleLog(${i})">${d.isExpanded ? '▲' : '▼'}</td>
-            <td class="py-2 pr-2">${d.name} ${isCurrent ? '🏎️' : ''}${squadBadge}</td>
-            <td class="py-2 text-center">${d.stints || 0}</td> <td class="py-2 text-right font-mono">${window.formatTimeHMS(displayTotalTime)}</td>
+            <td class="py-2 pr-2"><div class="flex items-center">${colorDot}${d.name} ${isCurrent ? '🏎️' : ''}${squadBadge}</div></td>
+            <td class="py-2 text-center">${d.stints || 0}</td> <td class="py-2 text-right font-mono"><div>${window.formatTimeHMS(displayTotalTime)}</div><div class="flex items-center gap-1 justify-end"><span class="text-[9px] text-gray-500">${pct}%</span><div class="w-10">${pctBar}</div></div></td>
         `;
         tb.appendChild(mainRow);
 

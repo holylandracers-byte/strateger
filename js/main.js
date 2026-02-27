@@ -682,6 +682,9 @@ window.tick = function() {
         window.showToast('🏁 ' + (window.t ? window.t('raceFinished') : 'RACE FINISHED!'), 'success', 6000);
         window.haptic('success');
 
+        // Save race to history
+        if (typeof window.saveRaceToHistory === 'function') window.saveRaceToHistory();
+
         // Show race summary after a brief delay
         setTimeout(() => {
             if (typeof window.showRaceSummary === 'function') window.showRaceSummary();
@@ -800,8 +803,13 @@ window.renderFrame = function() {
             timerEl.innerText = "0:00:00";
             timerEl.classList.add("text-neon");
         } else {
-            // Floor so the last visible second is 0:00:00 (not stuck on 0:00:01)
-            timerEl.innerText = window.formatTimeHMS(Math.floor(raceRemaining / 1000) * 1000);
+            // Timer mode: elapsed or remaining
+            if (window._timerMode === 'elapsed') {
+                timerEl.innerText = window.formatTimeHMS(Math.floor(raceElapsed / 1000) * 1000);
+            } else {
+                // Floor so the last visible second is 0:00:00 (not stuck on 0:00:01)
+                timerEl.innerText = window.formatTimeHMS(Math.floor(raceRemaining / 1000) * 1000);
+            }
         }
 
         const totalPlannedStops = window.config.reqStops || 0;
@@ -920,6 +928,11 @@ window.renderFrame = function() {
 
         updateWeatherUI();
         updateModeUI();
+
+        // === Update new dashboard overlays ===
+        window.updatePitWindowBanner();
+        window.updateNextDriverBanner();
+        window.updateDriverColourDots();
 
     } catch (e) {
         console.error("Render Frame Error:", e);
@@ -1835,6 +1848,7 @@ window.driverPitTap = function() {
         if (!window._driverPitPending) {
             // ─── FIRST TAP: show big "PITS?" in chosen language ───
             window._driverPitPending = true;
+            window.haptic('warning');
             
             const statusMsg = document.getElementById('driverStatusMsg');
             const statusSub = document.getElementById('driverStatusSub');
@@ -1870,6 +1884,7 @@ window.driverPitTap = function() {
         } else {
             // ─── SECOND TAP: confirm pit entry ───
             window._driverPitPending = false;
+            window.haptic('success');
             if (window._driverPitPendingTimer) { clearTimeout(window._driverPitPendingTimer); window._driverPitPendingTimer = null; }
             
             const tapHint = document.getElementById('driverTapHint');
@@ -3434,3 +3449,387 @@ window.showShortcutsHelp = function() {
         'info', 8000
     );
 };
+
+// ==========================================
+// 🌐 OFFLINE / ONLINE INDICATOR
+// ==========================================
+
+(function() {
+    let offlineBanner = null;
+    
+    function showOffline() {
+        if (offlineBanner) return;
+        offlineBanner = document.createElement('div');
+        offlineBanner.className = 'offline-banner';
+        offlineBanner.innerHTML = '⚡ Offline — data may not sync';
+        document.body.appendChild(offlineBanner);
+    }
+    
+    function hideOffline() {
+        if (offlineBanner) {
+            offlineBanner.remove();
+            offlineBanner = null;
+        }
+    }
+    
+    window.addEventListener('offline', showOffline);
+    window.addEventListener('online', hideOffline);
+    if (!navigator.onLine) showOffline();
+})();
+
+// Close header overflow menu when tapping outside
+document.addEventListener('click', function(e) {
+    const menu = document.getElementById('headerOverflowMenu');
+    if (menu && !menu.classList.contains('hidden')) {
+        const menuParent = menu.parentElement;
+        if (!menuParent.contains(e.target)) {
+            menu.classList.add('hidden');
+        }
+    }
+});
+
+// ==========================================
+// ⏱ TIMER MODE TOGGLE (Elapsed / Remaining)
+// ==========================================
+
+window._timerMode = 'remaining'; // 'remaining' | 'elapsed'
+
+window.toggleTimerMode = function() {
+    window._timerMode = window._timerMode === 'remaining' ? 'elapsed' : 'remaining';
+    const icon = document.getElementById('timerModeIcon');
+    if (icon) icon.textContent = window._timerMode === 'remaining' ? '⏳' : '⏱';
+    window.showToast(window._timerMode === 'elapsed' ? '⏱ Elapsed time' : '⏳ Remaining time', 'info', 1500);
+};
+
+// ==========================================
+// 🚫 PIT WINDOW OVERLAY
+// ==========================================
+
+window.updatePitWindowBanner = function() {
+    const banner = document.getElementById('pitWindowBanner');
+    const textEl = document.getElementById('pitWindowText');
+    const countdownEl = document.getElementById('pitWindowCountdown');
+    if (!banner || !textEl || !countdownEl) return;
+    
+    const closedStartMs = (window.config?.closedStart || 0) * 60000;
+    const closedEndMs = (window.config?.closedEnd || 0) * 60000;
+    const raceMs = window.config?.raceMs || 0;
+    
+    if (closedStartMs <= 0 && closedEndMs <= 0) { banner.classList.add('hidden'); return; }
+    if (!window.state?.raceStarted || window.state?.raceFinished) { banner.classList.add('hidden'); return; }
+    
+    const elapsed = window.getSyncedNow() - window.state.startTime;
+    const remaining = raceMs - elapsed;
+    const t = window.t || ((k) => k);
+    
+    // Pit closed at START of race
+    if (closedStartMs > 0 && elapsed < closedStartMs) {
+        banner.classList.remove('hidden');
+        const timeLeft = closedStartMs - elapsed;
+        textEl.innerHTML = `🚫 ${t('pitClosed') || 'PIT CLOSED'}`;
+        countdownEl.textContent = `Opens in ${window.formatTimeHMS(timeLeft)}`;
+        return;
+    }
+    
+    // Pit closed at END of race
+    if (closedEndMs > 0 && remaining < closedEndMs) {
+        banner.classList.remove('hidden');
+        textEl.innerHTML = `🚫 ${t('pitClosed') || 'PIT CLOSED'}`;
+        countdownEl.textContent = `${window.formatTimeHMS(remaining)} left`;
+        return;
+    }
+    
+    // Pit open — show warning if approaching close window
+    if (closedEndMs > 0 && remaining < closedEndMs + 300000) { // 5 min warning
+        banner.classList.remove('hidden');
+        banner.className = banner.className.replace('bg-red-950/80', 'bg-amber-950/80').replace('border-red-500/50', 'border-amber-500/50');
+        textEl.innerHTML = `⚠️ ${t('pitClosingSoon') || 'PIT CLOSING SOON'}`;
+        textEl.className = textEl.className.replace('text-red-300', 'text-amber-300');
+        countdownEl.textContent = `Closes in ${window.formatTimeHMS(remaining - closedEndMs)}`;
+        countdownEl.className = countdownEl.className.replace('text-red-400', 'text-amber-400');
+        return;
+    }
+    
+    // Pit open and not near close - show green open indicator briefly? No — just hide
+    banner.classList.add('hidden');
+    // Reset classes for next time
+    banner.className = 'hidden bg-red-950/80 border-b border-red-500/50 px-3 py-1.5 shrink-0 flex items-center justify-between text-xs';
+    textEl.className = 'text-red-300 font-bold';
+    countdownEl.className = 'text-red-400 font-mono font-bold';
+};
+
+// ==========================================
+// 🔔 NEXT DRIVER STICKY BANNER
+// ==========================================
+
+window.updateNextDriverBanner = function() {
+    const banner = document.getElementById('nextDriverBanner');
+    const nameEl = document.getElementById('nextDriverBannerName');
+    const textEl = document.getElementById('nextDriverBannerText');
+    if (!banner || !nameEl) return;
+    
+    if (!window.state?.raceStarted || window.state?.raceFinished || window.state?.isInPit) {
+        banner.classList.add('hidden');
+        return;
+    }
+    
+    const targetMs = window.state.targetStintMs || 0;
+    if (targetMs <= 0) { banner.classList.add('hidden'); return; }
+    
+    const now = window.getSyncedNow();
+    const stintElapsed = now - window.state.stintStart + (window.state.stintOffset || 0);
+    const remaining = targetMs - stintElapsed;
+    
+    // Show in last 2 minutes of target stint
+    if (remaining > 0 && remaining <= 120000) {
+        banner.classList.remove('hidden');
+        const t = window.t || ((k) => k);
+        const nextIdx = window.state.nextDriverIdx;
+        const nextDriver = window.drivers?.[nextIdx];
+        const nextName = nextDriver?.name || '---';
+        
+        textEl.textContent = `${t('prepareDriver') || 'Prepare next driver'} (${Math.ceil(remaining / 1000)}s)`;
+        nameEl.textContent = nextName;
+        if (nextDriver?.color) nameEl.style.color = nextDriver.color;
+    } else {
+        banner.classList.add('hidden');
+    }
+};
+
+// ==========================================
+// 🎨 DRIVER COLOUR DOTS ON DASHBOARD
+// ==========================================
+
+window.updateDriverColourDots = function() {
+    const currentDot = document.getElementById('currentDriverDot');
+    const nextDot = document.getElementById('nextDriverDot');
+    
+    const currentDriver = window.drivers?.[window.state?.currentDriverIdx];
+    const nextDriver = window.drivers?.[window.state?.nextDriverIdx];
+    
+    if (currentDot && currentDriver) {
+        currentDot.style.background = currentDriver.color || '#22d3ee';
+    }
+    if (nextDot && nextDriver) {
+        nextDot.style.background = nextDriver.color || '#4ade80';
+    }
+};
+
+// ==========================================
+// 📊 RACE HISTORY (Free)
+// ==========================================
+
+window.saveRaceToHistory = function() {
+    try {
+        const history = JSON.parse(localStorage.getItem('strateger_race_history') || '[]');
+        const raceMs = window.config?.raceMs || 0;
+        
+        const entry = {
+            id: Date.now(),
+            date: new Date().toISOString(),
+            duration: window.config?.duration || 0,
+            durationFormatted: window.formatTimeHMS(raceMs),
+            pitStops: window.state?.pitCount || 0,
+            drivers: (window.drivers || []).map(d => ({
+                name: d.name,
+                color: d.color,
+                totalTime: d.totalTime || 0,
+                stints: d.stints || d.logs?.length || 0
+            })),
+            totalDrivers: window.drivers?.length || 0
+        };
+        
+        history.unshift(entry); // newest first
+        // Keep last 50 races
+        if (history.length > 50) history.length = 50;
+        
+        localStorage.setItem('strateger_race_history', JSON.stringify(history));
+    } catch (e) {
+        console.error('Failed to save race history:', e);
+    }
+};
+
+window.showRaceHistory = function() {
+    const modal = document.getElementById('raceHistoryModal');
+    const listEl = document.getElementById('raceHistoryList');
+    const emptyEl = document.getElementById('raceHistoryEmpty');
+    if (!modal || !listEl) return;
+    
+    const history = JSON.parse(localStorage.getItem('strateger_race_history') || '[]');
+    
+    if (history.length === 0) {
+        listEl.innerHTML = '';
+        if (emptyEl) emptyEl.classList.remove('hidden');
+        modal.classList.remove('hidden');
+        return;
+    }
+    
+    if (emptyEl) emptyEl.classList.add('hidden');
+    
+    listEl.innerHTML = history.map((race, idx) => {
+        const date = new Date(race.date);
+        const dateStr = date.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+        const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        
+        const driverBadges = (race.drivers || []).map(d => 
+            `<span class="inline-flex items-center gap-1 text-[10px] bg-navy-800 px-1.5 py-0.5 rounded" style="border-left:3px solid ${d.color || '#3b82f6'}">
+                ${d.name} <span class="text-gray-500">${window.formatTimeHMS(d.totalTime)}</span>
+            </span>`
+        ).join(' ');
+        
+        return `
+            <div class="bg-navy-950 border border-gray-700 rounded-xl p-3 hover:border-ice/30 transition">
+                <div class="flex justify-between items-center mb-2">
+                    <div class="flex items-center gap-2">
+                        <span class="text-lg">🏁</span>
+                        <div>
+                            <div class="text-sm font-bold text-white">${race.durationFormatted || race.duration + 'h'} Race</div>
+                            <div class="text-[10px] text-gray-500">${dateStr} · ${timeStr}</div>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-xs text-gray-400">🛑 ${race.pitStops} stops</div>
+                        <div class="text-[10px] text-gray-500">${race.totalDrivers} drivers</div>
+                    </div>
+                </div>
+                <div class="flex flex-wrap gap-1">${driverBadges}</div>
+                <button onclick="window.deleteRaceHistory(${idx})" class="mt-2 text-[10px] text-gray-600 hover:text-red-400 transition">
+                    <i class="fas fa-trash-alt"></i> Delete
+                </button>
+            </div>
+        `;
+    }).join('');
+    
+    modal.classList.remove('hidden');
+};
+
+window.deleteRaceHistory = function(idx) {
+    const history = JSON.parse(localStorage.getItem('strateger_race_history') || '[]');
+    history.splice(idx, 1);
+    localStorage.setItem('strateger_race_history', JSON.stringify(history));
+    window.showRaceHistory(); // refresh
+};
+
+// ==========================================
+// 🤖 AI STRATEGY (Pro)
+// ==========================================
+
+window.requestAIStrategy = function() {
+    if (!window.checkProFeature('aiStrategy')) {
+        window.showProGate('AI Strategy');
+        return;
+    }
+    
+    // First generate a normal strategy as baseline
+    if (typeof window.runSim === 'function') window.runSim();
+    
+    if (!window.cachedStrategy && !window.previewData) {
+        window.showToast('Generate a strategy first', 'warning');
+        return;
+    }
+    
+    const config = window.config;
+    const drivers = (window.drivers || []).map(d => ({
+        name: d.name,
+        minStint: d.minStint,
+        maxStint: d.maxStint,
+        weight: d.weight
+    }));
+    
+    const prompt = `You are a motorsport race strategy engineer. Optimize this endurance race strategy.
+
+RACE PARAMETERS:
+- Duration: ${config.duration} hours (${config.raceMs}ms)  
+- Required pit stops: ${config.reqStops}
+- Pit stop time: ${config.pitTime} seconds
+- Min stint: ${config.minStint} min, Max stint: ${config.maxStint} min
+- Pit closed first: ${config.closedStart} min, Pit closed last: ${config.closedEnd} min
+- Weather: ${window.state?.weatherMode || 'dry'}
+${config.fuel ? `- Fuel limit: ${config.fuel} min per tank` : ''}
+${config.useSquads ? `- Using squad rotation (${config.numSquads} squads)` : ''}
+
+DRIVERS (${drivers.length}):
+${drivers.map((d, i) => `${i+1}. ${d.name} (weight: ${d.weight || 1})`).join('\n')}
+
+CURRENT STRATEGY STINT PLAN:
+${(window.previewData?.timeline || []).filter(t => t.type === 'stint').map((s, i) => `Stint ${i+1}: ${s.driverName} - ${Math.round(s.duration/60000)}min`).join('\n')}
+
+Respond ONLY with a JSON object like this (no markdown, no explanation):
+{
+  "advice": "Brief 1-2 sentence strategic advice",
+  "stints": [{"driverIdx": 0, "durationMin": 45}, ...]
+}
+
+Optimize for:
+1. Fair distribution among drivers (by weight)
+2. Respecting min/max stint limits
+3. Strategic pit stop timing
+4. Accounting for pit closed windows`;
+
+    window.showToast('🤖 Asking AI for strategy optimization...', 'info', 6000);
+    
+    fetch('/.netlify/functions/ai-strategy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (!data.success || !data.content?.[0]?.text) {
+            window.showToast('AI returned no result. Using standard strategy.', 'warning');
+            return;
+        }
+        
+        try {
+            // Parse AI response (may have markdown code fences)
+            let text = data.content[0].text.trim();
+            text = text.replace(/```json\s*/g, '').replace(/```\s*/g, '');
+            const aiResult = JSON.parse(text);
+            
+            if (aiResult.advice) {
+                window.showToast(`🤖 ${aiResult.advice}`, 'success', 8000);
+            }
+            
+            // Apply AI stint plan if valid
+            if (aiResult.stints && Array.isArray(aiResult.stints) && window.previewData?.timeline) {
+                const stints = window.previewData.timeline.filter(t => t.type === 'stint');
+                
+                aiResult.stints.forEach((aiStint, i) => {
+                    if (stints[i]) {
+                        // Update driver assignment
+                        if (aiStint.driverIdx != null && window.drivers[aiStint.driverIdx]) {
+                            const d = window.drivers[aiStint.driverIdx];
+                            stints[i].driverIdx = aiStint.driverIdx;
+                            stints[i].driverName = d.name;
+                            stints[i].color = d.color;
+                        }
+                        // Update duration
+                        if (aiStint.durationMin > 0) {
+                            stints[i].duration = aiStint.durationMin * 60000;
+                        }
+                    }
+                });
+                
+                window.renderPreview();
+                window.showToast('✅ AI strategy applied! Review in preview.', 'success');
+                
+                // Show preview screen
+                document.getElementById('setupScreen')?.classList.add('hidden');
+                document.getElementById('previewScreen')?.classList.remove('hidden');
+            }
+        } catch (parseErr) {
+            console.error('AI parse error:', parseErr);
+            window.showToast('AI response was not valid JSON. Using standard strategy.', 'warning');
+        }
+    })
+    .catch(err => {
+        console.error('AI Strategy error:', err);
+        window.showToast('Could not reach AI service. Using standard strategy.', 'error');
+    });
+};
+
+// ==========================================
+// 📊 DRIVER % BAR IN DASHBOARD STATS
+// ==========================================
+// (Integrated into updateStats — see ui.js modifications)
+
