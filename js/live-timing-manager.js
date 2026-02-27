@@ -287,6 +287,9 @@ class LiveTimingManager {
                     inPit: c.inPit,
                     pitCount: c.pitCount,
                     consistency: c.consistency,
+                    penalty: c.penalty || 0,
+                    penaltyTime: c.penaltyTime || 0,
+                    penaltyReason: c.penaltyReason || '',
                     isOurTeam: data.ourTeam ? c.id === data.ourTeam.id : false
                 })),
 

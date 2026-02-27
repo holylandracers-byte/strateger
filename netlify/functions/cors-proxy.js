@@ -80,7 +80,7 @@ exports.handler = async (event, context) => {
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
                     'Accept': 'application/json, text/html, */*'
                 },
-                timeout: 10000
+                timeout: 15000
             }, (res) => {
                 // Handle redirects
                 if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
@@ -90,7 +90,7 @@ exports.handler = async (event, context) => {
                             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
                             'Accept': 'application/json, text/html, */*'
                         },
-                        timeout: 10000
+                        timeout: 15000
                     }, (redirectRes) => {
                         let data = '';
                         redirectRes.on('data', chunk => data += chunk);

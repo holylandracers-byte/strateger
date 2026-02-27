@@ -187,6 +187,40 @@ window.fetchLiveTimingFromProxy = async function() {
                         window.confirmPitExit();
                     }
                 }
+                
+                // === Penalty detection from live timing ===
+                const prevPenalty = window.liveData.ourTeamPenalty || 0;
+                const newPenalty = data.ourTeam.penalty || 0;
+                const newPenaltyTime = data.ourTeam.penaltyTime || 0;
+                window.liveData.ourTeamPenalty = newPenalty;
+                window.liveData.ourTeamPenaltyTime = newPenaltyTime;
+                
+                // Detect new penalty (penalty count increased)
+                if (newPenalty > prevPenalty && window.state && window.state.isRunning) {
+                    const penaltyMsg = data.ourTeam.penaltyReason || '';
+                    console.log(`[LiveTiming] ⚠️ PENALTY DETECTED: count=${newPenalty}, time=${newPenaltyTime}s, reason="${penaltyMsg}"`);
+                    
+                    // Notify admin via strategy notification
+                    if (typeof window._fireStrategyNotification === 'function') {
+                        const msg = `⚠️ PENALTY! ${newPenaltyTime > 0 ? `+${newPenaltyTime}s` : ''} ${penaltyMsg}`;
+                        window._fireStrategyNotification(msg, 'warning');
+                    }
+                    
+                    // Auto-adjust pit time if penalty has a time component
+                    if (newPenaltyTime > 0 && typeof window.adjustPitTime === 'function') {
+                        const addedSec = newPenaltyTime;
+                        window.adjustPitTime(addedSec);
+                        console.log(`[LiveTiming] ⏱️ Auto-adjusted pit time by +${addedSec}s for penalty`);
+                        if (typeof window._fireStrategyNotification === 'function') {
+                            window._fireStrategyNotification(`⏱️ Pit time adjusted +${addedSec}s for penalty`, 'info');
+                        }
+                    }
+                    
+                    // Play alert sound
+                    if (typeof window.playAlertBeep === 'function') {
+                        window.playAlertBeep('warning');
+                    }
+                }
             }
             window.liveData.competitors = data.competitors || [];
 
@@ -452,11 +486,15 @@ window.updateCompetitorsTable = function() {
             if (nameEl.className !== nameCls) nameEl.className = nameCls;
         }
 
-        // ---- Badges (pit + good pace) ----
+        // ---- Badges (pit + penalty + good pace) ----
         const badgesEl = row.querySelector('.cr-badges');
         if (badgesEl) {
             let badges = '';
             if (comp.inPit) badges += '<span class="badge-pit">PIT</span>';
+            if (comp.penalty && comp.penalty > 0) {
+                const penSec = comp.penaltyTime ? `${comp.penaltyTime}s` : '';
+                badges += `<span class="badge-penalty" title="${comp.penaltyReason || 'Penalty'}" style="background:rgba(239,68,68,0.3);color:#f87171;font-size:8px;padding:0 3px;border-radius:2px;margin-left:2px;">⚠${penSec}</span>`;
+            }
             if (isGoodPace) badges += '<span class="badge-fast" title="' + (window.t('goodPace') || 'Good Pace') + '">⚡</span>';
             if (badgesEl.innerHTML !== badges) badgesEl.innerHTML = badges;
         }

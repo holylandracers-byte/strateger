@@ -7,6 +7,14 @@
     
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%2322d3ee' width='100' height='100' rx='15'/><text x='50' y='70' text-anchor='middle' font-size='60' fill='black' font-weight='bold'>S</text></svg>">
 
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#22d3ee">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Strateger">
+    <link rel="apple-touch-icon" href="/icons/icon-192.svg">
+
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="https://apis.google.com/js/api.js" async defer></script>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -59,6 +67,7 @@
                 <option value="ka">🇬🇪 KA</option>
                 <option value="de">🇩🇪 DE</option>
                 <option value="ja">🇯🇵 JA</option>
+                <option value="el">🇬🇷 EL</option>
             </select>
             
             <div id="googleAuthCompact" class="flex items-center ml-2">
@@ -202,6 +211,13 @@
                     <div>
                         <label class="text-xs text-gray-400 font-bold" data-i18n="lblDuration">Duration (Hours)</label>
                         <input type="number" id="raceDuration" value="12" onchange="window.runSim()" class="input-field text-lg font-bold">
+                        <div class="flex gap-1 mt-1">
+                            <button onclick="document.getElementById('raceDuration').value=1;window.runSim()" class="flex-1 text-[10px] py-0.5 rounded bg-navy-800 border border-gray-700 text-gray-400 hover:text-ice hover:border-ice/40 transition">1h</button>
+                            <button onclick="document.getElementById('raceDuration').value=3;window.runSim()" class="flex-1 text-[10px] py-0.5 rounded bg-navy-800 border border-gray-700 text-gray-400 hover:text-ice hover:border-ice/40 transition">3h</button>
+                            <button onclick="document.getElementById('raceDuration').value=6;window.runSim()" class="flex-1 text-[10px] py-0.5 rounded bg-navy-800 border border-gray-700 text-gray-400 hover:text-ice hover:border-ice/40 transition">6h</button>
+                            <button onclick="document.getElementById('raceDuration').value=12;window.runSim()" class="flex-1 text-[10px] py-0.5 rounded bg-navy-800 border border-gray-700 text-gray-400 hover:text-ice hover:border-ice/40 transition">12h</button>
+                            <button onclick="document.getElementById('raceDuration').value=24;window.runSim()" class="flex-1 text-[10px] py-0.5 rounded bg-navy-800 border border-gray-700 text-gray-400 hover:text-ice hover:border-ice/40 transition">24h</button>
+                        </div>
                     </div>
                     <div>
                         <label class="text-xs text-gray-400 font-bold" data-i18n="lblStops">Req. Stops</label>
@@ -840,13 +856,35 @@
 
     <div id="manualInputModal" class="hidden fixed inset-0 bg-navy-950/95 z-50 flex items-center justify-center p-4">
         <div class="bg-navy-900 border border-gray-700 p-4 rounded w-full max-w-xs">
-            <h3 class="text-ice font-bold mb-3">Manual Input</h3>
+            <h3 class="text-ice font-bold mb-3" data-i18n="manualInput">Manual Input</h3>
             <div class="space-y-2">
-                <input type="number" id="manualPosition" placeholder="Position" class="input-field">
-                <input type="number" id="manualLaps" placeholder="Laps" class="input-field">
                 <div class="flex gap-2">
-                    <button onclick="window.applyManualInput()" class="flex-1 bg-ice text-navy-950 font-bold py-2 rounded">Apply</button>
-                    <button onclick="window.closeManualInput()" class="flex-1 bg-navy-700 text-gray-300 py-2 rounded">Cancel</button>
+                    <div class="flex-1">
+                        <label class="text-[10px] text-gray-400 block mb-0.5" data-i18n="pos">POS</label>
+                        <input type="number" id="manualPosition" placeholder="1" min="1" class="input-field text-center">
+                    </div>
+                    <div class="flex-1">
+                        <label class="text-[10px] text-gray-400 block mb-0.5" data-i18n="laps">LAPS</label>
+                        <input type="number" id="manualLaps" placeholder="0" min="0" class="input-field text-center">
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <div class="flex-1">
+                        <label class="text-[10px] text-gray-400 block mb-0.5" data-i18n="last">Last Lap (s)</label>
+                        <input type="number" id="manualLastLap" placeholder="65.500" step="0.001" min="0" class="input-field text-center">
+                    </div>
+                    <div class="flex-1">
+                        <label class="text-[10px] text-gray-400 block mb-0.5" data-i18n="best">Best Lap (s)</label>
+                        <input type="number" id="manualBestLap" placeholder="63.200" step="0.001" min="0" class="input-field text-center">
+                    </div>
+                </div>
+                <div>
+                    <label class="text-[10px] text-gray-400 block mb-0.5" data-i18n="gap">Gap (s)</label>
+                    <input type="number" id="manualGap" placeholder="0.000" step="0.001" class="input-field text-center">
+                </div>
+                <div class="flex gap-2 mt-1">
+                    <button onclick="window.applyManualInput()" class="flex-1 bg-ice text-navy-950 font-bold py-2 rounded" data-i18n="save">Apply</button>
+                    <button onclick="window.closeManualInput()" class="flex-1 bg-navy-700 text-gray-300 py-2 rounded" data-i18n="cancel">Cancel</button>
                 </div>
             </div>
         </div>
@@ -1181,6 +1219,56 @@
         <span class="text-sm font-bold" data-i18n="undoPit">Undo Pit</span>
         <span id="undoPitCountdown" class="text-xs text-amber-400 font-mono">10s</span>
         <button onclick="window.executeUndoPit()" class="bg-amber-500 text-black font-bold px-3 py-1 rounded text-sm hover:bg-amber-400 transition" data-i18n="undoCountdown">Undo</button>
+    </div>
+
+    <!-- TOAST NOTIFICATION CONTAINER -->
+    <div id="toastContainer" class="fixed top-14 right-3 z-[200] flex flex-col gap-2 pointer-events-none" style="max-width:380px;"></div>
+
+    <!-- PWA INSTALL BANNER -->
+    <div id="installBanner" class="hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-[150] bg-navy-900 border border-ice/50 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 max-w-sm w-[calc(100%-2rem)]">
+        <div class="text-2xl">📲</div>
+        <div class="flex-1">
+            <div class="text-sm font-bold text-ice" data-i18n="installApp">Install Strateger</div>
+            <div class="text-[10px] text-gray-400" data-i18n="installDesc">Add to home screen for the best experience</div>
+        </div>
+        <button onclick="window.installPWA()" class="bg-ice text-navy-950 font-bold px-3 py-1.5 rounded text-xs hover:bg-cyan-300 transition" data-i18n="install">Install</button>
+        <button onclick="window.dismissInstall()" class="text-gray-500 hover:text-white text-lg leading-none">&times;</button>
+    </div>
+
+    <!-- RACE SUMMARY MODAL -->
+    <div id="raceSummaryModal" class="hidden fixed inset-0 bg-black/90 z-[130] flex items-center justify-center p-3 overflow-y-auto">
+        <div class="bg-navy-900 border border-ice/40 rounded-2xl p-5 max-w-lg w-full shadow-2xl">
+            <div class="text-center mb-4">
+                <div class="text-5xl mb-2">🏁</div>
+                <h2 class="text-2xl font-black text-ice tracking-wide" data-i18n="raceFinished">RACE FINISHED</h2>
+            </div>
+            <!-- Race info row -->
+            <div id="summaryRaceInfo" class="flex justify-around text-center text-xs text-gray-400 border-b border-gray-700 pb-3 mb-3"></div>
+            <!-- Driver stats table -->
+            <div id="summaryDriverStats" class="space-y-2 mb-4"></div>
+            <!-- Pit stop log -->
+            <div id="summaryPitLog" class="mb-4"></div>
+            <!-- Actions -->
+            <div class="flex gap-2 mt-4">
+                <button onclick="window.shareRaceSummary()" class="flex-1 bg-ice/20 border border-ice/40 text-ice font-bold py-2 rounded-lg text-sm hover:bg-ice/30 transition flex items-center justify-center gap-2">
+                    <i class="fas fa-share-alt"></i> <span data-i18n="share">Share</span>
+                </button>
+                <button onclick="document.getElementById('raceSummaryModal').classList.add('hidden')" class="flex-1 bg-navy-800 text-gray-300 font-bold py-2 rounded-lg text-sm hover:bg-navy-700 transition" data-i18n="close">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirm Modal (replaces native confirm()) -->
+    <div id="confirmModal" class="hidden fixed inset-0 bg-black/85 z-[250] flex items-center justify-center p-4" onclick="if(event.target===this)window.dismissConfirmModal()">
+        <div class="bg-navy-900 border border-gray-700 rounded-2xl shadow-2xl max-w-sm w-full p-5 space-y-3">
+            <div id="confirmTitle" class="text-lg font-bold text-white"></div>
+            <div id="confirmBody" class="text-sm text-gray-400"></div>
+            <div id="confirmQuestion" class="text-sm text-ice font-semibold"></div>
+            <div class="flex gap-3 pt-2">
+                <button onclick="window.dismissConfirmModal()" class="flex-1 bg-navy-800 border border-gray-600 text-gray-300 font-bold py-2.5 rounded-lg text-sm hover:bg-navy-700 transition">Cancel</button>
+                <button id="confirmOkBtn" onclick="window.executeConfirmAction()" class="flex-1 bg-red-600 hover:bg-red-500 text-white font-bold py-2.5 rounded-lg text-sm transition">Confirm</button>
+            </div>
+        </div>
     </div>
 
     <script src="js/state.js"></script>

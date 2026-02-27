@@ -376,7 +376,7 @@ window.startDemoRace = function() {
 
 window.setMode = function(mode) {
     if (window.role !== 'host') return;
-
+    window.haptic('medium');
     if (mode === 'push') {
         window.state.mode = (window.state.mode === 'push') ? 'normal' : 'push';
     } else if (mode === 'bad') {
@@ -662,9 +662,93 @@ window.tick = function() {
     const raceMs = window.config.raceMs || (parseFloat(window.config.duration) * 3600000);
     if (now - window.state.startTime >= raceMs) {
         window.state.isRunning = false;
-        alert("🏁 RACE FINISHED! 🏁");
+        window.state.isFinished = true;
+
+        // Stop all running clocks/intervals
+        window.stopAllClocks();
+
+        // Final broadcast so viewers see the finish state
+        if (typeof window.broadcast === 'function') window.broadcast();
+
+        // Final render to show FINISH on the timer
+        window.renderFrame();
+
+        // Save final state
+        if (typeof window.saveRaceState === 'function') window.saveRaceState();
+
+        window.showToast('🏁 ' + (window.t ? window.t('raceFinished') : 'RACE FINISHED!'), 'success', 6000);
+        window.haptic('success');
+
+        // Show race summary after a brief delay
+        setTimeout(() => {
+            if (typeof window.showRaceSummary === 'function') window.showRaceSummary();
+        }, 800);
+        return;
     }
     window.renderFrame();
+};
+
+// Stops all running intervals/timers when the race ends
+window.stopAllClocks = function() {
+    console.log('🛑 Stopping all race clocks...');
+
+    // Main race loop interval
+    if (window.raceInterval) {
+        clearInterval(window.raceInterval);
+        window.raceInterval = null;
+    }
+
+    // Auto-save interval
+    if (window._saveInterval) {
+        clearInterval(window._saveInterval);
+        window._saveInterval = null;
+    }
+
+    // Pre-race countdown
+    if (window._countdownInterval) {
+        clearInterval(window._countdownInterval);
+        window._countdownInterval = null;
+    }
+
+    // Pit modal timer
+    if (window.pitInterval) {
+        clearInterval(window.pitInterval);
+        window.pitInterval = null;
+    }
+
+    // Driver mode HUD refresh
+    if (window._driverModeInterval) {
+        clearInterval(window._driverModeInterval);
+        window._driverModeInterval = null;
+    }
+
+    // Undo pit timer
+    if (window._undoPitTimer) {
+        clearInterval(window._undoPitTimer);
+        window._undoPitTimer = null;
+    }
+
+    // Live timing updates
+    if (window.liveTimingInterval) {
+        clearInterval(window.liveTimingInterval);
+        window.liveTimingInterval = null;
+    }
+
+    // Proxy live timing fetch
+    if (window.proxyFetchInterval) {
+        clearInterval(window.proxyFetchInterval);
+        window.proxyFetchInterval = null;
+    }
+
+    // Stop live timing manager (scraper websocket/polling)
+    if (window.liveTimingManager) {
+        window.liveTimingManager.stop();
+    }
+
+    // Release wake lock
+    try {
+        if (window._wakeLock) { window._wakeLock.release(); window._wakeLock = null; }
+    } catch(e) {}
 };
 
 // Returns Date.now() adjusted by host clock offset (for viewers/drivers)
@@ -673,7 +757,9 @@ window.getSyncedNow = function() {
 };
 
 window.renderFrame = function() {
-    if (!window.state || !window.state.isRunning) return;
+    if (!window.state) return;
+    // Allow one final render after finish to show FINISH on the timer
+    if (!window.state.isRunning && !window.state.isFinished) return;
 
     // Recalculate target every frame (needed for last stint = remaining time)
     if (typeof window.recalculateTargetStint === 'function') window.recalculateTargetStint();
@@ -698,9 +784,13 @@ window.renderFrame = function() {
         }
         
         const timerEl = document.getElementById('raceTimerDisplay');
-        if (raceRemaining <= -1000) {
+        if (raceRemaining <= -1000 || window.state.isFinished) {
             timerEl.innerText = "FINISH";
             timerEl.classList.add("text-neon", "animate-pulse");
+            // Clear the finished flag so we don't re-render endlessly
+            if (window.state.isFinished && !window.state.isRunning) {
+                window.state.isFinished = false;
+            }
             return;
         }
         if (raceRemaining <= 0) {
@@ -902,46 +992,76 @@ function updateRemainingStrategyLogic(raceRemainingMs) {
         html += `<span class="text-red-500 font-bold">${t('addStop')} (+${extraMin}m)</span>`;
     } 
     else {
-        // חישוב אופטימלי (Greedy): כמה שיותר MAX, והשארית בסוף
+        // === Balanced split strategy ===
+        // Calculate equal distribution across future stints
+        const avgMs = futurePoolMs / futureStints;
+        const avgMin = Math.floor(avgMs / 60000);
+        
+        // Check if equal distribution is valid (within min/max bounds)
+        const equalValid = avgMs >= minStintMs && avgMs <= maxStintMs;
+        
+        // Greedy approach: fill as many stints as possible at max, leave rest
         const fullMaxStints = Math.floor(futurePoolMs / maxStintMs);
         const greedyCount = Math.min(futureStints - 1, fullMaxStints);
-        
         const timeUsedByMax = greedyCount * maxStintMs;
-        const remainingTime = futurePoolMs - timeUsedByMax;
+        const greedyRemainingTime = futurePoolMs - timeUsedByMax;
+        const greedyRestCount = futureStints - greedyCount;
+        const greedyRestAvgMs = greedyRemainingTime / greedyRestCount;
+        const greedyRestAvgMin = Math.floor(greedyRestAvgMs / 60000);
         
-        const restStintsCount = futureStints - greedyCount;
-        const avgRestMin = Math.floor((remainingTime / restStintsCount) / 60000);
+        // Use greedy only if the rest stints are >= min; otherwise fall back to balanced
+        const greedyValid = greedyRestAvgMs >= minStintMs;
+        
+        if (greedyValid && greedyCount > 0) {
+            // Greedy approach works — show MAX stints + rest
+            if (greedyCount > 0) {
+                html += `${greedyCount}x <span class="text-neon font-bold">${t('max')}</span> `;
+            }
+            
+            if (greedyRestCount > 0) {
+                let color = "text-white";
+                let note = `(${t('rest')})`;
+                
+                if (greedyRestAvgMin > (maxStintVal - 5)) {
+                    color = "text-neon"; 
+                } else {
+                    color = "text-yellow-400"; 
+                }
 
-        // הצגת סטינטים של MAX
-        if (greedyCount > 0) {
-            html += `${greedyCount}x <span class="text-neon font-bold">${t('max')}</span> `;
-        }
-        
-        // הצגת השארית (REST)
-        if (restStintsCount > 0) {
+                html += `+ ${greedyRestCount}x <span class="${color} font-bold">${greedyRestAvgMin}m ${note}</span>`;
+            }
+        } else {
+            // Greedy would create invalid stints — use balanced distribution
             let color = "text-white";
             let note = `(${t('rest')})`;
             
-            // בדיקה קריטית: האם השארית קטנה מהמינימום המותר?
-            if (avgRestMin < minStintVal) {
+            if (!equalValid && avgMs < minStintMs) {
                 color = "text-red-500 animate-pulse font-bold";
-                // מציג בבירור שזה קצר מדי ומה המינימום הנדרש
-                note = `(< ${minStintVal}m!)`; 
+                note = `(< ${minStintVal}m!)`;
+            } else if (!equalValid && avgMs > maxStintMs) {
+                color = "text-red-500 font-bold";
+                note = `(> ${maxStintVal}m!)`;
+            } else if (avgMin > (maxStintVal - 5)) {
+                color = "text-neon";
+            } else if (avgMin >= minStintVal) {
+                color = "text-yellow-400";
             }
-            else if (avgRestMin > (maxStintVal - 5)) {
-                color = "text-neon"; 
-            }
-            else {
-                color = "text-yellow-400"; 
-            }
-
-            html += `+ ${restStintsCount}x <span class="${color} font-bold">${avgRestMin}m ${note}</span>`;
+            
+            html += `${futureStints}x <span class="${color} font-bold">~${avgMin}m ${note}</span>`;
         }
 
-        // שורת ה-Buffer (כמה "ספייר" יש מעל המינימום)
+        // Buffer line: how much "spare" above minimum
         html += `<div class="text-[9px] text-gray-500 mt-1">
                     ${t('buffer')}: ${bufferMin}m
                  </div>`;
+        // Margin: show how far each stint is from the min/max limits
+        const marginFromMax = Math.floor((maxStintMs - avgMs) / 60000);
+        const marginFromMin = Math.floor((avgMs - minStintMs) / 60000);
+        if (marginFromMax >= 0 && marginFromMin >= 0) {
+            html += `<div class="text-[9px] text-gray-500">
+                        ±${Math.min(marginFromMax, marginFromMin)}m ${t('buffer')}
+                     </div>`;
+        }
     }
     
     textField.innerHTML = html;
@@ -1061,15 +1181,28 @@ window.confirmPitEntry = function(autoDetected) {
         if (!autoDetected) {
             const missingSec = Math.ceil((minStintMs - currentStintMs) / 1000);
             const t = window.t || ((k) => k);
-            if (!confirm(`⚠️ ${t('shortStintMsg')}\n${t('missingSeconds') || 'Missing'}: ${missingSec}s\n${t('proceedToPit') || 'Proceed to Pit?'}`)) return;
+            window.showConfirmModal(
+                `⚠️ ${t('shortStintMsg')}`,
+                `${t('missingSeconds') || 'Missing'}: ${missingSec}s`,
+                t('proceedToPit') || 'Proceed to Pit?',
+                () => { window._executePitEntry(true); }
+            );
+            return;
         }
         isShortStint = true;
     }
 
+    window._executePitEntry(isShortStint);
+};
+
+// Internal: actually execute pit entry after confirmation
+window._executePitEntry = function(isShortStint) {
+    const now = Date.now();
     window.state.isInPit = true;
     window.state.pitStart = now;
     window.state.pitCount++; // === UP COUNT ===
     window._lastPitEntryTime = now; // Record for cooldown guard
+    window.haptic('pit');
 
     // Save snapshot for undo functionality
     if (typeof window._saveUndoPitSnapshot === 'function') {
@@ -1265,6 +1398,10 @@ window.playReleaseSound = function() {
 window.playAlertBeep = function(type) {
     // Respect global mute setting
     if (window._soundMuted) return;
+    // Haptic on mobile for all alert types
+    if (type === 'warning' || type === 'boxNow') window.haptic('heavy');
+    else if (type === 'info') window.haptic('medium');
+    else window.haptic('light');
     try {
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
         const osc = ctx.createOscillator();
@@ -1366,6 +1503,7 @@ window.getBoxMessage = function() {
 window.confirmPitExit = function() {
     // Guard: only exit if actually in pit
     if (!window.state.isInPit) return;
+    window.haptic('success');
     
     // Hide undo toast — can't undo after exit
     if (typeof window._hideUndoPitToast === 'function') window._hideUndoPitToast();
@@ -1496,12 +1634,12 @@ window.submitFeedback = async () => {
     const text = document.getElementById('feedbackText').value.trim();
     
     if (!text) {
-        alert('Please describe the issue or suggestion.');
+        window.showToast(window.t ? window.t('describeIssue') || 'Please describe the issue or suggestion.' : 'Please describe the issue or suggestion.', 'warning');
         return;
     }
     
     if (text.length > 1000) {
-        alert('Feedback must be 1000 characters or less.');
+        window.showToast('Feedback must be 1000 characters or less.', 'warning');
         return;
     }
     
@@ -1521,7 +1659,7 @@ window.submitFeedback = async () => {
 
     // Check if running locally - Netlify functions won't work
     if (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost') {
-        alert('✅ Feedback saved locally!\n\n⚠️ Email sending only works when deployed to Netlify.\n\nTo test locally, run: netlify dev');
+        window.showToast('✅ Feedback saved locally. Email sending only works when deployed to Netlify.', 'info', 6000);
         document.getElementById('feedbackText').value = '';
         return;
     }
@@ -1574,9 +1712,9 @@ window.submitFeedback = async () => {
         sendBtn.textContent = window.t('send');
         
         if (error.name === 'AbortError') {
-            alert('Request timed out. Your feedback was saved locally. Please check your Gmail password is set correctly.');
+            window.showToast('Request timed out. Feedback saved locally.', 'warning');
         } else {
-            alert(`Error sending feedback: ${error.message}. Feedback was saved locally.`);
+            window.showToast(`Error: ${error.message}. Feedback saved locally.`, 'error');
         }
     }
 };
@@ -2020,14 +2158,18 @@ window.updateStrategyNotifications = function() {
     if (nextStintIdx >= schedule.length) return;
     
     const nextPlanned = schedule[nextStintIdx];
-    const nextDriverName = nextPlanned.driverName;
+    // Use the ACTUAL chosen next driver (which may have been manually overridden), 
+    // falling back to the strategy-planned driver only if no override exists
+    const actualNextDriverIdx = window.state.nextDriverIdx;
+    const actualNextDriver = window.drivers[actualNextDriverIdx];
+    const nextDriverName = actualNextDriver ? actualNextDriver.name : nextPlanned.driverName;
     const nextSquad = nextPlanned.activeSquad;
     const currentSquad = window.state.activeSquad;
     
     // Update the strategy info banner
     const banner = document.getElementById('strategyScheduleBanner');
     if (banner) {
-        const nextDriverDisplay = window.drivers[nextPlanned.driverIdx]?.name || nextDriverName;
+        const nextDriverDisplay = nextDriverName;
         const stintsLeft = schedule.length - nextStintIdx;
         
         let bannerHtml = `<span class="text-gray-400 text-[10px]">${t('nextLabel') || 'Next:'}</span> `;
@@ -2536,10 +2678,12 @@ window.removeCoupon = function() {
 
 window.showProStatus = function() {
     if (!window._proUnlocked) return window.showProGate();
-    const t = window.t || ((k) => k);
-    if (confirm('⭐ Pro License Active\n\nAll Pro features are unlocked.\n\nClick OK to deactivate your license.')) {
-        window.deactivateProLicense();
-    }
+    window.showConfirmModal(
+        '⭐ Pro License Active',
+        'All Pro features are unlocked.',
+        'Deactivate License?',
+        () => { window.deactivateProLicense(); }
+    );
 };
 
 window.updateProUI = function() {
@@ -2631,7 +2775,7 @@ window.exportStrategyImage = async function() {
     
     const target = document.querySelector('#previewScreen > div');
     if (!target || typeof html2canvas === 'undefined') {
-        alert('Export not available. Please try again.');
+        window.showToast('Export not available. Please try again.', 'error');
         return;
     }
     
@@ -2650,7 +2794,7 @@ window.exportStrategyImage = async function() {
         link.click();
     } catch (e) {
         console.error('Image export failed:', e);
-        alert('Export failed: ' + e.message);
+        window.showToast('Export failed: ' + e.message, 'error');
     }
 };
 
@@ -2662,7 +2806,7 @@ window.exportStrategyPdf = async function() {
     
     const target = document.querySelector('#previewScreen > div');
     if (!target || typeof html2canvas === 'undefined' || typeof jspdf === 'undefined') {
-        alert('PDF export not available. Please try again.');
+        window.showToast('PDF export not available. Please try again.', 'error');
         return;
     }
     
@@ -2690,7 +2834,7 @@ window.exportStrategyPdf = async function() {
         pdf.save(`strateger-strategy-${Date.now()}.pdf`);
     } catch (e) {
         console.error('PDF export failed:', e);
-        alert('PDF export failed: ' + e.message);
+        window.showToast('PDF export failed: ' + e.message, 'error');
     } finally {
         if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-file-pdf"></i> <span class="hidden sm:inline">PDF</span>'; }
     }
@@ -2783,4 +2927,507 @@ window.executeUndoPit = function() {
     if (typeof window.saveRaceState === 'function') window.saveRaceState();
     
     console.log('↩️ Pit entry undone');
+};
+
+// ==========================================
+// 🔔 TOAST NOTIFICATION SYSTEM
+// ==========================================
+
+window._toastQueue = [];
+window._toastCount = 0;
+
+/**
+ * Show a non-blocking toast notification.
+ * @param {string} message - The message to display
+ * @param {'success'|'error'|'warning'|'info'} type - Toast style
+ * @param {number} duration - Auto-dismiss in ms (default 4000, 0 = manual dismiss)
+ */
+window.showToast = function(message, type = 'info', duration = 4000) {
+    const container = document.getElementById('toastContainer');
+    if (!container) { console.log(`[Toast] ${type}: ${message}`); return; }
+    
+    const id = `toast-${++window._toastCount}`;
+    const icons = { success: 'fas fa-check-circle', error: 'fas fa-exclamation-triangle', warning: 'fas fa-exclamation-circle', info: 'fas fa-info-circle' };
+    const colors = {
+        success: 'border-green-500/60 bg-green-950/90 text-green-300',
+        error:   'border-red-500/60 bg-red-950/90 text-red-300',
+        warning: 'border-amber-500/60 bg-amber-950/90 text-amber-300',
+        info:    'border-ice/60 bg-navy-900/95 text-ice'
+    };
+    
+    const toast = document.createElement('div');
+    toast.id = id;
+    toast.className = `pointer-events-auto flex items-start gap-2 px-4 py-3 rounded-xl border shadow-2xl backdrop-blur-sm text-sm transition-all duration-300 ${colors[type] || colors.info}`;
+    toast.style.cssText = 'opacity:0; transform:translateX(30px); max-width:380px;';
+    toast.innerHTML = `
+        <i class="${icons[type] || icons.info} mt-0.5 text-sm flex-shrink-0"></i>
+        <span class="flex-1 leading-snug">${message}</span>
+        <button onclick="window.dismissToast('${id}')" class="text-gray-500 hover:text-white text-base leading-none ml-1 flex-shrink-0">&times;</button>
+    `;
+    
+    container.appendChild(toast);
+    
+    // Animate in
+    requestAnimationFrame(() => {
+        toast.style.opacity = '1';
+        toast.style.transform = 'translateX(0)';
+    });
+    
+    // Auto-dismiss
+    if (duration > 0) {
+        setTimeout(() => window.dismissToast(id), duration);
+    }
+    
+    // Limit visible toasts to 5 — remove oldest
+    const toasts = container.children;
+    while (toasts.length > 5) {
+        window.dismissToast(toasts[0].id);
+    }
+    
+    // Haptic feedback for warnings/errors on mobile
+    if (type === 'warning' || type === 'error') {
+        window.haptic('light');
+    }
+};
+
+window.dismissToast = function(id) {
+    const toast = document.getElementById(id);
+    if (!toast) return;
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateX(30px)';
+    setTimeout(() => toast.remove(), 300);
+};
+
+// ==========================================
+// 📳 HAPTIC FEEDBACK SYSTEM
+// ==========================================
+
+/**
+ * Trigger haptic/vibration feedback on supported devices.
+ * @param {'light'|'medium'|'heavy'|'double'|'success'|'error'} pattern
+ */
+window.haptic = function(pattern) {
+    if (!navigator.vibrate) return;
+    try {
+        switch (pattern) {
+            case 'light':   navigator.vibrate(15); break;
+            case 'medium':  navigator.vibrate(40); break;
+            case 'heavy':   navigator.vibrate(100); break;
+            case 'double':  navigator.vibrate([40, 60, 40]); break;
+            case 'success': navigator.vibrate([30, 50, 30, 50, 80]); break;
+            case 'error':   navigator.vibrate([100, 50, 100]); break;
+            case 'pit':     navigator.vibrate([80, 40, 80, 40, 150]); break;
+            default:        navigator.vibrate(25);
+        }
+    } catch (e) { /* vibrate not allowed in this context */ }
+};
+
+// ==========================================
+// 📲 PWA INSTALL PROMPT
+// ==========================================
+
+window._deferredInstallPrompt = null;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    window._deferredInstallPrompt = e;
+    
+    // Don't show install banner if user already dismissed it recently
+    const dismissed = localStorage.getItem('strateger_install_dismissed');
+    if (dismissed && (Date.now() - parseInt(dismissed)) < 7 * 86400000) return; // 7 days cooldown
+    
+    // Show install banner after a short delay
+    setTimeout(() => {
+        const banner = document.getElementById('installBanner');
+        if (banner) banner.classList.remove('hidden');
+    }, 30000); // Show after 30s of use
+});
+
+window.installPWA = function() {
+    if (!window._deferredInstallPrompt) return;
+    window._deferredInstallPrompt.prompt();
+    window._deferredInstallPrompt.userChoice.then((choice) => {
+        if (choice.outcome === 'accepted') {
+            window.showToast('Strateger installed! 🎉', 'success');
+        }
+        window._deferredInstallPrompt = null;
+        const banner = document.getElementById('installBanner');
+        if (banner) banner.classList.add('hidden');
+    });
+};
+
+window.dismissInstall = function() {
+    const banner = document.getElementById('installBanner');
+    if (banner) banner.classList.add('hidden');
+    localStorage.setItem('strateger_install_dismissed', Date.now().toString());
+};
+
+// Register service worker
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+            .then(reg => console.log('📦 SW registered:', reg.scope))
+            .catch(err => console.warn('SW registration failed:', err));
+    });
+}
+
+// ==========================================
+// 🏆 POST-RACE SUMMARY
+// ==========================================
+
+window.showRaceSummary = function() {
+    const modal = document.getElementById('raceSummaryModal');
+    if (!modal) return;
+    
+    const t = window.t || ((k) => k);
+    const raceMs = window.config.raceMs || (parseFloat(window.config.duration) * 3600000);
+    const totalPitTime = window.drivers.reduce((sum, d) => {
+        return sum + (d.logs || []).reduce((s, log) => s + (log.pit || 0), 0);
+    }, 0);
+    const now = Date.now();
+    
+    // If the last driver was still driving when race ended, record their final stint
+    // Guard: only do this once to prevent double-counting on re-open
+    if (!window._raceSummaryFinalized) {
+        const lastDriver = window.drivers[window.state.currentDriverIdx];
+        if (lastDriver && window.state.stintStart) {
+            const lastStintDuration = Math.min(
+                now - window.state.stintStart + (window.state.stintOffset || 0),
+                raceMs // Cap at race duration
+            );
+            // Only add if not already logged (check if pit happened)
+            if (!window.state.isInPit) {
+                lastDriver.totalTime = (lastDriver.totalTime || 0) + lastStintDuration;
+                if (!lastDriver.logs) lastDriver.logs = [];
+                lastDriver.logs.push({ drive: lastStintDuration, pit: 0, timestamp: now, final: true });
+            }
+        }
+        window._raceSummaryFinalized = true;
+    }
+    
+    // === Race Info Row ===
+    const infoEl = document.getElementById('summaryRaceInfo');
+    if (infoEl) {
+        const totalDriveTime = window.drivers.reduce((sum, d) => sum + (d.totalTime || 0), 0);
+        const raceStartDate = new Date(window.state.startTime);
+        infoEl.innerHTML = `
+            <div>
+                <div class="text-lg font-bold text-white">${window.formatTimeHMS(raceMs)}</div>
+                <div data-i18n="duration">${t('duration')}</div>
+            </div>
+            <div>
+                <div class="text-lg font-bold text-neon">${window.state.pitCount || 0}</div>
+                <div data-i18n="stopsHeader">${t('stopsHeader')}</div>
+            </div>
+            <div>
+                <div class="text-lg font-bold text-fuel">${window.formatTimeHMS(totalPitTime)}</div>
+                <div>${t('totalPitTime') || 'Pit Time'}</div>
+            </div>
+            <div>
+                <div class="text-lg font-bold text-white">${raceStartDate.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</div>
+                <div>${t('raceStart') || 'Start'}</div>
+            </div>
+        `;
+    }
+    
+    // === Driver Stats ===
+    const statsEl = document.getElementById('summaryDriverStats');
+    if (statsEl) {
+        // Sort drivers by total time (most time = most contribution)
+        const ranked = window.drivers
+            .map((d, i) => ({ ...d, idx: i }))
+            .sort((a, b) => (b.totalTime || 0) - (a.totalTime || 0));
+        
+        const totalDriveTime = ranked.reduce((sum, d) => sum + (d.totalTime || 0), 0);
+        const medals = ['🥇', '🥈', '🥉'];
+        
+        statsEl.innerHTML = ranked.map((d, rank) => {
+            const pct = totalDriveTime > 0 ? ((d.totalTime || 0) / totalDriveTime * 100).toFixed(0) : 0;
+            const stintCount = d.stints || d.logs?.length || 0;
+            const avgStint = stintCount > 0 ? (d.totalTime || 0) / stintCount : 0;
+            const bestLap = d.logs?.reduce((best, log) => {
+                if (log.drive && log.drive < best) return log.drive;
+                return best;
+            }, Infinity);
+            
+            return `
+                <div class="bg-navy-800 border border-gray-700 rounded-xl p-3">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center gap-2">
+                            <span class="text-lg">${medals[rank] || '🏎️'}</span>
+                            <span class="font-bold text-white">${d.name}</span>
+                        </div>
+                        <span class="text-xs font-mono px-2 py-0.5 rounded" style="background:${d.color || '#3b82f6'}22; color:${d.color || '#3b82f6'}">${pct}%</span>
+                    </div>
+                    <div class="w-full bg-navy-950 rounded-full h-2 mb-2">
+                        <div class="h-2 rounded-full transition-all" style="width:${pct}%; background:${d.color || '#3b82f6'}"></div>
+                    </div>
+                    <div class="flex justify-between text-[11px] text-gray-400">
+                        <span>${t('totalTime') || 'Total'}: <b class="text-white">${window.formatTimeHMS(d.totalTime || 0)}</b></span>
+                        <span>${t('stints') || 'Stints'}: <b class="text-white">${stintCount}</b></span>
+                        <span>${t('avgStint') || 'Avg'}: <b class="text-white">${window.formatTimeHMS(avgStint)}</b></span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+    
+    // === Pit Stop Log ===
+    const pitLogEl = document.getElementById('summaryPitLog');
+    if (pitLogEl) {
+        let allPits = [];
+        window.drivers.forEach((d, i) => {
+            if (d.logs) {
+                d.logs.forEach((log, idx) => {
+                    if (log.pit && log.pit > 0) {
+                        allPits.push({ driver: d.name, color: d.color || '#3b82f6', pit: log.pit, drive: log.drive, ts: log.timestamp, num: idx + 1 });
+                    }
+                });
+            }
+        });
+        allPits.sort((a, b) => (a.ts || 0) - (b.ts || 0));
+        
+        if (allPits.length > 0) {
+            pitLogEl.innerHTML = `
+                <div class="text-xs text-gray-500 font-bold mb-1 border-b border-gray-700 pb-1">${t('pitLog') || 'Pit Stop Log'}</div>
+                <div class="space-y-1 max-h-32 overflow-y-auto">
+                    ${allPits.map((p, i) => `
+                        <div class="flex items-center justify-between text-[11px] py-1 ${i % 2 === 0 ? 'bg-navy-800/50' : ''} px-2 rounded">
+                            <span class="font-bold" style="color:${p.color}">${p.driver}</span>
+                            <span class="text-gray-400">${t('drove') || 'Drove'} ${window.formatTimeHMS(p.drive)}</span>
+                            <span class="text-fuel font-mono">${t('pit') || 'Pit'} ${Math.round(p.pit / 1000)}s</span>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        } else {
+            pitLogEl.innerHTML = '';
+        }
+    }
+    
+    modal.classList.remove('hidden');
+    window.haptic('success');
+};
+
+window.shareRaceSummary = function() {
+    const raceMs = window.config.raceMs || (parseFloat(window.config.duration) * 3600000);
+    const t = window.t || ((k) => k);
+    
+    let text = `🏁 ${t('raceFinished') || 'Race Finished'} - Strateger\n`;
+    text += `⏱ ${window.formatTimeHMS(raceMs)} | 🛑 ${window.state.pitCount || 0} ${t('stopsHeader')}\n\n`;
+    
+    const ranked = window.drivers
+        .map((d, i) => ({ ...d, idx: i }))
+        .sort((a, b) => (b.totalTime || 0) - (a.totalTime || 0));
+    
+    const medals = ['🥇', '🥈', '🥉'];
+    ranked.forEach((d, i) => {
+        text += `${medals[i] || '🏎️'} ${d.name}: ${window.formatTimeHMS(d.totalTime || 0)} (${d.stints || 0} stints)\n`;
+    });
+    
+    text += `\n📊 strateger.netlify.app`;
+    
+    if (navigator.share) {
+        navigator.share({ title: 'Strateger Race Summary', text: text }).catch(() => {});
+    } else {
+        navigator.clipboard.writeText(text).then(() => {
+            window.showToast(t('copied') || 'Copied to clipboard!', 'success');
+        }).catch(() => {
+            window.showToast('Could not copy', 'error');
+        });
+    }
+};
+
+// ==========================================
+// ✅ CUSTOM CONFIRM MODAL (replaces native confirm())
+// ==========================================
+
+window._confirmCallback = null;
+
+window.showConfirmModal = function(title, body, question, onConfirm) {
+    const modal = document.getElementById('confirmModal');
+    if (!modal) { if (confirm(title + '\n' + body + '\n' + question)) onConfirm(); return; }
+    
+    document.getElementById('confirmTitle').textContent = title;
+    document.getElementById('confirmBody').textContent = body;
+    document.getElementById('confirmQuestion').textContent = question;
+    window._confirmCallback = onConfirm;
+    modal.classList.remove('hidden');
+    
+    // Focus the confirm button for keyboard accessibility
+    setTimeout(() => document.getElementById('confirmOkBtn')?.focus(), 50);
+};
+
+window.dismissConfirmModal = function() {
+    const modal = document.getElementById('confirmModal');
+    if (modal) modal.classList.add('hidden');
+    window._confirmCallback = null;
+};
+
+window.executeConfirmAction = function() {
+    const cb = window._confirmCallback;
+    window.dismissConfirmModal();
+    if (typeof cb === 'function') cb();
+};
+
+// ==========================================
+// ⌨️ KEYBOARD SHORTCUTS
+// ==========================================
+
+window._shortcutsEnabled = true;
+
+/**
+ * Keyboard shortcuts (host mode only, disabled when typing in inputs):
+ *   Space      — Enter/Exit Pit
+ *   P          — Enter Pit (alias)
+ *   S          — Start Race
+ *   1          — Push Mode toggle
+ *   2          — Problem Mode toggle
+ *   0 / Esc    — Reset Mode to Normal
+ *   G          — Generate Strategy preview
+ *   M          — Toggle sound Mute
+ *   ?          — Show shortcuts help
+ *   Enter      — Confirm in confirm modal
+ *   Escape     — Dismiss modals / confirm
+ */
+document.addEventListener('keydown', function(e) {
+    // Don't intercept when typing in inputs/textareas/contenteditable
+    const tag = e.target.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || e.target.isContentEditable) {
+        // But still allow Escape to blur inputs
+        if (e.key === 'Escape') { e.target.blur(); }
+        return;
+    }
+    
+    // Disabled flag
+    if (!window._shortcutsEnabled) return;
+    
+    // Don't capture if modifier keys (Ctrl/Alt/Meta) are held — let browser handle those
+    if (e.ctrlKey || e.altKey || e.metaKey) return;
+    
+    const key = e.key;
+    
+    // === Confirm modal shortcuts ===
+    const confirmModal = document.getElementById('confirmModal');
+    if (confirmModal && !confirmModal.classList.contains('hidden')) {
+        if (key === 'Enter') { e.preventDefault(); window.executeConfirmAction(); return; }
+        if (key === 'Escape') { e.preventDefault(); window.dismissConfirmModal(); return; }
+        return; // Block other shortcuts when confirm is open
+    }
+    
+    // === Escape: close any open modal ===
+    if (key === 'Escape') {
+        const modals = ['raceSummaryModal', 'proUpgradeModal', 'strategyModal', 'emailTeamModal', 'calendarModal'];
+        for (const id of modals) {
+            const m = document.getElementById(id);
+            if (m && !m.classList.contains('hidden')) { m.classList.add('hidden'); e.preventDefault(); return; }
+        }
+        return;
+    }
+    
+    // === Only process race shortcuts for host role ===
+    if (window.role && window.role !== 'host') return;
+    
+    switch (key) {
+        case ' ':  // Space — Pit entry/exit
+            e.preventDefault();
+            if (window.state?.isInPit) {
+                const exitBtn = document.getElementById('confirmExitBtn');
+                if (exitBtn && !exitBtn.disabled) window.confirmPitExit();
+            } else if (window.state?.raceStarted && !window.state?.raceFinished) {
+                window.confirmPitEntry();
+            }
+            break;
+            
+        case 'p':
+        case 'P':  // P — Enter Pit
+            if (window.state?.raceStarted && !window.state?.raceFinished && !window.state?.isInPit) {
+                e.preventDefault();
+                window.confirmPitEntry();
+            }
+            break;
+            
+        case 's':
+        case 'S':  // S — Start Race
+            if (!window.state?.raceStarted) {
+                e.preventDefault();
+                window.initRace();
+            }
+            break;
+            
+        case '1':  // 1 — Push Mode
+            if (window.state?.raceStarted) {
+                e.preventDefault();
+                window.setMode('push');
+            }
+            break;
+            
+        case '2':  // 2 — Problem Mode
+            if (window.state?.raceStarted) {
+                e.preventDefault();
+                window.setMode('bad');
+            }
+            break;
+            
+        case '0':  // 0 — Reset Mode
+            if (window.state?.raceStarted) {
+                e.preventDefault();
+                window.setMode('normal');
+            }
+            break;
+            
+        case 'g':
+        case 'G':  // G — Generate strategy
+            if (!window.state?.raceStarted) {
+                e.preventDefault();
+                if (typeof window.runSim === 'function') window.runSim();
+            }
+            break;
+            
+        case 'm':
+        case 'M':  // M — Toggle mute
+            e.preventDefault();
+            window._soundMuted = !window._soundMuted;
+            const muteBtn = document.getElementById('muteBtn');
+            if (muteBtn) {
+                muteBtn.innerHTML = window._soundMuted
+                    ? '<i class="fas fa-volume-mute"></i>'
+                    : '<i class="fas fa-volume-up"></i>';
+            }
+            window.showToast(window._soundMuted ? '🔇 Sound muted' : '🔊 Sound on', 'info', 2000);
+            break;
+            
+        case '?':  // ? — Show shortcuts help
+            e.preventDefault();
+            window.showShortcutsHelp();
+            break;
+    }
+});
+
+window.showShortcutsHelp = function() {
+    const t = window.t || ((k) => k);
+    const shortcuts = [
+        ['Space', t('pitEntryExit') || 'Pit Entry / Exit'],
+        ['P', t('enterPit') || 'Enter Pit'],
+        ['S', t('startRace') || 'Start Race'],
+        ['1', 'Push Mode'],
+        ['2', 'Problem Mode'],
+        ['0', t('resetMode') || 'Reset Mode'],
+        ['G', t('generate') || 'Generate Strategy'],
+        ['M', t('mute') || 'Toggle Mute'],
+        ['Esc', t('closeModal') || 'Close Modal'],
+        ['?', t('shortcuts') || 'This Help'],
+    ];
+    
+    const html = shortcuts.map(([key, desc]) =>
+        `<div class="flex justify-between py-1 border-b border-gray-800">
+            <kbd class="bg-navy-800 border border-gray-600 rounded px-2 py-0.5 text-xs font-mono text-ice">${key}</kbd>
+            <span class="text-gray-300 text-sm">${desc}</span>
+        </div>`
+    ).join('');
+    
+    window.showToast(
+        `<div class="space-y-0.5"><div class="font-bold text-white mb-2">⌨️ ${t('shortcuts') || 'Keyboard Shortcuts'}</div>${html}</div>`,
+        'info', 8000
+    );
 };

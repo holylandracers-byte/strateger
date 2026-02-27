@@ -8,12 +8,14 @@ class ApexTimingScraper {
         this.wsUrl = '';
         this.pollInterval = null;
         this.consecutiveErrors = 0;
-        this.maxConsecutiveErrors = 5;
+        this.maxConsecutiveErrors = 15;
         this.searchTerm = config.searchTerm || '';
         this.searchType = config.searchType || 'team';
         this.gridHtml = '';
         this.sessionId = '';
         this.debug = config.debug || false;
+        this._activeController = null;
+        this._errorLogThrottle = {};
 
         // Callbacks from LiveTimingManager
         this.onUpdate = config.onUpdate || null;
@@ -22,6 +24,15 @@ class ApexTimingScraper {
 
     log(level, msg) {
         const prefix = `[Apex ${level}]`;
+        // Throttle repeated error messages (same message within 30s)
+        if (level === 'ERROR' || level === 'WARN') {
+            const key = String(msg).substring(0, 80);
+            const now = Date.now();
+            if (this._errorLogThrottle[key] && (now - this._errorLogThrottle[key]) < 30000) {
+                return;
+            }
+            this._errorLogThrottle[key] = now;
+        }
         if (level === 'ERROR') console.error(`${prefix} ${msg}`);
         else if (level === 'WARN') console.warn(`${prefix} ${msg}`);
         else if (this.debug || level !== 'INFO') console.log(`${prefix} ${msg}`);
@@ -552,16 +563,27 @@ class ApexTimingScraper {
     }
 
     async fetchWithProxy(url) {
+        // Cancel any previous in-flight request
+        if (this._activeController) {
+            try { this._activeController.abort(); } catch(e) {}
+        }
+        
+        const controller = new AbortController();
+        this._activeController = controller;
+        
         const proxies = [
-            { prefix: '/.netlify/functions/cors-proxy?url=', label: 'netlify-proxy' },
-            { prefix: 'https://corsproxy.io/?', label: 'corsproxy' },
-            { prefix: 'https://api.allorigins.win/raw?url=', label: 'allorigins' }
+            { prefix: '/.netlify/functions/cors-proxy?url=', label: 'netlify-proxy', timeoutMs: 20000 },
+            { prefix: 'https://corsproxy.io/?', label: 'corsproxy', timeoutMs: 12000 },
+            { prefix: 'https://api.allorigins.win/raw?url=', label: 'allorigins', timeoutMs: 12000 }
         ];
 
         for (const proxy of proxies) {
+            if (!this.isRunning || controller.signal.aborted) return '';
+            
             try {
-                const controller = new AbortController();
-                const timeout = setTimeout(() => controller.abort(), 10000);
+                const timeout = setTimeout(() => {
+                    if (!controller.signal.aborted) controller.abort();
+                }, proxy.timeoutMs);
                 
                 const resp = await fetch(proxy.prefix + encodeURIComponent(url), {
                     signal: controller.signal
@@ -571,6 +593,7 @@ class ApexTimingScraper {
                 if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
                 return await resp.text();
             } catch (e) {
+                if (e.name === 'AbortError' && !this.isRunning) return '';
                 this.log('WARN', `${proxy.label} failed: ${e.message}`);
             }
         }
@@ -580,6 +603,13 @@ class ApexTimingScraper {
 
     stop() {
         this.isRunning = false;
+        
+        // Abort any in-flight HTTP request
+        if (this._activeController) {
+            try { this._activeController.abort(); } catch(e) {}
+            this._activeController = null;
+        }
+        
         if (this.ws) {
             try { this.ws.close(); } catch (e) {}
             this.ws = null;
@@ -588,6 +618,8 @@ class ApexTimingScraper {
             clearInterval(this.pollInterval);
             this.pollInterval = null;
         }
+        
+        this._errorLogThrottle = {};
     }
 }
 

@@ -41,7 +41,7 @@ window.initGoogleAuth = function() {
 
 // --- Sign In ---
 window.googleSignIn = function() {
-    if (typeof google === 'undefined') return alert('Google API not loaded.');
+    if (typeof google === 'undefined') return window.showToast('Google API not loaded.', 'error');
     
     const client = google.accounts.oauth2.initTokenClient({
         client_id: GOOGLE_CLIENT_ID,
@@ -89,7 +89,7 @@ window.fetchGoogleUserInfo = async function(accessToken) {
         
     } catch (error) {
         console.error(error);
-        alert('Auth Error: ' + error.message);
+        window.showToast('Auth Error: ' + error.message, 'error');
         window.googleSignOut();
     }
 };
@@ -143,9 +143,7 @@ window.updateGoogleUI = function(signedIn) {
 
 // --- Email Functions ---
 window.showTeamEmailModal = function() {
-    if (!googleUser) return alert(window.t('signInGoogle'));
-    
-    // שחזור נמענים אחרונים
+    if (!googleUser) return window.showToast(window.t('signInGoogle'), 'warning');
     const savedRecipients = localStorage.getItem('strateger_email_recipients');
     if (savedRecipients) {
         const recipientsInput = document.getElementById('emailRecipients');
@@ -168,14 +166,14 @@ window.closeEmailModal = function() {
 };
 
 window.sendTeamEmail = async function() {
-    if (!googleAccessToken) return alert(window.t('signInGoogle'));
+    if (!googleAccessToken) return window.showToast(window.t('signInGoogle'), 'warning');
     
     const recipients = document.getElementById('emailRecipients').value;
     const subject = document.getElementById('emailSubject').value;
     let message = document.getElementById('emailMessage').value;
     const attachStrategy = document.getElementById('attachStrategy').checked;
     
-    if (!recipients || !subject) return alert('Missing fields');
+    if (!recipients || !subject) return window.showToast('Missing fields', 'warning');
 
     // שמירת נמענים להיסטוריה
     localStorage.setItem('strateger_email_recipients', recipients);
@@ -216,18 +214,18 @@ window.sendTeamEmail = async function() {
         });
         
         if (response.ok) {
-            alert('✅ Email sent!');
+            window.showToast('✅ Email sent!', 'success');
             window.closeEmailModal();
         } else {
             throw new Error('Failed to send email');
         }
     } catch (e) {
-        alert('Error sending email: ' + e.message);
+        window.showToast('Error sending email: ' + e.message, 'error');
     }
 };
 
 window.shareStrategyEmail = function() {
-    if (!window.cachedStrategy && !window.previewData) return alert('Generate strategy first');
+    if (!window.cachedStrategy && !window.previewData) return window.showToast('Generate strategy first', 'warning');
     window.showTeamEmailModal();
     const subInput = document.getElementById('emailSubject');
     if(subInput) subInput.value = '🏎️ Race Strategy Plan';
@@ -235,7 +233,7 @@ window.shareStrategyEmail = function() {
 
 // --- Calendar Functions ---
 window.checkTeamAvailability = async function() {
-    if (!googleAccessToken) return alert(window.t('signInGoogle'));
+    if (!googleAccessToken) return window.showToast(window.t('signInGoogle'), 'warning');
     
     const dateStr = prompt('Enter date (YYYY-MM-DD):', new Date().toISOString().split('T')[0]);
     if (!dateStr) return;
@@ -251,7 +249,7 @@ window.checkTeamAvailability = async function() {
         const data = await res.json();
         
         if (!data.items || data.items.length === 0) {
-            alert(window.t('noEvents'));
+            window.showToast(window.t('noEvents'), 'info');
         } else {
             let msg = `${window.t('eventsFound')}\n`;
             data.items.forEach(event => {
@@ -260,16 +258,16 @@ window.checkTeamAvailability = async function() {
                     : 'All Day';
                 msg += `• ${start}: ${event.summary}\n`;
             });
-            alert(msg);
+            window.showToast(msg, 'info', 8000);
         }
     } catch (e) {
         console.error(e);
-        alert('Calendar Error: ' + e.message);
+        window.showToast('Calendar Error: ' + e.message, 'error');
     }
 };
 
 window.showCalendarModal = function() {
-    if (!googleUser) return alert(window.t('signInGoogle'));
+    if (!googleUser) return window.showToast(window.t('signInGoogle'), 'warning');
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('calendarDate').value = today;
     document.getElementById('calendarTime').value = '09:00';
@@ -302,7 +300,7 @@ window.addToGoogleCalendar = async function() {
 
     // בדיקת התחברות
     if (!googleUser) {
-        alert(t('googleLogin'));
+        window.showToast(t('googleLogin'), 'warning');
         window.handleGoogleLogin();
         return;
     }
@@ -333,17 +331,17 @@ window.addToGoogleCalendar = async function() {
         });
         
         if(res.ok) {
-            alert('✅ ' + t('eventCreated'));
+            window.showToast('✅ ' + t('eventCreated'), 'success');
         } else {
             throw new Error('API Error');
         }
     } catch(e) {
-        alert('❌ ' + t('eventError') + ': ' + e.message);
+        window.showToast('❌ ' + t('eventError') + ': ' + e.message, 'error');
     }
 };
 
 window.createCalendarEvent = async function() {
-    if (!googleAccessToken) return alert(window.t('signInGoogle'));
+    if (!googleAccessToken) return window.showToast(window.t('signInGoogle'), 'warning');
     
     const title = document.getElementById('calendarTitle').value;
     const date = document.getElementById('calendarDate').value;
@@ -351,7 +349,7 @@ window.createCalendarEvent = async function() {
     const location = document.getElementById('calendarLocation').value;
     const useRange = document.getElementById('calendarUseRange').checked;
     
-    if (!title || !date || !time) return alert('Missing required fields');
+    if (!title || !date || !time) return window.showToast('Missing required fields', 'warning');
     
     const startDateTime = new Date(`${date}T${time}`);
     let endDateTime;
@@ -359,9 +357,9 @@ window.createCalendarEvent = async function() {
     if (useRange) {
         const endDate = document.getElementById('calendarEndDate').value;
         const endTime = document.getElementById('calendarEndTime').value;
-        if (!endDate || !endTime) return alert('Please fill in end date and time for date range');
+        if (!endDate || !endTime) return window.showToast('Please fill in end date and time for date range', 'warning');
         endDateTime = new Date(`${endDate}T${endTime}`);
-        if (endDateTime <= startDateTime) return alert('End date/time must be after start date/time');
+        if (endDateTime <= startDateTime) return window.showToast('End date/time must be after start date/time', 'warning');
     } else {
         // Single day event - use race duration or default to same day end
         const raceDur = parseFloat(document.getElementById('raceDuration')?.value || 12);
@@ -387,13 +385,13 @@ window.createCalendarEvent = async function() {
         });
         
         if(res.ok) {
-            alert('✅ Event created!');
+            window.showToast('✅ Event created!', 'success');
             window.closeCalendarModal();
         } else {
             throw new Error('Failed to create event');
         }
     } catch(e) {
-        alert('Error: ' + e.message);
+        window.showToast('Error: ' + e.message, 'error');
     }
 };
 

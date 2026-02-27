@@ -26,6 +26,8 @@ class RaceFacerScraper {
         this.consecutiveErrors = 0;
         this.lastSuccessTime = null;
         this.updateCount = 0;
+        this._activeController = null; // Track the current AbortController
+        this._errorLogThrottle = {}; // Throttle repeated error messages
         
         this.apiUrl = `https://live.racefacer.com/ajax/live-data?slug=${this.config.raceSlug}`;
         
@@ -41,6 +43,15 @@ class RaceFacerScraper {
 
     log(message, type = 'info') {
         if (this.config.debug || type === 'error') {
+            // Throttle repeated error messages (same message within 30s)
+            if (type === 'error') {
+                const key = String(message).substring(0, 80);
+                const now = Date.now();
+                if (this._errorLogThrottle[key] && (now - this._errorLogThrottle[key]) < 30000) {
+                    return; // Skip duplicate error within 30s
+                }
+                this._errorLogThrottle[key] = now;
+            }
             const timestamp = new Date().toLocaleTimeString();
             console.log(`[${timestamp}] [RaceFacer ${type.toUpperCase()}]`, message);
         }
@@ -52,18 +63,35 @@ class RaceFacerScraper {
     }
 
     async fetchWithProxy(url) {
+        // Guard: if scraper was stopped, don't even start fetching
+        if (!this.isRunning) return null;
+        
         const urlWithCacheBust = this.addCacheBuster(url);
         this.log(`Fetching: ${urlWithCacheBust.substring(0, 100)}...`);
         
+        // Cancel any previous in-flight request
+        if (this._activeController) {
+            try { this._activeController.abort(); } catch(e) {}
+        }
+        
+        const controller = new AbortController();
+        this._activeController = controller;
+        
         for (let attempt = 0; attempt < this.proxies.length * 2; attempt++) {
+            // Abort guard: check if stopped between attempts
+            if (!this.isRunning || controller.signal.aborted) return null;
+            
             const proxy = this.proxies[this.currentProxyIndex];
             
             try {
                 const proxyUrl = proxy.url + encodeURIComponent(urlWithCacheBust);
                 this.log(`Attempt ${attempt + 1}: Using ${proxy.name}`);
                 
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 10000);
+                // Use longer timeout for Netlify (cold starts), shorter for external proxies
+                const timeoutMs = proxy.name === 'netlify' ? 20000 : 12000;
+                const timeoutId = setTimeout(() => {
+                    if (!controller.signal.aborted) controller.abort();
+                }, timeoutMs);
                 
                 const response = await fetch(proxyUrl, {
                     method: 'GET',
@@ -98,11 +126,20 @@ class RaceFacerScraper {
                     this.log(`${proxy.name} returned ${response.status}`, 'warn');
                 }
             } catch (error) {
-                this.log(`${proxy.name} failed: ${error.message}`, 'error');
+                // Don't log abort errors when scraper was intentionally stopped
+                if (error.name === 'AbortError') {
+                    if (!this.isRunning) return null;
+                    this.log(`${proxy.name} timed out`, 'warn');
+                } else {
+                    this.log(`${proxy.name} failed: ${error.message}`, 'error');
+                }
             }
             
             this.currentProxyIndex = (this.currentProxyIndex + 1) % this.proxies.length;
-            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            // Exponential backoff between retries (500ms, 1000ms, 1500ms...)
+            const backoffMs = Math.min(500 * (attempt + 1), 3000);
+            await new Promise(resolve => setTimeout(resolve, backoffMs));
         }
         
         throw new Error('All proxies failed after multiple attempts');
@@ -148,7 +185,11 @@ class RaceFacerScraper {
             inPit: run.in_pit,
             pitCount: run.number_of_pits,
             currentLapMs: run.current_lap_milliseconds,
-            status: run.run_status
+            status: run.run_status,
+            // Penalty fields from RaceFacer API
+            penalty: run.penalty || run.penalties || 0,
+            penaltyTime: run.penalty_time || run.penalty_seconds || 0,
+            penaltyReason: run.penalty_reason || run.penalty_description || ''
         }));
 
         return {
@@ -187,10 +228,16 @@ class RaceFacerScraper {
 
     async fetchLiveData() {
         try {
+            if (!this.isRunning) return null;
+            
             this.log(`\n=== Update #${this.updateCount + 1} ===`);
             
             const startTime = Date.now();
             const apiResponse = await this.fetchWithProxy(this.apiUrl);
+            
+            // fetchWithProxy returns null when scraper was stopped mid-flight
+            if (!apiResponse) return null;
+            
             const fetchDuration = Date.now() - startTime;
             
             this.log(`Fetch completed in ${fetchDuration}ms`);
@@ -232,9 +279,21 @@ class RaceFacerScraper {
                 this.config.onError(error, this.consecutiveErrors);
             }
             
-            if (this.consecutiveErrors >= 5) {
+            // Raise threshold: only stop after 15 consecutive failures (was 5)
+            // Also increase poll interval on repeated failures (backoff)
+            if (this.consecutiveErrors >= 15) {
                 this.log('🛑 Too many consecutive errors, stopping scraper', 'error');
                 this.stop();
+            } else if (this.consecutiveErrors >= 5 && this.intervalId) {
+                // Slow down polling after 5 consecutive errors
+                clearInterval(this.intervalId);
+                const backoffInterval = Math.min(this.config.updateInterval * 2, 30000);
+                this.intervalId = setInterval(() => {
+                    if (this.isRunning) {
+                        this.fetchLiveData().catch(e => {});
+                    }
+                }, backoffInterval);
+                this.log(`⚠️ Slowed polling to ${backoffInterval}ms after ${this.consecutiveErrors} errors`, 'warn');
             }
             
             throw error;
@@ -243,10 +302,13 @@ class RaceFacerScraper {
 
     start() {
         if (this.isRunning) {
-            this.log('Already running', 'warn');
-            return;
+            this.log('Already running, restarting...', 'warn');
+            this.stop();
         }
 
+        // Rebuild API URL to pick up any config changes (e.g., new slug)
+        this.apiUrl = `https://live.racefacer.com/ajax/live-data?slug=${this.config.raceSlug}`;
+        
         this.log('🚀 Starting live timing scraper...');
         this.log(`Race: ${this.config.raceSlug}`);
         this.log(`Search: "${this.config.searchTerm}"`);
@@ -255,9 +317,13 @@ class RaceFacerScraper {
         this.isRunning = true;
         this.consecutiveErrors = 0;
         this.updateCount = 0;
+        this.currentProxyIndex = 0; // Reset proxy rotation
+        this._errorLogThrottle = {};
         
         this.fetchLiveData().catch(e => {
-            this.log(`Initial fetch failed: ${e.message}`, 'error');
+            if (this.isRunning) {
+                this.log(`Initial fetch failed: ${e.message}`, 'error');
+            }
         });
         
         this.intervalId = setInterval(() => {
@@ -278,10 +344,18 @@ class RaceFacerScraper {
         this.log('⏹️ Stopping live timing scraper...');
         this.isRunning = false;
         
+        // Abort any in-flight request immediately
+        if (this._activeController) {
+            try { this._activeController.abort(); } catch(e) {}
+            this._activeController = null;
+        }
+        
         if (this.intervalId) {
             clearInterval(this.intervalId);
             this.intervalId = null;
         }
+        
+        this._errorLogThrottle = {};
         
         this.log('✅ Scraper stopped');
     }

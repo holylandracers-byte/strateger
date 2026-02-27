@@ -387,9 +387,42 @@ window.initHostPeer = function() {
                     return;
                 }
 
+                // === Handle Driver Identification (driver clients bypass viewer approval) ===
+                if (data.type === 'DRIVER_IDENTIFY') {
+                    console.log(`🏎️ Peer ${c.peer.substring(0, 8)} identified as DRIVER`);
+                    c._isDriver = true;
+                    // Auto-approve driver so they receive state updates
+                    if (!window.approvedViewers.has(c.peer)) {
+                        window.approvedViewers.set(c.peer, true);
+                    }
+                    // If they were pending as a viewer, remove from pending
+                    if (window.pendingViewerApprovals.has(c.peer)) {
+                        window.pendingViewerApprovals.delete(c.peer);
+                        window.updateViewerApprovalUI();
+                    }
+                    // Remove from viewer name tracking (they're a driver, not a chat viewer)
+                    if (c.viewerName) {
+                        window.usedViewerNames.delete(c.viewerName);
+                        c.viewerName = null;
+                        window.connectedViewers.set(c.peer, c);
+                        window.updateViewerDropdown();
+                    }
+                    // Send fresh state immediately
+                    try {
+                        c.send({ type: 'UPDATE', state: window.state, config: window.config, drivers: window.drivers, liveData: window.liveData, liveTimingConfig: window.liveTimingConfig, searchConfig: window.searchConfig, currentPitAdjustment: window.currentPitAdjustment || 0, timestamp: Date.now() });
+                    } catch(e) {}
+                    return;
+                }
+                
                 // === Handle Viewer Approval Requests ===
                 if (data.type === 'VIEWER_APPROVAL_REQUEST') {
                     const name = data.name || 'Unknown';
+                    
+                    // If this peer was previously a driver, clean up driver tracking
+                    if (c._isDriver) {
+                        console.log(`🔄 Peer ${c.peer.substring(0, 8)} switching from driver to viewer`);
+                        c._isDriver = false;
+                    }
                     
                     // If this viewer was previously approved (reconnection), auto-accept
                     if (window.approvedViewers.has(c.peer)) {
@@ -430,8 +463,8 @@ window.initHostPeer = function() {
                     return; // Don't process further until approved
                 }
                 
-                // === All other messages require approval (unless it's APPROVAL_GRANTED message) ===
-                if (!window.approvedViewers.has(c.peer) && data.type !== 'APPROVAL_GRANTED') {
+                // === All other messages require approval (unless it's APPROVAL_GRANTED or DRIVER_IDENTIFY) ===
+                if (!window.approvedViewers.has(c.peer) && data.type !== 'APPROVAL_GRANTED' && data.type !== 'DRIVER_IDENTIFY') {
                     // Pending approval - only allow approval requests
                     console.log(`⏳ Viewer ${c.peer} is pending approval. Ignoring ${data.type} message.`);
                     return;
@@ -513,6 +546,15 @@ window.initHostPeer = function() {
                 // === Handle Driver Pit Entry/Exit requests from client driver mode ===
                 if (data.type === 'DRIVER_PIT_ENTRY') {
                     console.log(`🔧 Driver ${data.driverIdx} requested PIT ENTRY from client`);
+                    // Mark this peer as a driver — auto-approve and remove from viewer lists
+                    if (!window.approvedViewers.has(c.peer)) {
+                        window.approvedViewers.set(c.peer, true);
+                    }
+                    // If they were pending as a viewer, clean up
+                    if (window.pendingViewerApprovals.has(c.peer)) {
+                        window.pendingViewerApprovals.delete(c.peer);
+                        window.updateViewerApprovalUI();
+                    }
                     if (!window.state.isInPit && window.state.isRunning) {
                         window.confirmPitEntry();
                         if (typeof window.broadcast === 'function') window.broadcast();
@@ -520,6 +562,10 @@ window.initHostPeer = function() {
                 }
                 if (data.type === 'DRIVER_PIT_EXIT') {
                     console.log(`🔧 Driver ${data.driverIdx} requested PIT EXIT from client`);
+                    // Mark this peer as a driver — auto-approve and remove from viewer lists
+                    if (!window.approvedViewers.has(c.peer)) {
+                        window.approvedViewers.set(c.peer, true);
+                    }
                     if (window.state.isInPit && window.state.isRunning) {
                         // Only allow exit if release timer is ready (green zone)
                         if (window.alertState && window.alertState.lastZone === 'go') {
@@ -554,10 +600,8 @@ window.initHostPeer = function() {
 
 window.copyInviteLink = function() {
     const id = window.myId; 
-    if (!id) return alert("No connection ID yet");
-    
+    if (!id) return window.showToast('No connection ID yet', 'warning');
     const link = `${window.location.origin}${window.location.pathname}?join=${id}`;
-    
     navigator.clipboard.writeText(link).then(() => {
         const btn = document.getElementById('shareRaceBtn');
         const original = btn.innerHTML;
@@ -576,10 +620,8 @@ window.copyInviteLink = function() {
 // === Copy Driver Link (opens directly into Driver Mode HUD) ===
 window.copyDriverLink = function() {
     const id = window.myId;
-    if (!id) return alert("No connection ID yet");
-    
+    if (!id) return window.showToast('No connection ID yet', 'warning');
     const link = `${window.location.origin}${window.location.pathname}?driver=${id}`;
-    
     navigator.clipboard.writeText(link).then(() => {
         const btn = document.getElementById('driverLinkBtn');
         if (!btn) return;
@@ -630,6 +672,55 @@ window.reconnectState = {
     retryCount: 0,
     maxRetries: 10,
     retryDelay: 1000 // Start with 1 second
+};
+
+// === Role Exclusivity: Driver ↔ Viewer ===
+// Uses BroadcastChannel so if same person opens driver link in one tab
+// and viewer link in another, the older tab auto-disconnects.
+window._roleChannel = null;
+try {
+    window._roleChannel = new BroadcastChannel('strateger_role');
+    window._roleChannel.onmessage = function(e) {
+        const msg = e.data;
+        if (!msg || !msg.action) return;
+        if (msg.action === 'ROLE_CLAIM') {
+            // Another tab claimed a role for the same host
+            const myRole = window._autoDriverMode ? 'driver' : 'viewer';
+            if (msg.hostId === window.reconnectState.hostId && msg.role !== myRole) {
+                // Different role for same host — we should disconnect
+                console.log(`🔄 Another tab connected as ${msg.role}. Disconnecting this ${myRole} session.`);
+                try { if (window.conn) window.conn.close(); } catch(e) {}
+                try { if (window.peer) window.peer.destroy(); } catch(e) {}
+                window.conn = null;
+                window.peer = null;
+                // Show a message
+                const waitScreen = document.getElementById('clientWaitScreen');
+                const dashboard = document.getElementById('raceDashboard');
+                if (dashboard) dashboard.classList.add('hidden');
+                if (waitScreen) {
+                    waitScreen.classList.remove('hidden');
+                    waitScreen.innerHTML = `<div class="flex flex-col items-center justify-center gap-2">
+                        <div class="text-xl text-yellow-400 font-bold">⚠️ Role Changed</div>
+                        <div class="text-sm text-gray-400 mt-2">You connected as <b>${msg.role}</b> in another tab.</div>
+                        <div class="text-xs text-gray-500 mt-1">This ${myRole} session was closed.</div>
+                        <button onclick="location.reload()" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-500">Rejoin</button>
+                    </div>`;
+                }
+            }
+        }
+    };
+} catch(e) {
+    // BroadcastChannel not supported — fallback: no cross-tab exclusivity
+    console.warn('BroadcastChannel not available, role exclusivity across tabs disabled');
+}
+
+// Announce role claim to other tabs
+window._claimRole = function(role, hostId) {
+    if (window._roleChannel) {
+        try { window._roleChannel.postMessage({ action: 'ROLE_CLAIM', role: role, hostId: hostId }); } catch(e) {}
+    }
+    // Also store in localStorage for same-tab checks
+    try { localStorage.setItem('strateger_active_role', JSON.stringify({ role, hostId, ts: Date.now() })); } catch(e) {}
 };
 
 // Modify connectToHost to handle already used peer IDs
@@ -684,6 +775,17 @@ window.connectToHost = function(hostId) {
                 // Reset reconnection state on successful connection
                 window.resetReconnectionState();
                 window.conn.send('REQUEST_INIT');
+                
+                // === Claim role for cross-tab exclusivity ===
+                const myRole = window._autoDriverMode ? 'driver' : 'viewer';
+                if (typeof window._claimRole === 'function') {
+                    window._claimRole(myRole, hostId);
+                }
+                
+                // If connecting as a driver, notify host so it auto-approves us
+                if (window._autoDriverMode) {
+                    window.conn.send({ type: 'DRIVER_IDENTIFY', timestamp: Date.now() });
+                }
                 
                 // Auto-send viewer approval request with pending name
                 if (window.pendingChatName && !window._autoDriverMode) {
@@ -781,7 +883,7 @@ window.connectToHost = function(hostId) {
                     if (window.role === 'client' && typeof window.onNameRejected === 'function') {
                         window.onNameRejected(data.message || 'Name rejected by host');
                     } else {
-                        alert(data.message || 'Error from host');
+                        window.showToast(data.message || 'Error from host', 'error');
                     }
                 } else if (data.type === 'NAME_ACCEPTED') {
                     // Host confirmed/normalized our name
@@ -868,7 +970,7 @@ window.connectToHost = function(hostId) {
                 } else if (data.type === 'VIEWER_REMOVED') {
                     // We were removed by the host
                     console.log('🚫 You have been removed from this race.');
-                    alert(data.message || 'You have been removed from this race');
+                    window.showToast(data.message || 'You have been removed from this race', 'error', 6000);
                     // Close connection
                     setTimeout(() => {
                         try { window.conn.close(); } catch(e) {}

@@ -1257,6 +1257,112 @@ window.translations = {
         onboardTitle3: "プレビューと調整", onboardDesc3: "「戦略プレビュー」をタップして完全なスティント計画を確認。ドラッグで並べ替え、時間を調整、またはクラウドに保存できます。",
         onboardTitle4: "レーススタート！", onboardDesc4: "「レース開始」を押すとライブダッシュボードが起動 — タイマーを追跡、ピットアラートを受信、チームとライブリンクを共有、ドライバー交代をリアルタイムで管理。",
         onboardSkip: "スキップ", onboardNext: "次へ", onboardDone: "始めよう！",
+    },
+    el: {
+        ltSearchType: "Φιλτράρισμα:", ltTeam: "Ομάδα", ltDriver: "Οδηγός", ltKart: "Καρτ αρ.", ltPlaceholder: "Αναζήτηση...",
+        previewTitle: "Προεπισκόπηση Στρατηγικής", addToCalendar: "Προσθήκη στο ημερολόγιο", timeline: "Χρονοδιάγραμμα", driverSchedule: "Πρόγραμμα Οδηγών", totalTime: "Συνολικός Χρόνος", close: "Κλείσιμο",
+        googleLogin: "Σύνδεση με Google", eventCreated: "Το γεγονός δημιουργήθηκε!", eventError: "Σφάλμα δημιουργίας", raceEventTitle: "Αγώνας αντοχής",
+        errImpossible: "Αδύνατη στρατηγική!", errAvgHigh: "Μέσος > Μέγιστος. Προσθέστε στάσεις.", errAvgLow: "Μέσος < Ελάχιστος. Μειώστε στάσεις.",
+        appSubtitle: "Διαχειριστής Στρατηγικής", generalInfo: "Γενικές Πληροφορίες", advancedConstraints: "Προχωρημένοι Περιορισμοί", driverConfig: "Οδηγοί", aiTitle: "Στρατηγική AI",
+        lblDuration: "Διάρκεια (Ω)", lblStops: "Απαιτ. στάσεις", lblMinStint: "Ελάχ. stint", lblMaxStint: "Μέγ. stint", lblPitTime: "Χρόνος pit", lblPitClosedStart: "🚫 Κλειστό στην αρχή", lblPitClosedEnd: "🚫 Κλειστό στο τέλος",
+        lblMinDrive: "Ελάχ. σύνολο (λεπ)", lblMaxDrive: "Μέγ. σύνολο (λεπ)", lblBuffer: "Ειδοποίηση (δευτ)", lblDoubles: "Επιτρεπτά διπλά", lblSquads: "Χρήση ομάδων", lblFuel: "Καύσιμο", lblFuelTank: "Ντεπόζιτο (λεπ)",
+        addDriver: "+ Προσθήκη", generateStrategy: "Δημιουργία (AI)", previewStrategy: "Προεπισκόπηση", startRace: "Εκκίνηση", loadSaved: "Φόρτωση",
+        raceTime: "ΧΡΟΝΟΣ ΑΓΩΝΑ", stops: "ΣΤΑΣΕΙΣ", live: "LIVE", stop: "Στοπ", pos: "ΘΕΣ", last: "ΤΕΛ", best: "ΚΑΛ", targetStint: "ΣΤΟΧΟΣ STINT", buildTime: "ΧΡΟΝΟΣ ΚΑΤΑΣΚ",
+        current: "ΤΡΕΧΩΝ", stintTime: "ΧΡΟΝΟΣ STINT", nextDriver: "Επόμενος", penalty: "Ποινή", enterPit: "ΕΙΣΟΔΟΣ PIT", push: "ΠΙΕΣΗ", problem: "ΠΡΟΒΛΗΜΑ",
+        resetMode: "Επαναφορά", nightMode: "ΝΥΧΤΕΡΙΝΗ ΛΕΙΤ.", dry: "Στεγνό", wet: "Βρεγμένο", drying: "Στεγνώνει", boxNow: "PIT ΤΩΡΑ!", stayOnTrackUntilFurther: "Μείνετε στην πίστα μέχρι νεοτέρας", pushMode: "ΛΕΙΤ. ΠΙΕΣΗΣ",
+        squadSleeping: "ΟΜΑΔΑ ΚΟΙΜΑΤΑΙ", squadWakeUp: "ΞΥΠΝΗΜΑ ΟΜΑΔΑΣ", finalLap: "Τελευταίος γύρος", calculating: "Υπολογισμός...", manualInput: "Χειροκίνητα",
+        saveStratTitle: "Αποθήκευση", libTitle: "Βιβλιοθήκη", aiPlaceholder: "πχ: 'Ο οδηγός 1 προτιμά...'",
+        thStart: "Αρχή", thEnd: "Τέλος", thType: "Τύπος", thDriver: "Οδηγός", thDuration: "Διάρκεια",
+        liveTiming: "Live χρονομέτρηση", liveTimingUrl: "URL χρονομέτρησης...", connectLive: "Σύνδεση", disconnectLive: "Αποσύνδεση", searchTeam: "Αναζήτηση ομάδας...", searchDriver: "Αναζήτηση οδηγού...", searchKart: "Αναζήτηση καρτ...", demoMode: "Λειτουργία demo",
+        sendEmail: "Αποστολή", cancel: "Ακύρωση", create: "Δημιουργία", save: "Αποθήκευση", load: "Φόρτωση", delete: "Διαγραφή",
+        activeRaceFound: "Βρέθηκε ενεργός αγώνας", continueRace: "Συνέχεια", discardRace: "Απόρριψη",
+        areYouSure: "Είστε σίγουροι;", deleteWarning: "Αυτό θα διαγράψει τα δεδομένα μόνιμα.", yesDelete: "Ναι, διαγραφή", noKeep: "Όχι, κράτα",
+        invite: "Πρόσκληση", synced: "Συγχρονισμένο",
+        chatTitle: "Chat αγώνα / Ε&Α", enterName: "Εισάγετε το όνομά σας", startChat: "Έναρξη chat", typeMessage: "Γράψτε μια πρόταση...", send: "Αποστολή", viewer: "Θεατής", host: "ΟΙΚΟΔΕΣΠΟΤΗΣ", suggestion: "Πρόταση",
+        strategyOutlook: "ΠΡΟΟΠΤΙΚΗ ΣΤΡΑΤΗΓΙΚΗΣ",
+        timeLeft: "ΥΠΟΛ. ΧΡΟΝΟΣ",
+        penalty: "ΠΟΙΝΗ",
+        enterPit: "ΕΙΣΟΔΟΣ PIT",
+        nextDriverLabel: "ΕΠΟΜΕΝΟΣ ΟΔΗΓΟΣ",
+        totalHeader: "ΣΥΝΟΛΟ",
+        stopsHeader: "STINTS",
+        driverHeader: "ΟΔΗΓΟΣ",
+        stintsLeft: "ΥΠΟΛ. STINTS",
+        future: "ΜΕΛΛΟΝ",
+        max: "ΜΕΓ",
+        min: "ΕΛΑΧ",
+        rest: "ΥΠΟΛΟΙΠΟ",
+        buffer: "Απόθεμα",
+        impossible: "ΑΔΥΝΑΤΟ",
+        addStop: "ΠΡΟΣΘΗΚΗ ΣΤΑΣΗΣ",
+        avg: "ΜΕΣ",
+        finalLap: "ΤΕΛΕΥΤΑΙΟΣ ΓΥΡΟΣ",
+        inPit: "ΣΤΟ PIT",
+        nextLabel: "Επόμενος:",
+        shortStintMsg: "⚠️ ΜΙΚΡΟ STINT! Κίνδυνος ποινής",
+        cancelEntry: "Ακύρωση",
+        notifyDriver: "📢 Ειδοποίηση οδηγού",
+        driverNotified: "✓ Ο οδηγός ειδοποιήθηκε",
+        includesAdj: "Περιλαμβάνει προσαρμογή:",
+        missingSeconds: "Λείπει",
+        proceedToPit: "Συνέχεια στο pit;",
+        wait: "ΠΕΡΙΜΕΝΕ...",
+        getReady: "ΕΤΟΙΜΑΣΟΥ...",
+        go: "ΠΑΜΕ!",
+        orangeZone: "⚠️ Πορτοκαλί ζώνη - μόνο ΕΙΔΟΠΟΙΗΣΗ",
+        targetLabel: "ΣΤΟΧΟΣ",
+        driverLink: "Σύνδεσμος οδηγού",
+        tapToPit: "ΠΑΤΗΣΤΕ ΓΙΑ ΕΙΣΟΔΟ ΣΤΟ PIT",
+        tapToExit: "ΠΑΤΗΣΤΕ ΓΙΑ ΕΞΟΔΟ ΑΠΟ ΤΟ PIT",
+        pitsConfirm: "PIT;",
+        tapAgainConfirm: "ΠΑΤΗΣΤΕ ΞΑΝΑ ΓΙΑ ΕΠΙΒΕΒΑΙΩΣΗ",
+        stintBest: "Κ.STINT",
+        googleLoginBtn: "Σύνδεση",
+        testBtn: "Δοκιμή",
+        demoBtn: "Demo",
+        demoRace: "Demo",
+        countdownPrefix: "Αγώνας σε",
+        countdownGo: "ΩΡΑ ΑΓΩΝΑ! Ξεκινήστε τώρα!",
+        countdownAlert: "⏰ Αγώνας σε {min} λεπτά!",
+        autoStarting: "Αυτόματη εκκίνηση...",
+        lblAutoStart: "Αυτόματη εκκίνηση στην ώρα",
+        lblDoublesHint: "Ίδιος οδηγός διαδοχικά",
+        lblSquadsHint: "Εναλλαγή ομάδων για νυχτερινές βάρδιες & μακρούς αγώνες", lblSquadsHintActive: "Οι οδηγοί χωρίστηκαν σε {n} εναλλασσόμενες ομάδες",
+        lblFuelHint: "Έξυπνοι περιορισμοί καυσίμου & διαχείριση ντεπόζιτου",
+        statusHeader: "Κατάσταση",
+        onTrack: "Στην Πίστα",
+        inPits: "Στα Pit",
+        squadSwitch: "Αλλαγή Ομάδας",
+        viewerApprovalRequest: "Αίτημα συμμετοχής",
+        approveViewer: "Έγκριση",
+        rejectViewer: "Απόρριψη",
+        removeViewer: "Αφαίρεση",
+        approvalPending: "Εκκρεμεί Έγκριση",
+        approvalRejected: "Το αίτημά σας απορρίφθηκε από τον οικοδεσπότη",
+        bugReport: "Αναφορά Σφάλματος",
+        featureSuggestion: "Πρόταση Λειτουργίας",
+        bugReportTitle: "Αναφορά Σφάλματος",
+        featureSuggestionTitle: "Πρόταση Λειτουργίας",
+        describeIssue: "Περιγράψτε το πρόβλημα ή την πρόταση...",
+        feedbackTitle: "Σχόλια",
+        contactUs: "Επικοινωνία",
+        goodPace: "Καλός Ρυθμός",
+        lblStartTime: "🕐 Ώρα Εκκίνησης", lblStartDate: "📅 Ημερομηνία Αγώνα",
+        lblSquadSchedule: "🔄 Παράθυρο Ομάδων", lblSquadScheduleHint: "Εκτός παραθύρου, όλοι οι οδηγοί μοιράζονται ισομερώς. Εντός, οι ομάδες εναλλάσσονται.",
+        lblSquadWindowStart: "Αρχή παραθύρου", lblSquadWindowEnd: "Τέλος παραθύρου",
+        squadOff: "Ανενεργό", squad2: "2 Ομάδες", squad3: "3 Ομάδες", squad4: "4 Ομάδες",
+        lblAppearance: "🎨 Εμφάνιση", lblPageBg: "Φόντο σελίδας", lblColorThemes: "Θέματα χρωμάτων",
+        laps: "ΓΥΡΟΙ", gap: "ΔΙΑΦΟΡΑ", totalCompetitors: "ΑΥΤΟΚΙΝΗΤΑ", waitingData: "Αναμονή δεδομένων...",
+        boxThisLap: "🏁 PIT ΑΥΤΟ ΤΟΝ ΓΥΡΟ", boxNextLap: "📢 PIT ΕΠΟΜΕΝΟ ΓΥΡΟ", stayOut: "ΜΕΙΝΕ ΕΞΩ", onTrack: "ΣΤΗΝ ΠΙΣΤΑ", inPit: "ΣΤΟ PIT",
+        driverEntryHint: "Εισάγετε το ID αγώνα για σύνδεση", driverEntryLabel: "ID Αγώνα", driverConnect: "Σύνδεση ως οδηγός", driverIdTooShort: "Το ID είναι πολύ μικρό", joinAsDriver: "Είσοδος ως οδηγός", backToSetup: "← Πίσω στις ρυθμίσεις",
+        nextStintIn: "Το επόμενο stint σας σε", stayAwake: "Μείνε ξύπνιος", sleepOk: "Μπορείς να κοιμηθείς", yourStints: "Τα Stint σας", noStintsFound: "Δεν βρέθηκαν stint για εσάς", wakeUpAlert: "⏰ Ξύπνα! Το stint σου πλησιάζει",
+        viewerNameHint: "Εισάγετε το όνομά σας για να συμμετάσχετε στον αγώνα", viewerNameLabel: "Το Όνομά σας", requestToJoin: "Αίτημα Συμμετοχής", waitingForApproval: "Αναμονή έγκρισης...", waitingForApprovalHint: "Ο διαχειριστής του αγώνα θα εγκρίνει το αίτημά σας", viewerNameTooShort: "Το όνομα πρέπει να έχει τουλάχιστον 2 χαρακτήρες",
+        proFeature: "Λειτουργία Pro", proUpgradeTitle: "⭐ Αναβάθμιση σε Pro", proUpgradeMsg: "Ξεκλειδώστε Live Χρονομέτρηση, AI Στρατηγική, Ομάδες, απεριόριστους οδηγούς & θέματα, και πολλά άλλα!", proActivate: "Ενεργοποίηση άδειας", proDeactivate: "Απενεργοποίηση", proEnterKey: "Εισάγετε κλειδί άδειας...", proInvalidKey: "Μη έγκυρο κλειδί άδειας", proActivated: "⭐ Pro Ενεργοποιήθηκε!", proBadge: "PRO", proRequired: "απαιτεί Pro", proHaveCoupon: "🎟️ Έχετε κωδικό κουπονιού;", proApplyCoupon: "Εφαρμογή",
+        onboardTitle1: "Καλωσήρθατε στο Strateger!", onboardDesc1: "Ο βοηθός στρατηγικής pit για αγώνες αντοχής καρτ. Ρυθμίστε τον πρώτο σας αγώνα σε 3 εύκολα βήματα.",
+        onboardTitle2: "Ρυθμίστε τον αγώνα", onboardDesc2: "Εισάγετε διάρκεια, υποχρεωτικές στάσεις και ελάχ./μέγ. χρόνους stint στο πάνω μέρος. Προσθέστε τους οδηγούς σας κάτω — επιλέξτε ποιος ξεκινά και αναθέστε ομάδες για τις νυχτερινές βάρδιες.",
+        onboardTitle3: "Προεπισκόπηση & ρυθμίσεις", onboardDesc3: "Πατήστε 'Προεπισκόπηση' για να δείτε το πλήρες πλάνο stint. Σύρετε για αναδιάταξη, ρυθμίστε τις διάρκειες ή αποθηκεύστε το πλάνο στο cloud.",
+        onboardTitle4: "Ξεκινάμε!", onboardDesc4: "Πατήστε 'Εκκίνηση' και το live dashboard αναλαμβάνει — παρακολουθήστε χρονόμετρα, λάβετε ειδοποιήσεις pit, μοιραστείτε σύνδεσμο με την ομάδα σας και διαχειριστείτε αλλαγές οδηγών σε πραγματικό χρόνο.",
+        onboardSkip: "Παράλειψη", onboardNext: "Επόμενο", onboardDone: "Πάμε!",
     }
 };
 
@@ -1283,7 +1389,8 @@ window.SUPPORTED_LANGUAGES = [
     { code: 'it', name: 'Italiano (Italian)', flag: '🇮🇹' },
     { code: 'ka', name: 'ქართული (Georgian)', flag: '🇬🇪' },
     { code: 'de', name: 'Deutsch (German)', flag: '🇩🇪' },
-    { code: 'ja', name: '日本語 (Japanese)', flag: '🇯🇵' }
+    { code: 'ja', name: '日本語 (Japanese)', flag: '🇯🇵' },
+    { code: 'el', name: 'Ελληνικά (Greek)', flag: '🇬🇷' }
 ];
 
 window.setLanguage = function(lang) {
@@ -1521,7 +1628,8 @@ window.continueRace = function() {
             if (typeof window.renderFrame === 'function') window.renderFrame();
         }, 1000);
 
-        setInterval(window.saveRaceState, 10000);
+        if (window._saveInterval) clearInterval(window._saveInterval);
+        window._saveInterval = setInterval(window.saveRaceState, 10000);
 
         // Restore live timing after refresh/continue
         try {
@@ -1553,7 +1661,11 @@ window.continueRace = function() {
         console.log("✅ Race Resumed Successfully!");
 
     } catch (e) {
-        alert("Failed to resume race: " + e.message);
+        if (typeof window.showToast === 'function') {
+            window.showToast('Failed to resume race: ' + e.message, 'error');
+        } else {
+            console.error('Failed to resume race:', e.message);
+        }
         window.finalDiscardRace();
     }
 };

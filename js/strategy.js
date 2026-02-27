@@ -191,6 +191,59 @@ window.calculateStintDurations = function(config) {
     
     stintDurations[totalStints - 1] = finalStintDuration;
 
+    // Post-validation: if any stint violates min/max bounds, fall back to balanced distribution.
+    const anyViolation = stintDurations.some(d => d < safeMinStintMs || d > effectiveMaxStint);
+    if (anyViolation) {
+        console.warn("Greedy allocation violated bounds, falling back to balanced distribution.");
+        const avg = totalNetDriveTime / totalStints;
+        // Start from equal split, then adjust first/last for pit window constraints
+        for (let i = 0; i < totalStints; i++) {
+            stintDurations[i] = avg;
+        }
+        // Respect closed pit window for first stint
+        if (closedStartMs > 0 && stintDurations[0] < closedStartMs + 120000) {
+            const needed = (closedStartMs + 120000) - stintDurations[0];
+            stintDurations[0] = closedStartMs + 120000;
+            // Take from middle/last stints equally
+            const takeFrom = totalStints - 1;
+            for (let i = 1; i < totalStints; i++) {
+                stintDurations[i] -= needed / takeFrom;
+            }
+        }
+        // Respect closed pit window for last stint
+        if (closedEndMs > 0 && stintDurations[totalStints - 1] < closedEndMs + 120000) {
+            const needed = (closedEndMs + 120000) - stintDurations[totalStints - 1];
+            stintDurations[totalStints - 1] = closedEndMs + 120000;
+            const takeFrom = totalStints - 1;
+            for (let i = 0; i < totalStints - 1; i++) {
+                stintDurations[i] -= needed / takeFrom;
+            }
+        }
+        // Clamp all stints to min/max and redistribute overflow
+        for (let pass = 0; pass < 3; pass++) {
+            let overflow = 0;
+            let adjustable = 0;
+            for (let i = 0; i < totalStints; i++) {
+                if (stintDurations[i] > effectiveMaxStint) {
+                    overflow += stintDurations[i] - effectiveMaxStint;
+                    stintDurations[i] = effectiveMaxStint;
+                } else if (stintDurations[i] < safeMinStintMs) {
+                    overflow -= safeMinStintMs - stintDurations[i];
+                    stintDurations[i] = safeMinStintMs;
+                } else {
+                    adjustable++;
+                }
+            }
+            if (Math.abs(overflow) < 1000 || adjustable === 0) break;
+            const perStint = overflow / adjustable;
+            for (let i = 0; i < totalStints; i++) {
+                if (stintDurations[i] > safeMinStintMs && stintDurations[i] < effectiveMaxStint) {
+                    stintDurations[i] += perStint;
+                }
+            }
+        }
+    }
+
     // Normalize durations to whole seconds to avoid sub-second drift.
     const rounded = stintDurations.map(d => Math.round(d / 1000) * 1000);
     const sumRounded = rounded.reduce((a, b) => a + b, 0);
@@ -578,7 +631,7 @@ window.runSim = function() {
 window.generatePreview = function(silent, render) {
     if (!window.cachedStrategy) {
         window.runSim();
-        if (!window.cachedStrategy) return alert("Please configure race settings first.");
+        if (!window.cachedStrategy) return window.showToast('Please configure race settings first.', 'warning');
     }
 
     if (render && typeof window.renderPreview === 'function') {
@@ -592,7 +645,7 @@ window.generatePreview = function(silent, render) {
 window.initRace = function() {
     if (!window.cachedStrategy) {
         window.runSim();
-        if (!window.cachedStrategy) return alert("Please generate a strategy first!");
+        if (!window.cachedStrategy) return window.showToast('Please generate a strategy first!', 'warning');
     }
 
     const allowDouble = document.getElementById('allowDouble')?.checked;
@@ -600,7 +653,7 @@ window.initRace = function() {
         const stints = window.previewData.timeline.filter(t => t.type === 'stint');
         for (let i = 1; i < stints.length; i++) {
             if (stints[i].driverName === stints[i-1].driverName) {
-                alert(`⚠️ Safety Check:\nDouble Stint detected for "${stints[i].driverName}" but option is disabled.\nPlease enable 'Allow Double Stints' or fix strategy.`);
+                window.showToast(`⚠️ Double Stint detected for "${stints[i].driverName}" but option is disabled. Enable 'Allow Double Stints' or fix strategy.`, 'warning', 8000);
                 return; 
             }
         }
@@ -619,6 +672,7 @@ window.initRace = function() {
     window.state.mode = 'normal';
     window.state.isNightMode = false; // Reset night mode on race start
     window.state.currentDriverIdx = window.cachedStrategy.timeline[0].driverIdx;
+    window._raceSummaryFinalized = false; // Reset so post-race summary can compute final stint
     
     window.state.nextDriverIdx = (window.state.currentDriverIdx + 1) % window.drivers.length;
     
@@ -687,7 +741,8 @@ window.initRace = function() {
     if (typeof window.saveRaceState === 'function') {
         // === FIX: Save IMMEDIATELY so we can restore even if refreshed quickly ===
         window.saveRaceState(); 
-        setInterval(window.saveRaceState, 10000);
+        if (window._saveInterval) clearInterval(window._saveInterval);
+        window._saveInterval = setInterval(window.saveRaceState, 10000);
     }
 
     // Start live timing updates (including demo mode) if enabled

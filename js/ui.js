@@ -707,14 +707,44 @@ window.closePreview = function() {
 };
 window.openManualInput = function() {
     document.getElementById('manualInputModal').classList.remove('hidden');
+    // Pre-fill all fields from current live data
     if (window.liveData.position) document.getElementById('manualPosition').value = window.liveData.position;
+    if (window.liveData.laps) document.getElementById('manualLaps').value = window.liveData.laps;
+    if (window.liveData.lastLap) {
+        const lastMs = window.liveData.lastLap;
+        document.getElementById('manualLastLap').value = lastMs > 1000 ? (lastMs / 1000).toFixed(3) : lastMs;
+    }
+    if (window.liveData.bestLap) {
+        const bestMs = window.liveData.bestLap;
+        document.getElementById('manualBestLap').value = bestMs > 1000 ? (bestMs / 1000).toFixed(3) : bestMs;
+    }
+    if (window.liveData.gap) {
+        const gapStr = String(window.liveData.gap).replace('+', '');
+        const gapVal = parseFloat(gapStr);
+        if (!isNaN(gapVal)) document.getElementById('manualGap').value = gapVal;
+    }
 };
 window.closeManualInput = function() { document.getElementById('manualInputModal').classList.add('hidden'); };
 window.applyManualInput = function() {
     const pos = parseInt(document.getElementById('manualPosition').value);
     const laps = parseInt(document.getElementById('manualLaps').value);
-    if (pos) window.liveData.position = pos;
-    if (laps) window.liveData.laps = laps;
+    const lastLapSec = parseFloat(document.getElementById('manualLastLap').value);
+    const bestLapSec = parseFloat(document.getElementById('manualBestLap').value);
+    const gapVal = parseFloat(document.getElementById('manualGap').value);
+    
+    if (pos && pos > 0) window.liveData.position = pos;
+    if (!isNaN(laps) && laps >= 0) window.liveData.laps = laps;
+    if (lastLapSec && lastLapSec > 0) {
+        // Store as milliseconds (convert from seconds input)
+        window.liveData.lastLap = Math.round(lastLapSec * 1000);
+    }
+    if (bestLapSec && bestLapSec > 0) {
+        window.liveData.bestLap = Math.round(bestLapSec * 1000);
+    }
+    if (!isNaN(gapVal)) {
+        window.liveData.gap = gapVal >= 0 ? `+${gapVal.toFixed(3)}` : `${gapVal.toFixed(3)}`;
+    }
+    
     if (typeof window.updateLiveTimingUI === 'function') {
         window.liveTimingConfig.enabled = true;
         window.updateLiveTimingUI();
@@ -744,7 +774,7 @@ window.performStrategySave = async function() {
     const name = document.getElementById('saveStrategyName').value || 'Untitled';
     const visibility = document.querySelector('input[name="strategyVisibility"]:checked')?.value || 'private';
     
-    if (!window.cachedStrategy) return alert("No strategy generated yet!");
+    if (!window.cachedStrategy) return window.showToast("No strategy generated yet!", 'warning');
 
     // הכנת הנתונים לשליחה לשרת
     const payload = {
@@ -776,12 +806,12 @@ window.performStrategySave = async function() {
             throw new Error(result.error || 'Server error');
         }
         
-        alert("Strategy Saved to Cloud Database! ☁️");
+        window.showToast('☁️ Strategy saved to cloud!', 'success');
         window.closeSaveStrategyModal();
 
     } catch (e) {
         console.error("Save failed:", e);
-        alert("Cloud Save Failed: " + e.message);
+        window.showToast('Cloud save failed: ' + e.message, 'error');
         
         // אופציונלי: גיבוי ל-LocalStorage אם השרת נכשל
         // const saved = JSON.parse(localStorage.getItem('strateger_strategies') || '[]');
@@ -902,7 +932,7 @@ window.applyStrategy = function(index) {
         const strategy = strategies[index];
         
         if (!strategy) {
-            alert("Strategy not found!");
+            window.showToast('Strategy not found!', 'error');
             return;
         }
 
@@ -981,25 +1011,30 @@ window.applyStrategy = function(index) {
         // הקפצת Preview
         window.generatePreview(false, true); 
         
-        alert(`Strategy "${strategy.name}" loaded successfully!`);
+        window.showToast(`✅ Strategy "${strategy.name}" loaded!`, 'success');
 
     } catch (e) {
         console.error("Error applying strategy:", e);
-        alert("Failed to load strategy: " + e.message);
+        window.showToast('Failed to load strategy: ' + e.message, 'error');
     }
 };
 
 window.deleteStrategy = function(index) {
-    if (!confirm("Delete this strategy permanently?")) return;
-    
-    try {
-        const strategies = JSON.parse(localStorage.getItem('strateger_strategies') || '[]');
-        strategies.splice(index, 1);
-        localStorage.setItem('strateger_strategies', JSON.stringify(strategies));
-        window.loadStrategyLibrary(); // רענון הרשימה
-    } catch (e) {
-        console.error(e);
-    }
+    window.showConfirmModal(
+        '🗑️ Delete Strategy',
+        'This action cannot be undone.',
+        'Delete permanently?',
+        () => {
+            try {
+                const strategies = JSON.parse(localStorage.getItem('strateger_strategies') || '[]');
+                strategies.splice(index, 1);
+                localStorage.setItem('strateger_strategies', JSON.stringify(strategies));
+                window.loadStrategyLibrary();
+            } catch (e) {
+                console.error(e);
+            }
+        }
+    );
 };
 
 window.closeStrategyModal = function() {
@@ -1210,7 +1245,7 @@ window.joinChat = function() {
         // Try to use the approved viewer name
         name = localStorage.getItem('strateger_viewer_name') || localStorage.getItem('strateger_chat_name');
     }
-    if (!name) return alert("Name required");
+    if (!name) return window.showToast('Name required', 'warning');
     
     // If viewer is already approved, skip approval request — go straight to chat
     if (window.viewerApprovalStatus === 'approved') {
