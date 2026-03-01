@@ -26,6 +26,11 @@ window.initGoogleAuth = function() {
 
     // Browser: original flow
     if (typeof google === 'undefined') {
+        // If offline, don't keep retrying — Google API won't load
+        if (!navigator.onLine) {
+            console.log('Offline — Google Auth skipped');
+            return;
+        }
         console.log('Google API not loaded yet');
         setTimeout(window.initGoogleAuth, 1000);
         return;

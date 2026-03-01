@@ -262,7 +262,14 @@ const _BG_THEMES = {
     'gulf-blue': 'background: linear-gradient(135deg, #0a2540 0%, #1a4a7a 30%, #0d3560 60%, #0a2540 100%);',
     'british-green': 'background: linear-gradient(180deg, #0a1a10 0%, #0d2818 30%, #102d1d 50%, #0d2818 70%, #0a1a10 100%);',
     'martini-stripe': 'background: linear-gradient(180deg, #0e0e14 0%, #0e0e14 44%, #1a3a6e 44.5%, #1a3a6e 47%, #cc2222 47.5%, #cc2222 50.5%, #1a3a6e 51%, #1a3a6e 53.5%, #0e0e14 54%, #0e0e14 100%);',
-    'arctic-ice': 'background: linear-gradient(180deg, #0a1520 0%, #102535 30%, #1a3a50 50%, #102535 70%, #0a1520 100%);'
+    'arctic-ice': 'background: linear-gradient(180deg, #0a1520 0%, #102535 30%, #1a3a50 50%, #102535 70%, #0a1520 100%);',
+    // === PREMIUM THEMES ===
+    'aurora': 'background: linear-gradient(180deg, #020510 0%, #0a1030 20%, #081848 40%, #1a0a40 60%, #2a0828 80%, #0a0510 100%);',
+    'monaco-gold': 'background: linear-gradient(180deg, #0a0800 0%, #1a1505 20%, #2a2008 40%, #1a1505 60%, #0a0800 100%);',
+    'ferrari-rosso': 'background: linear-gradient(180deg, #0e0000 0%, #2a0808 25%, #4a0a0a 50%, #2a0808 75%, #0e0000 100%);',
+    'mclaren-papaya': 'background: linear-gradient(180deg, #100800 0%, #201505 25%, #3a2008 40%, #4a2a0a 50%, #3a2008 60%, #201505 75%, #100800 100%);',
+    'ocean-depth': 'background: linear-gradient(180deg, #000510 0%, #001030 25%, #002050 50%, #001030 75%, #000510 100%);',
+    'volcanic': 'background: linear-gradient(180deg, #0a0000 0%, #1a0500 20%, #2d0800 35%, #401005 50%, #2d0800 65%, #1a0500 80%, #0a0000 100%);'
 };
 
 // Dashboard tint colors per theme — applied to dashboard elements
@@ -287,7 +294,14 @@ const _THEME_TINTS = {
     'gulf-blue': { main: '#0a2540', panel: '#103060', border: '#1a4a7a' },
     'british-green': { main: '#0a1a10', panel: '#0d2818', border: '#1a4030' },
     'martini-stripe': { main: '#0e0e14', panel: '#15151e', border: '#252535' },
-    'arctic-ice': { main: '#0a1520', panel: '#102535', border: '#1a3a50' }
+    'arctic-ice': { main: '#0a1520', panel: '#102535', border: '#1a3a50' },
+    // === PREMIUM THEME TINTS ===
+    'aurora': { main: '#020510', panel: '#0a0d25', border: '#1a1545' },
+    'monaco-gold': { main: '#0a0800', panel: '#151205', border: '#2a2010' },
+    'ferrari-rosso': { main: '#0e0000', panel: '#1a0505', border: '#3a1010' },
+    'mclaren-papaya': { main: '#100800', panel: '#1a1208', border: '#352510' },
+    'ocean-depth': { main: '#000510', panel: '#000d25', border: '#001a45' },
+    'volcanic': { main: '#0a0000', panel: '#150500', border: '#301008' }
 };
 
 window.setPageBackground = function(bg) {

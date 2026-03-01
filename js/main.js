@@ -3515,13 +3515,39 @@ window.showShortcutsHelp = function() {
 
 (function() {
     let offlineBanner = null;
-    
+    const t = () => window.t || ((k) => k);
+
+    function setOfflineUI(offline) {
+        // Google sign-in: hide when offline
+        const googleAuth = document.getElementById('googleAuthCompact');
+        if (googleAuth) googleAuth.style.display = offline ? 'none' : '';
+
+        // Sync controls: dim when offline
+        const syncControls = document.getElementById('syncControls');
+        if (syncControls) syncControls.style.opacity = offline ? '0.3' : '';
+
+        // Share/invite buttons: dim when offline
+        ['shareRaceBtn', 'driverLinkBtn'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) { el.style.opacity = offline ? '0.4' : ''; el.style.pointerEvents = offline ? 'none' : ''; }
+        });
+
+        // Live timing indicator
+        const liveInd = document.getElementById('liveIndicator');
+        if (liveInd && offline) liveInd.classList.add('hidden');
+
+        // Pro status button (license verification needs server)
+        const proBtn = document.getElementById('proStatusBtn');
+        if (proBtn) proBtn.style.opacity = offline ? '0.4' : '';
+    }
+
     function showOffline() {
         if (offlineBanner) return;
         offlineBanner = document.createElement('div');
         offlineBanner.className = 'offline-banner';
-        offlineBanner.innerHTML = '⚡ Offline — data may not sync';
+        offlineBanner.innerHTML = '📡 Offline mode — race strategy works, live features unavailable';
         document.body.appendChild(offlineBanner);
+        setOfflineUI(true);
     }
     
     function hideOffline() {
@@ -3529,6 +3555,7 @@ window.showShortcutsHelp = function() {
             offlineBanner.remove();
             offlineBanner = null;
         }
+        setOfflineUI(false);
     }
     
     window.addEventListener('offline', showOffline);
