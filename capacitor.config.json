@@ -1,0 +1,12 @@
+{
+  "appId": "com.holylandracing.strateger",
+  "appName": "Strateger",
+  "webDir": "www",
+  "plugins": {
+    "GoogleAuth": {
+      "scopes": ["profile", "email"],
+      "serverClientId": "656730854589-b30koq0rm67abjanisu7ss8pqjpavlip.apps.googleusercontent.com",
+      "forceCodeForRefreshToken": true
+    }
+  }
+}

@@ -40,7 +40,7 @@ window.FREE_LIMITS = {
         
         // Silent re-validation against server (don't block load)
         setTimeout(() => {
-            fetch('/.netlify/functions/verify-license', {
+            fetch(window.APP_CONFIG.API_BASE + '/.netlify/functions/verify-license', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ key: savedKey })
@@ -98,7 +98,7 @@ window.activateProLicense = async function(key) {
     }
     
     try {
-        const res = await fetch('/.netlify/functions/verify-license', {
+        const res = await fetch(window.APP_CONFIG.API_BASE + 'verify-license', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ key })
@@ -274,6 +274,10 @@ window.translations = {
         wait: "WAIT...",
         getReady: "GET READY",
         go: "GO! GO! GO!",
+        exitPits: "Exit Pits",
+        driverExitedEarly: "Driver exited early",
+        driverExitedEarlyNotice: "Driver exited the pit before required time — confirm to accept.",
+        driverExitedEarlyNotice: "Driver exited the pit before required time — confirm to accept.",
         orangeZone: "⚠️ Orange zone - NOTIFY only",
         targetLabel: "TARGET",
         driverLink: "Driver Link",
@@ -386,6 +390,9 @@ window.translations = {
         wait: "המתן...",
         getReady: "היכון...",
         go: "סע! סע! סע!",
+        exitPits: "Exit Pits",
+        driverExitedEarly: "הנהג יצא מוקדם",
+        driverExitedEarlyNotice: "הנהג יצא מהפיט לפני הזמן הנדרש – אשר כדי להתקבל.",
         orangeZone: "⚠️ אזור כתום - הודע לנהג בלבד",
         targetLabel: "יעד",
         driverLink: "קישור נהג",
@@ -494,6 +501,9 @@ window.translations = {
         wait: "ATTENDEZ...",
         getReady: "PRÊT...",
         go: "GO! GO! GO!",
+        exitPits: "Exit Pits",
+        driverExitedEarly: "Le pilote est sorti tôt",
+        driverExitedEarlyNotice: "Le pilote est sorti des stands avant le temps requis — confirmez pour accepter.",
         orangeZone: "⚠️ Zone orange - NOTIFIER seulement",
         targetLabel: "CIBLE",
         driverLink: "Lien pilote",
@@ -597,6 +607,9 @@ window.translations = {
         wait: "AGUARDE...",
         getReady: "PREPARAR...",
         go: "VAI! VAI! VAI!",
+        exitPits: "Exit Pits",
+        driverExitedEarly: "O piloto saiu cedo",
+        driverExitedEarlyNotice: "O piloto saiu do pit antes do tempo exigido – confirme para aceitar.",
         orangeZone: "⚠️ Zona laranja - NOTIFICAR apenas",
         targetLabel: "ALVO",
         driverLink: "Link do piloto",
@@ -704,6 +717,9 @@ window.translations = {
         wait: "ЖДИТЕ...",
         getReady: "ГОТОВЬТЕСЬ...",
         go: "ВПЕРЕД! ВПЕРЕД!",
+        exitPits: "Exit Pits",
+        driverExitedEarly: "Пилот выехал раньше",
+        driverExitedEarlyNotice: "Пилот покинул пит до требуемого времени – подтвердите для продолжения.",
         orangeZone: "⚠️ Оранжевая зона - только УВЕДОМИТЬ",
         targetLabel: "ЦЕЛЬ",
         driverLink: "Ссылка для пилота",
@@ -811,6 +827,9 @@ window.translations = {
         wait: "انتظر...",
         getReady: "تحضر...",
         go: "يلا! يلا!",
+        exitPits: "Exit Pits",
+        driverExitedEarly: "السائق خرج مبكراً",
+        driverExitedEarlyNotice: "غادر السائق الحفرة قبل الوقت المطلوب – قم بالتأكيد للقبول.",
         orangeZone: "⚠️ المنطقة البرتقالية - أبلغ فقط",
         targetLabel: "الهدف",
         driverLink: "رابط السائق",
@@ -918,6 +937,9 @@ window.translations = {
         wait: "ESPERA...",
         getReady: "PREPÁRATE...",
         go: "¡A POR ÉL!",
+        exitPits: "Exit Pits",
+        driverExitedEarly: "El piloto salió temprano",
+        driverExitedEarlyNotice: "El piloto salió del pit antes del tiempo requerido – confirma para aceptar.",
         orangeZone: "⚠️ Zona naranja - solo NOTIFICAR",
         targetLabel: "OBJETIVO",
         driverLink: "Enlace del piloto",
@@ -984,7 +1006,7 @@ window.translations = {
         saveStratTitle: "Salva", libTitle: "Libreria", aiPlaceholder: "es: 'Il pilota 1 preferisce...'", thStart: "Inizio", thEnd: "Fine", thType: "Tipo", thDriver: "Pilota", thDuration: "Durata", liveTiming: "Cronometraggio live", liveTimingUrl: "URL cronometraggio...", connectLive: "Connetti", disconnectLive: "Disconnetti", searchTeam: "Cerca squadra...", searchDriver: "Cerca pilota...", searchKart: "Cerca kart...", demoMode: "Modalità demo",
         sendEmail: "Invia", cancel: "Annulla", create: "Crea", save: "Salva", load: "Carica", delete: "Elimina", activeRaceFound: "Gara attiva trovata", continueRace: "Continua", discardRace: "Scarta", areYouSure: "Sei sicuro?", deleteWarning: "Questo eliminerà i dati in modo permanente.", yesDelete: "Sì, elimina", noKeep: "No, conserva", invite: "Invita", synced: "Sincronizzato",
         chatTitle: "Chat gara / D&R", enterName: "Inserisci il tuo nome", startChat: "Inizia chat", typeMessage: "Scrivi un suggerimento...", send: "Invia", viewer: "Spettatore", host: "OSPITE", suggestion: "Suggerimento", strategyOutlook: "PROSPETTIVA STRATEGICA", timeLeft: "TEMPO RIMANENTE", penalty: "PENALITÀ", enterPit: "ENTRA IN PIT", nextDriverLabel: "PROSSIMO PILOTA", totalHeader: "TOTALE", stopsHeader: "STINT", driverHeader: "PILOTA",
-        stintsLeft: "STINT RIMANENTI", future: "FUTURO", max: "MAX", min: "MIN", rest: "RIPOSO", buffer: "Buffer", impossible: "IMPOSSIBILE", addStop: "AGGIUNGI SOSTA", avg: "MEDIA", finalLap: "ULTIMO GIRO", inPit: "IN PIT", nextLabel: "Prossimo:", shortStintMsg: "⚠️ STINT CORTO! Rischio penalità", cancelEntry: "Annulla", notifyDriver: "📢 Notifica pilota", driverNotified: "✓ Pilota notificato", includesAdj: "Include aggiustamento:", missingSeconds: "Mancante", proceedToPit: "Procedere al pit?", wait: "ATTENDI...", getReady: "PREPARATI...", go: "VAI! VAI!", orangeZone: "⚠️ Zona arancione - solo NOTIFICA", targetLabel: "OBIETTIVO", driverLink: "Link pilota", tapToPit: "TOCCA PER ENTRARE AI BOX", tapToExit: "TOCCA PER USCIRE DAI BOX", pitsConfirm: "BOX?", tapAgainConfirm: "TOCCA DI NUOVO PER CONFERMARE", stintBest: "M.STINT",
+        stintsLeft: "STINT RIMANENTI", future: "FUTURO", max: "MAX", min: "MIN", rest: "RIPOSO", buffer: "Buffer", impossible: "IMPOSSIBILE", addStop: "AGGIUNGI SOSTA", avg: "MEDIA", finalLap: "ULTIMO GIRO", inPit: "IN PIT", nextLabel: "Prossimo:", shortStintMsg: "⚠️ STINT CORTO! Rischio penalità", cancelEntry: "Annulla", notifyDriver: "📢 Notifica pilota", driverNotified: "✓ Pilota notificato", includesAdj: "Include aggiustamento:", missingSeconds: "Mancante", proceedToPit: "Procedere al pit?", wait: "ATTENDI...", getReady: "PREPARATI...", go: "VAI! VAI!", exitPits: "Exit Pits", driverExitedEarly: "Il pilota è uscito presto", driverExitedEarlyNotice: "Il pilota è uscito dai box prima del tempo richiesto - conferma per accettare.", orangeZone: "⚠️ Zona arancione - solo NOTIFICA", targetLabel: "OBIETTIVO", driverLink: "Link pilota", tapToPit: "TOCCA PER ENTRARE AI BOX", tapToExit: "TOCCA PER USCIRE DAI BOX", pitsConfirm: "BOX?", tapAgainConfirm: "TOCCA DI NUOVO PER CONFERMARE", stintBest: "M.STINT",
         googleLoginBtn: "Accedi",
         testBtn: "Prova",
         demoBtn: "Demo",
@@ -1084,6 +1106,7 @@ window.translations = {
         wait: "დაელოდე...",
         getReady: "მზადყოფილება...",
         go: "წინ! წინ!",
+        exitPits: "Exit Pits",
         orangeZone: "⚠️ ფორთოქლის ზონა - მხოლოდ შეატყობინეთ",
         targetLabel: "მიზანი",
         driverLink: "მძღოლის ბმული",
@@ -1309,6 +1332,9 @@ window.translations = {
         wait: "ΠΕΡΙΜΕΝΕ...",
         getReady: "ΕΤΟΙΜΑΣΟΥ...",
         go: "ΠΑΜΕ!",
+        exitPits: "Exit Pits",
+        driverExitedEarly: "Ο οδηγός βγήκε νωρίς",
+        driverExitedEarlyNotice: "Ο οδηγός βγήκε από τα pits πριν από τον απαιτούμενο χρόνο – επιβεβαιώστε για αποδοχή.",
         orangeZone: "⚠️ Πορτοκαλί ζώνη - μόνο ΕΙΔΟΠΟΙΗΣΗ",
         targetLabel: "ΣΤΟΧΟΣ",
         driverLink: "Σύνδεσμος οδηγού",

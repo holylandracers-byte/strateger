@@ -661,11 +661,22 @@ window.initRace = function() {
 
     console.log("🏁 Starting Race...");
 
-    const now = Date.now();
+    // use the host‑synced clock so viewers/drivers are all aligned
+    const now = (window.getSyncedNow && typeof window.getSyncedNow === 'function') ? window.getSyncedNow() : Date.now();
+    // if a race start date/time has been entered, treat the start as that moment
+    let startTime = now;
+    const raceStartDate = window.getRaceStartDate && window.getRaceStartDate();
+    if (raceStartDate) {
+        const sched = raceStartDate.getTime();
+        // if we're within a few seconds of the scheduled start, snap to it
+        if (now >= sched && now - sched < 10000) {
+            startTime = sched;
+        }
+    }
 
     window.state.isRunning = true;
-    window.state.startTime = now;      
-    window.state.stintStart = now;     
+    window.state.startTime = startTime;
+    window.state.stintStart = startTime;
     window.state.pitCount = 0;
     window.state.isInPit = false;
     window.state.stintOffset = 0;
@@ -673,6 +684,10 @@ window.initRace = function() {
     window.state.isNightMode = false; // Reset night mode on race start
     window.state.currentDriverIdx = window.cachedStrategy.timeline[0].driverIdx;
     window._raceSummaryFinalized = false; // Reset so post-race summary can compute final stint
+
+    // immediately update UI/logic so timers show t=0 values before the interval fires
+    if (typeof window.tick === 'function') window.tick();
+    if (typeof window.renderFrame === 'function') window.renderFrame();
     
     window.state.nextDriverIdx = (window.state.currentDriverIdx + 1) % window.drivers.length;
     

@@ -325,9 +325,9 @@ window.startDemoRace = function() {
     if (squadsEl) { squadsEl.value = '0'; if (typeof window.toggleSquadsInput === 'function') window.toggleSquadsInput(); }
 
     // === 2. START TIME — now ===
-    const now = new Date();
-    setVal('raceStartTime', `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`);
-    setVal('raceStartDate', now.toISOString().split('T')[0]);
+    const nowDate = new Date((window.getSyncedNow && typeof window.getSyncedNow === 'function') ? window.getSyncedNow() : Date.now());
+    setVal('raceStartTime', `${String(nowDate.getHours()).padStart(2,'0')}:${String(nowDate.getMinutes()).padStart(2,'0')}`);
+    setVal('raceStartDate', nowDate.toISOString().split('T')[0]);
 
     // === 3. DRIVERS — 3 demo drivers with colors ===
     const demoDrivers = [
@@ -661,7 +661,7 @@ function updateNightModeUI() {
 
 window.tick = function() {
     if (!window.state.isRunning) return;
-    const now = Date.now();
+    const now = (window.getSyncedNow && typeof window.getSyncedNow === 'function') ? window.getSyncedNow() : Date.now();
     const raceMs = window.config.raceMs || (parseFloat(window.config.duration) * 3600000);
     if (now - window.state.startTime >= raceMs) {
         window.state.isRunning = false;
@@ -848,7 +848,9 @@ window.renderFrame = function() {
 
         if (!window.state.isInPit) {
             let currentStintTime = (now - window.state.stintStart) + (window.state.stintOffset || 0);
-            document.getElementById('stintTimerDisplay').innerText = window.formatTimeHMS(Math.max(0, currentStintTime));
+            // floor to whole seconds for visual sync with the race clock
+            const dispStint = Math.floor(Math.max(0, currentStintTime) / 1000) * 1000;
+            document.getElementById('stintTimerDisplay').innerText = window.formatTimeHMS(dispStint);
             
             const maxStintMs = (window.config.maxStintMs) || (window.config.maxStint * 60000) || (60 * 60000);
             const minStintMs = (window.config.minStint * 60000) || 0;
@@ -1085,7 +1087,7 @@ function updateRemainingStrategyLogic(raceRemainingMs) {
 }
 
 window.updatePitModalLogic = function() {
-    const now = Date.now();
+    const now = (window.getSyncedNow && typeof window.getSyncedNow === 'function') ? window.getSyncedNow() : Date.now();
     const elapsedSec = (now - window.state.pitStart) / 1000;
     const basePitTime = parseInt(window.config.minPitTime || window.config.pitTime) || 0;
     const totalRequiredTime = Math.max(0, basePitTime + window.currentPitAdjustment); 
@@ -1093,11 +1095,37 @@ window.updatePitModalLogic = function() {
     const timeRemaining = totalRequiredTime - elapsedSec;
     const t = window.t || ((k) => k); // פונקציית התרגום
 
+    
+
     const timerDisplay = document.getElementById('pitTimerDisplay');
     if (timerDisplay) timerDisplay.innerText = Math.max(0, timeRemaining).toFixed(1);
 
     const releaseBtn = document.getElementById('confirmExitBtn');
     if (!releaseBtn) return;
+    // always allow exit button and show unified label
+    releaseBtn.disabled = false;
+    releaseBtn.innerText = t('exitPits');
+
+    // If live timing reports we've already left the pits, allow an early forced exit.
+    try {
+        const liveSaysInPit = window.liveData && (typeof window.liveData.ourTeamInPit !== 'undefined') ? window.liveData.ourTeamInPit : null;
+        if (window.state && window.state.isInPit && liveSaysInPit === false) {
+            const earlyBy = Math.max(0, totalRequiredTime - elapsedSec).toFixed(1);
+            const timerDisplay2 = document.getElementById('pitTimerDisplay');
+            if (timerDisplay2) timerDisplay2.className = "text-6xl font-bold font-mono text-yellow-300";
+            // note early exit time in warning, but button keeps common label
+            const pitWarningBox2 = document.getElementById('pitWarningBox');
+            if (pitWarningBox2) {
+                pitWarningBox2.classList.remove('hidden');
+                pitWarningBox2.innerText = `${t('driverExitedEarlyNotice') || 'Driver exited the pit before required time — confirm to accept.'} (${earlyBy}s early)`;
+            }
+            window._lastOrangeBeep = null;
+            window.alertState.lastZone = 'go';
+            return;
+        }
+    } catch (e) {
+        console.warn('Live-pit early-exit check failed', e);
+    }
 
     // Determine current zone
     let pitZone = 'wait';
@@ -1106,29 +1134,29 @@ window.updatePitModalLogic = function() {
 
     if (pitZone === 'wait') {
         if (timerDisplay) timerDisplay.className = "text-6xl font-bold font-mono text-red-500";
-        releaseBtn.innerText = t('wait');
-        releaseBtn.disabled = true;
-        releaseBtn.className = "w-full max-w-xs bg-gray-800 text-gray-500 font-bold py-4 rounded-lg text-2xl border border-gray-700 cursor-not-allowed";
+        releaseBtn.disabled = false;
+        releaseBtn.innerText = t('exitPits');
+        releaseBtn.className = "w-full max-w-xs bg-gray-800 text-gray-500 font-bold py-4 rounded-lg text-2xl border border-gray-700 cursor-pointer";
         const pitWarningBox = document.getElementById('pitWarningBox');
         if (pitWarningBox) pitWarningBox.classList.add('hidden');
         window._lastOrangeBeep = null;
     } else if (pitZone === 'ready') {
         if (timerDisplay) timerDisplay.className = "text-6xl font-bold font-mono text-yellow-400 animate-pulse";
-        releaseBtn.innerText = t('getReady');
-        releaseBtn.disabled = true;
-        releaseBtn.className = "w-full max-w-xs bg-yellow-800 text-yellow-400 font-bold py-4 rounded-lg text-2xl border border-yellow-600 animate-pulse cursor-not-allowed";
+        releaseBtn.disabled = false;
+        releaseBtn.innerText = t('exitPits');
+        releaseBtn.className = "w-full max-w-xs bg-yellow-800 text-yellow-400 font-bold py-4 rounded-lg text-2xl border border-yellow-600 cursor-pointer";
         const pitWarningBox = document.getElementById('pitWarningBox');
         if (pitWarningBox) pitWarningBox.classList.remove('hidden');
         // Repeating beep in orange zone (every 1 second)
-        const now = Date.now();
+        const now = (window.getSyncedNow && typeof window.getSyncedNow === 'function') ? window.getSyncedNow() : Date.now();
         if (!window._lastOrangeBeep || (now - window._lastOrangeBeep >= 1000)) {
             window.playAlertBeep('info');
             window._lastOrangeBeep = now;
         }
     } else {
         if (timerDisplay) timerDisplay.className = "text-6xl font-bold font-mono text-green-500";
-        releaseBtn.innerText = t('go');
         releaseBtn.disabled = false;
+        releaseBtn.innerText = t('exitPits');
         releaseBtn.className = "w-full max-w-xs bg-green-600 hover:bg-green-500 text-white font-bold py-4 rounded-lg text-3xl border border-green-400 shadow-[0_0_20px_rgba(34,197,94,0.6)] cursor-pointer";
         const pitWarningBox = document.getElementById('pitWarningBox');
         if (pitWarningBox) pitWarningBox.classList.add('hidden');
@@ -1138,6 +1166,21 @@ window.updatePitModalLogic = function() {
             window.playReleaseSound();
         }
     }
+
+    // === allow manual exit even before mandatory time elapses ===
+    if (timeRemaining > 0) {
+        // user can force the driver-exited action; count pit time until click
+        const earlyBy = Math.max(0, totalRequiredTime - elapsedSec).toFixed(1);
+        releaseBtn.disabled = false;
+        // keep unified label
+        releaseBtn.className = "w-full max-w-xs bg-orange-600 hover:bg-orange-500 text-white font-bold py-4 rounded-lg text-3xl border border-orange-400 shadow-[0_0_20px_rgba(249,115,22,0.6)] cursor-pointer";
+        const pitWarningBox = document.getElementById('pitWarningBox');
+        if (pitWarningBox) {
+            pitWarningBox.classList.remove('hidden');
+            pitWarningBox.innerText = `${t('driverExitedEarlyNotice') || 'Driver exited the pit before required time — confirm to accept.'} (${earlyBy}s early)`;
+        }
+    }
+
     window.alertState.lastZone = pitZone;
 };
 
@@ -1183,7 +1226,7 @@ window.confirmPitEntry = function(autoDetected) {
     
     // Guard: cooldown to prevent rapid pit cycling (min 10s between manual pit entries)
     // Skip cooldown if auto-detected from live timing — live timing is authoritative
-    const now = Date.now();
+    const now = (window.getSyncedNow && typeof window.getSyncedNow === 'function') ? window.getSyncedNow() : Date.now();
     if (!autoDetected && window._lastPitEntryTime && (now - window._lastPitEntryTime) < 10000) {
         console.warn('⚠️ confirmPitEntry blocked — too soon after last pit entry');
         return;
@@ -1213,7 +1256,7 @@ window.confirmPitEntry = function(autoDetected) {
 
 // Internal: actually execute pit entry after confirmation
 window._executePitEntry = function(isShortStint) {
-    const now = Date.now();
+    const now = (window.getSyncedNow && typeof window.getSyncedNow === 'function') ? window.getSyncedNow() : Date.now();
     window.state.isInPit = true;
     window.state.pitStart = now;
     window.state.pitCount++; // === UP COUNT ===
@@ -1246,9 +1289,10 @@ window._executePitEntry = function(isShortStint) {
         const releaseBtn = document.getElementById('confirmExitBtn');
         if (releaseBtn) {
             const t = window.t || ((k) => k);
-            releaseBtn.disabled = true;
-            releaseBtn.innerText = t('wait');
-            releaseBtn.className = "w-full max-w-xs bg-gray-800 text-gray-500 font-bold py-4 rounded-lg text-2xl border border-gray-700 cursor-not-allowed";
+            // always enable and show exitPits label immediately
+            releaseBtn.disabled = false;
+            releaseBtn.innerText = t('exitPits');
+            releaseBtn.className = "w-full max-w-xs bg-gray-800 text-gray-500 font-bold py-4 rounded-lg text-2xl border border-gray-700 cursor-pointer";
         }
     }
 
@@ -1528,7 +1572,7 @@ window.confirmPitExit = function() {
     if (typeof window.playReleaseSound === 'function') window.playReleaseSound();
     
     const prevDriverIdx = window.state.currentDriverIdx;
-    const now = Date.now();
+    const now = (window.getSyncedNow && typeof window.getSyncedNow === 'function') ? window.getSyncedNow() : Date.now();
     const pitDuration = now - window.state.pitStart;
     const driveDuration = window.state.pitStart - window.state.stintStart;
 
@@ -1696,7 +1740,7 @@ window.submitFeedback = async () => {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 15000); // 15 second timeout
         
-        const response = await fetch('/.netlify/functions/send-feedback', {
+        const response = await fetch(window.APP_CONFIG.API_BASE + '/.netlify/functions/send-feedback', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -2339,7 +2383,7 @@ window.updateDriverMode = function() {
             stintTimerEl.style.color = '#f87171';
         } else {
             const stintMs = currentStintMs;
-            let str = window.formatTimeHMS(Math.max(0, stintMs));
+            let str = window.formatTimeHMS(Math.floor(Math.max(0, stintMs) / 1000) * 1000);
             if (str.startsWith('00:')) str = str.substring(3);
             stintTimerEl.innerText = str;
             // Color by zone
@@ -2614,7 +2658,7 @@ window.applyCoupon = async function() {
     resultEl.classList.add('hidden');
 
     try {
-        const res = await fetch('/.netlify/functions/verify-coupon', {
+        const res = await fetch(window.APP_CONFIG.API_BASE + '/.netlify/functions/verify-coupon', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ code })
@@ -3768,7 +3812,7 @@ Optimize for:
 
     window.showToast('🤖 Asking AI for strategy optimization...', 'info', 6000);
     
-    fetch('/.netlify/functions/ai-strategy', {
+    fetch(window.APP_CONFIG.API_BASE + '/.netlify/functions/ai-strategy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt })
