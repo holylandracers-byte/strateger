@@ -4,7 +4,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "NODE_ENV=development nodemon server.js"
+    "dev": "NODE_ENV=development nodemon server.js",
+    "build": "npm install --legacy-peer-deps --omit=dev"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
