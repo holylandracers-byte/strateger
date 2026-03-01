@@ -263,7 +263,7 @@ window.translations = {
         avg: "AVG",
         finalLap: "FINAL LAP",
         inPit: "IN PIT",
-        nextLabel: "Next:",
+        nextLabel: "Next",
         shortStintMsg: "⚠️ SHORT STINT! Penalty Risk",
         cancelEntry: "Cancel Entry",
         notifyDriver: "📢 Notify Driver",
@@ -379,7 +379,7 @@ window.translations = {
         avg: "ממוצע",
         finalLap: "הקפה אחרונה",
         inPit: "בפיטס",
-        nextLabel: "הנהג הבא:",
+        nextLabel: "הנהג הבא",
         shortStintMsg: "⚠️ סטינט קצר! סכנת עונש",
         cancelEntry: "בטל כניסה",
         notifyDriver: "📢 הודע לנהג",
@@ -490,7 +490,7 @@ window.translations = {
         avg: "MOY",
         finalLap: "DERNIER TOUR",
         inPit: "AU STAND",
-        nextLabel: "Suivant:",
+        nextLabel: "Suivant",
         shortStintMsg: "⚠️ RELAIS COURT! Risque Pénalité",
         cancelEntry: "Annuler",
         notifyDriver: "📢 Notifier Pilote",
@@ -596,7 +596,7 @@ window.translations = {
         impossible: "IMPOSSÍVEL",
         avg: "MÉD",
         inPit: "NO BOX",
-        nextLabel: "Próximo:",
+        nextLabel: "Próximo",
         shortStintMsg: "⚠️ STINT CURTO! Risco Penalidade",
         cancelEntry: "Cancelar",
         notifyDriver: "📢 Notificar Piloto",
@@ -706,7 +706,7 @@ window.translations = {
         avg: "СР",
         finalLap: "ФИНАЛЬНЫЙ КРУГ",
         inPit: "В БОКЕ",
-        nextLabel: "Следующий:",
+        nextLabel: "Следующий",
         shortStintMsg: "⚠️ КОРОТКИЙ ЗАЕЗД! Риск штрафа",
         cancelEntry: "Отмена",
         notifyDriver: "📢 Уведомить пилота",
@@ -816,7 +816,7 @@ window.translations = {
         avg: "متوسط",
         finalLap: "الدورة الأخيرة",
         inPit: "في الحفرة",
-        nextLabel: "التالي:",
+        nextLabel: "التالي",
         shortStintMsg: "⚠️ مقطع قصير! خطر العقوبة",
         cancelEntry: "إلغاء",
         notifyDriver: "📢 إخطار السائق",
@@ -926,7 +926,7 @@ window.translations = {
         avg: "PROM",
         finalLap: "ÚLTIMA VUELTA",
         inPit: "EN BOX",
-        nextLabel: "Siguiente:",
+        nextLabel: "Siguiente",
         shortStintMsg: "⚠️ TRAMO CORTO! Riesgo penalización",
         cancelEntry: "Cancelar",
         notifyDriver: "📢 Notificar piloto",
@@ -1006,7 +1006,7 @@ window.translations = {
         saveStratTitle: "Salva", libTitle: "Libreria", aiPlaceholder: "es: 'Il pilota 1 preferisce...'", thStart: "Inizio", thEnd: "Fine", thType: "Tipo", thDriver: "Pilota", thDuration: "Durata", liveTiming: "Cronometraggio live", liveTimingUrl: "URL cronometraggio...", connectLive: "Connetti", disconnectLive: "Disconnetti", searchTeam: "Cerca squadra...", searchDriver: "Cerca pilota...", searchKart: "Cerca kart...", demoMode: "Modalità demo",
         sendEmail: "Invia", cancel: "Annulla", create: "Crea", save: "Salva", load: "Carica", delete: "Elimina", activeRaceFound: "Gara attiva trovata", continueRace: "Continua", discardRace: "Scarta", areYouSure: "Sei sicuro?", deleteWarning: "Questo eliminerà i dati in modo permanente.", yesDelete: "Sì, elimina", noKeep: "No, conserva", invite: "Invita", synced: "Sincronizzato",
         chatTitle: "Chat gara / D&R", enterName: "Inserisci il tuo nome", startChat: "Inizia chat", typeMessage: "Scrivi un suggerimento...", send: "Invia", viewer: "Spettatore", host: "OSPITE", suggestion: "Suggerimento", strategyOutlook: "PROSPETTIVA STRATEGICA", timeLeft: "TEMPO RIMANENTE", penalty: "PENALITÀ", enterPit: "ENTRA IN PIT", nextDriverLabel: "PROSSIMO PILOTA", totalHeader: "TOTALE", stopsHeader: "STINT", driverHeader: "PILOTA",
-        stintsLeft: "STINT RIMANENTI", future: "FUTURO", max: "MAX", min: "MIN", rest: "RIPOSO", buffer: "Buffer", impossible: "IMPOSSIBILE", addStop: "AGGIUNGI SOSTA", avg: "MEDIA", finalLap: "ULTIMO GIRO", inPit: "IN PIT", nextLabel: "Prossimo:", shortStintMsg: "⚠️ STINT CORTO! Rischio penalità", cancelEntry: "Annulla", notifyDriver: "📢 Notifica pilota", driverNotified: "✓ Pilota notificato", includesAdj: "Include aggiustamento:", missingSeconds: "Mancante", proceedToPit: "Procedere al pit?", wait: "ATTENDI...", getReady: "PREPARATI...", go: "VAI! VAI!", exitPits: "Exit Pits", driverExitedEarly: "Il pilota è uscito presto", driverExitedEarlyNotice: "Il pilota è uscito dai box prima del tempo richiesto - conferma per accettare.", orangeZone: "⚠️ Zona arancione - solo NOTIFICA", targetLabel: "OBIETTIVO", driverLink: "Link pilota", tapToPit: "TOCCA PER ENTRARE AI BOX", tapToExit: "TOCCA PER USCIRE DAI BOX", pitsConfirm: "BOX?", tapAgainConfirm: "TOCCA DI NUOVO PER CONFERMARE", stintBest: "M.STINT",
+        stintsLeft: "STINT RIMANENTI", future: "FUTURO", max: "MAX", min: "MIN", rest: "RIPOSO", buffer: "Buffer", impossible: "IMPOSSIBILE", addStop: "AGGIUNGI SOSTA", avg: "MEDIA", finalLap: "ULTIMO GIRO", inPit: "IN PIT", nextLabel: "Prossimo", shortStintMsg: "⚠️ STINT CORTO! Rischio penalità", cancelEntry: "Annulla", notifyDriver: "📢 Notifica pilota", driverNotified: "✓ Pilota notificato", includesAdj: "Include aggiustamento:", missingSeconds: "Mancante", proceedToPit: "Procedere al pit?", wait: "ATTENDI...", getReady: "PREPARATI...", go: "VAI! VAI!", exitPits: "Exit Pits", driverExitedEarly: "Il pilota è uscito presto", driverExitedEarlyNotice: "Il pilota è uscito dai box prima del tempo richiesto - conferma per accettare.", orangeZone: "⚠️ Zona arancione - solo NOTIFICA", targetLabel: "OBIETTIVO", driverLink: "Link pilota", tapToPit: "TOCCA PER ENTRARE AI BOX", tapToExit: "TOCCA PER USCIRE DAI BOX", pitsConfirm: "BOX?", tapAgainConfirm: "TOCCA DI NUOVO PER CONFERMARE", stintBest: "M.STINT",
         googleLoginBtn: "Accedi",
         testBtn: "Prova",
         demoBtn: "Demo",
@@ -1095,7 +1095,7 @@ window.translations = {
         avg: "საშუალო",
         finalLap: "ბოლო წრე",
         inPit: "ბოქსში",
-        nextLabel: "შემდეგი:",
+        nextLabel: "შემდეგი",
         shortStintMsg: "⚠️ მოკლე ტაძე! პენალტის რისკი",
         cancelEntry: "გაუქმება",
         notifyDriver: "📢 მძღოლის შეტყობინება",
@@ -1173,7 +1173,7 @@ window.translations = {
         saveStratTitle: "Speichern", libTitle: "Bibliothek", aiPlaceholder: "z.B.: 'Fahrer 1 bevorzugt...'", thStart: "Start", thEnd: "Ende", thType: "Typ", thDriver: "Fahrer", thDuration: "Dauer", liveTiming: "Live-Zeitmessung", liveTimingUrl: "Zeitmessung URL...", connectLive: "Verbinden", disconnectLive: "Trennen", searchTeam: "Team suchen...", searchDriver: "Fahrer suchen...", searchKart: "Kart suchen...", demoMode: "Demo-Modus",
         sendEmail: "Senden", cancel: "Abbrechen", create: "Erstellen", save: "Speichern", load: "Laden", delete: "Löschen", activeRaceFound: "Aktives Rennen gefunden", continueRace: "Fortfahren", discardRace: "Verwerfen", areYouSure: "Bist du sicher?", deleteWarning: "Dies löscht Daten dauerhaft.", yesDelete: "Ja, löschen", noKeep: "Nein, behalten", invite: "Einladen", synced: "Synchronisiert",
         chatTitle: "Renn-Chat / Q&A", enterName: "Geben Sie Ihren Namen ein", startChat: "Chat starten", typeMessage: "Schreibe einen Vorschlag...", send: "Senden", viewer: "Zuschauer", host: "HOST", suggestion: "Vorschlag", strategyOutlook: "STRATEGIEAUSBLICK", timeLeft: "VERBLEIBENDE ZEIT", penalty: "STRAFE", enterPit: "BOXEN FAHREN", nextDriverLabel: "NÄCHSTER FAHRER", totalHeader: "GESAMT", stopsHeader: "STINTS", driverHeader: "FAHRER",
-        stintsLeft: "STINTS VERBLEIBEND", future: "ZUKUNFT", max: "MAX", min: "MIN", rest: "RUHE", buffer: "Puffer", impossible: "UNMÖGLICH", addStop: "STOP HINZUFÜGEN", avg: "DURCHSCHN.", finalLap: "LETZTE RUNDE", inPit: "IN DEN BOXEN", nextLabel: "Nächster:", shortStintMsg: "⚠️ KURZER STINT! Strafrisiko", cancelEntry: "Abbrechen", notifyDriver: "📢 Fahrer benachrichtigen", driverNotified: "✓ Fahrer benachrichtigt", includesAdj: "Enthält Anpassung:", missingSeconds: "Fehlend", proceedToPit: "Zu den Boxen fahren?", wait: "WARTEN...", getReady: "VORBEREITEN...", go: "VIEL ERFOLG!", orangeZone: "⚠️ Orangezone - nur BENACHRICHTIGEN", targetLabel: "ZIEL", driverLink: "Fahrer-Link", tapToPit: "TIPPEN ZUM BOXEN", tapToExit: "TIPPEN ZUM AUSFAHREN", pitsConfirm: "BOXEN?", tapAgainConfirm: "ERNEUT TIPPEN ZUM BESTÄTIGEN", stintBest: "S.BEST",
+        stintsLeft: "STINTS VERBLEIBEND", future: "ZUKUNFT", max: "MAX", min: "MIN", rest: "RUHE", buffer: "Puffer", impossible: "UNMÖGLICH", addStop: "STOP HINZUFÜGEN", avg: "DURCHSCHN.", finalLap: "LETZTE RUNDE", inPit: "IN DEN BOXEN", nextLabel: "Nächster", shortStintMsg: "⚠️ KURZER STINT! Strafrisiko", cancelEntry: "Abbrechen", notifyDriver: "📢 Fahrer benachrichtigen", driverNotified: "✓ Fahrer benachrichtigt", includesAdj: "Enthält Anpassung:", missingSeconds: "Fehlend", proceedToPit: "Zu den Boxen fahren?", wait: "WARTEN...", getReady: "VORBEREITEN...", go: "VIEL ERFOLG!", orangeZone: "⚠️ Orangezone - nur BENACHRICHTIGEN", targetLabel: "ZIEL", driverLink: "Fahrer-Link", tapToPit: "TIPPEN ZUM BOXEN", tapToExit: "TIPPEN ZUM AUSFAHREN", pitsConfirm: "BOXEN?", tapAgainConfirm: "ERNEUT TIPPEN ZUM BESTÄTIGEN", stintBest: "S.BEST",
         googleLoginBtn: "Anmelden",
         testBtn: "Test",
         demoBtn: "Demo",
@@ -1232,7 +1232,7 @@ window.translations = {
         saveStratTitle: "保存", libTitle: "ライブラリ", aiPlaceholder: "例: 'ドライバー1は...を好む'", thStart: "開始", thEnd: "終了", thType: "タイプ", thDriver: "ドライバー", thDuration: "期間", liveTiming: "ライブタイミング", liveTimingUrl: "ライブタイミングURL...", connectLive: "接続", disconnectLive: "切断", searchTeam: "チームを検索...", searchDriver: "ドライバーを検索...", searchKart: "カートを検索...", demoMode: "デモモード",
         sendEmail: "送信", cancel: "キャンセル", create: "作成", save: "保存", load: "読み込み", delete: "削除", activeRaceFound: "アクティブなレースが見つかりました", continueRace: "続行", discardRace: "破棄", areYouSure: "本当にしますか?", deleteWarning: "これはデータを永久に削除します。", yesDelete: "はい、削除", noKeep: "いいえ、保持", invite: "招待", synced: "同期済み",
         chatTitle: "レースチャット / Q&A", enterName: "名前を入力", startChat: "チャットを開始", typeMessage: "提案を入力...", send: "送信", viewer: "視聴者", host: "ホスト", suggestion: "提案", strategyOutlook: "戦略見通し", timeLeft: "残り時間", penalty: "ペナルティ", enterPit: "ピット進入", nextDriverLabel: "次のドライバー", totalHeader: "合計", stopsHeader: "スティント", driverHeader: "ドライバー",
-        stintsLeft: "残りスティント", future: "将来", max: "最大", min: "最小", rest: "休息", buffer: "バッファ", impossible: "不可能", addStop: "ピットストップ追加", avg: "平均", finalLap: "ファイナルラップ", inPit: "ピット内", nextLabel: "次:", shortStintMsg: "⚠️ 短いスティント!ペナルティリスク", cancelEntry: "キャンセル", notifyDriver: "📢 ドライバーに通知", driverNotified: "✓ ドライバーに通知済み", includesAdj: "調整を含む:", missingSeconds: "不足", proceedToPit: "ピットに進む?", wait: "待機中...", getReady: "準備中...", go: "頑張れ!", orangeZone: "⚠️ オレンジゾーン - 通知のみ", targetLabel: "ターゲット", driverLink: "ドライバーリンク", tapToPit: "タップしてピットイン", tapToExit: "タップしてピットアウト", pitsConfirm: "ピット?", tapAgainConfirm: "もう一度タップして確認", stintBest: "S.ベスト",
+        stintsLeft: "残りスティント", future: "将来", max: "最大", min: "最小", rest: "休息", buffer: "バッファ", impossible: "不可能", addStop: "ピットストップ追加", avg: "平均", finalLap: "ファイナルラップ", inPit: "ピット内", nextLabel: "次", shortStintMsg: "⚠️ 短いスティント!ペナルティリスク", cancelEntry: "キャンセル", notifyDriver: "📢 ドライバーに通知", driverNotified: "✓ ドライバーに通知済み", includesAdj: "調整を含む:", missingSeconds: "不足", proceedToPit: "ピットに進む?", wait: "待機中...", getReady: "準備中...", go: "頑張れ!", orangeZone: "⚠️ オレンジゾーン - 通知のみ", targetLabel: "ターゲット", driverLink: "ドライバーリンク", tapToPit: "タップしてピットイン", tapToExit: "タップしてピットアウト", pitsConfirm: "ピット?", tapAgainConfirm: "もう一度タップして確認", stintBest: "S.ベスト",
         googleLoginBtn: "ログイン",
         testBtn: "テスト",
         demoBtn: "デモ",
@@ -1321,7 +1321,7 @@ window.translations = {
         avg: "ΜΕΣ",
         finalLap: "ΤΕΛΕΥΤΑΙΟΣ ΓΥΡΟΣ",
         inPit: "ΣΤΟ PIT",
-        nextLabel: "Επόμενος:",
+        nextLabel: "Επόμενος",
         shortStintMsg: "⚠️ ΜΙΚΡΟ STINT! Κίνδυνος ποινής",
         cancelEntry: "Ακύρωση",
         notifyDriver: "📢 Ειδοποίηση οδηγού",
@@ -1429,7 +1429,7 @@ window.setLanguage = function(lang) {
     
     window.currentLang = lang;
     document.documentElement.lang = lang;
-    document.documentElement.dir = (['he', 'ar', 'ka'].includes(lang)) ? 'rtl' : 'ltr';
+    document.documentElement.dir = (['he', 'ar'].includes(lang)) ? 'rtl' : 'ltr';
 
     const langSelect = document.getElementById('langSelect');
     if (langSelect && langSelect.value !== lang) {
@@ -1462,7 +1462,7 @@ window.setLanguage = function(lang) {
 // ==========================================
 
 window.formatTimeHMS = function(ms) {
-    if (ms < 0) ms = 0;
+    ms = Math.max(0, ms || 0);
     const totalSec = Math.floor(ms / 1000);
     const h = Math.floor(totalSec / 3600);
     const m = Math.floor((totalSec % 3600) / 60);

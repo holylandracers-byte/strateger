@@ -277,6 +277,7 @@ window.translations = {
         exitPits: "Exit Pits",
         driverExitedEarly: "Driver exited early",
         driverExitedEarlyNotice: "Driver exited the pit before required time — confirm to accept.",
+        driverExitedEarlyNotice: "Driver exited the pit before required time — confirm to accept.",
         orangeZone: "⚠️ Orange zone - NOTIFY only",
         targetLabel: "TARGET",
         driverLink: "Driver Link",
@@ -1106,8 +1107,6 @@ window.translations = {
         getReady: "მზადყოფილება...",
         go: "წინ! წინ!",
         exitPits: "Exit Pits",
-        driverExitedEarly: "მძღოლი ადრე გავიდა",
-        driverExitedEarlyNotice: "მძღოლი პიტიდან გამოვიდა საჭირო დროის წინ — დაადასტურეთ მისაღებად.",
         orangeZone: "⚠️ ფორთოქლის ზონა - მხოლოდ შეატყობინეთ",
         targetLabel: "მიზანი",
         driverLink: "მძღოლის ბმული",
@@ -1233,10 +1232,7 @@ window.translations = {
         saveStratTitle: "保存", libTitle: "ライブラリ", aiPlaceholder: "例: 'ドライバー1は...を好む'", thStart: "開始", thEnd: "終了", thType: "タイプ", thDriver: "ドライバー", thDuration: "期間", liveTiming: "ライブタイミング", liveTimingUrl: "ライブタイミングURL...", connectLive: "接続", disconnectLive: "切断", searchTeam: "チームを検索...", searchDriver: "ドライバーを検索...", searchKart: "カートを検索...", demoMode: "デモモード",
         sendEmail: "送信", cancel: "キャンセル", create: "作成", save: "保存", load: "読み込み", delete: "削除", activeRaceFound: "アクティブなレースが見つかりました", continueRace: "続行", discardRace: "破棄", areYouSure: "本当にしますか?", deleteWarning: "これはデータを永久に削除します。", yesDelete: "はい、削除", noKeep: "いいえ、保持", invite: "招待", synced: "同期済み",
         chatTitle: "レースチャット / Q&A", enterName: "名前を入力", startChat: "チャットを開始", typeMessage: "提案を入力...", send: "送信", viewer: "視聴者", host: "ホスト", suggestion: "提案", strategyOutlook: "戦略見通し", timeLeft: "残り時間", penalty: "ペナルティ", enterPit: "ピット進入", nextDriverLabel: "次のドライバー", totalHeader: "合計", stopsHeader: "スティント", driverHeader: "ドライバー",
-        stintsLeft: "残りスティント", future: "将来", max: "最大", min: "最小", rest: "休息", buffer: "バッファ", impossible: "不可能", addStop: "ピットストップ追加", avg: "平均", finalLap: "ファイナルラップ", inPit: "ピット内", nextLabel: "次:", shortStintMsg: "⚠️ 短いスティント!ペナルティリスク", cancelEntry: "キャンセル", notifyDriver: "📢 ドライバーに通知", driverNotified: "✓ ドライバーに通知済み", includesAdj: "調整を含む:", missingSeconds: "不足", proceedToPit: "ピットに進む?", wait: "待機中...", getReady: "準備中...", go: "頑張れ!",
-        driverExitedEarly: "ドライバーが早く出ました",
-        driverExitedEarlyNotice: "ドライバーが必要な時間前にピットを出ました – 確認して承認してください。",
-        orangeZone: "⚠️ オレンジゾーン - 通知のみ", targetLabel: "ターゲット", driverLink: "ドライバーリンク", tapToPit: "タップしてピットイン", tapToExit: "タップしてピットアウト", pitsConfirm: "ピット?", tapAgainConfirm: "もう一度タップして確認", stintBest: "S.ベスト",
+        stintsLeft: "残りスティント", future: "将来", max: "最大", min: "最小", rest: "休息", buffer: "バッファ", impossible: "不可能", addStop: "ピットストップ追加", avg: "平均", finalLap: "ファイナルラップ", inPit: "ピット内", nextLabel: "次:", shortStintMsg: "⚠️ 短いスティント!ペナルティリスク", cancelEntry: "キャンセル", notifyDriver: "📢 ドライバーに通知", driverNotified: "✓ ドライバーに通知済み", includesAdj: "調整を含む:", missingSeconds: "不足", proceedToPit: "ピットに進む?", wait: "待機中...", getReady: "準備中...", go: "頑張れ!", orangeZone: "⚠️ オレンジゾーン - 通知のみ", targetLabel: "ターゲット", driverLink: "ドライバーリンク", tapToPit: "タップしてピットイン", tapToExit: "タップしてピットアウト", pitsConfirm: "ピット?", tapAgainConfirm: "もう一度タップして確認", stintBest: "S.ベスト",
         googleLoginBtn: "ログイン",
         testBtn: "テスト",
         demoBtn: "デモ",
@@ -1466,7 +1462,7 @@ window.setLanguage = function(lang) {
 // ==========================================
 
 window.formatTimeHMS = function(ms) {
-    if (ms < 0) ms = 0;
+    ms = Math.max(0, ms || 0);
     const totalSec = Math.floor(ms / 1000);
     const h = Math.floor(totalSec / 3600);
     const m = Math.floor((totalSec % 3600) / 60);

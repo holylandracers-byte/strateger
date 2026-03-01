@@ -46,6 +46,49 @@ body {
 
 /* ==================== HEADER PROTECTION ==================== */
 
+/* ==================== RTL LAYOUT — keep structure LTR, text RTL ==================== */
+/* Header always stays LTR so buttons don't flip */
+[dir="rtl"] header {
+    direction: ltr;
+}
+/* Main containers keep LTR layout */
+[dir="rtl"] #setupScreen,
+[dir="rtl"] #raceDashboard,
+[dir="rtl"] #previewScreen {
+    direction: ltr;
+}
+/* Let text-heavy areas inherit RTL for proper reading */
+[dir="rtl"] p,
+[dir="rtl"] label,
+[dir="rtl"] span,
+[dir="rtl"] h1, [dir="rtl"] h2, [dir="rtl"] h3, [dir="rtl"] h4,
+[dir="rtl"] .label-text,
+[dir="rtl"] td, [dir="rtl"] th {
+    direction: rtl;
+    unicode-bidi: plaintext;
+}
+/* Keep monospace/timer elements LTR */
+[dir="rtl"] [class*="font-mono"],
+[dir="rtl"] .driver-stint-timer,
+[dir="rtl"] .driver-race-timer,
+[dir="rtl"] .driver-data,
+[dir="rtl"] .driver-delta,
+[dir="rtl"] .cr-gap,
+[dir="rtl"] .cr-lap,
+[dir="rtl"] input,
+[dir="rtl"] select {
+    direction: ltr;
+}
+/* Modals keep LTR layout, text is RTL */
+[dir="rtl"] [id$="Modal"] > div,
+[dir="rtl"] #pitModal > div {
+    direction: ltr;
+}
+/* Overflow menu stays LTR */
+[dir="rtl"] #headerOverflowMenu {
+    direction: ltr;
+}
+
 /* ==================== THEME TINTING ==================== */
 /* When a color theme is active, tint ALL app elements */
 :root[style*="--theme-panel"] #raceDashboard .bg-navy-900,

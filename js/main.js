@@ -781,16 +781,25 @@ window.renderFrame = function() {
 
     try {
         const now = window.getSyncedNow();
-        const raceElapsed = now - window.state.startTime;
-        let raceRemaining = raceMs - raceElapsed;
+        const raceElapsedRaw = now - window.state.startTime;
+        let raceRemainingRaw = raceMs - raceElapsedRaw;
         
         // Use live timing race clock when available (more accurate than local timer)
-        if (window.liveData && window.liveData.raceTimeLeftMs != null) {
-            raceRemaining = window.liveData.raceTimeLeftMs;
+        if (window.liveData && window.liveData.raceTimeLeftMs != null && window.liveData.raceTimeLeftMs >= 0) {
+            raceRemainingRaw = window.liveData.raceTimeLeftMs;
         }
+
+        // Floor elapsed to whole seconds — derive remaining from the SAME boundary
+        // so countdown and stint timers always cross the second together
+        const effectiveElapsedMs = Math.max(0, raceMs - raceRemainingRaw);
+        const elapsedSec = Math.floor(effectiveElapsedMs / 1000);
+        const totalSec = Math.floor(raceMs / 1000);
+        const remainingSec = Math.max(0, totalSec - elapsedSec);
+        // keep raw remaining for logic checks
+        const raceRemaining = raceRemainingRaw;
         
         const timerEl = document.getElementById('raceTimerDisplay');
-        if (raceRemaining <= -1000 || window.state.isFinished) {
+        if (raceRemaining <= 0 || window.state.isFinished) {
             timerEl.innerText = "FINISH";
             timerEl.classList.add("text-neon", "animate-pulse");
             // Clear the finished flag so we don't re-render endlessly
@@ -799,16 +808,15 @@ window.renderFrame = function() {
             }
             return;
         }
-        if (raceRemaining <= 0) {
+        if (remainingSec <= 0) {
             timerEl.innerText = "0:00:00";
             timerEl.classList.add("text-neon");
         } else {
             // Timer mode: elapsed or remaining
             if (window._timerMode === 'elapsed') {
-                timerEl.innerText = window.formatTimeHMS(Math.floor(raceElapsed / 1000) * 1000);
+                timerEl.innerText = window.formatTimeHMS(elapsedSec * 1000);
             } else {
-                // Floor so the last visible second is 0:00:00 (not stuck on 0:00:01)
-                timerEl.innerText = window.formatTimeHMS(Math.floor(raceRemaining / 1000) * 1000);
+                timerEl.innerText = window.formatTimeHMS(remainingSec * 1000);
             }
         }
 
@@ -848,9 +856,9 @@ window.renderFrame = function() {
 
         if (!window.state.isInPit) {
             let currentStintTime = (now - window.state.stintStart) + (window.state.stintOffset || 0);
-            // floor to whole seconds for visual sync with the race clock
-            const dispStint = Math.floor(Math.max(0, currentStintTime) / 1000) * 1000;
-            document.getElementById('stintTimerDisplay').innerText = window.formatTimeHMS(dispStint);
+            // Floor to whole seconds so it ticks in sync with the race countdown
+            const stintSec = Math.floor(Math.max(0, currentStintTime) / 1000);
+            document.getElementById('stintTimerDisplay').innerText = window.formatTimeHMS(stintSec * 1000);
             
             const maxStintMs = (window.config.maxStintMs) || (window.config.maxStint * 60000) || (60 * 60000);
             const minStintMs = (window.config.minStint * 60000) || 0;
@@ -2356,17 +2364,23 @@ window.updateDriverMode = function() {
     const targetMs = window.state.targetStintMs || maxStintMs;
     const currentStintMs = (now - window.state.stintStart) + (window.state.stintOffset || 0);
 
+    // Floor elapsed to whole seconds — derive remaining from the SAME boundary
+    const drvEffectiveElapsed = Math.max(0, raceMs - raceRemaining);
+    const drvElapsedSec = Math.floor(drvEffectiveElapsed / 1000);
+    const drvTotalSec = Math.floor(raceMs / 1000);
+    const drvRemainingSec = Math.max(0, drvTotalSec - drvElapsedSec);
+
     // === Race timer (top-right, small) ===
     const timerEl = document.getElementById('driverRaceTimer');
     if (timerEl) {
         if (raceRemaining <= -1000) {
             timerEl.innerText = '🏁 FINISH';
             timerEl.style.color = '#39ff14';
-        } else if (raceRemaining <= 0) {
+        } else if (drvRemainingSec <= 0) {
             timerEl.innerText = '0:00:00';
             timerEl.style.color = '#39ff14';
         } else {
-            timerEl.innerText = window.formatTimeHMS(Math.floor(raceRemaining / 1000) * 1000);
+            timerEl.innerText = window.formatTimeHMS(drvRemainingSec * 1000);
             timerEl.style.color = '';
         }
     }
@@ -2377,13 +2391,14 @@ window.updateDriverMode = function() {
         if (window.state.isInPit) {
             // Show pit elapsed time
             const pitMs = now - (window.state.pitStart || now);
-            let str = window.formatTimeHMS(Math.max(0, pitMs));
+            const pitSec = Math.floor(Math.max(0, pitMs) / 1000);
+            let str = window.formatTimeHMS(pitSec * 1000);
             if (str.startsWith('00:')) str = str.substring(3);
             stintTimerEl.innerText = str;
             stintTimerEl.style.color = '#f87171';
         } else {
-            const stintMs = currentStintMs;
-            let str = window.formatTimeHMS(Math.floor(Math.max(0, stintMs) / 1000) * 1000);
+            const stintSec = Math.floor(Math.max(0, currentStintMs) / 1000);
+            let str = window.formatTimeHMS(stintSec * 1000);
             if (str.startsWith('00:')) str = str.substring(3);
             stintTimerEl.innerText = str;
             // Color by zone

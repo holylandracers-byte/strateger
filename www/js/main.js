@@ -785,12 +785,12 @@ window.renderFrame = function() {
         let raceRemaining = raceMs - raceElapsed;
         
         // Use live timing race clock when available (more accurate than local timer)
-        if (window.liveData && window.liveData.raceTimeLeftMs != null) {
+        if (window.liveData && window.liveData.raceTimeLeftMs != null && window.liveData.raceTimeLeftMs >= 0) {
             raceRemaining = window.liveData.raceTimeLeftMs;
         }
         
         const timerEl = document.getElementById('raceTimerDisplay');
-        if (raceRemaining <= -1000 || window.state.isFinished) {
+        if (raceRemaining <= 0 || window.state.isFinished) {
             timerEl.innerText = "FINISH";
             timerEl.classList.add("text-neon", "animate-pulse");
             // Clear the finished flag so we don't re-render endlessly
@@ -805,10 +805,10 @@ window.renderFrame = function() {
         } else {
             // Timer mode: elapsed or remaining
             if (window._timerMode === 'elapsed') {
-                timerEl.innerText = window.formatTimeHMS(Math.floor(raceElapsed / 1000) * 1000);
+                timerEl.innerText = window.formatTimeHMS(Math.max(0, raceElapsed));
             } else {
                 // Floor so the last visible second is 0:00:00 (not stuck on 0:00:01)
-                timerEl.innerText = window.formatTimeHMS(Math.floor(raceRemaining / 1000) * 1000);
+                timerEl.innerText = window.formatTimeHMS(Math.max(0, raceRemaining));
             }
         }
 
@@ -848,7 +848,8 @@ window.renderFrame = function() {
 
         if (!window.state.isInPit) {
             let currentStintTime = (now - window.state.stintStart) + (window.state.stintOffset || 0);
-            const dispStint = Math.floor(Math.max(0, currentStintTime) / 1000) * 1000;
+// Display current stint time without flooring
+            const dispStint = Math.max(0, currentStintTime);
             document.getElementById('stintTimerDisplay').innerText = window.formatTimeHMS(dispStint);
             
             const maxStintMs = (window.config.maxStintMs) || (window.config.maxStint * 60000) || (60 * 60000);
@@ -1101,7 +1102,7 @@ window.updatePitModalLogic = function() {
 
     const releaseBtn = document.getElementById('confirmExitBtn');
     if (!releaseBtn) return;
-    // always allow exit and show unified label
+    // always allow exit button and show unified label
     releaseBtn.disabled = false;
     releaseBtn.innerText = t('exitPits');
 
@@ -1112,6 +1113,7 @@ window.updatePitModalLogic = function() {
             const earlyBy = Math.max(0, totalRequiredTime - elapsedSec).toFixed(1);
             const timerDisplay2 = document.getElementById('pitTimerDisplay');
             if (timerDisplay2) timerDisplay2.className = "text-6xl font-bold font-mono text-yellow-300";
+            // note early exit time in warning, but button keeps common label
             const pitWarningBox2 = document.getElementById('pitWarningBox');
             if (pitWarningBox2) {
                 pitWarningBox2.classList.remove('hidden');
@@ -1170,6 +1172,7 @@ window.updatePitModalLogic = function() {
         // user can force the driver-exited action; count pit time until click
         const earlyBy = Math.max(0, totalRequiredTime - elapsedSec).toFixed(1);
         releaseBtn.disabled = false;
+        // keep unified label
         releaseBtn.className = "w-full max-w-xs bg-orange-600 hover:bg-orange-500 text-white font-bold py-4 rounded-lg text-3xl border border-orange-400 shadow-[0_0_20px_rgba(249,115,22,0.6)] cursor-pointer";
         const pitWarningBox = document.getElementById('pitWarningBox');
         if (pitWarningBox) {
@@ -2363,7 +2366,7 @@ window.updateDriverMode = function() {
             timerEl.innerText = '0:00:00';
             timerEl.style.color = '#39ff14';
         } else {
-            timerEl.innerText = window.formatTimeHMS(Math.floor(raceRemaining / 1000) * 1000);
+            timerEl.innerText = window.formatTimeHMS(raceRemaining);
             timerEl.style.color = '';
         }
     }
@@ -2380,7 +2383,7 @@ window.updateDriverMode = function() {
             stintTimerEl.style.color = '#f87171';
         } else {
             const stintMs = currentStintMs;
-            let str = window.formatTimeHMS(Math.floor(Math.max(0, stintMs) / 1000) * 1000);
+            let str = window.formatTimeHMS(Math.max(0, stintMs));
             if (str.startsWith('00:')) str = str.substring(3);
             stintTimerEl.innerText = str;
             // Color by zone
