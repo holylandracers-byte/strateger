@@ -676,6 +676,7 @@ window.initRace = function() {
     }
 
     window.state.isRunning = true;
+    window.state.isFinished = false; // Reset finish flag from any previous race
     window.state.startTime = startTime;
     window.state.stintStart = startTime;
     window.state.pitCount = 0;

@@ -818,10 +818,11 @@ window.renderFrame = function() {
         const raceRemaining = raceRemainingRaw;
         
         const timerEl = document.getElementById('raceTimerDisplay');
-        if (raceRemaining <= 0 || window.state.isFinished) {
+        // Race finished: lock interactive controls
+        if (window.state.isFinished) {
             timerEl.innerText = "FINISH";
             timerEl.classList.add("text-neon", "animate-pulse");
-            // Lock pit entry button when finished
+            // Lock pit entry button
             const pitEntryBtn = document.getElementById('pitEntryBtn');
             const pitEntryBtnLabel = document.getElementById('pitEntryBtnLabel');
             if (pitEntryBtn) { pitEntryBtn.disabled = true; pitEntryBtn.classList.add('opacity-40', 'cursor-not-allowed', 'pointer-events-none'); }

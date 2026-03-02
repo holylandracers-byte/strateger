@@ -1706,6 +1706,18 @@ window.continueRace = function() {
         document.getElementById('savedRaceModal').classList.add('hidden');
         document.getElementById('raceDashboard').classList.remove('hidden');
 
+        // If race was already finished when saved, show the summary instead of running
+        if (window.state.isFinished) {
+            window.state.isRunning = false;
+            window.role = 'host';
+            // Show dashboard with FINISH state, then pop up summary
+            if (typeof window.renderFrame === 'function') window.renderFrame();
+            setTimeout(() => {
+                if (typeof window.showRaceSummary === 'function') window.showRaceSummary();
+            }, 500);
+            return;
+        }
+
         // הבטחת מצב HOST
         window.state.isRunning = true;
         window.role = 'host';
