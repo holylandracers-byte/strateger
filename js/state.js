@@ -1587,6 +1587,8 @@ window.setLanguage = function(lang) {
     if (typeof window.updateWeatherUI === 'function') window.updateWeatherUI();
     if (typeof window.renderFrame === 'function') window.renderFrame();
     if (typeof window.renderPreview === 'function' && window.previewData) window.renderPreview();
+    // Re-run sim so simResult text is translated to the new language
+    if (typeof window.runSim === 'function' && window.drivers && window.drivers.length > 0) window.runSim();
 };
 
 // ==========================================

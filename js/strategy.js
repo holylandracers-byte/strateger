@@ -441,6 +441,17 @@ window.calculateStrategyLogic = function(config) {
     return { timeline, driverStats, config, drivers: [...window.drivers] };
 };
 
+// Enable or disable (and grey out) the Start Race button
+window._setStartBtnState = function(valid) {
+    const btn = document.getElementById('startRaceBtn');
+    if (!btn) return;
+    btn.disabled = !valid;
+    btn.classList.toggle('opacity-40', !valid);
+    btn.classList.toggle('cursor-not-allowed', !valid);
+    btn.classList.toggle('pointer-events-none', !valid);
+    btn.title = valid ? '' : '⚠️ Fix strategy params before starting';
+};
+
 window.runSim = function() {
     const durationHours = parseFloat(document.getElementById('raceDuration').value) || 12;
     const reqStops = parseInt(document.getElementById('reqPitStops').value) || 15;
@@ -533,6 +544,7 @@ window.runSim = function() {
             resEl.style.color = '#ef4444';
         }
         window.cachedStrategy = null;
+        window._setStartBtnState(false);
         return;
     }
 
@@ -555,6 +567,7 @@ window.runSim = function() {
             resEl.style.color = '#ef4444';
         }
         window.cachedStrategy = null;
+        window._setStartBtnState(false);
         return;
     }
 
@@ -583,15 +596,18 @@ window.runSim = function() {
     const isAverageStintValid = avgStint >= minStintMin && avgStint <= maxStintMin;
     const invalidStrategyWarning = document.getElementById('invalidStrategyWarning');
     
-    if (invalidStrategyWarning) {
-        if (!isAverageStintValid) {
+    if (!isAverageStintValid) {
+        if (invalidStrategyWarning) {
             invalidStrategyWarning.classList.remove('hidden');
             document.getElementById('averageStintValue').innerText = avgStint;
             document.getElementById('minStintBound').innerText = minStintMin;
             document.getElementById('maxStintBound').innerText = maxStintMin;
-        } else {
-            invalidStrategyWarning.classList.add('hidden');
         }
+        window.cachedStrategy = null;
+        window._setStartBtnState(false);
+        return;
+    } else {
+        if (invalidStrategyWarning) invalidStrategyWarning.classList.add('hidden');
     }
 
     let pitClosedInfo = '';
@@ -646,6 +662,7 @@ window.runSim = function() {
             `;
         }
     }
+    window._setStartBtnState(true);
 };
 
 window.generatePreview = function(silent, render) {

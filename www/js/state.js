@@ -372,6 +372,7 @@ window.translations = {
         aiOptimize: "AI Optimize Strategy",
         raceFinished: "RACE FINISHED", totalPitTime: "Pit Time", raceStart: "Start", pitLog: "Pit Stop Log", drove: "Drove", pitNoun: "Pit", driveNoun: "Drive", stints: "Stints", avgStint: "Avg",
         demoSelectFeatures: "Select Pro features to test", demoLiveTimingDesc: "Simulated 20-team leaderboard", demoRainLabel: "Rain Simulation", demoRainDesc: "Random rain events with pace changes", demoPenaltyDesc: "Random penalties & time additions", demoTiresLabel: "Tire Degradation", demoTiresDesc: "Lap times increase over stint", demoSquadsLabel: "Squads", demoSquadsDesc: "Driver groups with rotation", demoFuelLabel: "Fuel Management", demoFuelDesc: "Track fuel level & pit for refueling",
+        unitMin: "m", unitHour: "h",
     },
     he: {
         ltSearchType: "סנן לפי:", ltTeam: "קבוצה", ltDriver: "נהג", ltKart: "מספר קארט", ltPlaceholder: "הכנס ערך לחיפוש...",
@@ -487,6 +488,7 @@ window.translations = {
         aiOptimize: "ייעול אסטרטגיה (AI)",
         raceFinished: "המירוץ נגמר", totalPitTime: "זמן פיטס", raceStart: "התחלה", pitLog: "יומן עצירות", drove: "נהג", pitNoun: "פיט", driveNoun: "נסיעה", stints: "סטינטים", avgStint: "ממוצע",
         demoSelectFeatures: "בחר תכונות Pro לבדיקה", demoLiveTimingDesc: "טבלת 20 קבוצות מדומה", demoRainLabel: "סימולציית גשם", demoRainDesc: "אירועי גשם אקראיים עם שינוי קצב", demoPenaltyDesc: "עונשים אקראיים ותוספות זמן", demoTiresLabel: "בלאי צמיגים", demoTiresDesc: "זמני הקפה עולים במהלך הסטינט", demoSquadsLabel: "חוליות", demoSquadsDesc: "קבוצות נהגים עם רוטציה", demoFuelLabel: "ניהול דלק", demoFuelDesc: "מעקב אחר דלק ועצירה לתדלוק",
+        unitMin: "דק", unitHour: "ש",
         soundMute: "השתק", soundUnmute: "בטל השתקה",
         undoPit: "בטל כניסה", undoPitToast: "כניסה לפיטס בוטלה", undoCountdown: "בטל",
         exportPdf: "ייצוא PDF", exportImage: "שתף כתמונה", exportingPdf: "מייצא PDF...",
@@ -606,6 +608,7 @@ window.translations = {
         aiOptimize: "Optimiser la stratégie IA",
         raceFinished: "COURSE TERMINÉE", totalPitTime: "Temps au stand", raceStart: "Départ", pitLog: "Journal des arrêts", drove: "Conduit", pitNoun: "Stand", driveNoun: "Conduite", stints: "Relais", avgStint: "Moy.",
         demoSelectFeatures: "Sélectionnez les fonctions Pro à tester", demoLiveTimingDesc: "Classement simulé de 20 équipes", demoRainLabel: "Simulation de pluie", demoRainDesc: "Événements de pluie avec changement de rythme", demoPenaltyDesc: "Pénalités aléatoires et ajouts de temps", demoTiresLabel: "Dégradation des pneus", demoTiresDesc: "Les temps au tour augmentent au fil du relais", demoSquadsLabel: "Équipes", demoSquadsDesc: "Groupes de pilotes avec rotation", demoFuelLabel: "Gestion du carburant", demoFuelDesc: "Suivre le carburant et ravitaillement",
+        unitMin: "min", unitHour: "h",
         soundMute: "Muet", soundUnmute: "Activer le son",
         undoPit: "Annuler Pit", undoPitToast: "Entrée pit annulée", undoCountdown: "Annuler",
         exportPdf: "Exporter PDF", exportImage: "Partager en image", exportingPdf: "Génération PDF...",
@@ -720,6 +723,7 @@ window.translations = {
         aiOptimize: "Otimizar Estratégia IA",
         raceFinished: "CORRIDA ENCERRADA", totalPitTime: "Tempo no Box", raceStart: "Início", pitLog: "Registo de Paragens", drove: "Dirigiu", pitNoun: "Box", driveNoun: "Condução", stints: "Stints", avgStint: "Média",
         demoSelectFeatures: "Selecione recursos Pro para testar", demoLiveTimingDesc: "Classificação simulada de 20 equipes", demoRainLabel: "Simulação de chuva", demoRainDesc: "Eventos de chuva aleatórios com mudança de ritmo", demoPenaltyDesc: "Penalidades aleatórias e adições de tempo", demoTiresLabel: "Degradação de pneus", demoTiresDesc: "Tempos de volta aumentam ao longo do stint", demoSquadsLabel: "Esquadrões", demoSquadsDesc: "Grupos de pilotos com rotação", demoFuelLabel: "Gestão de combustível", demoFuelDesc: "Acompanhar combustível e reabastecer",
+        unitMin: "min", unitHour: "h",
         soundMute: "Silenciar", soundUnmute: "Ativar Som",
         undoPit: "Cancelar Box", undoPitToast: "Entrada cancelada", undoCountdown: "Cancelar",
         exportPdf: "Exportar PDF", exportImage: "Compartilhar Imagem", exportingPdf: "Gerando PDF...",
@@ -839,6 +843,7 @@ window.translations = {
         aiOptimize: "Оптимизировать стратегию (ИИ)",
         raceFinished: "ГОНКА ЗАВЕРШЕНА", totalPitTime: "Время в боксах", raceStart: "Старт", pitLog: "Журнал пит-стопов", drove: "Ехал", pitNoun: "Пит", driveNoun: "Езда", stints: "Стинты", avgStint: "Сред.",
         demoSelectFeatures: "Выберите Pro-функции для тестирования", demoLiveTimingDesc: "Таблица 20 команд", demoRainLabel: "Симуляция дождя", demoRainDesc: "Случайные осадки с изменением темпа", demoPenaltyDesc: "Случайные штрафы и добавление времени", demoTiresLabel: "Износ шин", demoTiresDesc: "Время круга увеличивается в течение стинта", demoSquadsLabel: "Группы", demoSquadsDesc: "Группы гонщиков с ротацией", demoFuelLabel: "Управление топливом", demoFuelDesc: "Отслеживание топлива и дозаправка",
+        unitMin: "мин", unitHour: "ч",
         soundMute: "Без звука", soundUnmute: "Включить звук",
         undoPit: "Отменить пит", undoPitToast: "Вход в пит отменён", undoCountdown: "Отмена",
         exportPdf: "Экспорт PDF", exportImage: "Поделиться картинкой", exportingPdf: "Создание PDF...",
@@ -957,6 +962,7 @@ window.translations = {
         aiOptimize: "تحسين الاستراتيجية بالذكاء الاصطناعي",
         raceFinished: "انتهى السباق", totalPitTime: "وقت التوقف", raceStart: "البداية", pitLog: "سجل التوقفات", drove: "قاد", pitNoun: "توقف", driveNoun: "قيادة", stints: "فترات", avgStint: "متوسط",
         demoSelectFeatures: "اختر ميزات Pro للاختبار", demoLiveTimingDesc: "لوحة تصنيف 20 فريقاً", demoRainLabel: "محاكاة المطر", demoRainDesc: "أحداث مطر عشوائية مع تغيير الإيقاع", demoPenaltyDesc: "عقوبات عشوائية وإضافات زمنية", demoTiresLabel: "تآكل الإطارات", demoTiresDesc: "أوقات اللفة تزداد خلال الفترة", demoSquadsLabel: "الفرق", demoSquadsDesc: "مجموعات السائقين مع التناوب", demoFuelLabel: "إدارة الوقود", demoFuelDesc: "تتبع الوقود والتوقف للتزويد",
+        unitMin: "د", unitHour: "س",
         soundMute: "كتم الصوت", soundUnmute: "إلغاء كتم الصوت",
         undoPit: "إلغاء الحفرة", undoPitToast: "تم إلغاء دخول الحفرة", undoCountdown: "إلغاء",
         exportPdf: "تصدير PDF", exportImage: "مشاركة كصورة", exportingPdf: "إنشاء PDF...",
@@ -1075,6 +1081,7 @@ window.translations = {
         aiOptimize: "Optimizar estrategia IA",
         raceFinished: "CARRERA TERMINADA", totalPitTime: "Tiempo en boxes", raceStart: "Inicio", pitLog: "Registro de paradas", drove: "Condujo", pitNoun: "Box", driveNoun: "Conducción", stints: "Tramos", avgStint: "Prom.",
         demoSelectFeatures: "Selecciona funciones Pro para probar", demoLiveTimingDesc: "Clasificación simulada de 20 equipos", demoRainLabel: "Simulación de lluvia", demoRainDesc: "Eventos de lluvia aleatorios con cambio de ritmo", demoPenaltyDesc: "Penalizaciones aleatorias y adiciones de tiempo", demoTiresLabel: "Degradación de neumáticos", demoTiresDesc: "Los tiempos de vuelta aumentan durante el tramo", demoSquadsLabel: "Escuadrones", demoSquadsDesc: "Grupos de pilotos con rotación", demoFuelLabel: "Gestión de combustible", demoFuelDesc: "Seguimiento del combustible y repostaje",
+        unitMin: "min", unitHour: "h",
         soundMute: "Silenciar", soundUnmute: "Activar sonido",
         undoPit: "Deshacer Pit", undoPitToast: "Entrada al pit deshecha", undoCountdown: "Deshacer",
         exportPdf: "Exportar PDF", exportImage: "Compartir Imagen", exportingPdf: "Generando PDF...",
@@ -1141,6 +1148,7 @@ window.translations = {
         aiOptimize: "Ottimizza strategia IA",
         raceFinished: "GARA TERMINATA", totalPitTime: "Tempo ai box", raceStart: "Partenza", pitLog: "Registro soste", drove: "Guidato", pitNoun: "Box", driveNoun: "Guida", stints: "Stint", avgStint: "Media",
         demoSelectFeatures: "Seleziona le funzioni Pro da testare", demoLiveTimingDesc: "Classifica simulata di 20 squadre", demoRainLabel: "Simulazione pioggia", demoRainDesc: "Eventi pioggia casuali con cambio di ritmo", demoPenaltyDesc: "Penalità casuali e aggiunte di tempo", demoTiresLabel: "Degrado gomme", demoTiresDesc: "I tempi sul giro aumentano durante lo stint", demoSquadsLabel: "Squadre", demoSquadsDesc: "Gruppi di piloti con rotazione", demoFuelLabel: "Gestione carburante", demoFuelDesc: "Monitorare il carburante e rifornimento",
+        unitMin: "min", unitHour: "h",
         soundMute: "Muto", soundUnmute: "Riattiva",
         undoPit: "Annulla Pit", undoPitToast: "Ingresso pit annullato", undoCountdown: "Annulla",
         exportPdf: "Esporta PDF", exportImage: "Condividi Immagine", exportingPdf: "Generazione PDF...",
@@ -1257,6 +1265,7 @@ window.translations = {
         aiOptimize: "AI სტრატეგიის ოპტიმიზაცია",
         raceFinished: "რბოლა დასრულდა", totalPitTime: "პიტის დრო", raceStart: "სტარტი", pitLog: "პიტ-სტოპების ჟურნალი", drove: "მართა", pitNoun: "პიტი", driveNoun: "რბოლა", stints: "სტინტები", avgStint: "საშ.",
         demoSelectFeatures: "აირჩიეთ Pro ფუნქციები ტესტირებისთვის", demoLiveTimingDesc: "20 გუნდის სიმულაცია", demoRainLabel: "წვიმის სიმულაცია", demoRainDesc: "შემთხვევითი წვიმის მოვლენები ტემპის ცვლილებით", demoPenaltyDesc: "შემთხვევითი ჯარიმები და დროის დამატება", demoTiresLabel: "საბურავების ცვეთა", demoTiresDesc: "წრის დრო იზრდება სტინტის განმავლობაში", demoSquadsLabel: "ჯგუფები", demoSquadsDesc: "მძღოლების ჯგუფები როტაციით", demoFuelLabel: "საწვავის მართვა", demoFuelDesc: "საწვავის დონის თვალყურის დევნება",
+        unitMin: "წთ", unitHour: "სთ",
         soundMute: "დადუმება", soundUnmute: "ხმის ჩართვა",
         undoPit: "გაუქმება", undoPitToast: "პიტი გაუქმებულია", undoCountdown: "გაუქმება",
         exportPdf: "PDF ექსპორტი", exportImage: "გაზიარება სურათად", exportingPdf: "PDF-ის გენერაცია...",
@@ -1323,6 +1332,7 @@ window.translations = {
         aiOptimize: "KI-Strategie optimieren",
         raceFinished: "RENNEN BEENDET", totalPitTime: "Boxenzeit", raceStart: "Start", pitLog: "Boxenstopp-Protokoll", drove: "Gefahren", pitNoun: "Box", driveNoun: "Fahrt", stints: "Stints", avgStint: "Ø",
         demoSelectFeatures: "Pro-Funktionen zum Testen auswählen", demoLiveTimingDesc: "Simulierte 20-Team-Rangliste", demoRainLabel: "Regensimulation", demoRainDesc: "Zufällige Regenereignisse mit Tempowechsel", demoPenaltyDesc: "Zufällige Strafen und Zeitzuschläge", demoTiresLabel: "Reifenverschleiß", demoTiresDesc: "Rundenzeiten steigen im Laufe des Stints", demoSquadsLabel: "Staffeln", demoSquadsDesc: "Fahrergruppen mit Rotation", demoFuelLabel: "Kraftstoffmanagement", demoFuelDesc: "Kraftstoffstand verfolgen und tanken",
+        unitMin: "Min", unitHour: "Std",
         soundMute: "Stummschalten", soundUnmute: "Ton einschalten",
         undoPit: "Pit rückgängig", undoPitToast: "Pit-Einfahrt rückgängig", undoCountdown: "Rückgängig",
         exportPdf: "PDF exportieren", exportImage: "Als Bild teilen", exportingPdf: "PDF wird erstellt...",
@@ -1389,6 +1399,7 @@ window.translations = {
         aiOptimize: "AI戦略最適化",
         raceFinished: "レース終了", totalPitTime: "ピット時間", raceStart: "スタート", pitLog: "ピットストップ記録", drove: "走行", pitNoun: "ピット", driveNoun: "走行", stints: "スティント", avgStint: "平均",
         demoSelectFeatures: "テストするPro機能を選択", demoLiveTimingDesc: "20チームのシミュレーション", demoRainLabel: "雨のシミュレーション", demoRainDesc: "ランダムな降雨イベントとペース変化", demoPenaltyDesc: "ランダムなペナルティと加算時間", demoTiresLabel: "タイヤ劣化", demoTiresDesc: "スティント中にラップタイムが増加", demoSquadsLabel: "スクワッド", demoSquadsDesc: "ドライバーグループのローテーション", demoFuelLabel: "燃料管理", demoFuelDesc: "燃料レベルの追跡と給油",
+        unitMin: "分", unitHour: "時",
         soundMute: "ミュート", soundUnmute: "ミュート解除",
         undoPit: "ピット取消", undoPitToast: "ピット入場取消", undoCountdown: "取消",
         exportPdf: "PDFエクスポート", exportImage: "画像で共有", exportingPdf: "PDF生成中...",
@@ -1506,6 +1517,7 @@ window.translations = {
         aiOptimize: "Βελτιστοποίηση AI Στρατηγικής",
         raceFinished: "ΑΓΩΝΑΣ ΟΛΟΚΛΗΡΩΘΗΚΕ", totalPitTime: "Χρόνος Pit", raceStart: "Εκκίνηση", pitLog: "Αρχείο Pit Stop", drove: "Οδήγησε", pitNoun: "Pit", driveNoun: "Οδήγηση", stints: "Stints", avgStint: "Μέσος",
         demoSelectFeatures: "Επιλέξτε λειτουργίες Pro για δοκιμή", demoLiveTimingDesc: "Προσομοίωση 20 ομάδων", demoRainLabel: "Προσομοίωση βροχής", demoRainDesc: "Τυχαία γεγονότα βροχής με αλλαγή ρυθμού", demoPenaltyDesc: "Τυχαίες ποινές και προσθήκες χρόνου", demoTiresLabel: "Φθορά ελαστικών", demoTiresDesc: "Οι χρόνοι γύρου αυξάνονται κατά τη διάρκεια του stint", demoSquadsLabel: "Ομάδες", demoSquadsDesc: "Ομάδες οδηγών με εναλλαγή", demoFuelLabel: "Διαχείριση καυσίμου", demoFuelDesc: "Παρακολούθηση καυσίμου και ανεφοδιασμός",
+        unitMin: "λ", unitHour: "ω",
         soundMute: "Σίγαση", soundUnmute: "Ενεργοποίηση ήχου",
         undoPit: "Αναίρεση Pit", undoPitToast: "Είσοδος pit αναιρέθηκε", undoCountdown: "Αναίρεση",
         exportPdf: "Εξαγωγή PDF", exportImage: "Κοινοποίηση Εικόνας", exportingPdf: "Δημιουργία PDF...",
@@ -1575,6 +1587,8 @@ window.setLanguage = function(lang) {
     if (typeof window.updateWeatherUI === 'function') window.updateWeatherUI();
     if (typeof window.renderFrame === 'function') window.renderFrame();
     if (typeof window.renderPreview === 'function' && window.previewData) window.renderPreview();
+    // Re-run sim so simResult text is translated to the new language
+    if (typeof window.runSim === 'function' && window.drivers && window.drivers.length > 0) window.runSim();
 };
 
 // ==========================================

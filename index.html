@@ -1097,6 +1097,7 @@
                 <button onclick="window.toggleThemePanel()" class="text-gray-500 hover:text-white text-lg px-2">✕</button>
             </div>
             <div id="bgSwatches" class="grid grid-cols-4 gap-2 items-center">
+                <!-- ─── CSS themes ─── -->
                 <button class="bg-swatch active w-full aspect-[3/2] rounded-lg border-2 border-gray-600 hover:border-white transition overflow-hidden relative group" data-bg="" title="Default" onclick="window.setPageBackground('')">
                     <div class="absolute inset-0" style="background: linear-gradient(135deg, #020617 50%, #1e293b 100%);"></div>
                     <span class="absolute bottom-0 inset-x-0 text-[8px] text-gray-400 bg-black/70 text-center py-0.5 opacity-0 group-hover:opacity-100 transition">Default</span>
@@ -1141,21 +1142,21 @@
                     <div class="absolute inset-0" style="background: linear-gradient(180deg, #1a0505 0%, #2d0a0a 50%, #1a0505 100%);"></div>
                     <span class="absolute bottom-0 inset-x-0 text-[8px] text-red-300 bg-black/70 text-center py-0.5 opacity-0 group-hover:opacity-100 transition">🔴 Red</span>
                 </button>
-                <button class="bg-swatch w-full aspect-[3/2] rounded-lg border-2 border-gray-600 hover:border-green-400 transition overflow-hidden relative group" data-bg="forest" title="Forest" onclick="window.setPageBackground('forest')">
+                <button class="bg-swatch w-full aspect-[3/2] rounded-lg border-2 border-gray-600 hover:border-green-400 transition overflow-hidden relative group" data-bg="forest" title="Forest Green" onclick="window.setPageBackground('forest')">
                     <div class="absolute inset-0" style="background: linear-gradient(180deg, #051a0a 0%, #0a2d15 50%, #051a0a 100%);"></div>
-                    <span class="absolute bottom-0 inset-x-0 text-[8px] text-green-300 bg-black/70 text-center py-0.5 opacity-0 group-hover:opacity-100 transition">🌲 Forest</span>
+                    <span class="absolute bottom-0 inset-x-0 text-[8px] text-green-300 bg-black/70 text-center py-0.5 opacity-0 group-hover:opacity-100 transition">🌲 Green</span>
                 </button>
                 <button class="bg-swatch w-full aspect-[3/2] rounded-lg border-2 border-gray-600 hover:border-purple-400 transition overflow-hidden relative group" data-bg="purple-night" title="Purple Night" onclick="window.setPageBackground('purple-night')">
                     <div class="absolute inset-0" style="background: linear-gradient(180deg, #0d0520 0%, #1a0a35 50%, #0d0520 100%);"></div>
                     <span class="absolute bottom-0 inset-x-0 text-[8px] text-purple-300 bg-black/70 text-center py-0.5 opacity-0 group-hover:opacity-100 transition">🟣 Purple</span>
                 </button>
+                <button class="bg-swatch w-full aspect-[3/2] rounded-lg border-2 border-gray-600 hover:border-pink-400 transition overflow-hidden relative group" data-bg="hot-pink" title="Hot Pink" onclick="window.setPageBackground('hot-pink')">
+                    <div class="absolute inset-0" style="background: linear-gradient(180deg, #150005 0%, #250a1a 30%, #3a0a28 50%, #250a1a 70%, #150005 100%);"></div>
+                    <span class="absolute bottom-0 inset-x-0 text-[8px] text-pink-300 bg-black/70 text-center py-0.5 opacity-0 group-hover:opacity-100 transition">🌸 Pink</span>
+                </button>
                 <button class="bg-swatch w-full aspect-[3/2] rounded-lg border-2 border-gray-600 hover:border-amber-400 transition overflow-hidden relative group" data-bg="amber-heat" title="Amber Heat" onclick="window.setPageBackground('amber-heat')">
                     <div class="absolute inset-0" style="background: linear-gradient(180deg, #1a1000 0%, #2d1a05 50%, #1a1000 100%);"></div>
                     <span class="absolute bottom-0 inset-x-0 text-[8px] text-amber-300 bg-black/70 text-center py-0.5 opacity-0 group-hover:opacity-100 transition">🔥 Amber</span>
-                </button>
-                <button class="bg-swatch w-full aspect-[3/2] rounded-lg border-2 border-gray-600 hover:border-gray-400 transition overflow-hidden relative group" data-bg="steel" title="Steel" onclick="window.setPageBackground('steel')">
-                    <div class="absolute inset-0" style="background: linear-gradient(180deg, #15181e 0%, #1e2530 50%, #15181e 100%);"></div>
-                    <span class="absolute bottom-0 inset-x-0 text-[8px] text-gray-300 bg-black/70 text-center py-0.5 opacity-0 group-hover:opacity-100 transition">⚙️ Steel</span>
                 </button>
                 <button class="bg-swatch w-full aspect-[3/2] rounded-lg border-2 border-gray-600 hover:border-cyan-300 transition overflow-hidden relative group" data-bg="neon-grid" title="Neon Grid" onclick="window.setPageBackground('neon-grid')">
                     <div class="absolute inset-0" style="background-color:#050510; background-image: linear-gradient(rgba(0,255,200,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(0,255,200,0.08) 1px, transparent 1px); background-size: 8px 8px;"></div>
@@ -1165,29 +1166,9 @@
                     <div class="absolute inset-0" style="background: linear-gradient(180deg, #1a0520 0%, #2d0a15 25%, #4a1a08 50%, #2d0a15 75%, #1a0520 100%);"></div>
                     <span class="absolute bottom-0 inset-x-0 text-[8px] text-orange-300 bg-black/70 text-center py-0.5 opacity-0 group-hover:opacity-100 transition">🌅 Sunset</span>
                 </button>
-                <button class="bg-swatch w-full aspect-[3/2] rounded-lg border-2 border-gray-600 hover:border-blue-300 transition overflow-hidden relative group" data-bg="gulf-blue" title="Gulf Blue" onclick="window.setPageBackground('gulf-blue')">
-                    <div class="absolute inset-0" style="background: linear-gradient(135deg, #0a2540 0%, #1a4a7a 30%, #0d3560 60%, #0a2540 100%);"></div>
-                    <span class="absolute bottom-0 inset-x-0 text-[8px] text-blue-200 bg-black/70 text-center py-0.5 opacity-0 group-hover:opacity-100 transition">🏆 Gulf</span>
-                </button>
-                <button class="bg-swatch w-full aspect-[3/2] rounded-lg border-2 border-gray-600 hover:border-green-400 transition overflow-hidden relative group" data-bg="british-green" title="British Racing Green" onclick="window.setPageBackground('british-green')">
-                    <div class="absolute inset-0" style="background: linear-gradient(180deg, #0a1a10 0%, #0d2818 30%, #102d1d 50%, #0d2818 70%, #0a1a10 100%);"></div>
-                    <span class="absolute bottom-0 inset-x-0 text-[8px] text-green-300 bg-black/70 text-center py-0.5 opacity-0 group-hover:opacity-100 transition">🇬🇧 BRG</span>
-                </button>
                 <button class="bg-swatch w-full aspect-[3/2] rounded-lg border-2 border-gray-600 hover:border-blue-400 transition overflow-hidden relative group" data-bg="martini-stripe" title="Martini Stripe" onclick="window.setPageBackground('martini-stripe')">
                     <div class="absolute inset-0" style="background: linear-gradient(180deg, #0e0e14 0%, #0e0e14 44%, #1a3a6e 44.5%, #1a3a6e 47%, #cc2222 47.5%, #cc2222 50.5%, #1a3a6e 51%, #1a3a6e 53.5%, #0e0e14 54%, #0e0e14 100%);"></div>
                     <span class="absolute bottom-0 inset-x-0 text-[8px] text-blue-200 bg-black/70 text-center py-0.5 opacity-0 group-hover:opacity-100 transition">🏎️ Martini</span>
-                </button>
-                <button class="bg-swatch w-full aspect-[3/2] rounded-lg border-2 border-gray-600 hover:border-cyan-300 transition overflow-hidden relative group" data-bg="arctic-ice" title="Arctic Ice" onclick="window.setPageBackground('arctic-ice')">
-                    <div class="absolute inset-0" style="background: linear-gradient(180deg, #0a1520 0%, #102535 30%, #1a3a50 50%, #102535 70%, #0a1520 100%);"></div>
-                    <span class="absolute bottom-0 inset-x-0 text-[8px] text-cyan-200 bg-black/70 text-center py-0.5 opacity-0 group-hover:opacity-100 transition">❄️ Arctic</span>
-                </button>
-                <button class="bg-swatch w-full aspect-[3/2] rounded-lg border-2 border-gray-600 hover:border-purple-300 transition overflow-hidden relative group" data-bg="aurora" title="Aurora" onclick="window.setPageBackground('aurora')">
-                    <div class="absolute inset-0" style="background: linear-gradient(180deg, #020510 0%, #0a1030 20%, #081848 40%, #1a0a40 60%, #2a0828 80%, #0a0510 100%);"></div>
-                    <span class="absolute bottom-0 inset-x-0 text-[8px] text-purple-300 bg-black/70 text-center py-0.5 opacity-0 group-hover:opacity-100 transition">🌌 Aurora</span>
-                </button>
-                <button class="bg-swatch w-full aspect-[3/2] rounded-lg border-2 border-gray-600 hover:border-yellow-400 transition overflow-hidden relative group" data-bg="monaco-gold" title="Monaco Gold" onclick="window.setPageBackground('monaco-gold')">
-                    <div class="absolute inset-0" style="background: linear-gradient(180deg, #0a0800 0%, #1a1505 20%, #2a2008 40%, #1a1505 60%, #0a0800 100%);"></div>
-                    <span class="absolute bottom-0 inset-x-0 text-[8px] text-yellow-300 bg-black/70 text-center py-0.5 opacity-0 group-hover:opacity-100 transition">👑 Monaco</span>
                 </button>
                 <button class="bg-swatch w-full aspect-[3/2] rounded-lg border-2 border-gray-600 hover:border-red-500 transition overflow-hidden relative group" data-bg="ferrari-rosso" title="Ferrari Rosso" onclick="window.setPageBackground('ferrari-rosso')">
                     <div class="absolute inset-0" style="background: linear-gradient(180deg, #0e0000 0%, #2a0808 25%, #4a0a0a 50%, #2a0808 75%, #0e0000 100%);"></div>
@@ -1197,13 +1178,57 @@
                     <div class="absolute inset-0" style="background: linear-gradient(180deg, #100800 0%, #201505 25%, #3a2008 40%, #4a2a0a 50%, #3a2008 60%, #201505 75%, #100800 100%);"></div>
                     <span class="absolute bottom-0 inset-x-0 text-[8px] text-orange-300 bg-black/70 text-center py-0.5 opacity-0 group-hover:opacity-100 transition">🟠 Papaya</span>
                 </button>
-                <button class="bg-swatch w-full aspect-[3/2] rounded-lg border-2 border-gray-600 hover:border-blue-500 transition overflow-hidden relative group" data-bg="ocean-depth" title="Ocean Depth" onclick="window.setPageBackground('ocean-depth')">
-                    <div class="absolute inset-0" style="background: linear-gradient(180deg, #000510 0%, #001030 25%, #002050 50%, #001030 75%, #000510 100%);"></div>
-                    <span class="absolute bottom-0 inset-x-0 text-[8px] text-blue-300 bg-black/70 text-center py-0.5 opacity-0 group-hover:opacity-100 transition">🌊 Ocean</span>
-                </button>
                 <button class="bg-swatch w-full aspect-[3/2] rounded-lg border-2 border-gray-600 hover:border-orange-600 transition overflow-hidden relative group" data-bg="volcanic" title="Volcanic" onclick="window.setPageBackground('volcanic')">
                     <div class="absolute inset-0" style="background: linear-gradient(180deg, #0a0000 0%, #1a0500 20%, #2d0800 35%, #401005 50%, #2d0800 65%, #1a0500 80%, #0a0000 100%);"></div>
                     <span class="absolute bottom-0 inset-x-0 text-[8px] text-orange-400 bg-black/70 text-center py-0.5 opacity-0 group-hover:opacity-100 transition">🌋 Volcanic</span>
+                </button>
+
+                <!-- ─── 📸 Photo themes (requires internet) ─── -->
+                <div class="col-span-4 flex items-center gap-2 mt-1">
+                    <div class="flex-1 h-px bg-gray-700"></div>
+                    <span class="text-[9px] text-gray-500 font-bold tracking-widest uppercase">📸 Photo</span>
+                    <div class="flex-1 h-px bg-gray-700"></div>
+                </div>
+
+                <button class="bg-swatch w-full aspect-[3/2] rounded-lg border-2 border-gray-600 hover:border-cyan-300 transition overflow-hidden relative group" data-bg="kart-race" title="Kart Race" onclick="window.setPageBackground('kart-race')">
+                    <img src="https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=400&q=60" class="absolute inset-0 w-full h-full object-cover" loading="lazy" onerror="this.style.display='none'">
+                    <div class="absolute inset-0 bg-black/25"></div>
+                    <span class="absolute bottom-0 inset-x-0 text-[8px] text-white bg-black/70 text-center py-0.5 opacity-0 group-hover:opacity-100 transition">🏎️ Race</span>
+                </button>
+                <button class="bg-swatch w-full aspect-[3/2] rounded-lg border-2 border-gray-600 hover:border-purple-400 transition overflow-hidden relative group" data-bg="kart-night" title="Night Race" onclick="window.setPageBackground('kart-night')">
+                    <img src="https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?auto=format&fit=crop&w=400&q=60" class="absolute inset-0 w-full h-full object-cover" loading="lazy" onerror="this.style.display='none'">
+                    <div class="absolute inset-0 bg-black/25"></div>
+                    <span class="absolute bottom-0 inset-x-0 text-[8px] text-white bg-black/70 text-center py-0.5 opacity-0 group-hover:opacity-100 transition">🌙 Night</span>
+                </button>
+                <button class="bg-swatch w-full aspect-[3/2] rounded-lg border-2 border-gray-600 hover:border-yellow-400 transition overflow-hidden relative group" data-bg="kart-pit" title="Pit Stop" onclick="window.setPageBackground('kart-pit')">
+                    <img src="https://images.unsplash.com/photo-1541348263662-e068662d82af?auto=format&fit=crop&w=400&q=60" class="absolute inset-0 w-full h-full object-cover" loading="lazy" onerror="this.style.display='none'">
+                    <div class="absolute inset-0 bg-black/25"></div>
+                    <span class="absolute bottom-0 inset-x-0 text-[8px] text-white bg-black/70 text-center py-0.5 opacity-0 group-hover:opacity-100 transition">🔧 Pit Stop</span>
+                </button>
+                <button class="bg-swatch w-full aspect-[3/2] rounded-lg border-2 border-gray-600 hover:border-white transition overflow-hidden relative group" data-bg="kart-onboard" title="Onboard View" onclick="window.setPageBackground('kart-onboard')">
+                    <img src="https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=400&q=60" class="absolute inset-0 w-full h-full object-cover" loading="lazy" onerror="this.style.display='none'">
+                    <div class="absolute inset-0 bg-black/25"></div>
+                    <span class="absolute bottom-0 inset-x-0 text-[8px] text-white bg-black/70 text-center py-0.5 opacity-0 group-hover:opacity-100 transition">🎥 Onboard</span>
+                </button>
+                <button class="bg-swatch w-full aspect-[3/2] rounded-lg border-2 border-gray-600 hover:border-blue-300 transition overflow-hidden relative group" data-bg="kart-wet" title="Wet Race" onclick="window.setPageBackground('kart-wet')">
+                    <img src="https://images.unsplash.com/photo-1543466835-00a7b8755b4c?auto=format&fit=crop&w=400&q=60" class="absolute inset-0 w-full h-full object-cover" loading="lazy" onerror="this.style.display='none'">
+                    <div class="absolute inset-0 bg-black/25"></div>
+                    <span class="absolute bottom-0 inset-x-0 text-[8px] text-white bg-black/70 text-center py-0.5 opacity-0 group-hover:opacity-100 transition">🌧️ Wet</span>
+                </button>
+                <button class="bg-swatch w-full aspect-[3/2] rounded-lg border-2 border-gray-600 hover:border-red-300 transition overflow-hidden relative group" data-bg="kart-grid" title="Starting Grid" onclick="window.setPageBackground('kart-grid')">
+                    <img src="https://images.unsplash.com/photo-1504707748692-419802cf939d?auto=format&fit=crop&w=400&q=60" class="absolute inset-0 w-full h-full object-cover" loading="lazy" onerror="this.style.display='none'">
+                    <div class="absolute inset-0 bg-black/25"></div>
+                    <span class="absolute bottom-0 inset-x-0 text-[8px] text-white bg-black/70 text-center py-0.5 opacity-0 group-hover:opacity-100 transition">🚦 Grid</span>
+                </button>
+                <button class="bg-swatch w-full aspect-[3/2] rounded-lg border-2 border-gray-600 hover:border-orange-400 transition overflow-hidden relative group" data-bg="kart-blaze" title="Speed Blaze" onclick="window.setPageBackground('kart-blaze')">
+                    <img src="https://images.unsplash.com/photo-1583394293214-fb28a5a16b6d?auto=format&fit=crop&w=400&q=60" class="absolute inset-0 w-full h-full object-cover" loading="lazy" onerror="this.style.display='none'">
+                    <div class="absolute inset-0 bg-black/25"></div>
+                    <span class="absolute bottom-0 inset-x-0 text-[8px] text-white bg-black/70 text-center py-0.5 opacity-0 group-hover:opacity-100 transition">💨 Speed</span>
+                </button>
+                <button class="bg-swatch w-full aspect-[3/2] rounded-lg border-2 border-gray-600 hover:border-gray-300 transition overflow-hidden relative group" data-bg="kart-helmet" title="Helmet" onclick="window.setPageBackground('kart-helmet')">
+                    <img src="https://images.unsplash.com/photo-1594398901-e69f3a2c1e23?auto=format&fit=crop&w=400&q=60" class="absolute inset-0 w-full h-full object-cover" loading="lazy" onerror="this.style.display='none'">
+                    <div class="absolute inset-0 bg-black/25"></div>
+                    <span class="absolute bottom-0 inset-x-0 text-[8px] text-white bg-black/70 text-center py-0.5 opacity-0 group-hover:opacity-100 transition">🪖 Helmet</span>
                 </button>
             </div>
         </div>

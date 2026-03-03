@@ -240,6 +240,10 @@ window.toggleFuelInput = function() {
     trackFuel.checked ? fuelDiv.classList.remove('hidden') : fuelDiv.classList.add('hidden');
 };
 
+const _PHOTO_OVERLAY = 'linear-gradient(rgba(0,0,0,0.62), rgba(0,0,0,0.62))';
+const _photo = (id) =>
+    `background-image: ${_PHOTO_OVERLAY}, url(https://images.unsplash.com/${id}?auto=format&fit=crop&w=1920&q=70); background-size: cover; background-position: center; background-repeat: no-repeat;`;
+
 const _BG_THEMES = {
     '': '', // Default — CSS handles it
     'checkered': 'background-color:#111; background-image: repeating-conic-gradient(#1a1a1a 0% 25%, #111 0% 50%); background-size: 20px 20px;',
@@ -254,22 +258,23 @@ const _BG_THEMES = {
     'deep-red': 'background: linear-gradient(180deg, #1a0505 0%, #2d0a0a 50%, #1a0505 100%);',
     'forest': 'background: linear-gradient(180deg, #051a0a 0%, #0a2d15 50%, #051a0a 100%);',
     'purple-night': 'background: linear-gradient(180deg, #0d0520 0%, #1a0a35 50%, #0d0520 100%);',
+    'hot-pink': 'background: linear-gradient(180deg, #150005 0%, #250a1a 30%, #3a0a28 50%, #250a1a 70%, #150005 100%);',
     'amber-heat': 'background: linear-gradient(180deg, #1a1000 0%, #2d1a05 50%, #1a1000 100%);',
-    'steel': 'background: linear-gradient(180deg, #15181e 0%, #1e2530 50%, #15181e 100%);',
-    // === NEW THEMES ===
     'neon-grid': 'background-color:#050510; background-image: linear-gradient(rgba(0,255,200,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0,255,200,0.05) 1px, transparent 1px); background-size: 40px 40px;',
     'sunset-racing': 'background: linear-gradient(180deg, #1a0520 0%, #2d0a15 25%, #4a1a08 50%, #2d0a15 75%, #1a0520 100%);',
-    'gulf-blue': 'background: linear-gradient(135deg, #0a2540 0%, #1a4a7a 30%, #0d3560 60%, #0a2540 100%);',
-    'british-green': 'background: linear-gradient(180deg, #0a1a10 0%, #0d2818 30%, #102d1d 50%, #0d2818 70%, #0a1a10 100%);',
     'martini-stripe': 'background: linear-gradient(180deg, #0e0e14 0%, #0e0e14 44%, #1a3a6e 44.5%, #1a3a6e 47%, #cc2222 47.5%, #cc2222 50.5%, #1a3a6e 51%, #1a3a6e 53.5%, #0e0e14 54%, #0e0e14 100%);',
-    'arctic-ice': 'background: linear-gradient(180deg, #0a1520 0%, #102535 30%, #1a3a50 50%, #102535 70%, #0a1520 100%);',
-    // === PREMIUM THEMES ===
-    'aurora': 'background: linear-gradient(180deg, #020510 0%, #0a1030 20%, #081848 40%, #1a0a40 60%, #2a0828 80%, #0a0510 100%);',
-    'monaco-gold': 'background: linear-gradient(180deg, #0a0800 0%, #1a1505 20%, #2a2008 40%, #1a1505 60%, #0a0800 100%);',
     'ferrari-rosso': 'background: linear-gradient(180deg, #0e0000 0%, #2a0808 25%, #4a0a0a 50%, #2a0808 75%, #0e0000 100%);',
     'mclaren-papaya': 'background: linear-gradient(180deg, #100800 0%, #201505 25%, #3a2008 40%, #4a2a0a 50%, #3a2008 60%, #201505 75%, #100800 100%);',
-    'ocean-depth': 'background: linear-gradient(180deg, #000510 0%, #001030 25%, #002050 50%, #001030 75%, #000510 100%);',
-    'volcanic': 'background: linear-gradient(180deg, #0a0000 0%, #1a0500 20%, #2d0800 35%, #401005 50%, #2d0800 65%, #1a0500 80%, #0a0000 100%);'
+    'volcanic': 'background: linear-gradient(180deg, #0a0000 0%, #1a0500 20%, #2d0800 35%, #401005 50%, #2d0800 65%, #1a0500 80%, #0a0000 100%);',
+    // === 📸 PHOTO THEMES (requires internet) ===
+    'kart-race':    _photo('photo-1558618666-fcd25c85cd64'),
+    'kart-night':   _photo('photo-1568605117036-5fe5e7bab0b7'),
+    'kart-pit':     _photo('photo-1541348263662-e068662d82af'),
+    'kart-onboard': _photo('photo-1503376780353-7e6692767b70'),
+    'kart-wet':     _photo('photo-1543466835-00a7b8755b4c'),
+    'kart-grid':    _photo('photo-1504707748692-419802cf939d'),
+    'kart-blaze':   _photo('photo-1583394293214-fb28a5a16b6d'),
+    'kart-helmet':  _photo('photo-1594398901-e69f3a2c1e23'),
 };
 
 // Dashboard tint colors per theme — applied to dashboard elements
@@ -286,22 +291,23 @@ const _THEME_TINTS = {
     'deep-red': { main: '#1a0505', panel: '#220808', border: '#401515' },
     'forest': { main: '#051a0a', panel: '#082510', border: '#104020' },
     'purple-night': { main: '#0d0520', panel: '#150a30', border: '#251545' },
+    'hot-pink': { main: '#150510', panel: '#1e0818', border: '#3a1030' },
     'amber-heat': { main: '#1a1000', panel: '#221805', border: '#403015' },
-    'steel': { main: '#15181e', panel: '#1c2028', border: '#2a3040' },
-    // === NEW THEME TINTS ===
     'neon-grid': { main: '#050510', panel: '#0a0a1a', border: '#0f2a25' },
     'sunset-racing': { main: '#1a0520', panel: '#250a18', border: '#401530' },
-    'gulf-blue': { main: '#0a2540', panel: '#103060', border: '#1a4a7a' },
-    'british-green': { main: '#0a1a10', panel: '#0d2818', border: '#1a4030' },
     'martini-stripe': { main: '#0e0e14', panel: '#15151e', border: '#252535' },
-    'arctic-ice': { main: '#0a1520', panel: '#102535', border: '#1a3a50' },
-    // === PREMIUM THEME TINTS ===
-    'aurora': { main: '#020510', panel: '#0a0d25', border: '#1a1545' },
-    'monaco-gold': { main: '#0a0800', panel: '#151205', border: '#2a2010' },
     'ferrari-rosso': { main: '#0e0000', panel: '#1a0505', border: '#3a1010' },
     'mclaren-papaya': { main: '#100800', panel: '#1a1208', border: '#352510' },
-    'ocean-depth': { main: '#000510', panel: '#000d25', border: '#001a45' },
-    'volcanic': { main: '#0a0000', panel: '#150500', border: '#301008' }
+    'volcanic': { main: '#0a0000', panel: '#150500', border: '#301008' },
+    // === 📸 PHOTO THEME TINTS (near-black so UI stays readable over any photo) ===
+    'kart-race':    { main: '#050505', panel: '#0c0c0c', border: '#222222' },
+    'kart-night':   { main: '#03060e', panel: '#08101e', border: '#1a2030' },
+    'kart-pit':     { main: '#060606', panel: '#0e0e0e', border: '#202020' },
+    'kart-onboard': { main: '#050505', panel: '#0c0c0c', border: '#1e1e1e' },
+    'kart-wet':     { main: '#050810', panel: '#0a1020', border: '#182030' },
+    'kart-grid':    { main: '#060505', panel: '#100a0a', border: '#201515' },
+    'kart-blaze':   { main: '#080403', panel: '#100806', border: '#201410' },
+    'kart-helmet':  { main: '#050505', panel: '#0c0c0c', border: '#202020' },
 };
 
 window.setPageBackground = function(bg) {

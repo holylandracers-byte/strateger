@@ -441,6 +441,17 @@ window.calculateStrategyLogic = function(config) {
     return { timeline, driverStats, config, drivers: [...window.drivers] };
 };
 
+// Enable or disable (and grey out) the Start Race button
+window._setStartBtnState = function(valid) {
+    const btn = document.getElementById('startRaceBtn');
+    if (!btn) return;
+    btn.disabled = !valid;
+    btn.classList.toggle('opacity-40', !valid);
+    btn.classList.toggle('cursor-not-allowed', !valid);
+    btn.classList.toggle('pointer-events-none', !valid);
+    btn.title = valid ? '' : '⚠️ Fix strategy params before starting';
+};
+
 window.runSim = function() {
     const durationHours = parseFloat(document.getElementById('raceDuration').value) || 12;
     const reqStops = parseInt(document.getElementById('reqPitStops').value) || 15;
@@ -533,6 +544,7 @@ window.runSim = function() {
             resEl.style.color = '#ef4444';
         }
         window.cachedStrategy = null;
+        window._setStartBtnState(false);
         return;
     }
 
@@ -555,6 +567,7 @@ window.runSim = function() {
             resEl.style.color = '#ef4444';
         }
         window.cachedStrategy = null;
+        window._setStartBtnState(false);
         return;
     }
 
@@ -583,15 +596,18 @@ window.runSim = function() {
     const isAverageStintValid = avgStint >= minStintMin && avgStint <= maxStintMin;
     const invalidStrategyWarning = document.getElementById('invalidStrategyWarning');
     
-    if (invalidStrategyWarning) {
-        if (!isAverageStintValid) {
+    if (!isAverageStintValid) {
+        if (invalidStrategyWarning) {
             invalidStrategyWarning.classList.remove('hidden');
             document.getElementById('averageStintValue').innerText = avgStint;
             document.getElementById('minStintBound').innerText = minStintMin;
             document.getElementById('maxStintBound').innerText = maxStintMin;
-        } else {
-            invalidStrategyWarning.classList.add('hidden');
         }
+        window.cachedStrategy = null;
+        window._setStartBtnState(false);
+        return;
+    } else {
+        if (invalidStrategyWarning) invalidStrategyWarning.classList.add('hidden');
     }
 
     let pitClosedInfo = '';
@@ -619,16 +635,34 @@ window.runSim = function() {
     if (resEl) {
         const t = window.t || ((k) => k);
         const isRTL = document.documentElement.dir === 'rtl';
+        const um = t('unitMin') || 'm';
+        const uh = t('unitHour') || 'h';
         resEl.classList.remove('hidden');
         resEl.style.borderColor = '#22d3ee';
         resEl.style.color = '#22d3ee';
         resEl.style.direction = isRTL ? 'rtl' : 'ltr';
-        resEl.innerHTML = `
-            <span dir="${isRTL ? 'rtl' : 'ltr'}">✅ <b>${stints.length} ${t('stints')}</b> | ${t('avgStint')}: ${avgStint}m</span><br>
-            <span dir="ltr">🏁 ${t('driveNoun')}: ${(actualDriveTime/60000).toFixed(0)}m + ${t('pitNoun')}: ${(actualPitTime/60000).toFixed(0)}m = <b>${(totalRaceTime/60000).toFixed(0)}m</b> (${(totalRaceTime/3600000).toFixed(2)}h)</span>
-            ${pitClosedInfo ? `<br><span dir="ltr">${pitClosedInfo.trim()}</span>` : ''}${squadInfo ? `<br><span dir="ltr">${squadInfo.trim()}</span>` : ''}
-        `;
+
+        const driveMin = (actualDriveTime/60000).toFixed(0);
+        const pitMin = (actualPitTime/60000).toFixed(0);
+        const totalMin = (totalRaceTime/60000).toFixed(0);
+        const totalH = (totalRaceTime/3600000).toFixed(2);
+
+        if (isRTL) {
+            // RTL: wrap every numeric+unit chunk in <bdi> so BiDi doesn't reorder them
+            resEl.innerHTML = `
+                <span dir="rtl">✅ <b><bdi>${stints.length} ${t('stints')}</bdi></b> | ${t('avgStint')}: <bdi>${avgStint}${um}</bdi></span><br>
+                <span dir="rtl">🏁 ${t('driveNoun')}: <bdi>${driveMin}${um}</bdi> + ${t('pitNoun')}: <bdi>${pitMin}${um}</bdi> = <b><bdi>${totalMin}${um}</bdi></b> (<bdi>${totalH}${uh}</bdi>)</span>
+                ${pitClosedInfo ? `<br><span dir="ltr">${pitClosedInfo.trim()}</span>` : ''}${squadInfo ? `<br><span dir="ltr">${squadInfo.trim()}</span>` : ''}
+            `;
+        } else {
+            resEl.innerHTML = `
+                ✅ <b>${stints.length} ${t('stints')}</b> | ${t('avgStint')}: ${avgStint}${um}<br>
+                🏁 ${t('driveNoun')}: ${driveMin}${um} + ${t('pitNoun')}: ${pitMin}${um} = <b>${totalMin}${um}</b> (${totalH}${uh})
+                ${pitClosedInfo}${squadInfo}
+            `;
+        }
     }
+    window._setStartBtnState(true);
 };
 
 window.generatePreview = function(silent, render) {
