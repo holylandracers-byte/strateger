@@ -1325,6 +1325,18 @@ window.confirmPitEntry = function(autoDetected) {
     if (window.state.isFinished || (!window.state.isRunning && window.state.startTime)) return;
     // Guard: prevent re-entry if already in pit
     if (window.state.isInPit) return;
+
+    // Guard: when live timing is active, block manual pit entry — live timing is authoritative
+    if (!autoDetected && window.liveTimingConfig && window.liveTimingConfig.enabled && window.liveTimingManager) {
+        const stats = window.liveTimingManager.getStats();
+        if (stats && stats.isRunning) {
+            console.log('[PitEntry] Manual pit entry blocked — live timing is authoritative');
+            if (typeof window._fireStrategyNotification === 'function') {
+                window._fireStrategyNotification('🔒 Pit entry is auto-tracked from live timing', 'info');
+            }
+            return;
+        }
+    }
     
     // Guard: cooldown to prevent rapid pit cycling (min 10s between manual pit entries)
     // Skip cooldown if auto-detected from live timing — live timing is authoritative
@@ -1665,11 +1677,24 @@ window.getBoxMessage = function() {
     return t('boxNow');
 };
 
-window.confirmPitExit = function() {
+window.confirmPitExit = function(autoDetected) {
     // Guard: race is finished — no pit actions allowed
     if (window.state.isFinished || (!window.state.isRunning && window.state.startTime)) return;
     // Guard: only exit if actually in pit
     if (!window.state.isInPit) return;
+
+    // Guard: when live timing is active, block manual pit exit — live timing is authoritative
+    if (!autoDetected && window.liveTimingConfig && window.liveTimingConfig.enabled && window.liveTimingManager) {
+        const stats = window.liveTimingManager.getStats();
+        if (stats && stats.isRunning) {
+            console.log('[PitExit] Manual pit exit blocked — live timing is authoritative');
+            if (typeof window._fireStrategyNotification === 'function') {
+                window._fireStrategyNotification('🔒 Pit exit is auto-tracked from live timing', 'info');
+            }
+            return;
+        }
+    }
+
     window.haptic('success');
     
     // Hide undo toast — can't undo after exit

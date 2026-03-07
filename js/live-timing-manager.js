@@ -36,6 +36,25 @@ function gapToMs(gapValue) {
     return !isNaN(num) ? Math.round(num * 1000) : 0;
 }
 
+/**
+ * Sanitize avg lap ms value from API.
+ * RaceFacer avg_lap_raw can return garbage (e.g. 6.77e-23, 1.86e+20).
+ * Valid kart lap times are between 20s (20000ms) and 3min (180000ms).
+ * Falls back to parsing the formatted avg_lap string.
+ */
+function sanitizeAvgLapMs(rawMs, formattedStr) {
+    // Check if rawMs is a sane value (between 20s and 3min)
+    if (typeof rawMs === 'number' && rawMs >= 20000 && rawMs <= 180000) {
+        return rawMs;
+    }
+    // Try parsing the formatted string (e.g. "0:56.052")
+    if (formattedStr) {
+        const parsed = gapToMs(formattedStr);
+        if (parsed >= 20000 && parsed <= 180000) return parsed;
+    }
+    return 0;
+}
+
 class LiveTimingManager {
     constructor() {
         this.currentScraper = null;
@@ -263,7 +282,7 @@ class LiveTimingManager {
                     kart: data.ourTeam.kart,
                     lastLap: data.ourTeam.lastLapMs,
                     bestLap: data.ourTeam.bestLapMs,
-                    avgLap: data.ourTeam.avgLapMs || (data.ourTeam.avgLap ? gapToMs(data.ourTeam.avgLap) : 0),
+                    avgLap: sanitizeAvgLapMs(data.ourTeam.avgLapMs, data.ourTeam.avgLap),
                     totalLaps: data.ourTeam.totalLaps,
                     gap: gapToMs(data.ourTeam.gap),
                     interval: gapToMs(data.ourTeam.interval),
@@ -283,7 +302,7 @@ class LiveTimingManager {
                     kart: c.kart,
                     lastLap: c.lastLapMs,
                     bestLap: c.bestLapMs,
-                    avgLap: c.avgLapMs || (c.avgLap ? gapToMs(c.avgLap) : 0),
+                    avgLap: sanitizeAvgLapMs(c.avgLapMs, c.avgLap),
                     laps: c.totalLaps,
                     gap: gapToMs(c.gap),
                     gapRaw: c.gap,

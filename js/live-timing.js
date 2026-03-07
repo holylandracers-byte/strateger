@@ -184,7 +184,7 @@ window.fetchLiveTimingFromProxy = async function() {
                     window.liveData.stintBestLap = null;
                     window.liveData.lastRecordedLap = null;
                     if (typeof window.confirmPitExit === 'function') {
-                        window.confirmPitExit();
+                        window.confirmPitExit(true); // true = auto-detected from live timing
                     }
                 }
                 
@@ -356,19 +356,30 @@ window.updateLiveTimingUI = function() {
     const lapsEl = document.getElementById('liveLaps');
     if (lapsEl) lapsEl.innerText = window.liveData.laps != null ? window.liveData.laps : '-';
     
-    // Update gap to leader
+    // Update gap to leader — use lap count difference
     const gapEl = document.getElementById('liveGap');
     if (gapEl) {
         if (window.liveData.position === 1) {
             gapEl.innerText = 'LEADER';
             gapEl.className = 'text-sm font-mono text-gold';
-        } else if (window.liveData.gapToLeader) {
-            const gapSec = (window.liveData.gapToLeader / 1000).toFixed(1);
-            gapEl.innerText = `+${gapSec}s`;
-            gapEl.className = 'text-sm font-mono text-fuel';
         } else {
-            gapEl.innerText = '-';
-            gapEl.className = 'text-sm font-mono text-fuel';
+            // Compute lap-based gap from competitors data
+            const comps = window.liveData.competitors || [];
+            const leader = comps.find(c => c.position === 1);
+            const ourLaps = window.liveData.laps || 0;
+            const leaderLaps = leader ? (leader.laps || leader.totalLaps || 0) : 0;
+            const lapDiff = leaderLaps - ourLaps;
+            if (lapDiff >= 1) {
+                gapEl.innerText = `+${lapDiff} ${lapDiff === 1 ? 'lap' : 'laps'}`;
+                gapEl.className = 'text-sm font-mono text-fuel';
+            } else if (window.liveData.gapToLeader) {
+                const gapSec = (window.liveData.gapToLeader / 1000).toFixed(1);
+                gapEl.innerText = `+${gapSec}s`;
+                gapEl.className = 'text-sm font-mono text-fuel';
+            } else {
+                gapEl.innerText = '-';
+                gapEl.className = 'text-sm font-mono text-fuel';
+            }
         }
     }
     
@@ -480,10 +491,18 @@ window.updateCompetitorsTable = function() {
             if (kartEl.className !== kartCls) kartEl.className = kartCls;
         }
 
-        // ---- Name ----
+        // ---- Name (rotate team ↔ driver every 5s) ----
         const nameEl = row.querySelector('.cr-name');
         if (nameEl) {
-            if (nameEl.textContent !== comp.name) nameEl.textContent = comp.name;
+            const teamStr = (comp.team || '').trim();
+            const driverStr = (comp.name || '').trim();
+            // Show team name primarily; rotate to driver name for 2s every 5s
+            const cycleMs = 5000;
+            const showDriver = teamStr && driverStr && teamStr !== driverStr
+                ? (Date.now() % cycleMs) > 3000   // 3s team, 2s driver
+                : false;
+            const displayName = showDriver ? driverStr : (teamStr || driverStr);
+            if (nameEl.textContent !== displayName) nameEl.textContent = displayName;
             const nameCls = isUs ? 'cr-name text-ice font-bold' : 'cr-name';
             if (nameEl.className !== nameCls) nameEl.className = nameCls;
         }
@@ -504,72 +523,68 @@ window.updateCompetitorsTable = function() {
             if (badgesEl.innerHTML !== badges) badgesEl.innerHTML = badges;
         }
 
-        // ---- Gap from P1 (always from leader) ----
+        // ---- Gap from P1 (lap-count based) ----
         const gapEl = row.querySelector('.cr-gap');
         if (gapEl) {
             let gapHTML = '';
             if (comp.position === 1) {
                 gapHTML = '<span class="text-gold">P1</span>';
             } else {
-                // Use raw gap string if it indicates laps (e.g., "2 Laps")
-                const gapRaw = comp.gapRaw || '';
-                const lapMatch = String(gapRaw).match(/^(\d+)\s*[Ll]ap/);
+                const leader = allCompetitors.find(c => c.position === 1);
+                const leaderLaps = leader ? (leader.laps || leader.totalLaps || 0) : 0;
+                const compLaps = comp.laps || comp.totalLaps || 0;
+                const lapDiff = leaderLaps - compLaps;
                 const gapMs = comp.gap ?? comp.gapToLeader ?? 0;
-                if (lapMatch) {
-                    const lapsDown = parseInt(lapMatch[1]);
-                    const gapStr = `+${lapsDown}L`;
-                    const ourGapMs = ourTeam ? (ourTeam.gap ?? ourTeam.gapToLeader ?? 0) : null;
-                    let color = 'gap-neutral';
-                    if (ourGapMs != null) {
+
+                // Determine color relative to our team
+                const ourLaps = ourTeam ? (ourTeam.laps || ourTeam.totalLaps || 0) : null;
+                const ourLapDiff = ourLaps != null ? (leaderLaps - ourLaps) : null;
+                let color = 'gap-neutral';
+                if (ourLapDiff != null) {
+                    if (lapDiff > ourLapDiff) color = 'gap-behind';
+                    else if (lapDiff < ourLapDiff) color = 'gap-ahead';
+                    else if (lapDiff === ourLapDiff) {
+                        // Same lap count — compare time gap
+                        const ourGapMs = ourTeam ? (ourTeam.gap ?? ourTeam.gapToLeader ?? 0) : 0;
                         if (gapMs > ourGapMs) color = 'gap-behind';
                         else if (gapMs < ourGapMs) color = 'gap-ahead';
                         else color = 'gap-us';
                     }
+                }
+
+                if (lapDiff >= 1) {
+                    // Show +N laps
+                    const gapStr = `+${lapDiff}L`;
                     gapHTML = `<span class="${color}">${gapStr}</span>`;
                 } else if (gapMs > 0) {
+                    // Same lap — show time gap in seconds
                     const sec = gapMs / 1000;
-                    let gapStr;
-                    if (sec >= 60) {
-                        const m = Math.floor(sec / 60);
-                        const s = (sec % 60).toFixed(1);
-                        gapStr = `+${m}:${s.padStart(4, '0')}`;
-                    } else {
-                        gapStr = `+${sec.toFixed(1)}s`;
-                    }
-                    const ourGapMs = ourTeam ? (ourTeam.gap ?? ourTeam.gapToLeader ?? 0) : null;
-                    let color = 'gap-neutral';
-                    if (ourGapMs != null) {
-                        if (gapMs > ourGapMs) color = 'gap-behind';
-                        else if (gapMs < ourGapMs) color = 'gap-ahead';
-                        else color = 'gap-us';
-                    }
+                    const gapStr = `+${sec.toFixed(1)}s`;
                     gapHTML = `<span class="${color}">${gapStr}</span>`;
                 }
             }
             if (gapEl.innerHTML !== gapHTML) gapEl.innerHTML = gapHTML;
         }
 
-        // ---- Interval (gap to car ahead) ----
+        // ---- Interval (gap to car ahead) — lap-count based ----
         const intEl = row.querySelector('.cr-int');
         if (intEl) {
             let intHTML = '';
             if (comp.position === 1) {
                 intHTML = '';
             } else {
-                const intRaw = comp.intervalRaw || '';
-                const intLapMatch = String(intRaw).match(/^(\d+)\s*[Ll]ap/);
+                // Find car ahead
+                const carAhead = allCompetitors.find(c => c.position === comp.position - 1);
+                const aheadLaps = carAhead ? (carAhead.laps || carAhead.totalLaps || 0) : 0;
+                const compLaps = comp.laps || comp.totalLaps || 0;
+                const intLapDiff = aheadLaps - compLaps;
                 const intMs = comp.interval ?? 0;
-                if (intLapMatch) {
-                    intHTML = `<span class="text-gray-500">${intLapMatch[1]}L</span>`;
+
+                if (intLapDiff >= 1) {
+                    intHTML = `<span class="text-gray-500">${intLapDiff}L</span>`;
                 } else if (intMs > 0) {
                     const intSec = intMs / 1000;
-                    if (intSec >= 60) {
-                        const m = Math.floor(intSec / 60);
-                        const s = (intSec % 60).toFixed(1);
-                        intHTML = `<span class="text-gray-500">${m}:${s.padStart(4, '0')}</span>`;
-                    } else {
-                        intHTML = `<span class="text-gray-500">${intSec.toFixed(1)}s</span>`;
-                    }
+                    intHTML = `<span class="text-gray-500">${intSec.toFixed(1)}s</span>`;
                 }
             }
             if (intEl.innerHTML !== intHTML) intEl.innerHTML = intHTML;
@@ -634,16 +649,16 @@ window._updateKartStats = function(competitors) {
             stats[kart] = { bestLapMs: Infinity, recentLaps: [], team: '', pos: 0, laps: 0, inPit: false, pitCount: 0 };
         }
         const s = stats[kart];
-        s.team = c.name || s.team;
+        s.team = c.team || c.name || s.team;
         s.pos = c.position || s.pos;
         s.laps = c.laps || c.totalLaps || s.laps;
         s.inPit = !!c.inPit;
         if (c.pitCount != null) s.pitCount = c.pitCount;
 
-        if (c.bestLap && c.bestLap > 0 && c.bestLap < s.bestLapMs) {
+        if (c.bestLap && c.bestLap > 0 && c.bestLap < s.bestLapMs && c.bestLap >= 20000 && c.bestLap <= 180000) {
             s.bestLapMs = c.bestLap;
         }
-        if (c.lastLap && c.lastLap > 0) {
+        if (c.lastLap && c.lastLap > 0 && c.lastLap >= 20000 && c.lastLap <= 180000) {
             s.recentLaps.push(c.lastLap);
             if (s.recentLaps.length > 30) s.recentLaps.shift();
         }
