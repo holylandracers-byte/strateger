@@ -541,9 +541,10 @@ window.recalculateTargetStint = function() {
             const raceMs = window.config.raceMs || (parseFloat(window.config.duration) * 3600000);
             const now = window.getSyncedNow();
             let raceRemaining = raceMs - (now - window.state.startTime);
-            // Use live timing race clock when available
+            // Use live timing race clock when available — interpolate between API updates
             if (window.liveData && window.liveData.raceTimeLeftMs != null) {
-                raceRemaining = window.liveData.raceTimeLeftMs;
+                const sinceReceived = window.liveData._raceTimeReceivedAt ? (Date.now() - window.liveData._raceTimeReceivedAt) : 0;
+                raceRemaining = Math.max(0, window.liveData.raceTimeLeftMs - sinceReceived);
             }
             const stintElapsed = (now - window.state.stintStart) + (window.state.stintOffset || 0);
             window.state.targetStintMs = stintElapsed + Math.max(0, raceRemaining);
@@ -834,8 +835,10 @@ window.renderFrame = function() {
         let raceRemainingRaw = raceMs - raceElapsedRaw;
         
         // Use live timing race clock when available (more accurate than local timer)
+        // Interpolate between API updates: subtract elapsed time since the last API response
         if (window.liveData && window.liveData.raceTimeLeftMs != null && window.liveData.raceTimeLeftMs >= 0) {
-            raceRemainingRaw = window.liveData.raceTimeLeftMs;
+            const sinceReceived = window.liveData._raceTimeReceivedAt ? (Date.now() - window.liveData._raceTimeReceivedAt) : 0;
+            raceRemainingRaw = Math.max(0, window.liveData.raceTimeLeftMs - sinceReceived);
         }
 
         // Floor elapsed to whole seconds — derive remaining from the SAME boundary
@@ -994,6 +997,11 @@ window.renderFrame = function() {
 
         updateWeatherUI();
         updateModeUI();
+
+        // === Update live timing UI (needed for viewers who receive liveData via broadcast) ===
+        if (typeof window.updateLiveTimingUI === 'function' && window.liveTimingConfig && window.liveTimingConfig.enabled) {
+            window.updateLiveTimingUI();
+        }
 
         // === Update new dashboard overlays ===
         window.updatePitWindowBanner();
@@ -2446,9 +2454,10 @@ window.updateDriverMode = function() {
     const t = window.t || (k => k);
     const raceMs = window.config.raceMs || (parseFloat(window.config.duration) * 3600000);
     let raceRemaining = raceMs - (now - window.state.startTime);
-    // Use live timing race clock when available
+    // Use live timing race clock when available — interpolate between API updates
     if (window.liveData && window.liveData.raceTimeLeftMs != null) {
-        raceRemaining = window.liveData.raceTimeLeftMs;
+        const sinceReceived = window.liveData._raceTimeReceivedAt ? (Date.now() - window.liveData._raceTimeReceivedAt) : 0;
+        raceRemaining = Math.max(0, window.liveData.raceTimeLeftMs - sinceReceived);
     }
     const maxStintMs = (window.config.maxStint * 60000) || (60 * 60000);
     const minStintMs = (window.config.minStint * 60000) || 0;

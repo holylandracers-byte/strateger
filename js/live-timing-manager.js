@@ -263,13 +263,16 @@ class LiveTimingManager {
                     kart: data.ourTeam.kart,
                     lastLap: data.ourTeam.lastLapMs,
                     bestLap: data.ourTeam.bestLapMs,
-                    avgLap: data.ourTeam.avgLapMs,
+                    avgLap: data.ourTeam.avgLapMs || (data.ourTeam.avgLap ? gapToMs(data.ourTeam.avgLap) : 0),
                     totalLaps: data.ourTeam.totalLaps,
                     gap: gapToMs(data.ourTeam.gap),
                     interval: gapToMs(data.ourTeam.interval),
                     inPit: data.ourTeam.inPit,
                     pitCount: data.ourTeam.pitCount,
-                    consistency: data.ourTeam.consistency
+                    consistency: data.ourTeam.consistency,
+                    penalty: data.ourTeam.penalty || 0,
+                    penaltyTime: data.ourTeam.penaltyTime || 0,
+                    penaltyReason: data.ourTeam.penaltyReason || ''
                 } : null,
 
                 // כל המתחרים
@@ -280,10 +283,12 @@ class LiveTimingManager {
                     kart: c.kart,
                     lastLap: c.lastLapMs,
                     bestLap: c.bestLapMs,
-                    avgLap: c.avgLapMs,
+                    avgLap: c.avgLapMs || (c.avgLap ? gapToMs(c.avgLap) : 0),
                     laps: c.totalLaps,
                     gap: gapToMs(c.gap),
+                    gapRaw: c.gap,
                     interval: gapToMs(c.interval),
+                    intervalRaw: c.interval,
                     inPit: c.inPit,
                     pitCount: c.pitCount,
                     consistency: c.consistency,

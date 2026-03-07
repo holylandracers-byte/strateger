@@ -227,6 +227,8 @@ window.fetchLiveTimingFromProxy = async function() {
             // === Race time from live timing (RaceFacer provides timeLeftSeconds) ===
             if (data.race && data.race.timeLeftSeconds != null) {
                 window.liveData.raceTimeLeftMs = data.race.timeLeftSeconds * 1000;
+                // Store the timestamp when we received this so we can count down locally between API updates
+                window.liveData._raceTimeReceivedAt = Date.now();
             }
             
             // Force enable if data arrived
@@ -425,7 +427,7 @@ window.updateCompetitorsTable = function() {
             row.innerHTML = `<div class="cr-left">
 <span class="cr-pos"></span><span class="cr-kart"></span><span class="cr-name"></span><span class="cr-badges"></span>
 </div><div class="cr-right">
-<span class="cr-gap"></span><span class="cr-lap"></span>
+<span class="cr-laps"></span><span class="cr-pits"></span><span class="cr-gap"></span><span class="cr-int"></span><span class="cr-lap"></span><span class="cr-avg"></span>
 </div>`;
             frag.appendChild(row);
         }
@@ -486,16 +488,19 @@ window.updateCompetitorsTable = function() {
             if (nameEl.className !== nameCls) nameEl.className = nameCls;
         }
 
-        // ---- Badges (pit + penalty + good pace) ----
+        // ---- Badges (pit + penalty + top 3 lap) ----
         const badgesEl = row.querySelector('.cr-badges');
         if (badgesEl) {
             let badges = '';
             if (comp.inPit) badges += '<span class="badge-pit">PIT</span>';
-            if (comp.penalty && comp.penalty > 0) {
+            const penaltyVal = comp.penalty || comp.penaltyTime || 0;
+            if (penaltyVal > 0) {
                 const penSec = comp.penaltyTime ? `${comp.penaltyTime}s` : '';
-                badges += `<span class="badge-penalty" title="${comp.penaltyReason || 'Penalty'}" style="background:rgba(239,68,68,0.3);color:#f87171;font-size:8px;padding:0 3px;border-radius:2px;margin-left:2px;">⚠${penSec}</span>`;
+                const reason = (comp.penaltyReason || 'Penalty').replace(/"/g, '&quot;');
+                badges += `<span class="badge-penalty" title="${reason}" style="background:rgba(239,68,68,0.3);color:#f87171;font-size:8px;padding:0 3px;border-radius:2px;margin-left:2px;">⚠${penSec}</span>`;
             }
-            if (isGoodPace) badges += '<span class="badge-fast" title="' + (window.t('goodPace') || 'Good Pace') + '">⚡</span>';
+            // Only show ⚡ for top 3 fastest best-lap karts, not all "good pace"
+            if (comp.position <= 3 && isPB) badges += '<span class="badge-fast" title="Top 3">⚡</span>';
             if (badgesEl.innerHTML !== badges) badgesEl.innerHTML = badges;
         }
 
@@ -506,8 +511,22 @@ window.updateCompetitorsTable = function() {
             if (comp.position === 1) {
                 gapHTML = '<span class="text-gold">P1</span>';
             } else {
+                // Use raw gap string if it indicates laps (e.g., "2 Laps")
+                const gapRaw = comp.gapRaw || '';
+                const lapMatch = String(gapRaw).match(/^(\d+)\s*[Ll]ap/);
                 const gapMs = comp.gap ?? comp.gapToLeader ?? 0;
-                if (gapMs > 0) {
+                if (lapMatch) {
+                    const lapsDown = parseInt(lapMatch[1]);
+                    const gapStr = `+${lapsDown}L`;
+                    const ourGapMs = ourTeam ? (ourTeam.gap ?? ourTeam.gapToLeader ?? 0) : null;
+                    let color = 'gap-neutral';
+                    if (ourGapMs != null) {
+                        if (gapMs > ourGapMs) color = 'gap-behind';
+                        else if (gapMs < ourGapMs) color = 'gap-ahead';
+                        else color = 'gap-us';
+                    }
+                    gapHTML = `<span class="${color}">${gapStr}</span>`;
+                } else if (gapMs > 0) {
                     const sec = gapMs / 1000;
                     let gapStr;
                     if (sec >= 60) {
@@ -517,18 +536,59 @@ window.updateCompetitorsTable = function() {
                     } else {
                         gapStr = `+${sec.toFixed(1)}s`;
                     }
-                    // Color: green if behind us, red if ahead, gray if we aren't found
                     const ourGapMs = ourTeam ? (ourTeam.gap ?? ourTeam.gapToLeader ?? 0) : null;
                     let color = 'gap-neutral';
                     if (ourGapMs != null) {
-                        if (gapMs > ourGapMs) color = 'gap-behind';    // behind us (good)
-                        else if (gapMs < ourGapMs) color = 'gap-ahead'; // ahead of us (bad)
-                        else color = 'gap-us';                          // same = us
+                        if (gapMs > ourGapMs) color = 'gap-behind';
+                        else if (gapMs < ourGapMs) color = 'gap-ahead';
+                        else color = 'gap-us';
                     }
                     gapHTML = `<span class="${color}">${gapStr}</span>`;
                 }
             }
             if (gapEl.innerHTML !== gapHTML) gapEl.innerHTML = gapHTML;
+        }
+
+        // ---- Interval (gap to car ahead) ----
+        const intEl = row.querySelector('.cr-int');
+        if (intEl) {
+            let intHTML = '';
+            if (comp.position === 1) {
+                intHTML = '';
+            } else {
+                const intRaw = comp.intervalRaw || '';
+                const intLapMatch = String(intRaw).match(/^(\d+)\s*[Ll]ap/);
+                const intMs = comp.interval ?? 0;
+                if (intLapMatch) {
+                    intHTML = `<span class="text-gray-500">${intLapMatch[1]}L</span>`;
+                } else if (intMs > 0) {
+                    const intSec = intMs / 1000;
+                    if (intSec >= 60) {
+                        const m = Math.floor(intSec / 60);
+                        const s = (intSec % 60).toFixed(1);
+                        intHTML = `<span class="text-gray-500">${m}:${s.padStart(4, '0')}</span>`;
+                    } else {
+                        intHTML = `<span class="text-gray-500">${intSec.toFixed(1)}s</span>`;
+                    }
+                }
+            }
+            if (intEl.innerHTML !== intHTML) intEl.innerHTML = intHTML;
+        }
+
+        // ---- Laps count ----
+        const lapsRowEl = row.querySelector('.cr-laps');
+        if (lapsRowEl) {
+            const lapCount = comp.laps || comp.totalLaps || '';
+            const lapsTxt = lapCount ? `${lapCount}` : '';
+            if (lapsRowEl.textContent !== lapsTxt) lapsRowEl.textContent = lapsTxt;
+        }
+
+        // ---- Pit count ----
+        const pitsEl = row.querySelector('.cr-pits');
+        if (pitsEl) {
+            const pitCount = comp.pitCount ?? 0;
+            const pitsTxt = pitCount > 0 ? `P${pitCount}` : '';
+            if (pitsEl.textContent !== pitsTxt) pitsEl.textContent = pitsTxt;
         }
 
         // ---- Last lap + personal best glow ----
@@ -538,6 +598,14 @@ window.updateCompetitorsTable = function() {
             if (lapEl.textContent !== lapTxt) lapEl.textContent = lapTxt;
             const lapCls = isPB ? 'cr-lap lap-pb' : 'cr-lap';
             if (lapEl.className !== lapCls) lapEl.className = lapCls;
+        }
+
+        // ---- Avg lap ----
+        const avgEl = row.querySelector('.cr-avg');
+        if (avgEl) {
+            const avgMs = comp.avgLap || 0;
+            const avgTxt = avgMs > 0 ? window.formatLapTime(avgMs) : '';
+            if (avgEl.textContent !== avgTxt) avgEl.textContent = avgTxt;
         }
     });
 
