@@ -18,10 +18,13 @@ class ApexTimingScraper {
         this._errorLogThrottle = {};
         this.columnMap = null;
         this._reverseColMap = null;
+        this._comments = [];       // recent race-control comments
+        this._maxComments = 50;
 
         // Callbacks from LiveTimingManager
         this.onUpdate = config.onUpdate || null;
         this.onError = config.onError || null;
+        this.onComment = config.onComment || null;
     }
 
     log(level, msg) {
@@ -179,6 +182,7 @@ class ApexTimingScraper {
                 this.log('INFO', `🏁 Race title: ${rest}`);
             } else if (key === 'comment') {
                 this.log('INFO', `💬 Comment: ${rest}`);
+                this._addComment(rest);
             } else if (key === 'init') {
                 this.log('INFO', `🔧 Init: ${rest}`);
             } else if (key === 'best') {
@@ -281,6 +285,19 @@ class ApexTimingScraper {
      * Auto-detect column roles from header cells.
      * Supports: Italian, German, English, French, Spanish, Dutch, Portuguese.
      */
+    /**
+     * Store a race-control comment and notify listeners.
+     */
+    _addComment(text) {
+        if (!text || !text.trim()) return;
+        const entry = { text: text.trim(), ts: Date.now() };
+        this._comments.push(entry);
+        if (this._comments.length > this._maxComments) this._comments.shift();
+        if (this.onComment) {
+            this.onComment(entry);
+        }
+    }
+
     detectColumnMapping(headerCells) {
         const patterns = [
             { field: 'position',   re: /^(cla|pos|rnk|rank|platz|p\.?|#|classifica)$/i },
@@ -419,9 +436,23 @@ class ApexTimingScraper {
 
         // ── Detect column mapping from header row ──
         if (!this.columnMap) {
-            const headerRow = doc.querySelector('tr.titles') ||
-                              doc.querySelector('thead tr') ||
-                              doc.querySelector('tr:first-child');
+            // 1) Explicit header row by class
+            let headerRow = doc.querySelector('tr.titles') || doc.querySelector('thead tr');
+            // 2) Scan all rows to find one whose cells match known header patterns
+            if (!headerRow) {
+                const candidates = doc.querySelectorAll('tr');
+                for (const tr of candidates) {
+                    const cells = tr.querySelectorAll('th, td');
+                    if (cells.length < 5) continue;
+                    // Check if ≥3 cells match header keywords
+                    let hits = 0;
+                    const headerTest = /^(cla|pos|rnk|rank|kart|no|team|name|nom|nome|giri|laps?|gap|diff|distacco|ultimo|last|best|giro\s*mig|s1|s2|s3|pit|pen|categoria|category|paese|country|tempo|time|in\s*pista|on\s*track)$/i;
+                    for (const c of cells) {
+                        if (headerTest.test(c.textContent.trim())) hits++;
+                    }
+                    if (hits >= 3) { headerRow = tr; break; }
+                }
+            }
             if (headerRow) {
                 const headerCells = headerRow.querySelectorAll('th, td');
                 if (headerCells.length >= 5) {
@@ -434,12 +465,18 @@ class ApexTimingScraper {
             }
         }
 
+        // ── Collect the header row's id so we can skip it later ──
+        const headerRowId = (() => {
+            const hr = doc.querySelector('tr.titles') || doc.querySelector('thead tr');
+            return hr ? hr.id : null;
+        })();
+
         // ── Find data rows ──
         let rows = doc.querySelectorAll('tr[id^="r"]');
         if (rows.length === 0) {
             rows = Array.from(doc.querySelectorAll('tr')).filter(tr => {
                 const cells = tr.querySelectorAll('td');
-                return cells.length >= 5; // compact layouts may have only 7-9 columns
+                return cells.length >= 5;
             });
         }
 
@@ -466,7 +503,15 @@ class ApexTimingScraper {
             return (idx != null && idx < cells.length) ? cells[idx].textContent.trim() : '';
         };
 
+        let skippedRows = 0;
         for (const row of rows) {
+            // Skip header / titles rows explicitly
+            if (row.classList && (row.classList.contains('titles') || row.classList.contains('header'))) {
+                skippedRows++;
+                continue;
+            }
+            if (headerRowId && row.id === headerRowId) { skippedRows++; continue; }
+
             const cells = row.querySelectorAll('td');
             if (cells.length < 5) continue;
 
@@ -513,7 +558,14 @@ class ApexTimingScraper {
                 }
             }
 
-            if (comp.position <= 0 && !comp.driverName && !comp.kartNumber) continue;
+            // Strict validation: must have position > 0 OR a numeric kart number OR timing data
+            const posValid = comp.position > 0;
+            const kartNumeric = /^\d+$/.test(comp.kartNumber);
+            const hasTimingData = comp.lastLapMs > 0 || comp.bestLapMs > 0 || comp.totalLaps > 0;
+            if (!posValid && !kartNumeric && !hasTimingData) {
+                skippedRows++;
+                continue;
+            }
 
             // Pit status from hidden status cells (0,1)
             const statusCell = (cells[0]?.textContent?.trim() || '') + (cells[1]?.textContent?.trim() || '');
@@ -524,7 +576,7 @@ class ApexTimingScraper {
             this.competitors.set(rowId, comp);
         }
 
-        this.log('INFO', `Grid initialized with ${this.competitors.size} competitors`);
+        this.log('INFO', `Grid initialized with ${this.competitors.size} competitors (skipped ${skippedRows} non-data rows)`);
         if (this.competitors.size > 0) {
             this.emitUpdate();
         }
@@ -551,6 +603,9 @@ class ApexTimingScraper {
             }
 
             if (cells.length < 5) continue;
+
+            // Skip rows whose HTML class suggests header
+            if (/titles|header/i.test(match[0])) continue;
 
             const getCell = (field, fallbackIdx) => {
                 const idx = cm ? cm[field] : fallbackIdx;
@@ -586,7 +641,11 @@ class ApexTimingScraper {
             comp.bestLapMs = this.parseTimeToMs(comp.bestLap);
             comp.previousPosition = comp.position;
 
-            if (comp.position <= 0 && !comp.driverName && !comp.kartNumber) continue;
+            // Strict validation: must have position > 0 OR numeric kart OR timing data
+            const posValid = comp.position > 0;
+            const kartNumeric = /^\d+$/.test(comp.kartNumber);
+            const hasTimingData = comp.lastLapMs > 0 || comp.bestLapMs > 0 || comp.totalLaps > 0;
+            if (!posValid && !kartNumeric && !hasTimingData) continue;
 
             this.competitors.set(rowId, comp);
         }
@@ -681,7 +740,8 @@ class ApexTimingScraper {
             } : null,
             found: !!ourTeam,
             totalCompetitors: allCompetitors.length,
-            provider: 'apex-ws'
+            provider: 'apex-ws',
+            comments: this._comments.slice(-10)
         };
 
         this.log('INFO', `📊 Update: ${allCompetitors.length} competitors, ourTeam: ${ourTeam ? ourTeam.driverName : 'not found'}`);

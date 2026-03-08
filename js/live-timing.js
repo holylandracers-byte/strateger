@@ -274,6 +274,17 @@ window.fetchLiveTimingFromProxy = async function() {
         onError: (err, count) => {
             console.error("Scraper Error:", err);
             window.updateProxyStatus(`⚠️ Error ${count}: ${err.message}`);
+        },
+
+        onComment: (entry) => {
+            console.log(`[LiveTiming] 💬 Race comment: ${entry.text}`);
+            if (typeof window.showToast === 'function') {
+                window.showToast(`📢 ${entry.text}`, 'info', 8000);
+            }
+            // Also fire as strategy notification if race is running
+            if (window.state && window.state.isRunning && typeof window._fireStrategyNotification === 'function') {
+                window._fireStrategyNotification(`📢 ${entry.text}`, 'info');
+            }
         }
     });
 };

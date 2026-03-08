@@ -99,6 +99,7 @@ class LiveTimingManager {
             onUpdate: callbacks.onUpdate || null,
             onError: callbacks.onError || null,
             onFatalError: callbacks.onFatalError || null,
+            onComment: callbacks.onComment || null,
             updateInterval: callbacks.updateInterval || 5000
         };
 
@@ -207,6 +208,12 @@ class LiveTimingManager {
             
             if (this.config.onUpdate) {
                 this.config.onUpdate(strategerData);
+            }
+        },
+
+        onComment: (entry) => {
+            if (this.config.onComment) {
+                this.config.onComment(entry);
             }
         },
 
@@ -357,6 +364,7 @@ class LiveTimingManager {
                     category: c.category || '',
                     isOurTeam: data.ourTeam ? (c.name === data.ourTeam.name && c.kart === data.ourTeam.kart) : false
                 })),
+                comments: data.comments || [],
                 found: data.found,
                 provider: 'apex',
                 timestamp: Date.now()
