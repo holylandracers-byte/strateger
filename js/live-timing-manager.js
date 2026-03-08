@@ -340,7 +340,8 @@ class LiveTimingManager {
                     totalLaps: parseInt(data.ourTeam.laps) || 0,
                     gap: gapToMs(data.ourTeam.gap),
                     inPit: data.ourTeam.inPit || false,
-                    pitCount: data.ourTeam.pitCount || 0
+                    pitCount: data.ourTeam.pitCount || 0,
+                    category: data.ourTeam.category || ''
                 } : null,
                 competitors: (data.competitors || []).map(c => ({
                     position: parseInt(c.position) || 0,
@@ -353,6 +354,7 @@ class LiveTimingManager {
                     gap: gapToMs(c.gap),
                     inPit: c.inPit || false,
                     pitCount: c.pitCount || 0,
+                    category: c.category || '',
                     isOurTeam: data.ourTeam ? (c.name === data.ourTeam.name && c.kart === data.ourTeam.kart) : false
                 })),
                 found: data.found,

@@ -454,7 +454,7 @@ window.updateCompetitorsTable = function() {
             row.className = 'competitor-row';
             row.dataset.compIdx = i;
             row.innerHTML = `<div class="cr-left">
-<span class="cr-pos"></span><span class="cr-kart"></span><span class="cr-name"></span><span class="cr-badges"></span>
+<span class="cr-pos"></span><span class="cr-kart"></span><span class="cr-cat"></span><span class="cr-name"></span><span class="cr-badges"></span>
 </div><div class="cr-right">
 <span class="cr-laps"></span><span class="cr-pits"></span><span class="cr-gap"></span><span class="cr-int"></span><span class="cr-lap"></span><span class="cr-avg"></span>
 </div>`;
@@ -507,6 +507,19 @@ window.updateCompetitorsTable = function() {
             let kartCls = 'cr-kart';
             if (isTopKart) kartCls += ' fast-kart';
             if (kartEl.className !== kartCls) kartEl.className = kartCls;
+        }
+
+        // ---- Category badge (GOLD / SILVER / etc.) ----
+        const catEl = row.querySelector('.cr-cat');
+        if (catEl) {
+            const catVal = (comp.category || '').trim().toUpperCase();
+            if (catEl.textContent !== catVal) catEl.textContent = catVal;
+            let catCls = 'cr-cat';
+            if (catVal === 'GOLD') catCls += ' cat-gold';
+            else if (catVal === 'SILVER') catCls += ' cat-silver';
+            else if (catVal === 'BRONZE') catCls += ' cat-bronze';
+            else if (catVal) catCls += ' cat-other';
+            if (catEl.className !== catCls) catEl.className = catCls;
         }
 
         // ---- Name (rotate team ↔ driver every 5s) ----
