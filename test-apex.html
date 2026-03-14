@@ -12,64 +12,75 @@
         const output = document.getElementById('output');
         const status = document.getElementById('status');
 
-        // Test 1: Try WebSocket
-        status.textContent = 'Testing WebSocket...';
-        const wsUrl = 'wss://www.apex-timing.com:8523/';
-        const ws = new WebSocket(wsUrl);
+        const raceUrl = 'https://www.apex-timing.com/live-timing/kartcentrum-brno/index.html';
 
-        ws.onopen = () => {
-            status.textContent = '✅ WebSocket Connected!';
-            output.textContent += `Connected to: ${wsUrl}\n`;
-        };
+        function getRaceBaseUrl(url) {
+            const u = new URL(url);
+            const path = u.pathname.endsWith('/')
+                ? u.pathname
+                : u.pathname.substring(0, u.pathname.lastIndexOf('/') + 1);
+            return `${u.origin}${path}`;
+        }
 
-        ws.onmessage = (event) => {
-            output.textContent += `\n📨 Message received:\n${event.data}\n`;
-        };
+        async function detectWsUrl(url) {
+            const race = new URL(url);
+            const raceIsHttps = race.protocol === 'https:';
+            const cfgUrl = `${getRaceBaseUrl(url)}javascript/config.js`;
 
-        ws.onerror = (error) => {
-            status.textContent = '❌ WebSocket Failed - Trying HTTP...';
-            output.textContent += `WS Error: ${error}\n\n`;
-            testHttp();
-        };
+            output.textContent += `Race URL: ${url}\n`;
+            output.textContent += `Config URL: ${cfgUrl}\n`;
 
-        ws.onclose = () => {
-            output.textContent += 'WebSocket closed\n';
-        };
+            const cfgText = await fetch(cfgUrl).then(r => {
+                if (!r.ok) throw new Error(`config.js HTTP ${r.status}`);
+                return r.text();
+            });
 
-        // Test 2: HTTP Fallback
-        async function testHttp() {
-            const urls = [
-                'https://www.apex-timing.com/live-timing/worldkarts/standings.json',
-                'https://www.apex-timing.com/live-timing/worldkarts/data.json',
-                'https://www.apex-timing.com/live-timing/worldkarts/'
-            ];
+            const m = cfgText.match(/var\s+configPort\s*=\s*(\d+)/i);
+            if (!m) throw new Error('configPort not found in config.js');
 
-            for (const url of urls) {
-                try {
-                    output.textContent += `\nTrying: ${url}\n`;
-                    const response = await fetch(url);
-                    output.textContent += `Status: ${response.status}\n`;
-                    
-                    if (response.ok) {
-                        const text = await response.text();
-                        output.textContent += `Success! Length: ${text.length}\n`;
-                        output.textContent += `Preview:\n${text.substring(0, 500)}\n\n`;
-                        status.textContent = `✅ HTTP Success: ${url}`;
-                        break;
-                    }
-                } catch (e) {
-                    output.textContent += `Error: ${e.message}\n`;
-                }
+            const configPort = parseInt(m[1], 10);
+            const wsPort = raceIsHttps ? configPort + 3 : configPort + 2;
+            const wsScheme = raceIsHttps ? 'wss' : 'ws';
+            const wsUrl = `${wsScheme}://${race.hostname}:${wsPort}/`;
+
+            output.textContent += `configPort=${configPort}\n`;
+            output.textContent += `Derived WS URL=${wsUrl}\n\n`;
+
+            return wsUrl;
+        }
+
+        async function start() {
+            try {
+                status.textContent = 'Resolving socket URL from config.js...';
+                const wsUrl = await detectWsUrl(raceUrl);
+
+                status.textContent = 'Testing WebSocket...';
+                const ws = new WebSocket(wsUrl);
+
+                ws.onopen = () => {
+                    status.textContent = '✅ WebSocket Connected!';
+                    output.textContent += `Connected to: ${wsUrl}\n`;
+                };
+
+                ws.onmessage = (event) => {
+                    output.textContent += `\n📨 Message received:\n${event.data}\n`;
+                };
+
+                ws.onerror = (error) => {
+                    status.textContent = '❌ WebSocket failed';
+                    output.textContent += `WS Error: ${error}\n`;
+                };
+
+                ws.onclose = () => {
+                    output.textContent += 'WebSocket closed\n';
+                };
+            } catch (e) {
+                status.textContent = '❌ Detection failed';
+                output.textContent += `Error: ${e.message}\n`;
             }
         }
 
-        // Timeout test
-        setTimeout(() => {
-            if (status.textContent.includes('Initializing')) {
-                ws.close();
-                testHttp();
-            }
-        }, 3000);
+        start();
     </script>
 </body>
 </html>

@@ -72,15 +72,65 @@ class ApexTimingScraper {
         this.log('INFO', `🔌 Race URL: ${this.raceUrl}`);
         this.log('INFO', `🔍 Search term: "${this.searchTerm}"`);
 
-        // Fetch circuit-specific WebSocket port from javascript/config.js.
-        // Apex Timing uses configPort+3 for WSS (HTTPS) and configPort+2 for WS (HTTP).
-        const configPort = await this.fetchConfigPort(this.raceUrl);
-        const wsPort = location.protocol === 'https:' ? configPort + 3 : configPort + 2;
-        this.wsUrl = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${urlObj.hostname}:${wsPort}/`;
-        this.log('INFO', `🔌 WS URL: ${this.wsUrl} (configPort ${configPort} → wsPort ${wsPort})`);
+        // Resolve the Apex socket endpoint from the race config instead of guessing.
+        // Apex uses configPort+3 for WSS (HTTPS page) and configPort+2 for WS (HTTP page).
+        let socketConfig;
+        try {
+            socketConfig = await this.resolveSocketConfig(this.raceUrl, urlObj);
+        } catch (e) {
+            this.isRunning = false;
+            this.log('ERROR', `Could not resolve Apex socket URL: ${e.message}`);
+            if (this.onError) this.onError(e, this.consecutiveErrors);
+            return;
+        }
+
+        this.wsUrl = socketConfig.wsUrl;
+        this.log('INFO', `🔌 WS URL: ${this.wsUrl} (${socketConfig.source}, base ${socketConfig.configPort} → wsPort ${socketConfig.wsPort})`);
 
         this.connectWebSocket();
         this.scrapeInitialGrid();
+    }
+
+    getRaceBaseUrl(raceUrl) {
+        const u = new URL(raceUrl);
+        const path = u.pathname || '/';
+        const basePath = path.endsWith('/') ? path : path.substring(0, path.lastIndexOf('/') + 1);
+        return `${u.origin}${basePath}`;
+    }
+
+    extractConfigPort(text) {
+        if (!text) return null;
+        const m = text.match(/var\s+configPort\s*=\s*(\d+)/i);
+        if (!m) return null;
+        const p = parseInt(m[1], 10);
+        return Number.isFinite(p) && p > 0 ? p : null;
+    }
+
+    extractConfigScriptUrl(html, raceUrl) {
+        if (!html) return null;
+        const scriptMatch = html.match(/<script[^>]+src=["']([^"']*config\.js(?:\?[^"']*)?)["']/i);
+        if (!scriptMatch || !scriptMatch[1]) return null;
+        try {
+            return new URL(scriptMatch[1], raceUrl).toString();
+        } catch (e) {
+            return null;
+        }
+    }
+
+    async resolveSocketConfig(raceUrl, urlObj) {
+        const raceProtocol = (urlObj.protocol || '').toLowerCase();
+        const isSecureRace = raceProtocol === 'https:';
+        const wsScheme = isSecureRace ? 'wss' : 'ws';
+        const wsOffset = isSecureRace ? 3 : 2;
+
+        const configPort = await this.fetchConfigPort(raceUrl);
+        const wsPort = configPort + wsOffset;
+        return {
+            configPort,
+            wsPort,
+            wsUrl: `${wsScheme}://${urlObj.hostname}:${wsPort}/`,
+            source: isSecureRace ? 'config.js + HTTPS(+3)' : 'config.js + HTTP(+2)'
+        };
     }
 
     /**
@@ -88,24 +138,57 @@ class ApexTimingScraper {
      * Each Apex Timing circuit has a unique port stored in configPort.
      */
     async fetchConfigPort(raceUrl) {
-        const FALLBACK_PORT = 8180;
+        const tried = [];
+        const logTry = (label, cfgUrl) => {
+            tried.push(cfgUrl);
+            this.log('INFO', `🔍 Fetching Apex config (${label}): ${cfgUrl}`);
+        };
+
+        const base = this.getRaceBaseUrl(raceUrl);
+        const defaultConfigUrl = `${base}javascript/config.js`;
+
+        // 1) Preferred direct config path under the race folder.
         try {
-            const base = raceUrl.endsWith('/') ? raceUrl : raceUrl + '/';
-            const configUrl = base + 'javascript/config.js';
-            this.log('INFO', `🔍 Fetching Apex config: ${configUrl}`);
-            const text = await this.fetchWithProxy(configUrl);
-            const m = text.match(/var\s+configPort\s*=\s*(\d+)/);
-            if (m) {
-                const p = parseInt(m[1]);
+            logTry('default', defaultConfigUrl);
+            const text = await this.fetchWithProxy(defaultConfigUrl);
+            const p = this.extractConfigPort(text);
+            if (p) {
                 this.log('INFO', `✅ Detected configPort: ${p}`);
                 return p;
             }
-            this.log('WARN', 'configPort not found in config.js');
+            this.log('WARN', 'configPort not found in default config.js');
         } catch (e) {
-            this.log('WARN', `Config fetch failed: ${e.message}`);
+            this.log('WARN', `Default config fetch failed: ${e.message}`);
         }
-        this.log('WARN', `⚠️ Falling back to port ${FALLBACK_PORT}`);
-        return FALLBACK_PORT;
+
+        // 2) Parse race page HTML and discover the exact config.js script URL (often has cache_version query).
+        try {
+            this.log('INFO', `🔍 Fetching Apex page HTML to locate config script: ${raceUrl}`);
+            const html = await this.fetchWithProxy(raceUrl);
+
+            // Some deployments inline configPort directly.
+            const inlinePort = this.extractConfigPort(html);
+            if (inlinePort) {
+                this.log('INFO', `✅ Detected configPort inline in page HTML: ${inlinePort}`);
+                return inlinePort;
+            }
+
+            const scriptUrl = this.extractConfigScriptUrl(html, raceUrl);
+            if (scriptUrl && !tried.includes(scriptUrl)) {
+                logTry('discovered-from-html', scriptUrl);
+                const scriptText = await this.fetchWithProxy(scriptUrl);
+                const p = this.extractConfigPort(scriptText);
+                if (p) {
+                    this.log('INFO', `✅ Detected configPort: ${p}`);
+                    return p;
+                }
+                this.log('WARN', 'configPort not found in discovered config.js');
+            }
+        } catch (e) {
+            this.log('WARN', `HTML config discovery failed: ${e.message}`);
+        }
+
+        throw new Error(`Unable to resolve Apex configPort for ${raceUrl}`);
     }
 
     extractHost(url) {
@@ -928,11 +1011,9 @@ class ApexTimingScraper {
         // Cancel any previous in-flight request
         if (this._activeController) {
             try { this._activeController.abort(); } catch(e) {}
+            this._activeController = null;
         }
-        
-        const controller = new AbortController();
-        this._activeController = controller;
-        
+
         const proxies = [
             { prefix: '/.netlify/functions/cors-proxy?url=', label: 'netlify-proxy', timeoutMs: 20000 },
             { prefix: 'https://corsproxy.io/?', label: 'corsproxy', timeoutMs: 12000 },
@@ -940,10 +1021,14 @@ class ApexTimingScraper {
         ];
 
         for (const proxy of proxies) {
-            if (!this.isRunning || controller.signal.aborted) return '';
+            if (!this.isRunning) return '';
+
+            const controller = new AbortController();
+            this._activeController = controller;
+            let timeout = null;
             
             try {
-                const timeout = setTimeout(() => {
+                timeout = setTimeout(() => {
                     if (!controller.signal.aborted) controller.abort();
                 }, proxy.timeoutMs);
                 
@@ -957,6 +1042,11 @@ class ApexTimingScraper {
             } catch (e) {
                 if (e.name === 'AbortError' && !this.isRunning) return '';
                 this.log('WARN', `${proxy.label} failed: ${e.message}`);
+            } finally {
+                if (timeout) clearTimeout(timeout);
+                if (this._activeController === controller) {
+                    this._activeController = null;
+                }
             }
         }
 
