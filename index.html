@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Strateger - Race Strategy Manager</title>
+    <title>Streger - Race Strategy Manager</title>
     
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%2322d3ee' width='100' height='100' rx='15'/><text x='50' y='70' text-anchor='middle' font-size='60' fill='black' font-weight='bold'>S</text></svg>">
 
@@ -13,7 +13,7 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Strateger">
+    <meta name="apple-mobile-web-app-title" content="Streger">
     <link rel="apple-touch-icon" href="/icons/icon-192.svg">
 
     <script src="js/config.js"></script>
@@ -153,7 +153,7 @@
         
         <div class="max-w-lg mx-auto text-center mb-2">
             <div class="header-title font-bold tracking-widest text-white ml-2 sm:block">
-                STRAT<span class="text-ice">EGER</span>
+                STR<span class="text-ice">EGER</span>
             </div>
             <div class="text-[9px] text-gray-400 uppercase tracking-wider ml-2 sm:block" data-i18n="appSubtitle">
                 Endurance Race Strategy Manager
@@ -562,6 +562,7 @@
                     <div class="flex items-center gap-2">
                         <span class="sync-dot live-dot"></span> 
                         <span class="text-xs font-bold" data-i18n="live">LIVE</span>
+                        <span id="liveHeartbeat" class="text-[10px] text-gray-400">HB --</span>
                     </div>
                     <div class="flex items-center gap-1">
                         <button id="apexViewToggle" onclick="window.toggleApexIframe()" class="text-[10px] bg-navy-700 border border-gray-600 text-gray-300 px-2 py-0.5 rounded" title="Toggle original Apex view">🌐</button>
@@ -601,7 +602,7 @@
                 </div>
                 <div id="competitorsTable" class="mt-2 overflow-y-auto scroll-smooth scrollbar-thin" style="min-height:196px;height:280px;max-height:600px;resize:vertical;"></div>
                 <div id="apexIframeContainer" class="hidden mt-1">
-                    <iframe id="apexIframe" src="" class="w-full rounded" style="height:300px;border:none;background:#0a1120;" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
+                    <iframe id="apexIframe" src="" class="w-full rounded" style="height:300px;border:none;background:#0a1120;" sandbox="allow-scripts allow-forms allow-popups"></iframe>
                 </div>
                 <div id="kartRankingPanel" class="hidden mt-1 p-2 bg-navy-950 rounded border border-gray-700/50"></div>
             </div>
@@ -744,8 +745,9 @@
             <button onclick="event.stopPropagation(); window.toggleDriverMode()" class="absolute top-2 left-2 z-10 text-white/40 hover:text-white/80 text-xl w-11 h-11 flex items-center justify-center rounded-full transition" style="top: max(8px, env(safe-area-inset-top, 0px)); left: max(8px, env(safe-area-inset-left, 0px));">
                 <i class="fas fa-times"></i>
             </button>
-            <!-- Race timer (top-right, safe-area aware) -->
+            <!-- Race timer + connection quality (top-right, safe-area aware) -->
             <div class="absolute top-2 right-2 z-10 flex items-center gap-2" style="top: max(8px, env(safe-area-inset-top, 0px)); right: max(8px, env(safe-area-inset-right, 0px));">
+                <div id="driverConnQuality" class="text-[10px] px-1.5 py-0.5 rounded-full font-bold border hidden" title="Connection quality">●</div>
                 <div id="driverDemoBadge" class="hidden text-[10px] bg-neon/20 text-neon border border-neon/50 px-1.5 py-0.5 rounded-full font-bold">DEMO</div>
                 <div id="driverRaceTimer" class="driver-race-timer">00:00:00</div>
             </div>
@@ -757,6 +759,15 @@
             </div>
             <!-- Tap hint -->
             <div id="driverTapHint" class="absolute bottom-3 inset-x-0 text-center text-white/25 text-[10px] font-bold uppercase tracking-widest" data-i18n="tapToPit">TAP TO ENTER PIT</div>
+            <!-- Auto pit status indicator -->
+            <div id="driverAutoPitStatus" class="absolute bottom-8 inset-x-0 text-center text-[9px] font-bold uppercase tracking-wider">
+                <span id="driverAutoPitBadge" class="pit-auto-badge active">🔗 AUTO PIT TRACKING</span>
+            </div>
+            <!-- Connection / troubleshoot info (hidden by default, shown when issues) -->
+            <div id="driverTroubleshoot" class="driver-troubleshoot hidden">
+                <strong>No data?</strong> Check: WiFi/4G on · Host race started · Correct Race ID<br>
+                Tap ✕ → re-enter ID → reconnect
+            </div>
             <!-- Next stint notification banner -->
             <div id="driverNextStintBanner" class="hidden absolute top-10 inset-x-0 mx-4 z-10 bg-black/80 border border-amber-500/50 rounded-lg px-3 py-2 text-center">
                 <div id="driverNextStintText" class="text-amber-400 text-sm font-bold"></div>
@@ -992,7 +1003,7 @@
     <div id="viewerNameScreen" class="hidden fixed inset-0 bg-navy-950 z-[100] flex flex-col items-center justify-center p-6">
         <div class="text-center mb-6">
             <div class="text-4xl mb-2">👀</div>
-            <h1 class="text-2xl font-bold text-ice tracking-widest">STRATEGER</h1>
+            <h1 class="text-2xl font-bold text-ice tracking-widest">Streger</h1>
             <p class="text-sm text-gray-400 mt-1" data-i18n="viewerNameHint">Enter your name to join the race</p>
         </div>
         <div class="w-full max-w-xs space-y-4">
@@ -1321,7 +1332,7 @@
         <div class="bg-navy-900 border border-ice/50 rounded-xl p-6 max-w-sm w-full shadow-2xl text-center">
             <div id="onboardStep" class="transition-opacity duration-300">
                 <div id="onboardEmoji" class="text-5xl mb-3">🏁</div>
-                <h2 id="onboardTitle" class="text-xl font-bold text-ice mb-2" data-i18n="onboardWelcome">Welcome to Strateger!</h2>
+                <h2 id="onboardTitle" class="text-xl font-bold text-ice mb-2" data-i18n="onboardWelcome">Welcome to Streger!</h2>
                 <p id="onboardText" class="text-sm text-gray-400 mb-4"></p>
                 <div id="onboardDots" class="flex justify-center gap-2 mb-4">
                     <span class="w-2 h-2 rounded-full bg-ice"></span>
@@ -1351,7 +1362,7 @@
     <div id="installBanner" class="hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-[150] bg-navy-900 border border-ice/50 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 max-w-sm w-[calc(100%-2rem)]">
         <div class="text-2xl">📲</div>
         <div class="flex-1">
-            <div class="text-sm font-bold text-ice" data-i18n="installApp">Install Strateger</div>
+            <div class="text-sm font-bold text-ice" data-i18n="installApp">Install Streger</div>
             <div class="text-[10px] text-gray-400" data-i18n="installDesc">Add to home screen for the best experience</div>
         </div>
         <button onclick="window.installPWA()" class="bg-ice text-navy-950 font-bold px-3 py-1.5 rounded text-xs hover:bg-cyan-300 transition" data-i18n="install">Install</button>
@@ -1474,7 +1485,7 @@
     <script src="js/auth.js?v=5"></script>
     <script src="js/network.js?v=5"></script>
     <script src="js/strategy.js?v=5"></script>
-    <script src="js/live-timing.js?v=5"></script>
+    <script src="js/live-timing.js?v=6"></script>
     <script src="js/ui.js?v=5"></script>
     <script src="js/main.js?v=5"></script>
 </body>

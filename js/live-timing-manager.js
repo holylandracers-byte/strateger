@@ -22,6 +22,11 @@ function gapToMs(gapValue) {
         const ms = mmss[3].padEnd(3, '0');
         return (parseInt(mmss[1]) * 60 + parseInt(mmss[2])) * 1000 + parseInt(ms);
     }
+    // "M:SS" or "M:SS." from Apex "to" token
+    const mmssNoMs = str.match(/^(\d+):(\d{2})\.?$/);
+    if (mmssNoMs) {
+        return (parseInt(mmssNoMs[1]) * 60 + parseInt(mmssNoMs[2])) * 1000;
+    }
     // "SS.mmm" (e.g., "5.387" or "65.123")
     const ss = str.match(/^(\d+)\.(\d{1,3})$/);
     if (ss) {
@@ -201,7 +206,7 @@ class LiveTimingManager {
         searchTerm: this.config.searchTerm,
         searchType: this.config.searchType || 'team',
         updateInterval: this.config.updateInterval,
-        debug: true,
+        debug: false,
 
         onUpdate: (data) => {
             const strategerData = this.convertToStrategerFormat(data, 'apex');

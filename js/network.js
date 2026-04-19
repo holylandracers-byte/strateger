@@ -802,6 +802,8 @@ window.connectToHost = function(hostId) {
 
             window.conn.on('data', (data) => {
                 if (data.type === 'UPDATE' || data.type === 'INIT') {
+                    // Track data freshness for driver connection indicator
+                    window._lastDriverDataTs = Date.now();
                     // Always absorb state data
                     if (data.state) window.state = data.state;
                     if (data.config) window.config = data.config;

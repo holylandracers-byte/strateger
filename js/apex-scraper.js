@@ -339,6 +339,47 @@ class ApexTimingScraper {
         }, delayMs);
     }
 
+    _ensureCompetitor(rowId) {
+        let comp = this.competitors.get(rowId);
+        if (comp) return comp;
+
+        comp = {
+            rowId,
+            position: 0,
+            kartNumber: '',
+            driverName: '',
+            firstName: '',
+            lastName: '',
+            sector1: '',
+            sector2: '',
+            sector3: '',
+            lastLap: '',
+            bestLap: '',
+            gap: '',
+            totalLaps: 0,
+            category: '',
+            lastLapMs: 0,
+            bestLapMs: 0,
+            inPit: false,
+            pitCount: 0,
+            previousPosition: 0,
+            penalty: 0,
+            penaltyTime: 0,
+            penaltyReason: ''
+        };
+
+        this.competitors.set(rowId, comp);
+        return comp;
+    }
+
+    _parseLapNumber(value) {
+        if (value == null) return 0;
+        const direct = parseInt(value, 10);
+        if (!isNaN(direct) && direct >= 0) return direct;
+        const match = String(value).match(/(\d+)/);
+        return match ? (parseInt(match[1], 10) || 0) : 0;
+    }
+
     handleRowUpdate(line, deferEmit = false) {
         // Pit in/out via Apex *in/*out/*i1/*i2 markers: r<rowId>|*in| or r<rowId>|*out|
         const starPitMatch = line.match(/^(r\d+)\|\*(in|i1|i2|out)\|?/i);
@@ -358,19 +399,40 @@ class ApexTimingScraper {
         }
 
         // Cell update: r<rowId>c<colIdx>|<value>|
+        const typedCellMatch = line.match(/^(r\d+)c(\d+)\|([^|]*)\|([^|]*)\|?$/);
+        if (typedCellMatch) {
+            const rowId = typedCellMatch[1];
+            const colIdx = parseInt(typedCellMatch[2], 10);
+            const token = (typedCellMatch[3] || '').trim().toLowerCase();
+            const rawValue = (typedCellMatch[4] || '').trim();
+            const comp = this._ensureCompetitor(rowId);
+
+            if (token === 'dr' || token === 'drteam') {
+                comp.driverName = rawValue;
+                if (!comp.lastName) comp.lastName = rawValue;
+            } else if (token === 'in') {
+                // Apex often sends "Giro 1008" in this channel.
+                const laps = this._parseLapNumber(rawValue);
+                if (laps > 0) comp.totalLaps = laps;
+                this.updateCompetitorCell(comp, colIdx, rawValue);
+            } else {
+                this.updateCompetitorCell(comp, colIdx, rawValue);
+            }
+
+            if (!deferEmit) this.emitUpdate();
+            return true;
+        }
+
         const cellMatch = line.match(/^(r\d+)c(\d+)\|([^|]*)\|?$/);
         if (cellMatch) {
             const rowId = cellMatch[1];
             const colIdx = parseInt(cellMatch[2]);
             const value = cellMatch[3];
             
-            const comp = this.competitors.get(rowId);
-            if (comp) {
-                this.updateCompetitorCell(comp, colIdx, value);
-                if (!deferEmit) this.emitUpdate();
-                return true;
-            }
-            return false;
+            const comp = this._ensureCompetitor(rowId);
+            this.updateCompetitorCell(comp, colIdx, value);
+            if (!deferEmit) this.emitUpdate();
+            return true;
         }
 
         // Lap update: r<rowId>|*|<laptime>|<totaltime>
@@ -378,7 +440,7 @@ class ApexTimingScraper {
         if (lapMatch) {
             const rowId = lapMatch[1];
             const lapTime = lapMatch[2];
-            const comp = this.competitors.get(rowId);
+            const comp = this._ensureCompetitor(rowId);
             if (comp) {
                 comp.lastLap = lapTime;
                 const lapMs = this.parseTimeToMs(lapTime);
@@ -398,7 +460,7 @@ class ApexTimingScraper {
         if (posMatch) {
             const rowId = posMatch[1];
             const newPos = parseInt(posMatch[2]);
-            const comp = this.competitors.get(rowId);
+            const comp = this._ensureCompetitor(rowId);
             if (comp) {
                 comp.previousPosition = comp.position;
                 comp.position = newPos;
@@ -413,7 +475,7 @@ class ApexTimingScraper {
         if (pitMatch) {
             const rowId = pitMatch[1];
             const inPit = pitMatch[2] === '1';
-            const comp = this.competitors.get(rowId);
+            const comp = this._ensureCompetitor(rowId);
             if (comp) {
                 // Track pitCount: increment when transitioning into pit
                 if (inPit && !comp.inPit) {
@@ -434,7 +496,7 @@ class ApexTimingScraper {
         if (penMatch) {
             const rowId = penMatch[1];
             const penSec = parseInt(penMatch[2]) || 0;
-            const comp = this.competitors.get(rowId);
+            const comp = this._ensureCompetitor(rowId);
             if (comp) {
                 comp.penalty = (comp.penalty || 0) + 1;
                 comp.penaltyTime = (comp.penaltyTime || 0) + penSec;
@@ -598,7 +660,11 @@ class ApexTimingScraper {
                     case 'position':   comp.position = parseInt(value) || comp.position; break;
                     case 'kartNumber': comp.kartNumber = value; break;
                     case 'driverName': comp.driverName = value; break;
-                    case 'totalLaps':  comp.totalLaps = parseInt(value) || 0; break;
+                    case 'totalLaps': {
+                        const lapNum = this._parseLapNumber(value);
+                        comp.totalLaps = lapNum || comp.totalLaps || 0;
+                        break;
+                    }
                     case 'gap':        comp.gap = value; break;
                     case 'category':   comp.category = value; break;
                     case 'lastLap': {
@@ -670,7 +736,11 @@ class ApexTimingScraper {
                 comp.bestLapMs = this.parseTimeToMs(value);
                 break;
             case 12: comp.gap = value; break;
-            case 13: comp.totalLaps = parseInt(value) || 0; break;
+            case 13: {
+                const lapNum = this._parseLapNumber(value);
+                comp.totalLaps = lapNum || comp.totalLaps || 0;
+                break;
+            }
         }
     }
 

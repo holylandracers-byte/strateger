@@ -1,6 +1,6 @@
 {
-  "name": "Strateger - Race Strategy Manager",
-  "short_name": "Strateger",
+  "name": "Streger - Race Strategy Manager",
+  "short_name": "Streger",
   "description": "Professional endurance race strategy manager with live timing, driver management, and real-time pit strategy.",
   "start_url": "/index.html",
   "display": "standalone",

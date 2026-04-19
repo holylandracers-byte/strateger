@@ -51,22 +51,52 @@ body {
 [dir="rtl"] header {
     direction: ltr;
 }
-/* Keep numeric, timer, and input elements LTR */
+/* Keep numeric and timer values readable LTR */
 [dir="rtl"] [class*="font-mono"],
 [dir="rtl"] .driver-stint-timer,
 [dir="rtl"] .driver-race-timer,
 [dir="rtl"] .driver-data,
 [dir="rtl"] .driver-delta,
 [dir="rtl"] .cr-gap,
-[dir="rtl"] .cr-lap,
-[dir="rtl"] input,
-[dir="rtl"] select {
+[dir="rtl"] .cr-lap {
     direction: ltr;
 }
-/* Modals keep LTR layout */
+/* RTL languages: words start from right side */
+[dir="rtl"] #setupScreen,
+[dir="rtl"] #raceDashboard,
+[dir="rtl"] #previewScreen,
 [dir="rtl"] [id$="Modal"] > div,
-[dir="rtl"] #pitModal > div {
+[dir="rtl"] .label-text,
+[dir="rtl"] p,
+[dir="rtl"] h1,
+[dir="rtl"] h2,
+[dir="rtl"] h3,
+[dir="rtl"] h4,
+[dir="rtl"] h5,
+[dir="rtl"] h6,
+[dir="rtl"] li,
+[dir="rtl"] span {
+    direction: rtl;
+    text-align: right;
+}
+/* Text fields should follow RTL naturally */
+[dir="rtl"] input:not([type="number"]):not([type="time"]),
+[dir="rtl"] textarea,
+[dir="rtl"] select {
+    direction: rtl;
+    text-align: right;
+}
+/* Numeric and time inputs remain LTR */
+[dir="rtl"] input[type="number"],
+[dir="rtl"] input[type="time"] {
     direction: ltr;
+    text-align: left;
+}
+/* Non-RTL languages remain left aligned by default */
+[dir="ltr"] #setupScreen,
+[dir="ltr"] #raceDashboard,
+[dir="ltr"] #previewScreen {
+    text-align: left;
 }
 /* Overflow menu stays LTR */
 [dir="rtl"] #headerOverflowMenu {
@@ -203,7 +233,84 @@ header {
     width: 100%;
 }
 
-/* ==================== WIDE SCREEN SUPPORT ==================== */
+/* ==================== TABLET LAYOUT (768-1024px) ==================== */
+@media (min-width: 768px) and (max-width: 1024px) {
+    body {
+        padding-bottom: 0;
+    }
+    #setupScreen, #raceDashboard {
+        max-width: 100%;
+        padding: 0 24px;
+    }
+    header {
+        max-width: 100%;
+        padding-left: 24px;
+        padding-right: 24px;
+    }
+    /* Dashboard info bar: more spacious on tablet */
+    #dashboardInfoBar {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+        padding: 10px 24px;
+    }
+    /* Competitor table: show all columns, taller rows */
+    .competitor-row {
+        height: 38px;
+        min-height: 38px;
+        padding: 3px 10px;
+    }
+    .cr-pos  { font-size: 13px; width: 24px; }
+    .cr-kart { font-size: 11px; }
+    .cr-name { font-size: 14px; }
+    .cr-gap  { font-size: 13px; width: 68px; }
+    .cr-int  { font-size: 11px; width: 52px; }
+    .cr-lap  { font-size: 13px; width: 68px; }
+    .cr-avg  { font-size: 11px; width: 58px; }
+    .cr-laps { font-size: 10px; width: 28px; }
+    .cr-pits { font-size: 10px; width: 26px; }
+    /* Preview screen: wider content */
+    #previewScreen > div {
+        max-width: 100%;
+    }
+    /* Setup config grids: wider spacing */
+    .collapsible-section {
+        padding: 0 4px;
+    }
+    /* Driver mode: larger data on tablet */
+    .driver-emoji { font-size: min(12vw, 14vh); }
+    .driver-msg { font-size: min(7vw, 7vh); }
+    .driver-stint-timer { font-size: min(12vw, 14vh); }
+    .driver-data { font-size: min(5vw, 4.5vh); }
+    .driver-label { font-size: 2vw; }
+    /* Pit modal: wider */
+    #pitModal > * { max-width: 600px; margin: 0 auto; }
+}
+
+/* ==================== MOBILE LAYOUT (<=767px) ==================== */
+@media (max-width: 767px) {
+    body {
+        padding-bottom: calc(88px + var(--safe-bottom));
+    }
+    header {
+        padding-left: 8px;
+        padding-right: 8px;
+    }
+    #setupScreen,
+    #raceDashboard {
+        padding-left: 8px;
+        padding-right: 8px;
+    }
+    #dashboardInfoBar {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 6px;
+        padding: 8px;
+    }
+    #googleActionsBar {
+        gap: 6px;
+    }
+}
+
+/* ==================== WIDE SCREEN SUPPORT (1025px+) ==================== */
 @media (min-width: 1025px) {
     body {
         background-color: #020617;
@@ -217,21 +324,72 @@ header {
     }
 
     #setupScreen, #raceDashboard {
-        max-width: 600px;
+        max-width: min(860px, calc(100vw - 48px));
         margin: 0 auto;
         background-color: var(--navy-950);
         box-shadow: 0 0 50px rgba(0, 0, 0, 0.8);
         border-left: 1px solid #1e293b;
         border-right: 1px solid #1e293b;
-        /* גובה מינימלי למרכז המסך */
         min-height: 100vh;
         padding-bottom: 40px;
     }
 
     header {
-        max-width: 600px;
+        max-width: min(860px, calc(100vw - 48px));
         margin: 0 auto;
     }
+}
+
+/* ==================== LARGE DESKTOP (1440px+) ==================== */
+@media (min-width: 1440px) {
+    #setupScreen, #raceDashboard, header {
+        max-width: min(1080px, calc(100vw - 80px));
+    }
+}
+
+/* ==================== AUTO PIT DETECTION STATUS ==================== */
+.pit-auto-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    padding: 2px 6px;
+    border-radius: 4px;
+    text-transform: uppercase;
+}
+.pit-auto-badge.active {
+    background: rgba(34, 211, 238, 0.15);
+    color: var(--ice);
+    border: 1px solid rgba(34, 211, 238, 0.3);
+}
+.pit-auto-badge.manual {
+    background: rgba(249, 115, 22, 0.15);
+    color: var(--fuel);
+    border: 1px solid rgba(249, 115, 22, 0.3);
+}
+
+/* Driver view troubleshoot banner */
+.driver-troubleshoot {
+    position: absolute;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.7);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 8px;
+    padding: 6px 14px;
+    font-size: 10px;
+    color: rgba(255,255,255,0.5);
+    text-align: center;
+    z-index: 5;
+    max-width: 90%;
+    backdrop-filter: blur(4px);
+}
+.driver-troubleshoot strong {
+    color: var(--ice);
+    font-weight: 700;
 }
 
 /* ==================== INPUTS & UI ==================== */
@@ -710,4 +868,31 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 #muteToggleBtn.muted {
     color: #ef4444 !important;
     border-color: #ef4444 !important;
+}
+
+/* ==================== LANDSCAPE COMPACT MODE ==================== */
+@media (orientation: landscape) and (max-height: 560px) {
+    header {
+        padding-top: 4px;
+        padding-bottom: 4px;
+    }
+    #dashboardInfoBar {
+        gap: 4px;
+        padding: 6px 8px;
+    }
+    .competitor-row {
+        height: 30px;
+        min-height: 30px;
+        padding: 1px 6px;
+    }
+    .cr-pos { font-size: 11px; width: 22px; }
+    .cr-kart { font-size: 10px; }
+    .cr-name { font-size: 12px; }
+    .cr-gap, .cr-lap { font-size: 11px; width: 58px; }
+    .cr-int, .cr-avg { font-size: 10px; width: 48px; }
+    .cr-laps, .cr-pits { font-size: 9px; width: 24px; }
+    #dashboardScrollArea {
+        padding: 4px;
+        gap: 4px;
+    }
 }

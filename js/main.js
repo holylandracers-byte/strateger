@@ -6,7 +6,7 @@
 window._isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 
 document.addEventListener('DOMContentLoaded', () => {
-    console.log("🚀 Strateger Initializing...");
+    console.log("🚀 Streger Initializing...");
     window._autoStartFired = false;
 
     // 🟢 Load viewer's own language preference if available
@@ -47,6 +47,17 @@ document.addEventListener('DOMContentLoaded', () => {
         window._autoDriverMode = true;
         window._driverModeOpened = false;
         window._pendingDriverCode = driverCode;
+        // Restore cached driver state for offline resilience
+        try {
+            const cached = JSON.parse(localStorage.getItem('strateger_driver_cache') || 'null');
+            if (cached && cached.state && (Date.now() - cached.ts) < 3600000) {
+                window.state = cached.state;
+                window.config = cached.config;
+                window.liveData = cached.liveData;
+                window.drivers = cached.drivers;
+                console.log('[Driver] Restored cached state from', Math.round((Date.now() - cached.ts) / 1000), 's ago');
+            }
+        } catch(e) {}
         document.getElementById('setupScreen').classList.add('hidden');
         document.getElementById('driverEntryScreen').classList.remove('hidden');
         // Pre-fill the ID field
@@ -280,11 +291,11 @@ window.sendBrowserNotification = function(message) {
 
     // Browser notification
     if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification('🏎️ Strateger', { body: message, icon: 'https://cdn-icons-png.flaticon.com/512/2418/2418779.png' });
+        new Notification('🏎️ Streger', { body: message, icon: 'https://cdn-icons-png.flaticon.com/512/2418/2418779.png' });
     } else if ('Notification' in window && Notification.permission !== 'denied') {
         Notification.requestPermission().then(p => {
             if (p === 'granted') {
-                new Notification('🏎️ Strateger', { body: message });
+                new Notification('🏎️ Streger', { body: message });
             }
         });
     }
@@ -2304,7 +2315,7 @@ window._fireDriverAlert = function(message, minutesBefore) {
     // Browser notification
     if ('Notification' in window && Notification.permission === 'granted') {
         try {
-            new Notification('🏎️ Strateger', { body: `${message} (${minutesBefore}min)`, icon: '/favicon.ico', tag: 'stint-alert' });
+            new Notification('🏎️ Streger', { body: `${message} (${minutesBefore}min)`, icon: '/favicon.ico', tag: 'stint-alert' });
         } catch(e) {}
     } else if ('Notification' in window && Notification.permission !== 'denied') {
         Notification.requestPermission();
@@ -2441,7 +2452,7 @@ window._fireStrategyNotification = function(message, type) {
     // Browser notification
     if ('Notification' in window && Notification.permission === 'granted') {
         try {
-            new Notification('🏁 Strateger', { 
+            new Notification('🏁 Streger', { 
                 body: message, 
                 icon: '/favicon.ico', 
                 tag: 'strategy-' + Date.now(),
@@ -2718,6 +2729,88 @@ window.updateDriverMode = function() {
         }
     }
 
+    // === AUTO PIT STATUS BADGE (driver view) ===
+    const autoPitBadge = document.getElementById('driverAutoPitBadge');
+    const autoPitStatus = document.getElementById('driverAutoPitStatus');
+    if (autoPitBadge && autoPitStatus) {
+        const liveActive = window.liveTimingConfig && window.liveTimingConfig.enabled && window.liveTimingManager;
+        const stats = liveActive ? window.liveTimingManager.getStats() : null;
+        const isLiveRunning = stats && stats.isRunning;
+        if (isLiveRunning) {
+            autoPitStatus.classList.remove('hidden');
+            autoPitBadge.className = 'pit-auto-badge active';
+            autoPitBadge.innerHTML = '🔗 AUTO PIT TRACKING';
+        } else if (window.state.isRunning) {
+            autoPitStatus.classList.remove('hidden');
+            autoPitBadge.className = 'pit-auto-badge manual';
+            autoPitBadge.innerHTML = '👆 MANUAL PIT — TAP TO PIT';
+        } else {
+            autoPitStatus.classList.add('hidden');
+        }
+    }
+
+    // === TROUBLESHOOT BANNER (show after 30s of no data) ===
+    const troubleshoot = document.getElementById('driverTroubleshoot');
+    if (troubleshoot) {
+        const hasPosition = window.liveData && window.liveData.position;
+        const hasConnection = window.conn && window.conn.open;
+        const raceStarted = window.state && window.state.isRunning;
+        if (raceStarted && !hasPosition && !hasConnection && !window._driverTroubleshootShown) {
+            if (!window._driverTroubleshootTimer) {
+                window._driverTroubleshootTimer = setTimeout(() => {
+                    troubleshoot.classList.remove('hidden');
+                    window._driverTroubleshootShown = true;
+                }, 30000);
+            }
+        } else if (hasPosition || hasConnection) {
+            troubleshoot.classList.add('hidden');
+            if (window._driverTroubleshootTimer) {
+                clearTimeout(window._driverTroubleshootTimer);
+                window._driverTroubleshootTimer = null;
+            }
+        }
+    }
+
+    // === CONNECTION QUALITY INDICATOR (for 1.5km range etc.) ===
+    const connDot = document.getElementById('driverConnQuality');
+    if (connDot) {
+        const peerConn = window.conn && window.conn.open;
+        const lastUpdate = window._lastDriverDataTs || 0;
+        const age = Date.now() - lastUpdate;
+        connDot.classList.remove('hidden');
+        if (peerConn && age < 8000) {
+            // Good — recent data
+            connDot.style.color = '#4ade80'; connDot.style.borderColor = '#4ade8050'; connDot.style.background = '#4ade8015';
+            connDot.title = 'Connected — live data';
+        } else if (peerConn && age < 20000) {
+            // Stale — connected but data is delayed
+            connDot.style.color = '#facc15'; connDot.style.borderColor = '#facc1550'; connDot.style.background = '#facc1515';
+            connDot.title = 'Connected — data delayed';
+        } else if (peerConn) {
+            // Connected but very stale
+            connDot.style.color = '#f97316'; connDot.style.borderColor = '#f9731650'; connDot.style.background = '#f9731615';
+            connDot.title = 'Connected — no recent data';
+        } else {
+            // Disconnected — running on cached state
+            connDot.style.color = '#ef4444'; connDot.style.borderColor = '#ef444450'; connDot.style.background = '#ef444415';
+            connDot.title = 'Disconnected — using cached data';
+        }
+    }
+
+    // === Cache driver state for offline resilience ===
+    if (window.state && window.state.isRunning) {
+        try {
+            const cacheData = {
+                state: window.state,
+                config: window.config,
+                liveData: window.liveData,
+                drivers: window.drivers,
+                ts: Date.now()
+            };
+            localStorage.setItem('strateger_driver_cache', JSON.stringify(cacheData));
+        } catch(e) { /* quota exceeded - ignore */ }
+    }
+
     // === DRIVER STINT NOTIFICATIONS ===
     if (typeof window.updateDriverStintNotifications === 'function') {
         window.updateDriverStintNotifications();
@@ -2982,16 +3075,59 @@ window.exportStrategyImage = async function() {
     }
     
     try {
+        // Temporarily expand all scrollable/capped containers so html2canvas captures everything
+        const summary = document.getElementById('strategySummary');
+        const timeline = document.getElementById('driverScheduleList');
+        const summaryParent = summary ? summary.closest('.max-h-\\[30vh\\], [class*="max-h-"]') : null;
+        const timelineParent = timeline ? timeline.closest('.flex-\\[2\\], [class*="flex-"]') : null;
+
+        // Save original styles
+        const savedStyles = [];
+        [summary, timeline, summaryParent, timelineParent].forEach(el => {
+            if (el) {
+                savedStyles.push({ el, style: el.style.cssText, cls: el.className });
+                el.style.maxHeight = 'none';
+                el.style.overflow = 'visible';
+                el.style.height = 'auto';
+                el.style.flex = 'none';
+            }
+        });
+        // Also expand the outer preview screen
+        const previewScreen = document.getElementById('previewScreen');
+        if (previewScreen) {
+            savedStyles.push({ el: previewScreen, style: previewScreen.style.cssText });
+            previewScreen.style.height = 'auto';
+            previewScreen.style.overflow = 'visible';
+        }
+        if (target) {
+            savedStyles.push({ el: target, style: target.style.cssText });
+            target.style.height = 'auto';
+            target.style.overflow = 'visible';
+        }
+
+        // Wait for reflow
+        await new Promise(r => setTimeout(r, 100));
+
         const canvas = await html2canvas(target, {
             backgroundColor: '#020617',
             scale: 2,
             useCORS: true,
-            logging: false
+            logging: false,
+            scrollX: 0,
+            scrollY: 0,
+            windowWidth: target.scrollWidth,
+            windowHeight: target.scrollHeight,
+        });
+
+        // Restore original styles
+        savedStyles.forEach(({ el, style, cls }) => {
+            el.style.cssText = style;
+            if (cls !== undefined) el.className = cls;
         });
         
         // Download as PNG
         const link = document.createElement('a');
-        link.download = `strateger-strategy-${Date.now()}.png`;
+        link.download = `Streger-strategy-${Date.now()}.png`;
         link.href = canvas.toDataURL('image/png');
         link.click();
     } catch (e) {
@@ -3017,11 +3153,51 @@ window.exportStrategyPdf = async function() {
     if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ' + t('exportingPdf'); }
     
     try {
+        // Temporarily expand all scrollable/capped containers
+        const summary = document.getElementById('strategySummary');
+        const timeline = document.getElementById('driverScheduleList');
+        const summaryParent = summary ? summary.closest('.max-h-\\[30vh\\], [class*="max-h-"]') : null;
+        const timelineParent = timeline ? timeline.closest('.flex-\\[2\\], [class*="flex-"]') : null;
+
+        const savedStyles = [];
+        [summary, timeline, summaryParent, timelineParent].forEach(el => {
+            if (el) {
+                savedStyles.push({ el, style: el.style.cssText, cls: el.className });
+                el.style.maxHeight = 'none';
+                el.style.overflow = 'visible';
+                el.style.height = 'auto';
+                el.style.flex = 'none';
+            }
+        });
+        const previewScreen = document.getElementById('previewScreen');
+        if (previewScreen) {
+            savedStyles.push({ el: previewScreen, style: previewScreen.style.cssText });
+            previewScreen.style.height = 'auto';
+            previewScreen.style.overflow = 'visible';
+        }
+        if (target) {
+            savedStyles.push({ el: target, style: target.style.cssText });
+            target.style.height = 'auto';
+            target.style.overflow = 'visible';
+        }
+
+        await new Promise(r => setTimeout(r, 100));
+
         const canvas = await html2canvas(target, {
             backgroundColor: '#020617',
             scale: 2,
             useCORS: true,
-            logging: false
+            logging: false,
+            scrollX: 0,
+            scrollY: 0,
+            windowWidth: target.scrollWidth,
+            windowHeight: target.scrollHeight,
+        });
+
+        // Restore original styles
+        savedStyles.forEach(({ el, style, cls }) => {
+            el.style.cssText = style;
+            if (cls !== undefined) el.className = cls;
         });
         
         const imgData = canvas.toDataURL('image/png');
@@ -3033,7 +3209,7 @@ window.exportStrategyPdf = async function() {
         });
         
         pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
-        pdf.save(`strateger-strategy-${Date.now()}.pdf`);
+        pdf.save(`Streger-strategy-${Date.now()}.pdf`);
     } catch (e) {
         console.error('PDF export failed:', e);
         window.showToast('PDF export failed: ' + e.message, 'error');
@@ -3284,7 +3460,7 @@ window.installPWA = function() {
     window._deferredInstallPrompt.prompt();
     window._deferredInstallPrompt.userChoice.then((choice) => {
         if (choice.outcome === 'accepted') {
-            window.showToast('Strateger installed! 🎉', 'success');
+            window.showToast('Streger installed! 🎉', 'success');
         }
         window._deferredInstallPrompt = null;
         const banner = document.getElementById('installBanner');
@@ -3454,7 +3630,7 @@ window.shareRaceSummary = function() {
     const raceMs = window.config.raceMs || (parseFloat(window.config.duration) * 3600000);
     const t = window.t || ((k) => k);
     
-    let text = `🏁 ${t('raceFinished')} - Strateger\n`;
+    let text = `🏁 ${t('raceFinished')} - Streger\n`;
     text += `⏱ ${window.formatTimeHMS(raceMs)} | 🛑 ${window.state.pitCount || 0} ${t('stopsHeader')}\n\n`;
     
     const ranked = window.drivers
@@ -3469,7 +3645,7 @@ window.shareRaceSummary = function() {
     text += `\n📊 strateger.netlify.app`;
     
     if (navigator.share) {
-        navigator.share({ title: 'Strateger Race Summary', text: text }).catch(() => {});
+        navigator.share({ title: 'Streger Race Summary', text: text }).catch(() => {});
     } else {
         navigator.clipboard.writeText(text).then(() => {
             window.showToast(t('copied') || 'Copied to clipboard!', 'success');

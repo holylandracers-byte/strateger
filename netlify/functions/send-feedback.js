@@ -119,9 +119,9 @@ exports.handler = async (event, context) => {
         `;
 
         const { data, error } = await resend.emails.send({
-            from: 'Strateger Feedback <onboarding@resend.dev>',
+            from: 'Streger Feedback <onboarding@resend.dev>',
             to: ['holylandracers@gmail.com'],
-            subject: `[Strateger] ${sanitizedType}: ${sanitizedText.substring(0, 50)}${sanitizedText.length > 50 ? '...' : ''}`,
+            subject: `[Streger] ${sanitizedType}: ${sanitizedText.substring(0, 50)}${sanitizedText.length > 50 ? '...' : ''}`,
             html: emailBody
         });
 

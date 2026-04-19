@@ -1,6 +1,6 @@
 {
   "appId": "com.holylandracing.strateger",
-  "appName": "Strateger",
+  "appName": "Streger",
   "webDir": "www",
   "plugins": {
     "GoogleAuth": {
