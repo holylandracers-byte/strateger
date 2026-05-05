@@ -1699,3 +1699,298 @@ window.renderChatMessage = function(msg) {
         badge.classList.remove('hidden');
     }
 };
+
+// ==========================================
+// 📍 VENUE LOCATION + WEATHER
+// ==========================================
+
+const _VENUE_ALIASES = {
+    'buckmore park': 'Buckmore Park, Sittingbourne, UK',
+    'buckmore': 'Buckmore Park, Sittingbourne, UK',
+    'silverstone': 'Silverstone Circuit, UK',
+    'brands hatch': 'Brands Hatch, Sevenoaks, UK',
+    'donington': 'Donington Park, Leicestershire, UK',
+    'knockhill': 'Knockhill Racing Circuit, Scotland, UK',
+    'snetterton': 'Snetterton Circuit, Norfolk, UK',
+    'oulton park': 'Oulton Park, Cheshire, UK',
+    'spa': 'Spa-Francorchamps, Belgium',
+    'spa francorchamps': 'Spa-Francorchamps, Belgium',
+    'le mans': 'Le Mans, France',
+    'circuit de la sarthe': 'Le Mans, France',
+    'paul ricard': 'Circuit Paul Ricard, Le Castellet, France',
+    'nurburgring': 'Nürburg, Germany',
+    'nordschleife': 'Nürburg, Germany',
+    'hockenheim': 'Hockenheimring, Germany',
+    'lausitzring': 'Lausitzring, Germany',
+    'monza': 'Monza, Italy',
+    'mugello': 'Scarperia, Italy',
+    'imola': 'Imola, Italy',
+    'misano': 'Misano Adriatico, Italy',
+    'vallelunga': 'Campagnano di Roma, Italy',
+    'lignano circuit': 'Lignano Sabbiadoro, Italy',
+    'lignano': 'Lignano Sabbiadoro, Italy',
+    'barcelona': 'Circuit de Barcelona-Catalunya, Montmeló, Spain',
+    'montmelo': 'Montmeló, Spain',
+    'valencia': 'Valencia, Spain',
+    'jerez': 'Jerez de la Frontera, Spain',
+    'portimao': 'Portimão, Portugal',
+    'estoril': 'Estoril, Portugal',
+    'dubai autodrome': 'Dubai Autodrome, Dubai, UAE',
+    'dubai': 'Dubai, UAE',
+    'yas marina': 'Yas Marina Circuit, Abu Dhabi, UAE',
+    'abu dhabi': 'Abu Dhabi, UAE',
+    'bahrain': 'Bahrain International Circuit, Sakhir, Bahrain',
+    'daytona': 'Daytona International Speedway, Florida, USA',
+    'sebring': 'Sebring International Raceway, Florida, USA',
+    'laguna seca': 'Weathertech Raceway Laguna Seca, California, USA',
+    'road atlanta': 'Road Atlanta, Braselton, Georgia, USA',
+    'watkins glen': 'Watkins Glen International, New York, USA',
+    'cota': 'Circuit of the Americas, Austin, Texas, USA',
+    'interlagos': 'Autódromo José Carlos Pace, São Paulo, Brazil',
+    'suzuka': 'Suzuka Circuit, Japan',
+    'fuji': 'Fuji Speedway, Japan',
+    'sepang': 'Sepang International Circuit, Malaysia',
+    'bathurst': 'Mount Panorama Circuit, Bathurst, Australia',
+    'tivoli': 'Tivoli Racing Park, Israel',
+    'tivoli racing': 'Tivoli Racing Park, Israel',
+};
+
+function findBestVenueAlias(input) {
+    const normalized = input.toLowerCase();
+    if (_VENUE_ALIASES[normalized]) return _VENUE_ALIASES[normalized];
+    const inputTokens = normalized.split(/\s+/).filter(t => t.length > 2);
+    let bestMatch = null;
+    let bestScore = 0;
+    for (const [key, fullName] of Object.entries(_VENUE_ALIASES)) {
+        const keyTokens = key.split(/\s+/);
+        const matchedTokens = inputTokens.filter(t => keyTokens.some(k => k.startsWith(t) || t.startsWith(k)));
+        const score = matchedTokens.length / Math.max(keyTokens.length, inputTokens.length);
+        if (score > bestScore) { bestScore = score; bestMatch = { alias: fullName, score }; }
+    }
+    return bestScore > 0.5 ? bestMatch.alias : null;
+}
+
+window._venueWeather = { key: '', status: 'idle', fetchedAt: 0, data: null, resolvedName: '' };
+window._venueWeatherInFlight = false;
+window._locationSearchTimer = null;
+window._locationAutocompleteResults = [];
+window._selectedVenueLocation = null;
+window._showWeatherInStints = window._showWeatherInStints !== false;
+window._weatherCodeMap = {
+    0: 'Clear', 1: 'Mostly clear', 2: 'Partly cloudy', 3: 'Overcast',
+    45: 'Fog', 48: 'Rime fog', 51: 'Light drizzle', 53: 'Drizzle', 55: 'Dense drizzle',
+    61: 'Light rain', 63: 'Rain', 65: 'Heavy rain', 66: 'Freezing rain', 67: 'Heavy freezing rain',
+    71: 'Light snow', 73: 'Snow', 75: 'Heavy snow', 77: 'Snow grains',
+    80: 'Rain showers', 81: 'Showers', 82: 'Violent showers',
+    95: 'Thunderstorm', 96: 'Storm + hail', 99: 'Severe storm + hail'
+};
+
+window.formatVenueShortName = function(place) {
+    if (!place) return '';
+    const rawName = String(place.name || '').trim();
+    const name = rawName.split(',')[0].trim();
+    let country = String(place.country || '').trim();
+    if (!country) {
+        const parts = String(place.displayName || '').split(',').map(p => p.trim()).filter(Boolean);
+        country = parts.length > 1 ? parts[parts.length - 1] : '';
+    }
+    if (name && country) return `${name}, ${country}`;
+    if (name) return name;
+    if (country) return country;
+    const fallbackParts = String(place.displayName || '').split(',').map(p => p.trim()).filter(Boolean);
+    if (fallbackParts.length >= 2) return `${fallbackParts[0]}, ${fallbackParts[fallbackParts.length - 1]}`;
+    return fallbackParts[0] || '';
+};
+
+window.getVenueForecastAt = function(targetMs) {
+    const weather = window._venueWeather;
+    const hourly = weather?.data?.hourly;
+    if (weather?.status !== 'ready' || !hourly || !Array.isArray(hourly.time) || !hourly.time.length) return null;
+    const target = Number(targetMs);
+    if (!Number.isFinite(target)) return null;
+    let bestIdx = -1, bestDelta = Infinity;
+    for (let i = 0; i < hourly.time.length; i++) {
+        const slotMs = Date.parse(hourly.time[i]);
+        if (!Number.isFinite(slotMs)) continue;
+        const delta = Math.abs(slotMs - target);
+        if (delta < bestDelta) { bestDelta = delta; bestIdx = i; }
+    }
+    if (bestIdx < 0) return null;
+    return {
+        time: hourly.time[bestIdx],
+        temp: hourly.temperature_2m?.[bestIdx],
+        wind: hourly.wind_speed_10m?.[bestIdx],
+        precipitation: hourly.precipitation?.[bestIdx],
+        weatherCode: hourly.weather_code?.[bestIdx],
+        weatherText: window._weatherCodeMap[hourly.weather_code?.[bestIdx]] || 'Weather'
+    };
+};
+
+window.formatVenueForecastShort = function(forecast) {
+    if (!forecast) return '';
+    const temp = Number.isFinite(Number(forecast.temp)) ? `${Math.round(forecast.temp)}°C` : '-';
+    const code = forecast.weatherCode;
+    let condition = '';
+    if (code !== undefined && code !== null) {
+        if (code <= 1) condition = 'Sunny';
+        else if (code === 2) condition = 'Partly cloudy';
+        else if (code <= 48) condition = 'Cloudy';
+        else if (code <= 55) condition = 'Light rain';
+        else if (code <= 63) condition = 'Light rain';
+        else if (code <= 67) condition = 'Heavy rain';
+        else if (code <= 77) condition = 'Snow';
+        else if (code <= 82) condition = 'Rain showers';
+        else condition = 'Storm';
+    } else { condition = forecast.weatherText || ''; }
+    return condition ? `${temp} · ${condition}` : temp;
+};
+
+window.resolveVenueLocation = function(value) {
+    const normalized = String(value || '').trim().toLowerCase();
+    if (!normalized) return null;
+    if (window._selectedVenueLocation && String(window._selectedVenueLocation.displayName || '').toLowerCase() === normalized) {
+        return window._selectedVenueLocation;
+    }
+    return window._locationAutocompleteResults.find(p => String(p.displayName || '').toLowerCase() === normalized) || null;
+};
+
+window.renderSelectedVenuePreview = function(place) {
+    const card = document.getElementById('selectedLocationPreview');
+    const nameEl = document.getElementById('selectedLocationName');
+    if (!card || !nameEl) return;
+    if (!place) { card.classList.add('hidden'); return; }
+    nameEl.innerText = window.formatVenueShortName(place);
+    card.classList.remove('hidden');
+};
+
+window.initVenueLocationPicker = function() {
+    const input = document.getElementById('raceLocation');
+    if (!input) return;
+    const prefilled = String(input.value || '').trim();
+    if (!prefilled) return;
+    const resolved = window.resolveVenueLocation(prefilled);
+    window.renderSelectedVenuePreview(resolved || { displayName: prefilled, name: prefilled, admin1: '', country: '' });
+};
+
+window.onLocationInput = function(value) {
+    const dropdown = document.getElementById('locationSuggestions');
+    const spinner = document.getElementById('locationSearchSpinner');
+    if (!dropdown) return;
+    const query = value.trim();
+    if (query.length < 2) {
+        dropdown.classList.add('hidden');
+        if (spinner) spinner.classList.add('hidden');
+        clearTimeout(window._locationSearchTimer);
+        return;
+    }
+    clearTimeout(window._locationSearchTimer);
+    if (spinner) spinner.classList.remove('hidden');
+    window._locationSearchTimer = setTimeout(async () => {
+        try {
+            const qLower = query.toLowerCase();
+            const aliasMatches = Object.entries(_VENUE_ALIASES)
+                .filter(([key]) => key.includes(qLower) || qLower.includes(key))
+                .map(([key, fullName]) => ({ _isTrack: true, name: fullName.split(',')[0].trim(), trackLabel: fullName, displayName: fullName, admin1: '', country: fullName.split(',').slice(1).join(',').trim() }))
+                .slice(0, 4);
+            const geoQuery = findBestVenueAlias(query) || query;
+            const [meteoResults, nominatimResults] = await Promise.all([
+                (async () => {
+                    const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(geoQuery)}&count=8&language=en&format=json`);
+                    const json = await res.json();
+                    return Array.isArray(json.results) ? json.results : [];
+                })().catch(() => []),
+                (async () => {
+                    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(geoQuery)}&limit=8&addressdetails=1`, { headers: { 'Accept': 'application/json', 'User-Agent': 'Strateger/1.0' } });
+                    if (!res.ok) return [];
+                    const json = await res.json();
+                    return Array.isArray(json) ? json : [];
+                })().catch(() => [])
+            ]);
+            const fromMeteo = meteoResults.map(r => ({ name: r.name, admin1: r.admin1 || '', country: r.country || '', lat: r.latitude, lon: r.longitude, displayName: [r.name, r.country].filter(Boolean).join(', ') }));
+            const fromNominatim = nominatimResults.map(r => ({ name: (r.display_name || '').split(',')[0] || r.name || query, admin1: r.address?.state || r.address?.county || '', country: r.address?.country || '', lat: Number(r.lat), lon: Number(r.lon), displayName: [(r.display_name || '').split(',')[0] || r.name || query, r.address?.country || ''].filter(Boolean).join(', ') }));
+            const seen = new Set();
+            aliasMatches.forEach(a => seen.add(a.trackLabel.toLowerCase()));
+            const geoResults = [...fromMeteo, ...fromNominatim].filter(r => {
+                const key = `${String(r.displayName || '').toLowerCase()}|${Number(r.lat).toFixed(4)}|${Number(r.lon).toFixed(4)}`;
+                if (seen.has(key)) return false;
+                seen.add(key);
+                return true;
+            }).slice(0, 10);
+            const results = [...aliasMatches, ...geoResults].slice(0, 12);
+            if (spinner) spinner.classList.add('hidden');
+            if (!results.length) {
+                dropdown.innerHTML = `<div class="px-3 py-2.5 text-[11px] text-gray-500">No locations found</div>`;
+                dropdown.classList.remove('hidden');
+                return;
+            }
+            window._locationAutocompleteResults = results;
+            dropdown.innerHTML = results.map((place, i) => {
+                const icon = place._isTrack ? '🏁' : '📍';
+                const sub = place._isTrack ? `<span class="text-blue-400 text-[10px] ml-1">Racing circuit</span>` : (place.country ? `<span class="text-gray-400 text-xs ml-1">${place.country}</span>` : '');
+                return `<div class="px-3 py-2.5 cursor-pointer hover:bg-navy-800 border-b border-gray-700/40 last:border-0 flex items-center gap-2" onmousedown="window.selectLocationSuggestion(${i})"><span class="text-sm shrink-0">${icon}</span><span class="min-w-0"><span class="font-bold text-white text-sm break-words whitespace-normal">${place.name}</span>${sub}</span></div>`;
+            }).join('');
+            dropdown.classList.remove('hidden');
+        } catch (err) {
+            if (spinner) spinner.classList.add('hidden');
+            console.warn('[location-autocomplete] fetch failed:', err);
+        }
+    }, 350);
+};
+
+window.selectLocationSuggestion = function(idx) {
+    const place = window._locationAutocompleteResults[idx];
+    if (!place) return;
+    const fullName = place._isTrack ? place.trackLabel : window.formatVenueShortName(place);
+    const input = document.getElementById('raceLocation');
+    if (input) input.value = fullName;
+    const dropdown = document.getElementById('locationSuggestions');
+    if (dropdown) dropdown.classList.add('hidden');
+    window._selectedVenueLocation = place;
+    window.renderSelectedVenuePreview(place);
+    if (typeof window.syncRaceLocation === 'function') window.syncRaceLocation(fullName);
+    if (typeof window.runSim === 'function') window.runSim();
+};
+
+window.refreshVenueWeather = async function(rawLocation, selectedPlace) {
+    const input = String(rawLocation || '').trim();
+    if (!input) return;
+    const normalized = input.toLowerCase();
+    const fuzzyMatch = findBestVenueAlias(input);
+    const query = fuzzyMatch || _VENUE_ALIASES[normalized] || input;
+    const cacheFreshMs = 10 * 60 * 1000;
+    const hasHourlyCache = Array.isArray(window._venueWeather?.data?.hourly?.time) && window._venueWeather.data.hourly.time.length > 0;
+    if (window._venueWeather.key === query && (Date.now() - window._venueWeather.fetchedAt) < cacheFreshMs && hasHourlyCache) return;
+    if (window._venueWeatherInFlight) return;
+    window._venueWeatherInFlight = true;
+    window._venueWeather = { key: query, status: 'loading', fetchedAt: Date.now(), data: null, resolvedName: '' };
+    try {
+        let best = selectedPlace || window.resolveVenueLocation(input);
+        if (!best || !Number.isFinite(Number(best.lat)) || !Number.isFinite(Number(best.lon))) {
+            const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=1&language=en&format=json`, { cache: 'no-store' });
+            const geo = await geoRes.json();
+            const geoBest = Array.isArray(geo.results) ? geo.results[0] : null;
+            if (!geoBest) throw new Error('Location not found');
+            best = { name: geoBest.name, admin1: geoBest.admin1 || '', country: geoBest.country || '', lat: geoBest.latitude, lon: geoBest.longitude, displayName: [geoBest.name, geoBest.country].filter(Boolean).join(', ') };
+        }
+        const lat = Number(best.lat);
+        const lon = Number(best.lon);
+        const resolvedName = window.formatVenueShortName(best);
+        window._selectedVenueLocation = best;
+        window.renderSelectedVenuePreview(best);
+        const weatherRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,wind_speed_10m,precipitation,weather_code&hourly=temperature_2m,wind_speed_10m,precipitation,weather_code&forecast_days=7&timezone=auto`, { cache: 'no-store' });
+        const weather = await weatherRes.json();
+        const current = weather.current || {};
+        window._venueWeather = {
+            key: query, status: 'ready', fetchedAt: Date.now(), resolvedName,
+            data: { temp: current.temperature_2m, wind: current.wind_speed_10m, precipitation: current.precipitation, weatherText: window._weatherCodeMap[current.weather_code] || 'Weather unavailable', hourly: weather.hourly || null }
+        };
+    } catch (err) {
+        console.warn('[venue-weather] failed:', err?.message || err);
+        window._venueWeather = { key: query, status: 'error', fetchedAt: Date.now(), data: null, resolvedName: '' };
+    } finally {
+        window._venueWeatherInFlight = false;
+        if (!document.getElementById('previewScreen')?.classList.contains('hidden')) {
+            if (typeof window.renderPreview === 'function') window.renderPreview();
+        }
+    }
+};

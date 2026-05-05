@@ -76,6 +76,18 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
         window.role = 'host';
         if (typeof window.checkForSavedRace === 'function') window.checkForSavedRace();
+
+        // Restore qualifying session if one was running when the page was refreshed
+        const raceRunning = !!localStorage.getItem('strateger_race_interrupted');
+        if (!raceRunning && typeof window.restoreQualifyState === 'function' && window.restoreQualifyState()) {
+            const qDash = document.getElementById('qualifyingDashboard');
+            if (qDash) { qDash.classList.remove('hidden'); qDash.style.display = 'flex'; }
+            window._qualifyRenderStageResults && window._qualifyRenderStageResults();
+            window._qualifyRenderTick && window._qualifyRenderTick();
+            if (window._qualifyInterval) clearInterval(window._qualifyInterval);
+            window._qualifyInterval = setInterval(window._qualifyRenderTick, 500);
+            window.showToast && window.showToast('Qualifying session restored', 'info', 3000);
+        }
     }
     
     if(typeof updateModeUI === 'function') updateModeUI();
@@ -2922,6 +2934,8 @@ const ONBOARD_STEPS = [
 
 window.startOnboarding = function() {
     if (localStorage.getItem('strateger_onboarded') === 'true') return;
+    const savedRaceModal = document.getElementById('savedRaceModal');
+    if (savedRaceModal && !savedRaceModal.classList.contains('hidden')) return;
     window._onboardStep = 0;
     window._renderOnboardStep();
     document.getElementById('onboardingOverlay').classList.remove('hidden');

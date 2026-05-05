@@ -38,6 +38,7 @@
     <script src="js/racefacer-scraper.js"></script>
     <script src="js/apex-scraper.js"></script>
     <script src="js/live-timing-manager.js"></script>
+    <script src="js/qualifying.js"></script>
 
     <link rel="stylesheet" href="css/style.css">
 
@@ -61,10 +62,29 @@
     </script>
 </head>
 <body class="bg-navy-950 text-gray-200 flex flex-col">
-    <header class="bg-navy-900 border-b border-gray-800 p-2 flex justify-between items-center shadow-md sticky top-0 z-20">
+    <header class="bg-navy-900 border-b border-gray-800 px-3 py-2 flex justify-between items-center shadow-md sticky top-0 z-20">
         <div class="flex items-center gap-2">
-            <select id="langSelect" onchange="window.setLanguage(this.value)" 
-                    class="text-xs bg-navy-800 px-1 py-0.5 rounded border border-gray-700 text-white cursor-pointer">
+            <!-- Logo mark -->
+            <a href="/" style="text-decoration:none;flex-shrink:0" title="Strateger">
+                <svg viewBox="0 0 34 34" width="30" height="30" xmlns="http://www.w3.org/2000/svg">
+                    <rect width="34" height="34" rx="7" fill="#070f1e"/>
+                    <rect x="23" y="2" width="5" height="5" rx="1" fill="#22d3ee"/>
+                    <rect x="28" y="2" width="5" height="5" rx="1" fill="#1a2d4a"/>
+                    <rect x="23" y="7" width="5" height="5" rx="1" fill="#1a2d4a"/>
+                    <rect x="28" y="7" width="5" height="5" rx="1" fill="#22d3ee"/>
+                    <path d="M21 8.5Q21 4 17 4Q13 4 13 8.5Q13 13 17 14.5Q21 16 21 20.5Q21 25 17 25Q13 25 13 21.5"
+                          stroke="#22d3ee" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+                    <rect x="5" y="28" width="5" height="4" rx="1" fill="#22d3ee"/>
+                    <rect x="10" y="28" width="5" height="4" rx="1" fill="#1a2d4a"/>
+                    <rect x="15" y="28" width="5" height="4" rx="1" fill="#22d3ee"/>
+                    <rect x="20" y="28" width="5" height="4" rx="1" fill="#1a2d4a"/>
+                    <rect x="25" y="28" width="5" height="4" rx="1" fill="#22d3ee"/>
+                </svg>
+            </a>
+            <span class="font-black tracking-widest text-white text-sm leading-none hidden xs:block">STRAT<span style="color:#22d3ee">EGER</span></span>
+
+            <select id="langSelect" onchange="window.setLanguage(this.value)"
+                    class="text-xs bg-navy-800 px-1 py-0.5 rounded border border-gray-700 text-white cursor-pointer ml-1">
                 <option value="en">🇬🇧 EN</option>
                 <option value="he">🇮🇱 HE</option>
                 <option value="fr">🇫🇷 FR</option>
@@ -93,6 +113,14 @@
                     </button>
                 </div>
             </div>
+        </div>
+
+        <!-- Team name — always visible in header center -->
+        <div class="flex-1 flex justify-center px-2 min-w-0">
+            <input type="text" id="teamNameInput" placeholder="Team Name"
+                   oninput="window.applyTeamName && window.applyTeamName(this.value)"
+                   data-i18n="lblTeamName"
+                   class="bg-transparent border-b border-gray-600 focus:border-ice text-white text-sm font-bold text-center placeholder-gray-600 outline-none max-w-[160px] w-full transition py-0.5" autocomplete="off">
         </div>
 
         <div class="flex items-center gap-1 sm:gap-2">
@@ -150,15 +178,16 @@
     </header>
 
     <div id="setupScreen" class="w-full bg-navy-950 relative p-2">
-        
-        <div class="max-w-lg mx-auto text-center mb-2">
+
+        <!-- Hero / Branding -->
+        <div class="max-w-lg md:max-w-3xl mx-auto text-center mb-3 pt-1">
             <div class="header-title font-bold tracking-widest text-white ml-2 sm:block">
                 STRAT<span class="text-ice">EGER</span>
             </div>
             <div class="text-[9px] text-gray-400 uppercase tracking-wider ml-2 sm:block" data-i18n="appSubtitle">
                 Endurance Race Strategy Manager
             </div>
-            <div id="googleActionsBar" class="hidden grid grid-cols-4 gap-2 mb-4">
+            <div id="googleActionsBar" class="hidden grid grid-cols-4 gap-2 mt-3">
                 <button onclick="window.showTeamEmailModal()" class="bg-navy-800 border border-gray-700 hover:border-ice p-2 rounded flex flex-col items-center gap-1 group">
                     <i class="fas fa-envelope text-ice group-hover:scale-110 transition"></i>
                     <span class="text-[9px] text-gray-400">Email</span>
@@ -175,22 +204,110 @@
                     <i class="fas fa-clock text-purple-400 group-hover:scale-110 transition"></i>
                     <span class="text-[9px] text-gray-400">Check</span>
                 </button>
-            </div> 
+            </div>
         </div>
 
-        <div id="configPanel" class="space-y-4 transition-opacity duration-300">
-    
-           <div class="bg-gradient-to-r from-red-900/30 to-navy-800 p-3 rounded-lg border border-red-500/50 relative">
-                <span id="proLockLiveTiming" class="hidden absolute top-2 end-2 text-[10px] bg-gold/20 text-gold px-1.5 py-0.5 rounded-full font-bold border border-gold/30">🔒 PRO</span>
-                <div class="flex items-center gap-2 mb-2">
-                    <span class="sync-dot live-dot"></span>
-                    <span class="text-sm font-bold text-white" data-i18n="liveTiming">Live Timing</span>
+        <!-- Session mode toggle: Race Only / Qualifying + Race -->
+        <div class="max-w-lg md:max-w-3xl mx-auto mb-3">
+            <div class="flex rounded-xl overflow-hidden border border-gray-700 bg-navy-900/60">
+                <button id="modeRaceBtn" onclick="window.setSessionMode('race')"
+                    class="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-bold transition bg-ice text-navy-950">
+                    <i class="fas fa-flag-checkered"></i> <span data-i18n="modeRace">Race Only</span>
+                </button>
+                <button id="modeQualifyBtn" onclick="window.setSessionMode('qualify')"
+                    class="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-bold transition text-gray-400 hover:text-white border-l border-gray-700">
+                    <i class="fas fa-stopwatch"></i> <span data-i18n="modeQualify">Qualifying + Race</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- outer wrapper: single col on phone, 2-col on tablet -->
+        <div class="max-w-lg md:max-w-3xl mx-auto md:grid md:grid-cols-2 md:gap-4 md:items-start">
+
+        <!-- ════ COLUMN LEFT: race settings ════ -->
+        <div id="configPanel" class="space-y-3 transition-opacity duration-300">
+
+            <!-- Step label -->
+            <div class="flex items-center gap-2">
+                <span class="text-[10px] font-black text-ice bg-ice/10 border border-ice/30 rounded-full w-5 h-5 flex items-center justify-center shrink-0">1</span>
+                <span class="text-xs font-bold text-gray-300 uppercase tracking-widest" data-i18n="stepRaceSettings">Race Settings</span>
+            </div>
+
+            <!-- Qualifying settings panel (shown only in qualifying mode) -->
+            <div id="qualifyingPanel" class="hidden bg-blue-950/40 border border-blue-500/40 p-3 rounded-xl space-y-3">
+                <div class="flex items-center gap-2 mb-1">
+                    <i class="fas fa-stopwatch text-blue-400"></i>
+                    <span class="text-sm font-bold text-blue-300" data-i18n="qualifyTitle">Qualifying Session</span>
                 </div>
-                
+                <div>
+                    <label class="text-[10px] text-gray-400 font-bold uppercase tracking-wide block mb-1" data-i18n="qualifyFormat">Format</label>
+                    <div class="flex rounded-lg overflow-hidden border border-gray-600">
+                        <button id="qfmtSimpleBtn" onclick="window.setQualifyFormat('simple')"
+                            class="flex-1 text-xs py-1.5 font-bold bg-transparent text-gray-400 transition" data-i18n="qualifyFmtSimple">Simple</button>
+                        <button id="qfmtSegmentsBtn" onclick="window.setQualifyFormat('segments')"
+                            class="flex-1 text-xs py-1.5 font-bold bg-blue-600 text-white transition" data-i18n="qualifyFmtSegments">Q1/Q2/Q3</button>
+                    </div>
+                </div>
+                <div id="qSegmentCountRow">
+                    <label class="text-[10px] text-gray-400 font-bold uppercase tracking-wide block mb-1" data-i18n="qualifySegments">Segments</label>
+                    <div class="flex gap-1.5">
+                        <button onclick="window.setQSegments(1)" id="qSeg1Btn" class="flex-1 py-1.5 text-xs font-bold rounded-lg bg-transparent text-gray-400 border border-gray-600 transition">Q1</button>
+                        <button onclick="window.setQSegments(2)" id="qSeg2Btn" class="flex-1 py-1.5 text-xs font-bold rounded-lg bg-transparent text-gray-400 border border-gray-600 transition">Q1+Q2</button>
+                        <button onclick="window.setQSegments(3)" id="qSeg3Btn" class="flex-1 py-1.5 text-xs font-bold rounded-lg bg-blue-600 text-white border border-blue-500 transition">Q1+Q2+Q3</button>
+                    </div>
+                </div>
+                <div>
+                    <label class="text-[10px] text-gray-400 font-bold uppercase tracking-wide" data-i18n="qualifyDuration">Duration (min)</label>
+                    <input type="number" id="qualifyDuration" value="15" min="1" max="120"
+                        class="input-field text-blue-300 font-bold" oninput="window.updateQualifyPreview && window.updateQualifyPreview()">
+                </div>
+                <div>
+                    <label class="text-[10px] text-gray-400 font-bold uppercase tracking-wide block mb-1" data-i18n="qualifyParticipation">Driver Participation</label>
+                    <div class="flex rounded-lg overflow-hidden border border-gray-600">
+                        <button id="qpartOneBtn" onclick="window.setQParticipation('one')" class="flex-1 text-[10px] py-1.5 font-bold bg-transparent text-gray-400 transition" data-i18n="qualifyPartOne">One</button>
+                        <button id="qpartMultiBtn" onclick="window.setQParticipation('multi')" class="flex-1 text-[10px] py-1.5 font-bold bg-transparent text-gray-400 transition" data-i18n="qualifyPartMulti">Multiple</button>
+                        <button id="qpartAllBtn" onclick="window.setQParticipation('all')" class="flex-1 text-[10px] py-1.5 font-bold bg-blue-600 text-white transition" data-i18n="qualifyPartAll">All</button>
+                    </div>
+                    <div id="qMultiCountRow" class="hidden mt-1.5">
+                        <label class="text-[10px] text-gray-500" data-i18n="qualifyPartMultiCount">Number of drivers</label>
+                        <input type="number" id="qMultiCount" value="2" min="2" max="10"
+                            class="input-field text-blue-300 font-bold" oninput="window.updateQualifyPreview && window.updateQualifyPreview()">
+                    </div>
+                    <div class="mt-1.5">
+                        <label class="text-[10px] text-gray-500" data-i18n="qualifyRuns">Runs per driver</label>
+                        <input type="number" id="qualifyRuns" value="1" min="1" max="10"
+                            class="input-field text-blue-300 font-bold" oninput="window.updateQualifyPreview && window.updateQualifyPreview()">
+                    </div>
+                </div>
+                <div>
+                    <label class="text-[10px] text-gray-400 font-bold uppercase tracking-wide block mb-1" data-i18n="qualifyPitRule">Pit Stop Rule</label>
+                    <div class="flex rounded-lg overflow-hidden border border-gray-600">
+                        <button id="qpitNoneBtn" onclick="window.setQPitRule('none')" class="flex-1 text-[10px] py-1.5 font-bold bg-blue-600 text-white transition" data-i18n="qualifyPitNone">None</button>
+                        <button id="qpitAnyBtn" onclick="window.setQPitRule('any')" class="flex-1 text-[10px] py-1.5 font-bold bg-transparent text-gray-400 transition" data-i18n="qualifyPitAny">Any stop</button>
+                        <button id="qpitMinBtn" onclick="window.setQPitRule('min')" class="flex-1 text-[10px] py-1.5 font-bold bg-transparent text-gray-400 transition" data-i18n="qualifyPitMin">Min time</button>
+                    </div>
+                    <div id="qPitMinTimeRow" class="hidden mt-1.5">
+                        <label class="text-[10px] text-gray-500" data-i18n="qualifyPitMinSec">Minimum seconds in pit</label>
+                        <input type="number" id="qPitMinTime" value="30" min="5" max="300"
+                            class="input-field text-blue-300 font-bold" oninput="window.updateQualifyPreview && window.updateQualifyPreview()">
+                    </div>
+                </div>
+                <div id="qualifyStrategyPreview" class="text-[10px] text-gray-400 space-y-1 bg-navy-950/50 rounded p-2"></div>
+            </div>
+
+            <!-- LIVE TIMING — collapsed by default -->
+            <div class="collapsible-section collapsed bg-navy-900/60 p-3 rounded-xl border border-red-900/40">
+                <h2 class="text-gray-400 text-sm font-bold flex items-center gap-2 cursor-pointer select-none" onclick="this.parentElement.classList.toggle('collapsed')">
+                    <span class="sync-dot live-dot opacity-60"></span>
+                    <span data-i18n="liveTiming">Live Timing</span>
+                    <span class="text-[9px] text-gray-600 font-normal normal-case ml-1" data-i18n="optional">(optional)</span>
+                    <span id="proLockLiveTiming" class="hidden text-[10px] bg-gold/20 text-gold px-1.5 py-0.5 rounded-full font-bold border border-gold/30">🔒 PRO</span>
+                    <i class="fas fa-chevron-down ml-auto text-[10px] text-gray-600 collapse-icon transition-transform"></i>
+                </h2>
+                <div class="collapse-body mt-3">
                 <div class="mb-2">
                     <input type="url" id="liveTimingUrl" data-i18n="liveTimingUrl" placeholder="Live Timing URL..." class="input-field text-xs mb-1">
                 </div>
-
                 <div class="mb-2">
                     <label class="text-[10px] text-gray-400 block mb-1" data-i18n="ltSearchType">Filter By:</label>
                     <div class="flex gap-2 mb-1">
@@ -209,12 +326,12 @@
                     </div>
                     <input type="text" id="searchValue" class="input-field text-xs" data-i18n="ltPlaceholder" placeholder="Search value...">
                 </div>
-
                 <div class="flex gap-2">
                     <button onclick="window.testLiveTiming()" class="flex-1 bg-red-900/50 border border-red-500/50 text-red-300 text-xs py-1.5 rounded hover:bg-red-900" data-i18n="testBtn">Test</button>
                     <button onclick="window.openManualInput()" class="flex-1 bg-fuel/20 border border-fuel/50 text-fuel text-xs py-1.5 rounded hover:bg-fuel/30" data-i18n="manualInput">Manual</button>
                 </div>
                 <div id="liveTimingStatus" class="text-[10px] text-gray-500 text-center mt-1"></div>
+                </div>
             </div>
 
             <div id="simResult" class="bg-black/40 border border-ice/30 p-3 rounded text-xs text-ice font-mono text-center whitespace-pre-line hidden">
@@ -272,6 +389,34 @@
                         <label class="text-xs text-gray-400 font-bold" data-i18n="lblStartDate">📅 Race Date</label>
                         <input type="date" id="raceStartDate" onchange="window.runSim()" class="input-field">
                     </div>
+                </div>
+                <!-- Location / Weather -->
+                <div class="mt-3">
+                    <label class="text-xs text-gray-400 font-bold">📍 <span data-i18n="lblTrackLocation">Track / Location</span></label>
+                    <div class="relative overflow-visible">
+                        <div class="relative">
+                            <input type="text" id="raceLocation"
+                                   data-i18n="lblLocationPlaceholder"
+                                   placeholder="Search city or venue…"
+                                   oninput="window.onLocationInput && window.onLocationInput(this.value)"
+                                   onblur="setTimeout(() => { const d = document.getElementById('locationSuggestions'); if(d) d.classList.add('hidden'); }, 180)"
+                                   onkeydown="if(event.key==='Escape'){ const d=document.getElementById('locationSuggestions'); if(d) d.classList.add('hidden'); }"
+                                   onchange="window.runSim()"
+                                   autocomplete="off"
+                                   class="input-field pr-8">
+                            <span id="locationSearchSpinner" class="hidden absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 text-xs pointer-events-none">⏳</span>
+                        </div>
+                        <div id="locationSuggestions" class="hidden absolute z-[120] w-full mt-1 bg-navy-900 border border-gray-600 rounded-lg shadow-2xl max-h-72 overflow-y-auto text-left"></div>
+                    </div>
+                    <div id="selectedLocationPreview" class="hidden mt-1 flex items-center gap-2">
+                        <i class="fas fa-map-marker-alt text-blue-400 text-[10px]"></i>
+                        <span id="selectedLocationName" class="text-[11px] text-gray-300 font-bold"></span>
+                    </div>
+                    <p class="text-[10px] text-gray-500 mt-1" data-i18n="lblLocationHint">Type a city or track name — weather auto-loads for the preview.</p>
+                    <label class="mt-1 inline-flex items-center gap-2 text-[11px] text-gray-300 cursor-pointer select-none">
+                        <input type="checkbox" id="showWeatherInStints" checked onchange="window._showWeatherInStints=this.checked; if(!document.getElementById('previewScreen')?.classList.contains('hidden') && window.renderPreview) window.renderPreview()" class="accent-cyan-400 w-3.5 h-3.5">
+                        <span data-i18n="lblShowWeather">Show weather in stints</span>
+                    </label>
                 </div>
                 </div>
             </div>
@@ -363,6 +508,17 @@
                 </div>
             </div>
 
+        </div><!-- end col-left -->
+
+        <!-- ════ COLUMN RIGHT: drivers + actions ════ -->
+        <div class="space-y-3 mt-3 md:mt-0">
+
+            <!-- Step label -->
+            <div class="flex items-center gap-2">
+                <span class="text-[10px] font-black text-ice bg-ice/10 border border-ice/30 rounded-full w-5 h-5 flex items-center justify-center shrink-0">2</span>
+                <span class="text-xs font-bold text-gray-300 uppercase tracking-widest" data-i18n="driverConfig">Drivers</span>
+            </div>
+
             <!-- DRIVERS (collapsible) -->
             <div class="collapsible-section bg-navy-900/80 p-3 rounded-xl border border-gray-700/60">
                 <h2 class="text-ice text-sm font-bold flex items-center gap-2 cursor-pointer select-none" onclick="this.parentElement.classList.toggle('collapsed')">
@@ -371,17 +527,12 @@
                 </h2>
                 <div class="collapse-body">
                 <div id="driversList" class="space-y-2"></div>
-                
                 <div class="flex gap-2 mt-2">
                     <button onclick="window.addDriverField(); window.runSim()" class="btn-small bg-blue-600 w-full" data-i18n="addDriver">+ Add</button>
                     <button onclick="window.removeDriverField(); window.runSim()" class="btn-small bg-red-600 w-12">-</button>
                 </div>
                 </div>
             </div>
-            
-
-
-
 
             <!-- RACE COUNTDOWN BANNER -->
             <div id="raceCountdownBanner" class="hidden rounded-lg border border-ice/30 p-2 text-center transition-all duration-500">
@@ -394,30 +545,45 @@
                 </div>
             </div>
 
-            <div class="pt-2 space-y-2">
+            <!-- Step label -->
+            <div class="flex items-center gap-2 mt-1">
+                <span class="text-[10px] font-black text-neon bg-neon/10 border border-neon/30 rounded-full w-5 h-5 flex items-center justify-center shrink-0">3</span>
+                <span class="text-xs font-bold text-gray-300 uppercase tracking-widest" data-i18n="stepGo">Let's Go</span>
+            </div>
+
+            <div class="space-y-2">
                 <button onclick="window.generatePreview(false, true)" class="w-full bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 text-white font-bold py-3 rounded shadow-lg transition">
                     <i class="fas fa-chart-bar mr-2"></i> <span data-i18n="previewStrategy">Preview Strategy</span>
                 </button>
-                <button onclick="window.requestAIStrategy()" class="w-full bg-gradient-to-r from-indigo-700 to-violet-600 hover:from-indigo-600 hover:to-violet-500 text-white font-bold py-2.5 rounded shadow-lg transition text-sm flex items-center justify-center gap-2">
-                    <i class="fas fa-robot"></i> <span data-i18n="aiOptimize">AI Optimize Strategy</span> <span class="text-[9px] bg-gold/30 text-gold px-1.5 rounded-full font-bold">PRO</span>
+
+                <button id="startRaceBtn" onclick="window.initRace()" class="w-full bg-ice hover:bg-cyan-300 text-navy-950 font-bold py-4 rounded text-xl shadow-[0_0_15px_rgba(34,211,238,0.4)] transition uppercase tracking-wider" data-i18n="startRace">
+                    Start Race
+                </button>
+                <button id="startQualifyBtn" onclick="window.startQualifyingDirect()" class="hidden w-full bg-blue-500 hover:bg-blue-400 text-white font-bold py-4 rounded text-xl shadow-[0_0_15px_rgba(59,130,246,0.4)] transition uppercase tracking-wider" data-i18n="startQualify">
+                    Start Qualifying
                 </button>
 
                 <div class="flex gap-2">
-                    <button id="startRaceBtn" onclick="window.initRace()" class="flex-1 bg-ice hover:bg-cyan-300 text-navy-950 font-bold py-4 rounded text-xl shadow-[0_0_15px_rgba(34,211,238,0.4)] transition uppercase tracking-wider" data-i18n="startRace">
-                        Start Race
-                    </button>
-                    <button onclick="window.showDemoConfig()" class="bg-neon/20 border-2 border-neon/50 text-neon font-bold py-4 px-4 rounded text-sm hover:bg-neon/30 transition" title="Start a 30-min demo race with simulated competitors">
-                        <i class="fas fa-play-circle mr-1"></i> <span data-i18n="demoRace">Demo</span>
-                    </button>
-                </div>
-                <div class="flex gap-2">
-                    <button onclick="window.showDriverEntryScreen()" class="flex-1 bg-navy-800 border border-orange-500/30 hover:border-orange-400 text-orange-400 font-bold py-2 rounded text-sm transition flex items-center justify-center gap-2">
-                        <i class="fas fa-car-side"></i> <span data-i18n="joinAsDriver">Join as Driver</span>
+                    <button onclick="window.showDriverEntryScreen()" class="flex-1 bg-navy-800 border border-orange-500/30 hover:border-orange-400 text-orange-400 font-bold py-2 rounded text-sm transition flex flex-col items-center justify-center gap-0.5">
+                        <div class="flex items-center gap-1.5">
+                            <i class="fas fa-car-side text-xs"></i>
+                            <span data-i18n="joinAsDriver">Join as Driver</span>
+                        </div>
+                        <span class="text-[9px] text-orange-400/50 font-normal leading-none" data-i18n="joinAsDriverHint">Enter a race running on another device</span>
                     </button>
                     <button onclick="window.showRaceHistory()" class="bg-navy-800 border border-gray-600 hover:border-ice/50 text-gray-400 hover:text-ice font-bold py-2 px-3 rounded text-sm transition flex items-center justify-center gap-2" title="Past race results">
                         <i class="fas fa-history"></i> <span class="hidden sm:inline" data-i18n="raceHistory">History</span>
                     </button>
                 </div>
+
+                <button onclick="window.showDemoConfig()" class="w-full bg-neon/10 border border-neon/40 text-neon font-bold py-2 px-4 rounded text-sm hover:bg-neon/20 transition flex items-center justify-center gap-2">
+                    <i class="fas fa-play-circle"></i> <span data-i18n="demoRace">Demo</span>
+                </button>
+
+                <!-- AI Optimize — muted, secondary -->
+                <button onclick="window.requestAIStrategy()" class="w-full bg-navy-800/50 border border-gray-700/40 hover:border-indigo-500/40 hover:text-indigo-300 text-gray-500 font-medium py-2 rounded transition text-xs flex items-center justify-center gap-2">
+                    <i class="fas fa-robot text-[11px]"></i> <span data-i18n="aiOptimize">AI Optimize Strategy</span> <span class="text-[9px] bg-gold/20 text-gold px-1.5 rounded-full font-bold border border-gold/20">PRO</span>
+                </button>
             </div>
 
             <!-- PRO UPGRADE BANNER (free tier only) -->
@@ -436,7 +602,8 @@
                 </button>
             </div>
 
-        </div>
+        </div><!-- end col-right -->
+        </div><!-- end 2-col grid -->
     </div>
 
     <div id="previewScreen" class="hidden fixed inset-0 bg-navy-950 z-50 overflow-y-auto p-4 flex flex-col">
@@ -904,15 +1071,103 @@
         </div>
     </div>
     
-    <div id="savedRaceModal" class="hidden fixed inset-0 bg-navy-950/98 z-50 flex items-center justify-center p-4">
-        <div class="bg-navy-900 border-2 border-ice p-6 rounded-lg w-full max-w-sm text-center">
-            <h2 class="text-xl font-bold text-ice mb-2" data-i18n="activeRaceFound">Active Race Found</h2>
-            <div class="text-gray-400 text-sm mb-4">
-                <span data-i18n="thDriver">Driver</span>: <span id="savedRaceDriver" class="text-white"></span><br>
-                Remaining: <span id="savedRaceTime" class="text-neon"></span>
+    <!-- ==================== QUALIFYING DASHBOARD ==================== -->
+    <div id="qualifyingDashboard" class="hidden fixed inset-0 z-[60] bg-navy-950 flex flex-col" style="top:52px">
+        <!-- Header -->
+        <div class="bg-blue-950 border-b border-blue-700/50 shrink-0 px-3 py-2 grid grid-cols-3 gap-1 items-center shadow-md">
+            <button onclick="window.stopQualifying()" class="flex items-center gap-1.5 text-sm text-blue-300 hover:text-white font-bold">
+                <i class="fas fa-times"></i> <span data-i18n="qualifyStop">Stop</span>
+            </button>
+            <div class="text-center">
+                <div class="flex items-center justify-center gap-1.5">
+                    <span class="text-[9px] text-blue-400 uppercase font-bold tracking-wider" data-i18n="qualifyTitle">Qualifying</span>
+                    <span id="qualifySegmentLabel" class="hidden text-[9px] font-black text-white bg-blue-600 px-1.5 py-0.5 rounded-full">Q1</span>
+                </div>
+                <div id="qualifyTimerDisplay" class="text-3xl font-mono font-black text-white tracking-tight leading-none">00:00</div>
             </div>
-            <button onclick="window.continueRace()" class="w-full bg-ice text-navy-950 font-bold py-3 rounded mb-2" data-i18n="continueRace">Continue Race</button>
-            <button onclick="window.confirmDiscardRace()" class="w-full bg-navy-800 text-gray-400 py-2 rounded" data-i18n="discardRace">Discard</button>
+            <div class="text-right">
+                <div class="text-[9px] text-gray-500 uppercase font-bold" data-i18n="qualifySession">Session</div>
+                <div id="qualifySessionTimer" class="text-base font-mono font-bold text-blue-300">--:--</div>
+            </div>
+        </div>
+        <!-- Current driver strip -->
+        <div class="shrink-0 bg-navy-900 border-b border-blue-900/60 px-4 py-3 flex items-center gap-4">
+            <span id="qualifyCurrentDriverDot" class="w-6 h-6 rounded-full shrink-0 shadow-lg" style="background:#60a5fa"></span>
+            <div class="flex-1 min-w-0">
+                <div class="text-[9px] text-gray-500 uppercase font-bold tracking-widest" data-i18n="current">On Track</div>
+                <div id="qualifyCurrentDriver" class="text-2xl font-black text-blue-200 truncate leading-tight">---</div>
+            </div>
+            <div class="text-right shrink-0">
+                <div class="text-[9px] text-gray-500 uppercase font-bold" data-i18n="qualifyRun">Run</div>
+                <div id="qualifyRunDisplay" class="text-xl font-mono font-bold text-white">1/1</div>
+            </div>
+        </div>
+        <!-- Scrollable body -->
+        <div class="flex-1 overflow-y-auto p-3 space-y-3">
+            <!-- Results table -->
+            <div class="bg-navy-900 border border-gray-700 rounded-xl overflow-hidden">
+                <div class="px-3 py-2 bg-navy-800 border-b border-gray-700 flex items-center justify-between">
+                    <span class="text-[10px] text-gray-400 uppercase font-bold tracking-wide" data-i18n="qualifyStageResults">Results</span>
+                    <span id="qualifyAdvancedCount" class="hidden text-[10px] text-green-400 font-bold"></span>
+                </div>
+                <div id="qualifyStageResults" class="divide-y divide-gray-800/60"></div>
+            </div>
+            <!-- Up next queue -->
+            <div class="bg-navy-900 border border-gray-700 rounded-xl p-3">
+                <div class="text-[9px] text-gray-500 uppercase font-bold tracking-widest mb-2" data-i18n="qualifyUpNext">Up Next</div>
+                <div id="qualifyNextList" class="space-y-1.5"></div>
+            </div>
+            <!-- Next segment panel -->
+            <div id="qualifyNextSegmentPanel" class="hidden bg-blue-950/80 border border-blue-500/50 rounded-xl p-4 space-y-3">
+                <div class="text-sm text-blue-300 font-bold" data-i18n="qualifyAdvance">Advance to Next Stage</div>
+                <div class="flex items-center gap-3">
+                    <label class="text-[10px] text-gray-400 shrink-0" data-i18n="qualifySegmentTime">Duration (min)</label>
+                    <input type="number" id="qualifyNextSegmentDuration" value="15" min="1" max="60"
+                        class="input-field text-blue-300 font-bold flex-1">
+                </div>
+                <button onclick="window.startNextQSegment()"
+                    class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl transition active:scale-95 flex items-center justify-center gap-2">
+                    <i class="fas fa-flag"></i> <span data-i18n="qualifyAdvance">Start Next Stage</span>
+                </button>
+            </div>
+        </div>
+        <!-- Bottom dock -->
+        <div class="bg-navy-900 border-t border-gray-800 p-3 shrink-0">
+            <button id="qualifyNextBtn" onclick="window.qualifyNextRun()"
+                class="w-full bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-black py-5 rounded-2xl text-xl shadow-[0_0_20px_rgba(59,130,246,0.4)] transition active:scale-95 flex items-center justify-center gap-3">
+                <i class="fas fa-forward"></i>
+                <span data-i18n="qualifyNextRun">Next Run</span>
+            </button>
+        </div>
+    </div>
+
+    <div id="savedRaceModal" class="hidden fixed inset-0 bg-navy-950/98 z-50 flex items-center justify-center p-4">
+        <div class="bg-navy-900 border-2 border-ice p-6 rounded-xl w-full max-w-sm text-center shadow-2xl">
+            <div class="text-3xl mb-1">🏎️</div>
+            <div id="savedRaceTeamName" class="text-base font-black text-ice mb-1 hidden"></div>
+            <h2 class="text-sm font-bold text-gray-300 mb-4" data-i18n="activeRaceFound">Active Race Found</h2>
+            <!-- Time remaining — large and prominent -->
+            <div class="bg-navy-950 rounded-2xl p-4 mb-3 border border-ice/40">
+                <div class="text-[9px] text-gray-500 uppercase font-bold tracking-wider mb-1" data-i18n="timeLeft">Time Left</div>
+                <div id="savedRaceTime" class="text-3xl font-mono font-black text-neon tracking-tight">--:--:--</div>
+            </div>
+            <div class="grid grid-cols-2 gap-2 mb-4">
+                <div class="bg-navy-950 rounded-xl p-3 border border-gray-700">
+                    <div class="text-[9px] text-gray-500 uppercase font-bold tracking-wider mb-1" data-i18n="thDriver">On Track</div>
+                    <div id="savedRaceDriver" class="text-sm font-bold text-white truncate leading-snug">---</div>
+                </div>
+                <div class="bg-navy-950 rounded-xl p-3 border border-gray-700">
+                    <div class="text-[9px] text-gray-500 uppercase font-bold tracking-wider mb-1" data-i18n="stops">Stops / Stint</div>
+                    <div class="text-sm font-bold text-ice leading-snug">
+                        <span class="text-[9px] text-gray-500">P</span><span id="savedRaceStops">-</span>
+                        <span class="text-gray-600 mx-0.5">/</span>
+                        <span class="text-[9px] text-gray-500">S</span><span id="savedRaceStint">-</span>
+                    </div>
+                </div>
+            </div>
+            <button onclick="window.continueRace()" class="w-full bg-ice text-navy-950 font-black py-4 rounded-2xl mb-3 text-lg tracking-wide transition active:scale-95" data-i18n="continueRace">Continue Race</button>
+            <button id="savedRaceFinishBtn" onclick="window.finalDiscardRace()" class="hidden w-full bg-green-600 text-white font-black py-3 rounded-2xl mb-2 text-sm transition active:scale-95">🏁 <span data-i18n="raceFinishedClose">Race Finished — Close</span></button>
+            <button onclick="window.confirmDiscardRace()" class="w-full bg-navy-800 text-gray-400 py-3 rounded-2xl text-sm" data-i18n="discardRace">Discard</button>
         </div>
     </div>
     
@@ -1411,13 +1666,48 @@
 
     <!-- DEMO CONFIG MODAL -->
     <div id="demoConfigModal" class="hidden fixed inset-0 bg-black/85 z-[200] flex items-center justify-center p-4" onclick="if(event.target===this)this.classList.add('hidden')">
-        <div class="bg-navy-900 border border-neon/40 rounded-2xl shadow-2xl max-w-sm w-full p-5 space-y-4">
+        <div class="bg-navy-900 border border-neon/40 rounded-2xl shadow-2xl max-w-sm w-full p-5 space-y-4 max-h-[90vh] overflow-y-auto">
             <div class="text-center">
                 <div class="text-3xl mb-1">🎮</div>
                 <h2 class="text-lg font-bold text-neon" data-i18n="demoRace">Demo Race</h2>
                 <p class="text-xs text-gray-400 mt-1" data-i18n="demoSelectFeatures">Select Pro features to test</p>
             </div>
             <div class="space-y-2">
+                <!-- Race length + custom -->
+                <div class="bg-navy-800 p-3 rounded-lg border border-gray-700/80">
+                    <label class="text-[10px] text-gray-400 uppercase tracking-wider font-bold" data-i18n="demoRaceLength">Race Length</label>
+                    <select id="demoRaceLength" class="input-field mt-1 text-sm mb-2">
+                        <option value="sprint" data-i18n-opt="demoLenSprint">Sprint 30m</option>
+                        <option value="club" data-i18n-opt="demoLenClub">Club 1h</option>
+                        <option value="endurance" selected data-i18n-opt="demoLenEndurance">Endurance 3h</option>
+                        <option value="pro" data-i18n-opt="demoLenPro">Pro 6h</option>
+                        <option value="custom" data-i18n-opt="demoLenCustom">Custom…</option>
+                    </select>
+                    <div id="demoCustomLengthFields" class="flex gap-2 mt-1 hidden">
+                        <input id="demoCustomHours" type="number" min="0" max="48" placeholder="Hrs" class="input-field w-16 text-xs" />
+                        <input id="demoCustomMinutes" type="number" min="0" max="59" placeholder="Min" class="input-field w-16 text-xs" />
+                        <span class="text-[10px] text-gray-500 self-center" data-i18n="demoCustomLabel">(Custom)</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 mt-2">
+                        <div>
+                            <label class="text-[10px] text-gray-500" data-i18n="demoGridSize">Grid Size</label>
+                            <select id="demoGridSize" class="input-field mt-1 text-sm">
+                                <option value="12">12</option>
+                                <option value="20" selected>20</option>
+                                <option value="32">32</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-[10px] text-gray-500" data-i18n="demoChaosLevel">Challenge</label>
+                            <select id="demoChaosLevel" class="input-field mt-1 text-sm">
+                                <option value="low" data-i18n-opt="demoChaosLow">Low</option>
+                                <option value="normal" selected data-i18n-opt="demoChaosNormal">Normal</option>
+                                <option value="high" data-i18n-opt="demoChaosHigh">High</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
                 <label class="flex items-center gap-3 bg-navy-800 p-3 rounded-lg border border-gray-700 cursor-pointer hover:border-neon/30 transition">
                     <input type="checkbox" id="demoFeatLiveTiming" checked disabled class="accent-neon w-4 h-4">
                     <div>
@@ -1444,6 +1734,20 @@
                     <div>
                         <div class="text-sm font-bold text-white">🔧 <span data-i18n="demoTiresLabel">Tire Degradation</span></div>
                         <div class="text-[10px] text-gray-500" data-i18n="demoTiresDesc">Lap times increase over stint</div>
+                    </div>
+                </label>
+                <label class="flex items-center gap-3 bg-navy-800 p-3 rounded-lg border border-gray-700 cursor-pointer hover:border-neon/30 transition">
+                    <input type="checkbox" id="demoFeatSafetyCar" checked class="accent-neon w-4 h-4">
+                    <div>
+                        <div class="text-sm font-bold text-white">🚗 <span data-i18n="demoSafetyCarLabel">Safety Car</span></div>
+                        <div class="text-[10px] text-gray-500" data-i18n="demoSafetyCarDesc">Temporary neutralization with slower pace</div>
+                    </div>
+                </label>
+                <label class="flex items-center gap-3 bg-navy-800 p-3 rounded-lg border border-gray-700 cursor-pointer hover:border-neon/30 transition">
+                    <input type="checkbox" id="demoFeatIncidents" checked class="accent-neon w-4 h-4">
+                    <div>
+                        <div class="text-sm font-bold text-white">💥 <span data-i18n="demoIncidentsLabel">On-Track Incidents</span></div>
+                        <div class="text-[10px] text-gray-500" data-i18n="demoIncidentsDesc">Random incidents that affect specific teams</div>
                     </div>
                 </label>
                 <label class="flex items-center gap-3 bg-navy-800 p-3 rounded-lg border border-gray-700 cursor-pointer hover:border-neon/30 transition">
