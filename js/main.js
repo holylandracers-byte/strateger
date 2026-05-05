@@ -27,9 +27,15 @@ document.addEventListener('DOMContentLoaded', () => {
         else document.body.style.background = savedBg || '';
     }
 
-    if (typeof window.addDriverField === 'function') {
+    if (typeof window.ensureMinimumDrivers === 'function') {
+        window.ensureMinimumDrivers(2);
+    } else if (typeof window.addDriverField === 'function') {
         window.addDriverField();
         window.addDriverField();
+    }
+
+    if (typeof window.initVenueLocationPicker === 'function') {
+        window.initVenueLocationPicker();
     }
 
     // Calculate initial strategy from default params
@@ -315,21 +321,55 @@ window.requestNotificationPermission = function() {
 window.showDemoConfig = function() {
     const modal = document.getElementById('demoConfigModal');
     if (modal) modal.classList.remove('hidden');
+    // Wire up custom fields visibility
+    const raceLengthSel = document.getElementById('demoRaceLength');
+    const customFields = document.getElementById('demoCustomLengthFields');
+    if (raceLengthSel && customFields) {
+        const updateCustom = () => {
+            if (raceLengthSel.value === 'custom') {
+                customFields.classList.remove('hidden');
+            } else {
+                customFields.classList.add('hidden');
+            }
+        };
+        raceLengthSel.removeEventListener('change', updateCustom);
+        raceLengthSel.addEventListener('change', updateCustom);
+        updateCustom();
+    }
 };
 
 window.confirmDemoStart = function() {
-    // Read user feature choices into demoConfig
+    const raceLength = document.getElementById('demoRaceLength')?.value || 'endurance';
+    let customDuration = null;
+    let customDurationMinutes = null;
+    if (raceLength === 'custom') {
+        const rawHrs = parseInt(document.getElementById('demoCustomHours')?.value || '0', 10);
+        const rawMins = parseInt(document.getElementById('demoCustomMinutes')?.value || '0', 10);
+        const hrs = Number.isFinite(rawHrs) ? Math.max(0, rawHrs) : 0;
+        const mins = Number.isFinite(rawMins) ? Math.max(0, Math.min(59, rawMins)) : 0;
+        customDurationMinutes = (hrs * 60) + mins;
+        if (customDurationMinutes <= 0) {
+            if (typeof window.showToast === 'function') window.showToast('Please set a custom demo duration (hours/minutes).', 'warning');
+            return;
+        }
+        customDuration = customDurationMinutes / 60;
+    }
     window.demoConfig = {
+        raceLength,
+        customDuration,
+        customDurationMinutes,
+        gridSize: parseInt(document.getElementById('demoGridSize')?.value || '20', 10),
+        chaosLevel: document.getElementById('demoChaosLevel')?.value || 'normal',
         rain: document.getElementById('demoFeatRain')?.checked ?? true,
         penalties: document.getElementById('demoFeatPenalties')?.checked ?? true,
         tires: document.getElementById('demoFeatTires')?.checked ?? true,
         squads: document.getElementById('demoFeatSquads')?.checked ?? false,
         fuel: document.getElementById('demoFeatFuel')?.checked ?? false,
+        safetyCar: document.getElementById('demoFeatSafetyCar')?.checked ?? true,
+        incidents: document.getElementById('demoFeatIncidents')?.checked ?? true,
     };
-    // Close the config modal
     const modal = document.getElementById('demoConfigModal');
     if (modal) modal.classList.add('hidden');
-    // Start the demo race
     window.startDemoRace();
 };
 
@@ -340,28 +380,50 @@ window.startDemoRace = function() {
     const wasPro = window._proUnlocked;
     window._proUnlocked = true;
 
-    // === 1. RACE PARAMETERS — 30 min kart endurance demo ===
     const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
     const setChecked = (id, val) => { const el = document.getElementById(id); if (el) el.checked = val; };
 
-    setVal('raceDuration', '0.5');       // 30 minutes
-    setVal('reqPitStops', '2');          // 2 mandatory pit stops
-    setVal('minStint', '5');             // min stint 5 min
-    setVal('maxStint', '15');            // max stint 15 min
-    setVal('minPitTime', '60');          // 1 minute pit time
-    setVal('pitClosedStart', '2');       // pit closed first 2 min
-    setVal('pitClosedEnd', '2');         // pit closed last 2 min
-    setVal('minDriverTime', '0');        // no min driver total
-    setVal('maxDriverTime', '15');       // max 15 min per driver
-    setVal('releaseBuffer', '5');        // 5 sec buffer alert
-    setChecked('allowDouble', false);    // no double stints
-    setChecked('trackFuel', window.demoConfig?.fuel ?? false);  // fuel based on demo config
+    // === 1. RACE PARAMETERS — profile-based ===
+    const profileMap = {
+        sprint:    { duration: 0.5, stops: 2, minStint: 5,  maxStint: 15 },
+        club:      { duration: 1,   stops: 3, minStint: 8,  maxStint: 22 },
+        endurance: { duration: 3,   stops: 6, minStint: 18, maxStint: 40 },
+        pro:       { duration: 6,   stops: 10, minStint: 25, maxStint: 55 }
+    };
+
+    let profile;
+    if (window.demoConfig?.raceLength === 'custom' && Number.isFinite(window.demoConfig?.customDuration) && window.demoConfig.customDuration > 0) {
+        const durationMin = Math.round(window.demoConfig.customDuration * 60);
+        const targetAvg = window.demoConfig.customDuration >= 8 ? 45 : (window.demoConfig.customDuration >= 3 ? 35 : 22);
+        const suggestedStints = Math.max(2, Math.round(durationMin / targetAvg));
+        const suggestedStops = Math.max(1, suggestedStints - 1);
+        const avgStint = durationMin / (suggestedStops + 1);
+        const minStint = Math.max(8, Math.round(avgStint * 0.75));
+        const maxStint = Math.max(minStint + 8, Math.round(avgStint * 1.35));
+        profile = { duration: window.demoConfig.customDuration, stops: suggestedStops, minStint, maxStint };
+    } else {
+        profile = profileMap[window.demoConfig?.raceLength] || profileMap.endurance;
+    }
+
+    setVal('raceDuration', String(profile.duration));
+    setVal('reqPitStops', String(profile.stops));
+    setVal('minStint', String(profile.minStint));
+    setVal('maxStint', String(profile.maxStint));
+    setVal('raceLocation', 'Spa, Belgium');
+    if (typeof window.syncRaceLocation === 'function') window.syncRaceLocation('Spa, Belgium');
+    setVal('minPitTime', '60');
+    setVal('pitClosedStart', '2');
+    setVal('pitClosedEnd', '2');
+    setVal('minDriverTime', '0');
+    setVal('maxDriverTime', String(Math.max(15, Math.round((profile.duration * 60) / 2))));
+    setVal('releaseBuffer', '5');
+    setChecked('allowDouble', false);
+    setChecked('trackFuel', window.demoConfig?.fuel ?? false);
     if (window.demoConfig?.fuel) {
-        setVal('fuelTime', '12');         // 12 min fuel tank for demo
+        setVal('fuelTime', '12');
         if (typeof window.toggleFuelInput === 'function') window.toggleFuelInput();
     }
 
-    // Squads based on demo config
     const squadsEl = document.getElementById('numSquads');
     if (squadsEl) {
         squadsEl.value = (window.demoConfig?.squads) ? '2' : '0';
@@ -373,39 +435,36 @@ window.startDemoRace = function() {
     setVal('raceStartTime', `${String(nowDate.getHours()).padStart(2,'0')}:${String(nowDate.getMinutes()).padStart(2,'0')}`);
     setVal('raceStartDate', nowDate.toISOString().split('T')[0]);
 
-    // === 3. DRIVERS — 3 demo drivers with colors ===
+    // === 3. DRIVERS — scale with gridSize ===
     const demoDrivers = [
-        { name: 'Alex', color: '#22d3ee' },   // ice blue
-        { name: 'Jordan', color: '#f59e0b' },  // amber
-        { name: 'Sam', color: '#10b981' }       // green
+        { name: 'Alex',   color: '#22d3ee' },
+        { name: 'Jordan', color: '#f59e0b' },
+        { name: 'Sam',    color: '#10b981' },
+        { name: 'Noa',    color: '#f472b6' },
+        { name: 'Lior',   color: '#a78bfa' },
+        { name: 'Mia',    color: '#38bdf8' }
     ];
+    const targetDrivers = Math.min(6, Math.max(3, Math.ceil((window.demoConfig?.gridSize || 20) / 6)));
 
-    // Ensure we have the right number of driver rows
-    const rows = document.querySelectorAll('.driver-row');
-    if (rows.length < demoDrivers.length) {
-        while (document.querySelectorAll('.driver-row').length < demoDrivers.length) {
-            if (typeof window.addDriverField === 'function') window.addDriverField();
-        }
+    while (document.querySelectorAll('.driver-row').length < targetDrivers) {
+        if (typeof window.addDriverField === 'function') window.addDriverField();
     }
-    // Remove excess rows
-    while (document.querySelectorAll('.driver-row').length > demoDrivers.length) {
+    while (document.querySelectorAll('.driver-row').length > targetDrivers) {
         if (typeof window.removeDriverField === 'function') window.removeDriverField();
     }
 
-    // Fill driver names and colors
     document.querySelectorAll('.driver-row').forEach((row, i) => {
-        const driver = demoDrivers[i];
+        const driver = demoDrivers[i % demoDrivers.length];
         if (!driver) return;
         const nameInput = row.querySelector('input[type="text"]');
         if (nameInput) nameInput.value = driver.name;
         const colorInput = row.querySelector('input[type="color"]');
         if (colorInput) colorInput.value = driver.color;
-        // Assign squads if enabled: Alex+Jordan=A, Sam=B
         if (window.demoConfig?.squads) {
             const squadVal = row.querySelector('.squad-value');
             const squadDisplay = row.querySelector('.squad-toggle-container > div:last-child');
             if (squadVal && squadDisplay) {
-                const sq = i < 2 ? 0 : 1; // A=0, B=1
+                const sq = i < 2 ? 0 : 1;
                 squadVal.value = String(sq);
                 squadDisplay.innerText = ['A','B','C','D'][sq];
                 squadDisplay.style.background = ['#3b82f6','#06b6d4','#a855f7','#f97316'][sq];
@@ -414,19 +473,12 @@ window.startDemoRace = function() {
     });
 
     // === 4. GENERATE & RUN ===
-    // Restore Pro state after demo setup
     window._proUnlocked = wasPro;
 
-    // Generate strategy with all the configured parameters
     if (typeof window.runSim === 'function') window.runSim();
-
-    // Activate demo live timing
     if (typeof window.startDemoMode === 'function') window.startDemoMode();
-
-    // Start the race
     if (typeof window.initRace === 'function') window.initRace();
 
-    // Show demo badge
     const badge = document.getElementById('demoBadge');
     if (badge) badge.classList.remove('hidden');
 };
@@ -566,6 +618,16 @@ window.recalculateTargetStint = function() {
                 window.state.targetStintMs = window.state.stintTargets[currentStintIdx];
             }
         }
+    }
+};
+
+window.syncRaceLocation = function(value) {
+    const raceLocation = String(value || '').trim();
+    const calendarLocation = document.getElementById('calendarLocation');
+    if (calendarLocation && raceLocation) calendarLocation.value = raceLocation;
+    if (raceLocation && typeof window.refreshVenueWeather === 'function') {
+        const selectedPlace = (typeof window.resolveVenueLocation === 'function') ? window.resolveVenueLocation(raceLocation) : null;
+        window.refreshVenueWeather(raceLocation, selectedPlace);
     }
 };
 

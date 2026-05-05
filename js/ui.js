@@ -398,15 +398,48 @@ window.renderPreview = function() {
     // === 1. קביעת זמן התחלה ===
     let startRef;
     const timeInput = document.getElementById('raceStartTime');
+    const dateInput = document.getElementById('raceStartDate');
     const previewTimeDisplay = document.getElementById('previewStartTimeDisplay');
-    
+
     if (timeInput && timeInput.value) {
         if (previewTimeDisplay) previewTimeDisplay.innerText = timeInput.value;
-        startRef = new Date();
-        const [h, m] = timeInput.value.split(':');
-        startRef.setHours(parseInt(h), parseInt(m), 0, 0);
+        startRef = dateInput && dateInput.value ? new Date(dateInput.value + 'T' + timeInput.value + ':00') : new Date();
+        if (isNaN(startRef.getTime())) {
+            startRef = new Date();
+            const [h, m] = timeInput.value.split(':');
+            startRef.setHours(parseInt(h), parseInt(m), 0, 0);
+        }
     } else {
         startRef = new Date();
+    }
+
+    // === 1b. Weather banner (location weather) ===
+    const weatherBanner = document.getElementById('previewLocationWeather');
+    const raceDateMs = startRef.getTime();
+    const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+    const dateIsFarOut = (raceDateMs - Date.now()) > sevenDaysMs;
+    if (weatherBanner) {
+        if (window._venueWeather && window._venueWeather.locationName) {
+            if (dateIsFarOut) {
+                weatherBanner.textContent = `📍 ${window._venueWeather.locationName} — ${t('weatherTooFarOut') || 'Date too far — forecast unavailable'}`;
+            } else {
+                const forecast = typeof window.getVenueForecastAt === 'function' ? window.getVenueForecastAt(raceDateMs) : null;
+                const fmtStr = forecast && typeof window.formatVenueForecastShort === 'function' ? window.formatVenueForecastShort(forecast) : '';
+                weatherBanner.textContent = `📍 ${window._venueWeather.locationName}${fmtStr ? ' · ' + fmtStr : ''}`;
+            }
+            weatherBanner.classList.remove('hidden');
+        } else {
+            weatherBanner.classList.add('hidden');
+        }
+    }
+
+    // Refresh weather data for selected location
+    if (typeof window.refreshVenueWeather === 'function') {
+        const locInput = document.getElementById('raceLocation');
+        if (locInput && locInput.value) {
+            const selectedPlace = typeof window.resolveVenueLocation === 'function' ? window.resolveVenueLocation(locInput.value) : null;
+            window.refreshVenueWeather(locInput.value, selectedPlace);
+        }
     }
 
     // === 2. בדיקת כיוון שפה ===
@@ -442,36 +475,51 @@ window.renderPreview = function() {
     const maxStintMin = window.config ? (window.config.maxStint || 999) : 999;
 
     const listHtml = stints.map((stint, index) => {
+        const stintStartMs = currentTimeMs;
         const startTime = new Date(currentTimeMs);
         const endTime = new Date(currentTimeMs + stint.duration);
         const durationMin = Math.round(stint.duration / 60000);
-        
+
         const startTimeStr = startTime.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
         const endTimeStr = endTime.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-        
+
         currentTimeMs += stint.duration;
-        
+
         const pit = pits[index];
         const isLast = index === stints.length - 1;
         const isFirst = index === 0;
-        
+
         let pitIndicator = '';
         if (pit && !isLast) {
             const pitSec = Math.round(pit.duration / 1000);
             pitIndicator = `<span class="text-gold text-[10px] ml-1">🔧+${pitSec}s</span>`;
             currentTimeMs += pit.duration;
         }
-        
+
+        // Weather tag for this stint's start time
+        const showWeatherChecked = document.getElementById('showWeatherInStints')?.checked !== false;
+        let stintForecastTag = '';
+        if (showWeatherChecked && window._venueWeather && typeof window.getVenueForecastAt === 'function') {
+            if (dateIsFarOut) {
+                stintForecastTag = `<span class="text-[9px] text-gray-600 ml-1">${t('weatherTooFarOut') || '—'}</span>`;
+            } else {
+                const fc = window.getVenueForecastAt(stintStartMs);
+                if (fc && typeof window.formatVenueForecastShort === 'function') {
+                    stintForecastTag = `<span class="text-[9px] text-blue-400 ml-1">${window.formatVenueForecastShort(fc)}</span>`;
+                }
+            }
+        }
+
         const outOfBounds = durationMin < minStintMin || durationMin > maxStintMin;
         const borderWarning = outOfBounds ? 'ring-1 ring-red-500' : '';
 
         return `
-            <div class="flex items-center gap-1 bg-navy-950 p-2 rounded border-l-4 mb-1 text-xs cursor-grab active:cursor-grabbing ${borderWarning}" 
-                 style="border-left-color: ${stint.color}" 
+            <div class="flex items-center gap-1 bg-navy-950 p-2 rounded border-l-4 mb-1 text-xs cursor-grab active:cursor-grabbing ${borderWarning}"
+                 style="border-left-color: ${stint.color}"
                  draggable="${window._isTouchDevice ? 'false' : 'true'}" data-index="${index}"
-                 ondragstart="window.handleDragStart(event)" 
-                 ondragover="window.handleDragOver(event)" 
-                 ondragleave="window.handleDragLeave(event)" 
+                 ondragstart="window.handleDragStart(event)"
+                 ondragover="window.handleDragOver(event)"
+                 ondragleave="window.handleDragLeave(event)"
                  ondrop="window.handleDrop(event)">
                 <div class="flex flex-col gap-0.5 shrink-0">
                     <button onclick="window.moveStint(${index}, -1)" class="text-gray-500 hover:text-white text-[10px] leading-none px-1 ${isFirst ? 'invisible' : ''}" title="Move Up">▲</button>
@@ -480,16 +528,17 @@ window.renderPreview = function() {
                 </div>
                 <div class="flex-1 min-w-0">
                     <div class="font-bold text-white truncate">${stint.driverName}</div>
-                    <div class="flex items-center gap-1 text-gray-400 text-[10px]">
+                    <div class="flex flex-wrap items-center gap-1 text-gray-400 text-[10px]">
                         <span>${startTimeStr}</span>
                         <span class="text-ice">${arrow}</span>
                         <span>${endTimeStr}</span>
                         ${pitIndicator}
+                        ${stintForecastTag}
                     </div>
                 </div>
-                <input type="number" value="${durationMin}" min="${minStintMin}" max="${maxStintMin}" 
-                       onchange="window.updateStintDuration(${index}, this.value)" 
-                       class="w-14 bg-navy-800 border border-gray-600 text-white text-center text-xs rounded px-1 py-0.5 font-mono focus:border-ice focus:outline-none ${outOfBounds ? 'border-red-500 text-red-300' : ''}" 
+                <input type="number" value="${durationMin}" min="${minStintMin}" max="${maxStintMin}"
+                       onchange="window.updateStintDuration(${index}, this.value)"
+                       class="w-14 bg-navy-800 border border-gray-600 text-white text-center text-xs rounded px-1 py-0.5 font-mono focus:border-ice focus:outline-none ${outOfBounds ? 'border-red-500 text-red-300' : ''}"
                        title="Stint duration (min)">
                 <span class="text-gray-500 text-[10px]">m</span>
                 ${isLast ? '🏁' : ''}

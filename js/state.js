@@ -1976,11 +1976,163 @@ window.finalDiscardRace = function() {
     localStorage.removeItem('strateger_host_id');
     // Delete Chat History
     localStorage.removeItem('strateger_chat_history');
-    
+
     document.getElementById('confirmDiscardModal').classList.add('hidden');
     document.getElementById('savedRaceModal').classList.add('hidden');
     document.getElementById('setupScreen').classList.remove('hidden');
-    
+
     // רענון נקי
     window.location.reload();
 };
+
+// ==========================================
+// 🌍 TRANSLATION PATCHES — Demo, Weather, Location
+// ==========================================
+(function() {
+    const required = {
+        demoRaceLength: 'Race Length',
+        demoLenSprint: 'Sprint 30m',
+        demoLenClub: 'Club 1h',
+        demoLenEndurance: 'Endurance 3h',
+        demoLenPro: 'Pro 6h',
+        demoLenCustom: 'Custom...',
+        demoCustomLabel: 'Custom Duration',
+        demoGridSize: 'Grid Size',
+        demoChaosLevel: 'Challenge',
+        demoChaosLow: 'Low',
+        demoChaosNormal: 'Normal',
+        demoChaosHigh: 'High',
+        demoSafetyCarLabel: 'Safety Car Events',
+        demoSafetyCarDesc: 'Temporary neutralization with slower pace',
+        demoIncidentsLabel: 'On-track Incidents',
+        demoIncidentsDesc: 'Random incidents that affect specific teams',
+        raceFinishedClose: 'Close',
+        lblTrackLocation: '📍 Race Location',
+        lblLocationPlaceholder: 'Search circuit or city...',
+        lblLocationHint: 'Used for weather forecast',
+        lblShowWeather: 'Show weather in stint preview',
+        locationWeather: 'Location & Weather',
+        weatherTooFarOut: 'Date too far — forecast unavailable',
+        minUnit: 'min',
+    };
+
+    const localized = {
+        he: {
+            demoRaceLength: 'משך מירוץ', demoLenSprint: 'ספרינט 30דק', demoLenClub: 'מועדון 1ש', demoLenEndurance: 'אנדורנס 3ש', demoLenPro: 'פרו 6ש', demoLenCustom: 'מותאם אישית...',
+            demoCustomLabel: 'משך מותאם אישית',
+            demoGridSize: 'גודל גריד', demoChaosLevel: 'רמת אתגר', demoChaosLow: 'נמוכה', demoChaosNormal: 'רגילה', demoChaosHigh: 'גבוהה',
+            demoSafetyCarLabel: 'אירועי Safety Car', demoSafetyCarDesc: 'ניטרול זמני עם קצב איטי יותר', demoIncidentsLabel: 'תקריות מסלול', demoIncidentsDesc: 'אירועים אקראיים שמשפיעים על קבוצות ספציפיות',
+            raceFinishedClose: 'סגור',
+            lblTrackLocation: '📍 מיקום המסלול', lblLocationPlaceholder: 'חפש מעגל או עיר...', lblLocationHint: 'משמש לתחזית מזג אוויר', lblShowWeather: 'הצג מזג אוויר בתצוגת סטינטים',
+            locationWeather: 'מיקום ומזג אוויר', weatherTooFarOut: 'תאריך רחוק מדי — תחזית לא זמינה', minUnit: 'דק\'',
+        },
+        fr: {
+            demoRaceLength: 'Duree de course', demoLenSprint: 'Sprint 30 min', demoLenClub: 'Club 1 h', demoLenEndurance: 'Endurance 3 h', demoLenPro: 'Pro 6 h', demoLenCustom: 'Personnalise...',
+            demoCustomLabel: 'Duree personnalisee',
+            demoGridSize: 'Taille de grille', demoChaosLevel: 'Niveau de challenge', demoChaosLow: 'Faible', demoChaosNormal: 'Normal', demoChaosHigh: 'Eleve',
+            demoSafetyCarLabel: 'Evenements Safety Car', demoSafetyCarDesc: 'Neutralisation temporaire avec rythme reduit', demoIncidentsLabel: 'Incidents piste', demoIncidentsDesc: 'Incidents aleatoires impactant certaines equipes',
+            raceFinishedClose: 'Fermer',
+            lblTrackLocation: '📍 Lieu de course', lblLocationPlaceholder: 'Rechercher circuit ou ville...', lblLocationHint: 'Utilise pour la meteo', lblShowWeather: 'Afficher la meteo par relais',
+            locationWeather: 'Lieu & Meteo', weatherTooFarOut: 'Date trop eloignee — prevision indisponible', minUnit: 'min',
+        },
+        pt: {
+            demoRaceLength: 'Duracao da corrida', demoLenSprint: 'Sprint 30m', demoLenClub: 'Clube 1h', demoLenEndurance: 'Endurance 3h', demoLenPro: 'Pro 6h', demoLenCustom: 'Personalizado...',
+            demoCustomLabel: 'Duracao personalizada',
+            demoGridSize: 'Tamanho do grid', demoChaosLevel: 'Nivel de desafio', demoChaosLow: 'Baixo', demoChaosNormal: 'Normal', demoChaosHigh: 'Alto',
+            demoSafetyCarLabel: 'Eventos de Safety Car', demoSafetyCarDesc: 'Neutralizacao temporaria com ritmo mais lento', demoIncidentsLabel: 'Incidentes na pista', demoIncidentsDesc: 'Incidentes aleatorios que afetam equipes especificas',
+            raceFinishedClose: 'Fechar',
+            lblTrackLocation: '📍 Local da corrida', lblLocationPlaceholder: 'Buscar circuito ou cidade...', lblLocationHint: 'Usado para previsao do tempo', lblShowWeather: 'Mostrar clima por stint',
+            locationWeather: 'Local & Clima', weatherTooFarOut: 'Data muito distante — previsao indisponivel', minUnit: 'min',
+        },
+        ru: {
+            demoRaceLength: 'Длительность гонки', demoLenSprint: 'Спринт 30м', demoLenClub: 'Клуб 1ч', demoLenEndurance: 'Эндюранс 3ч', demoLenPro: 'Про 6ч', demoLenCustom: 'Своя длительность...',
+            demoCustomLabel: 'Произвольная длительность',
+            demoGridSize: 'Размер решетки', demoChaosLevel: 'Сложность', demoChaosLow: 'Низкая', demoChaosNormal: 'Нормальная', demoChaosHigh: 'Высокая',
+            demoSafetyCarLabel: 'События Safety Car', demoSafetyCarDesc: 'Временная нейтрализация с более медленным темпом', demoIncidentsLabel: 'Инциденты на трассе', demoIncidentsDesc: 'Случайные инциденты, влияющие на отдельные команды',
+            raceFinishedClose: 'Закрыть',
+            lblTrackLocation: '📍 Место гонки', lblLocationPlaceholder: 'Найти трассу или город...', lblLocationHint: 'Для прогноза погоды', lblShowWeather: 'Показывать погоду по стинтам',
+            locationWeather: 'Локация и погода', weatherTooFarOut: 'Дата слишком далеко — прогноз недоступен', minUnit: 'мин',
+        },
+        ar: {
+            demoRaceLength: 'مدة السباق', demoLenSprint: 'سبرينت 30د', demoLenClub: 'نادي 1س', demoLenEndurance: 'تحمل 3س', demoLenPro: 'احترافي 6س', demoLenCustom: 'مخصص...',
+            demoCustomLabel: 'مدة مخصصة',
+            demoGridSize: 'حجم الشبكة', demoChaosLevel: 'مستوى التحدي', demoChaosLow: 'منخفض', demoChaosNormal: 'عادي', demoChaosHigh: 'مرتفع',
+            demoSafetyCarLabel: 'احداث سيارة الامان', demoSafetyCarDesc: 'تحييد مؤقت بوتيرة ابطأ', demoIncidentsLabel: 'حوادث المضمار', demoIncidentsDesc: 'حوادث عشوائية تؤثر على فرق محددة',
+            raceFinishedClose: 'اغلاق',
+            lblTrackLocation: '📍 موقع السباق', lblLocationPlaceholder: 'ابحث عن حلبة او مدينة...', lblLocationHint: 'يستخدم لتوقعات الطقس', lblShowWeather: 'اظهار الطقس في كل stint',
+            locationWeather: 'الموقع والطقس', weatherTooFarOut: 'التاريخ بعيد جدا — التوقعات غير متوفرة', minUnit: 'د',
+        },
+        es: {
+            demoRaceLength: 'Duracion de carrera', demoLenSprint: 'Sprint 30m', demoLenClub: 'Club 1h', demoLenEndurance: 'Endurance 3h', demoLenPro: 'Pro 6h', demoLenCustom: 'Personalizado...',
+            demoCustomLabel: 'Duracion personalizada',
+            demoGridSize: 'Tamano de parrilla', demoChaosLevel: 'Nivel de desafio', demoChaosLow: 'Bajo', demoChaosNormal: 'Normal', demoChaosHigh: 'Alto',
+            demoSafetyCarLabel: 'Eventos de Safety Car', demoSafetyCarDesc: 'Neutralizacion temporal con ritmo mas lento', demoIncidentsLabel: 'Incidentes en pista', demoIncidentsDesc: 'Incidentes aleatorios que afectan equipos especificos',
+            raceFinishedClose: 'Cerrar',
+            lblTrackLocation: '📍 Ubicacion de la carrera', lblLocationPlaceholder: 'Buscar circuito o ciudad...', lblLocationHint: 'Para el pronostico del tiempo', lblShowWeather: 'Mostrar clima por stint',
+            locationWeather: 'Lugar y Clima', weatherTooFarOut: 'Fecha muy lejana — prevision no disponible', minUnit: 'min',
+        },
+        it: {
+            demoRaceLength: 'Durata gara', demoLenSprint: 'Sprint 30m', demoLenClub: 'Club 1h', demoLenEndurance: 'Endurance 3h', demoLenPro: 'Pro 6h', demoLenCustom: 'Personalizzato...',
+            demoCustomLabel: 'Durata personalizzata',
+            demoGridSize: 'Dimensione griglia', demoChaosLevel: 'Livello sfida', demoChaosLow: 'Basso', demoChaosNormal: 'Normale', demoChaosHigh: 'Alto',
+            demoSafetyCarLabel: 'Eventi Safety Car', demoSafetyCarDesc: 'Neutralizzazione temporanea con ritmo ridotto', demoIncidentsLabel: 'Incidenti in pista', demoIncidentsDesc: 'Incidenti casuali che influenzano team specifici',
+            raceFinishedClose: 'Chiudi',
+            lblTrackLocation: '📍 Luogo gara', lblLocationPlaceholder: 'Cerca circuito o citta...', lblLocationHint: 'Per le previsioni meteo', lblShowWeather: 'Mostra meteo per stint',
+            locationWeather: 'Luogo e Meteo', weatherTooFarOut: 'Data troppo lontana — previsione non disponibile', minUnit: 'min',
+        },
+        ka: {
+            demoRaceLength: 'რბოლის ხანგრძლივობა', demoLenSprint: 'სპრინტი 30წთ', demoLenClub: 'კლუბი 1სთ', demoLenEndurance: 'ენდურანსი 3სთ', demoLenPro: 'პრო 6სთ', demoLenCustom: 'მორგებული...',
+            demoCustomLabel: 'მორგებული ხანგრძლივობა',
+            demoGridSize: 'გრიდის ზომა', demoChaosLevel: 'სირთულის დონე', demoChaosLow: 'დაბალი', demoChaosNormal: 'ნორმალური', demoChaosHigh: 'მაღალი',
+            demoSafetyCarLabel: 'Safety Car მოვლენები', demoSafetyCarDesc: 'დროებითი ნეიტრალიზაცია დაბალი ტემპით', demoIncidentsLabel: 'ტრეკის ინციდენტები', demoIncidentsDesc: 'შემთხვევითი ინციდენტები, რომლებიც კონკრეტულ გუნდებზე მოქმედებს',
+            raceFinishedClose: 'დახურვა',
+            lblTrackLocation: '📍 რბოლის მდებარეობა', lblLocationPlaceholder: 'მოძებნე ტრეკი ან ქალაქი...', lblLocationHint: 'ამინდის პროგნოზისთვის', lblShowWeather: 'ამინდის ჩვენება stint-ებში',
+            locationWeather: 'მდებარეობა და ამინდი', weatherTooFarOut: 'თარიღი ძალიან შორია — პროგნოზი მიუწვდომელია', minUnit: 'წთ',
+        },
+        de: {
+            demoRaceLength: 'Renndauer', demoLenSprint: 'Sprint 30m', demoLenClub: 'Club 1h', demoLenEndurance: 'Endurance 3h', demoLenPro: 'Pro 6h', demoLenCustom: 'Benutzerdefiniert...',
+            demoCustomLabel: 'Benutzerdefinierte Dauer',
+            demoGridSize: 'Grid-Grosse', demoChaosLevel: 'Schwierigkeitsgrad', demoChaosLow: 'Niedrig', demoChaosNormal: 'Normal', demoChaosHigh: 'Hoch',
+            demoSafetyCarLabel: 'Safety-Car-Ereignisse', demoSafetyCarDesc: 'Zeitweise Neutralisierung mit langsamerem Tempo', demoIncidentsLabel: 'Streckenereignisse', demoIncidentsDesc: 'Zufallige Vorfalle mit Einfluss auf einzelne Teams',
+            raceFinishedClose: 'Schliessen',
+            lblTrackLocation: '📍 Rennort', lblLocationPlaceholder: 'Strecke oder Stadt suchen...', lblLocationHint: 'Fur Wettervorhersage', lblShowWeather: 'Wetter pro Stint anzeigen',
+            locationWeather: 'Ort & Wetter', weatherTooFarOut: 'Datum zu weit entfernt — Vorhersage nicht verfugbar', minUnit: 'Min',
+        },
+        ja: {
+            demoRaceLength: 'レース時間', demoLenSprint: 'スプリント 30分', demoLenClub: 'クラブ 1時間', demoLenEndurance: '耐久 3時間', demoLenPro: 'プロ 6時間', demoLenCustom: 'カスタム...',
+            demoCustomLabel: 'カスタム時間',
+            demoGridSize: 'グリッド数', demoChaosLevel: '難易度', demoChaosLow: '低', demoChaosNormal: '標準', demoChaosHigh: '高',
+            demoSafetyCarLabel: 'セーフティカーイベント', demoSafetyCarDesc: '一時的にペースを落とす中立化', demoIncidentsLabel: 'コース上のインシデント', demoIncidentsDesc: '特定チームに影響するランダムインシデント',
+            raceFinishedClose: '閉じる',
+            lblTrackLocation: '📍 レース場所', lblLocationPlaceholder: 'サーキットや都市を検索...', lblLocationHint: '天気予報に使用', lblShowWeather: 'スティントごとの天気を表示',
+            locationWeather: '場所と天気', weatherTooFarOut: '日付が遠すぎます — 予報は利用できません', minUnit: '分',
+        },
+        el: {
+            demoRaceLength: 'Διαρκεια αγωνα', demoLenSprint: 'Sprint 30λ', demoLenClub: 'Club 1ω', demoLenEndurance: 'Endurance 3ω', demoLenPro: 'Pro 6ω', demoLenCustom: 'Προσαρμοσμενο...',
+            demoCustomLabel: 'Προσαρμοσμενη διαρκεια',
+            demoGridSize: 'Μεγεθος grid', demoChaosLevel: 'Επιπεδο προκλησης', demoChaosLow: 'Χαμηλο', demoChaosNormal: 'Κανονικο', demoChaosHigh: 'Υψηλο',
+            demoSafetyCarLabel: 'Γεγονοτα Safety Car', demoSafetyCarDesc: 'Προσωρινη ουδετεροποιηση με χαμηλοτερο ρυθμο', demoIncidentsLabel: 'Περιστατικα πιστας', demoIncidentsDesc: 'Τυχαια περιστατικα που επηρεαζουν συγκεκριμενες ομαδες',
+            raceFinishedClose: 'Κλεισιμο',
+            lblTrackLocation: '📍 Τοποθεσια αγωνα', lblLocationPlaceholder: 'Αναζητηση πιστας ή πολης...', lblLocationHint: 'Για προγνωση καιρου', lblShowWeather: 'Εμφανιση καιρου ανα stint',
+            locationWeather: 'Τοποθεσια και Καιρος', weatherTooFarOut: 'Ημερομηνια πολυ μακρια — προγνωση μη διαθεσιμη', minUnit: 'λ',
+        },
+    };
+
+    Object.entries(required).forEach(([k, v]) => {
+        if (!window.translations.en[k]) window.translations.en[k] = v;
+    });
+
+    Object.entries(localized).forEach(([lang, patch]) => {
+        if (!window.translations[lang]) return;
+        Object.entries(patch).forEach(([k, v]) => {
+            if (!window.translations[lang][k]) window.translations[lang][k] = v;
+        });
+    });
+
+    Object.keys(window.translations).forEach((lang) => {
+        const dict = window.translations[lang];
+        Object.keys(required).forEach((k) => {
+            if (dict[k] == null) dict[k] = window.translations.en[k];
+        });
+    });
+})();

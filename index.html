@@ -180,7 +180,7 @@
     <div id="setupScreen" class="w-full bg-navy-950 relative p-2">
 
         <!-- Hero / Branding -->
-        <div class="max-w-lg md:max-w-3xl mx-auto text-center mb-3 pt-1">
+        <div class="max-w-6xl mx-auto text-center mb-3 pt-1">
             <div class="header-title font-bold tracking-widest text-white ml-2 sm:block">
                 STRAT<span class="text-ice">EGER</span>
             </div>
@@ -208,7 +208,7 @@
         </div>
 
         <!-- Session mode toggle: Race Only / Qualifying + Race -->
-        <div class="max-w-lg md:max-w-3xl mx-auto mb-3">
+        <div class="max-w-6xl mx-auto mb-3">
             <div class="flex rounded-xl overflow-hidden border border-gray-700 bg-navy-900/60">
                 <button id="modeRaceBtn" onclick="window.setSessionMode('race')"
                     class="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-bold transition bg-ice text-navy-950">
@@ -222,7 +222,7 @@
         </div>
 
         <!-- outer wrapper: single col on phone, 2-col on tablet -->
-        <div class="max-w-lg md:max-w-3xl mx-auto md:grid md:grid-cols-2 md:gap-4 md:items-start">
+        <div class="max-w-6xl mx-auto md:grid md:grid-cols-2 md:gap-4 md:items-start">
 
         <!-- ════ COLUMN LEFT: race settings ════ -->
         <div id="configPanel" class="space-y-3 transition-opacity duration-300">
@@ -607,13 +607,16 @@
     </div>
 
     <div id="previewScreen" class="hidden fixed inset-0 bg-navy-950 z-50 overflow-y-auto p-4 flex flex-col">
-        <div class="max-w-3xl mx-auto w-full flex flex-col h-full">
-            
-            <div class="flex justify-between items-center mb-4 shrink-0">
-                <h2 class="text-2xl font-bold text-white" data-i18n="previewTitle">Strategy Preview</h2>
-                <button onclick="document.getElementById('previewScreen').classList.add('hidden'); document.getElementById('setupScreen').classList.remove('hidden');" class="text-gray-400 hover:text-white text-2xl">
-                    &times;
-                </button>
+        <div class="max-w-6xl mx-auto w-full flex flex-col h-full">
+
+            <div class="grid grid-cols-3 gap-2 items-center mb-4 shrink-0">
+                <h2 class="text-xl font-bold text-white col-span-1" data-i18n="previewTitle">Strategy Preview</h2>
+                <div id="previewLocationWeather" class="col-span-1 text-center text-xs text-blue-300 font-mono truncate hidden"></div>
+                <div class="col-span-1 flex justify-end">
+                    <button onclick="document.getElementById('previewScreen').classList.add('hidden'); document.getElementById('setupScreen').classList.remove('hidden');" class="text-gray-400 hover:text-white text-2xl">
+                        &times;
+                    </button>
+                </div>
             </div>
 
             <div class="bg-navy-900 p-3 rounded-lg mb-4 shrink-0 border border-gray-700">
@@ -622,7 +625,7 @@
                         <label class="text-xs text-gray-400 block mb-1" data-i18n="thStart">Start Time</label>
                         <div id="previewStartTimeDisplay" class="text-sm font-mono text-white bg-navy-800 border border-gray-600 rounded px-2 py-1">--:--</div>
                     </div>
-                    
+
                     <div class="text-right">
                         <div class="text-xs text-gray-400" data-i18n="totalTime">Total Time</div>
                         <div class="text-xl font-mono text-neon flex items-center gap-2">
@@ -632,7 +635,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <button onclick="window.addToGoogleCalendar()" class="w-full mt-3 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/50 text-blue-300 font-bold py-2 rounded-lg flex items-center justify-center gap-2 transition text-sm">
                     <i class="fab fa-google"></i> <span data-i18n="addToCalendar">Add to Google Calendar</span>
                 </button>
@@ -1090,54 +1093,63 @@
                 <div id="qualifySessionTimer" class="text-base font-mono font-bold text-blue-300">--:--</div>
             </div>
         </div>
-        <!-- Current driver strip -->
-        <div class="shrink-0 bg-navy-900 border-b border-blue-900/60 px-4 py-3 flex items-center gap-4">
-            <span id="qualifyCurrentDriverDot" class="w-6 h-6 rounded-full shrink-0 shadow-lg" style="background:#60a5fa"></span>
-            <div class="flex-1 min-w-0">
-                <div class="text-[9px] text-gray-500 uppercase font-bold tracking-widest" data-i18n="current">On Track</div>
-                <div id="qualifyCurrentDriver" class="text-2xl font-black text-blue-200 truncate leading-tight">---</div>
-            </div>
-            <div class="text-right shrink-0">
-                <div class="text-[9px] text-gray-500 uppercase font-bold" data-i18n="qualifyRun">Run</div>
-                <div id="qualifyRunDisplay" class="text-xl font-mono font-bold text-white">1/1</div>
-            </div>
-        </div>
-        <!-- Scrollable body -->
-        <div class="flex-1 overflow-y-auto p-3 space-y-3">
-            <!-- Results table -->
-            <div class="bg-navy-900 border border-gray-700 rounded-xl overflow-hidden">
-                <div class="px-3 py-2 bg-navy-800 border-b border-gray-700 flex items-center justify-between">
-                    <span class="text-[10px] text-gray-400 uppercase font-bold tracking-wide" data-i18n="qualifyStageResults">Results</span>
-                    <span id="qualifyAdvancedCount" class="hidden text-[10px] text-green-400 font-bold"></span>
+        <!-- Two-panel body: left = current driver + up next | right = results + next segment + next run -->
+        <div class="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0 gap-0 md:gap-3 md:p-3">
+
+            <!-- LEFT PANEL — current driver + up next queue -->
+            <div class="md:w-[40%] flex flex-col shrink-0 overflow-y-auto md:overflow-hidden">
+                <!-- Current driver strip -->
+                <div class="bg-navy-900 border-b border-blue-900/60 md:rounded-xl md:border px-4 py-3 flex items-center gap-4 shrink-0">
+                    <span id="qualifyCurrentDriverDot" class="w-8 h-8 rounded-full shrink-0 shadow-lg" style="background:#60a5fa"></span>
+                    <div class="flex-1 min-w-0">
+                        <div class="text-[9px] text-gray-500 uppercase font-bold tracking-widest" data-i18n="current">On Track</div>
+                        <div id="qualifyCurrentDriver" class="text-2xl font-black text-blue-200 truncate leading-tight">---</div>
+                    </div>
+                    <div class="text-right shrink-0">
+                        <div class="text-[9px] text-gray-500 uppercase font-bold" data-i18n="qualifyRun">Run</div>
+                        <div id="qualifyRunDisplay" class="text-xl font-mono font-bold text-white">1/1</div>
+                    </div>
                 </div>
-                <div id="qualifyStageResults" class="divide-y divide-gray-800/60"></div>
-            </div>
-            <!-- Up next queue -->
-            <div class="bg-navy-900 border border-gray-700 rounded-xl p-3">
-                <div class="text-[9px] text-gray-500 uppercase font-bold tracking-widest mb-2" data-i18n="qualifyUpNext">Up Next</div>
-                <div id="qualifyNextList" class="space-y-1.5"></div>
-            </div>
-            <!-- Next segment panel -->
-            <div id="qualifyNextSegmentPanel" class="hidden bg-blue-950/80 border border-blue-500/50 rounded-xl p-4 space-y-3">
-                <div class="text-sm text-blue-300 font-bold" data-i18n="qualifyAdvance">Advance to Next Stage</div>
-                <div class="flex items-center gap-3">
-                    <label class="text-[10px] text-gray-400 shrink-0" data-i18n="qualifySegmentTime">Duration (min)</label>
-                    <input type="number" id="qualifyNextSegmentDuration" value="15" min="1" max="60"
-                        class="input-field text-blue-300 font-bold flex-1">
+                <!-- Up next queue -->
+                <div class="bg-navy-900 md:rounded-xl md:border md:border-gray-700 p-3 mt-0 md:mt-3 flex-1">
+                    <div class="text-[9px] text-gray-500 uppercase font-bold tracking-widest mb-2" data-i18n="qualifyUpNext">Up Next</div>
+                    <div id="qualifyNextList" class="space-y-1.5"></div>
                 </div>
-                <button onclick="window.startNextQSegment()"
-                    class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl transition active:scale-95 flex items-center justify-center gap-2">
-                    <i class="fas fa-flag"></i> <span data-i18n="qualifyAdvance">Start Next Stage</span>
-                </button>
             </div>
-        </div>
-        <!-- Bottom dock -->
-        <div class="bg-navy-900 border-t border-gray-800 p-3 shrink-0">
-            <button id="qualifyNextBtn" onclick="window.qualifyNextRun()"
-                class="w-full bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-black py-5 rounded-2xl text-xl shadow-[0_0_20px_rgba(59,130,246,0.4)] transition active:scale-95 flex items-center justify-center gap-3">
-                <i class="fas fa-forward"></i>
-                <span data-i18n="qualifyNextRun">Next Run</span>
-            </button>
+
+            <!-- RIGHT PANEL — results + next segment + next run -->
+            <div class="flex-1 flex flex-col overflow-y-auto md:overflow-hidden gap-3">
+                <!-- Results table -->
+                <div class="bg-navy-900 border border-gray-700 rounded-xl overflow-hidden flex-1 flex flex-col min-h-0">
+                    <div class="px-3 py-2 bg-navy-800 border-b border-gray-700 flex items-center justify-between shrink-0">
+                        <span class="text-[10px] text-gray-400 uppercase font-bold tracking-wide" data-i18n="qualifyStageResults">Results</span>
+                        <span id="qualifyAdvancedCount" class="hidden text-[10px] text-green-400 font-bold"></span>
+                    </div>
+                    <div id="qualifyStageResults" class="divide-y divide-gray-800/60 overflow-y-auto flex-1"></div>
+                </div>
+                <!-- Next segment panel -->
+                <div id="qualifyNextSegmentPanel" class="hidden bg-blue-950/80 border border-blue-500/50 rounded-xl p-4 space-y-3 shrink-0">
+                    <div class="text-sm text-blue-300 font-bold" data-i18n="qualifyAdvance">Advance to Next Stage</div>
+                    <div class="flex items-center gap-3">
+                        <label class="text-[10px] text-gray-400 shrink-0" data-i18n="qualifySegmentTime">Duration (min)</label>
+                        <input type="number" id="qualifyNextSegmentDuration" value="15" min="1" max="60"
+                            class="input-field text-blue-300 font-bold flex-1">
+                    </div>
+                    <button onclick="window.startNextQSegment()"
+                        class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl transition active:scale-95 flex items-center justify-center gap-2">
+                        <i class="fas fa-flag"></i> <span data-i18n="qualifyAdvance">Start Next Stage</span>
+                    </button>
+                </div>
+                <!-- Next Run button -->
+                <div class="bg-navy-900 border-t md:border-t-0 border-gray-800 p-3 shrink-0">
+                    <button id="qualifyNextBtn" onclick="window.qualifyNextRun()"
+                        class="w-full bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-black py-5 rounded-2xl text-xl shadow-[0_0_20px_rgba(59,130,246,0.4)] transition active:scale-95 flex items-center justify-center gap-3">
+                        <i class="fas fa-forward"></i>
+                        <span data-i18n="qualifyNextRun">Next Run</span>
+                    </button>
+                </div>
+            </div>
+
         </div>
     </div>
 
