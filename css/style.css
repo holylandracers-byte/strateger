@@ -638,6 +638,30 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
     }
 }
 
+/* Tablet landscape: force 2-column full-width setup layout */
+@media (min-width: 600px) and (max-width: 1199px) and (orientation: landscape) {
+    #setupScreen > div.max-w-6xl {
+        max-width: 100% !important;
+        padding-left: 12px !important;
+        padding-right: 12px !important;
+    }
+    #setupScreen > div.max-w-6xl > div.md\:grid {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 12px !important;
+    }
+    /* Tighter vertical spacing to fit in landscape viewport */
+    #setupScreen .collapsible-section {
+        padding: 8px 10px !important;
+    }
+    #setupScreen .collapse-body {
+        margin-top: 6px !important;
+    }
+    body {
+        padding-bottom: calc(40px + var(--safe-bottom));
+    }
+}
+
 /* Offline indicator */
 .offline-banner {
     position: fixed;

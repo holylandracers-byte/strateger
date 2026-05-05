@@ -27,11 +27,16 @@ document.addEventListener('DOMContentLoaded', () => {
         else document.body.style.background = savedBg || '';
     }
 
-    if (typeof window.ensureMinimumDrivers === 'function') {
-        window.ensureMinimumDrivers(2);
-    } else if (typeof window.addDriverField === 'function') {
-        window.addDriverField();
-        window.addDriverField();
+    // Init driver group UI (loads saved pool, pre-selects all, populates driversList)
+    if (typeof window.initDriverGroupUI === 'function') {
+        window.initDriverGroupUI();
+    } else {
+        if (typeof window.ensureMinimumDrivers === 'function') {
+            window.ensureMinimumDrivers(2);
+        } else if (typeof window.addDriverField === 'function') {
+            window.addDriverField();
+            window.addDriverField();
+        }
     }
 
     if (typeof window.initVenueLocationPicker === 'function') {
@@ -2987,53 +2992,11 @@ window.updateProUI = function() {
 // ==========================================
 
 window._onboardStep = 0;
-const ONBOARD_STEPS = [
-    { emoji: '🏁', title: 'onboardTitle1', text: 'onboardDesc1' },
-    { emoji: '👥', title: 'onboardTitle2', text: 'onboardDesc2' },
-    { emoji: '📊', title: 'onboardTitle3', text: 'onboardDesc3' },
-    { emoji: '🚀', title: 'onboardTitle4', text: 'onboardDesc4' }
-];
-
 window.startOnboarding = function() {
     if (localStorage.getItem('strateger_onboarded') === 'true') return;
     const savedRaceModal = document.getElementById('savedRaceModal');
     if (savedRaceModal && !savedRaceModal.classList.contains('hidden')) return;
-    window._onboardStep = 0;
-    window._renderOnboardStep();
     document.getElementById('onboardingOverlay').classList.remove('hidden');
-};
-
-window._renderOnboardStep = function() {
-    const step = ONBOARD_STEPS[window._onboardStep];
-    const t = window.t || ((k) => k);
-    
-    document.getElementById('onboardEmoji').innerText = step.emoji;
-    document.getElementById('onboardTitle').innerText = t(step.title);
-    document.getElementById('onboardText').innerText = t(step.text);
-    
-    // Update dots
-    const dots = document.getElementById('onboardDots');
-    if (dots) {
-        dots.innerHTML = ONBOARD_STEPS.map((_, i) => 
-            `<span class="w-2 h-2 rounded-full ${i === window._onboardStep ? 'bg-ice' : 'bg-gray-600'}"></span>`
-        ).join('');
-    }
-    
-    // Update button text
-    const nextBtn = document.getElementById('onboardNextBtn');
-    if (nextBtn) {
-        const isLast = window._onboardStep === ONBOARD_STEPS.length - 1;
-        nextBtn.innerText = isLast ? t('onboardDone') : t('onboardNext');
-    }
-};
-
-window.nextOnboardStep = function() {
-    window._onboardStep++;
-    if (window._onboardStep >= ONBOARD_STEPS.length) {
-        window.skipOnboarding();
-        return;
-    }
-    window._renderOnboardStep();
 };
 
 window.skipOnboarding = function() {

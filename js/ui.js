@@ -2,6 +2,183 @@
 // 🎨 UI MANAGER (Updated Visuals)
 // ==========================================
 
+// ==========================================
+// 👥 DRIVER GROUP SYSTEM (per DeviceID)
+// ==========================================
+
+const _DRIVER_POOL_KEY = 'strateger_driver_pool';
+
+window.getDriverPool = function() {
+    const deviceId = window.getDeviceId();
+    try {
+        const all = JSON.parse(localStorage.getItem(_DRIVER_POOL_KEY) || '{}');
+        return all[deviceId] || [];
+    } catch(e) { return []; }
+};
+
+window.saveDriverPool = function(pool) {
+    const deviceId = window.getDeviceId();
+    try {
+        const all = JSON.parse(localStorage.getItem(_DRIVER_POOL_KEY) || '{}');
+        all[deviceId] = pool;
+        localStorage.setItem(_DRIVER_POOL_KEY, JSON.stringify(all));
+    } catch(e) {}
+};
+
+window.addDriverToPool = function(name) {
+    if (!name || !name.trim()) return;
+    const pool = window.getDriverPool();
+    const trimmed = name.trim();
+    if (!pool.find(d => d.name.toLowerCase() === trimmed.toLowerCase())) {
+        pool.push({ name: trimmed, color: window._nextDriverColor() });
+        window.saveDriverPool(pool);
+    }
+    window.renderDriverGroupUI();
+};
+
+window.removeDriverFromPool = function(name) {
+    const pool = window.getDriverPool().filter(d => d.name !== name);
+    window.saveDriverPool(pool);
+    window.renderDriverGroupUI();
+};
+
+window._nextDriverColor = function() {
+    const PALETTE = ['#22d3ee','#a3e635','#f97316','#ef4444','#8b5cf6','#ec4899','#facc15','#34d399'];
+    const pool = window.getDriverPool();
+    return PALETTE[pool.length % PALETTE.length];
+};
+
+window._driverGroupParticipants = new Set(); // names selected for this race
+
+window.toggleDriverParticipant = function(name) {
+    if (window._driverGroupParticipants.has(name)) {
+        window._driverGroupParticipants.delete(name);
+    } else {
+        window._driverGroupParticipants.add(name);
+    }
+    window.renderDriverGroupUI();
+    window.applyDriverGroupToRace();
+};
+
+window.applyDriverGroupToRace = function(triggerSim = true) {
+    const pool = window.getDriverPool();
+    const selected = pool.filter(d => window._driverGroupParticipants.has(d.name));
+    if (selected.length === 0) return;
+
+    const list = document.getElementById('driversList');
+    if (!list) return;
+    list.innerHTML = '';
+
+    const numSquads = parseInt(document.getElementById('numSquads')?.value) || 0;
+    selected.forEach((d, i) => {
+        const squadIdx = numSquads > 0 ? i % numSquads : 0;
+        window.createDriverInput(d.name, i === 0, squadIdx);
+        const rows = list.querySelectorAll('.driver-row');
+        const lastRow = rows[rows.length - 1];
+        if (lastRow) {
+            const colorPicker = lastRow.querySelector('.driver-color-picker');
+            if (colorPicker) colorPicker.value = d.color || '#22d3ee';
+        }
+    });
+    if (triggerSim && typeof window.runSim === 'function') window.runSim();
+};
+
+window.renderDriverGroupUI = function() {
+    const container = document.getElementById('driverGroupContainer');
+    if (!container) return;
+    const pool = window.getDriverPool();
+    const t = window.t || (k => k);
+
+    container.innerHTML = '';
+
+    // Pool tags
+    const tagsDiv = document.createElement('div');
+    tagsDiv.className = 'flex flex-wrap gap-1.5 mb-2';
+
+    pool.forEach(d => {
+        const active = window._driverGroupParticipants.has(d.name);
+        const tag = document.createElement('button');
+        tag.type = 'button';
+        tag.className = `driver-group-tag flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold border transition select-none ${
+            active
+                ? 'text-navy-950 border-transparent shadow-md'
+                : 'bg-navy-950 text-gray-400 border-gray-600 hover:border-gray-400'
+        }`;
+        if (active) {
+            tag.style.background = d.color;
+            tag.style.borderColor = d.color;
+        }
+        tag.title = active ? t('clickToRemoveFromRace') : t('clickToAddToRace');
+        tag.onclick = () => window.toggleDriverParticipant(d.name);
+
+        const nameSpan = document.createElement('span');
+        nameSpan.textContent = d.name;
+
+        const removeBtn = document.createElement('span');
+        removeBtn.innerHTML = '&times;';
+        removeBtn.className = 'ml-0.5 opacity-60 hover:opacity-100 cursor-pointer text-[10px]';
+        removeBtn.title = t('removeFromGroup');
+        removeBtn.onclick = (e) => { e.stopPropagation(); window.removeDriverFromPool(d.name); };
+
+        tag.appendChild(nameSpan);
+        tag.appendChild(removeBtn);
+        tagsDiv.appendChild(tag);
+    });
+
+    container.appendChild(tagsDiv);
+
+    // Add driver input
+    const addRow = document.createElement('div');
+    addRow.className = 'flex gap-1.5';
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.id = 'driverGroupInput';
+    input.placeholder = t('addDriverToGroup') || 'Add driver…';
+    input.className = 'driver-input flex-1 bg-navy-950 border border-gray-600 focus:border-ice text-white text-xs rounded px-2 py-1.5 outline-none';
+    input.onkeydown = (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); window._commitDriverGroupInput(); }
+    };
+
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.textContent = '+';
+    addBtn.className = 'bg-blue-600 hover:bg-blue-500 text-white font-bold px-3 py-1.5 rounded text-sm transition';
+    addBtn.onclick = () => window._commitDriverGroupInput();
+
+    addRow.appendChild(input);
+    addRow.appendChild(addBtn);
+    container.appendChild(addRow);
+
+    if (pool.length > 0) {
+        const hint = document.createElement('p');
+        hint.className = 'text-[10px] text-gray-500 mt-1.5';
+        hint.textContent = t('driverGroupHint') || 'Tap a driver to include/exclude from this race';
+        container.appendChild(hint);
+    }
+};
+
+window._commitDriverGroupInput = function() {
+    const input = document.getElementById('driverGroupInput');
+    if (!input || !input.value.trim()) return;
+    const name = input.value.trim();
+    window.addDriverToPool(name);
+    window._driverGroupParticipants.add(name);
+    input.value = '';
+    window.applyDriverGroupToRace(true);
+};
+
+window.initDriverGroupUI = function() {
+    const pool = window.getDriverPool();
+    // Pre-select all pool members if no selection yet
+    if (window._driverGroupParticipants.size === 0 && pool.length > 0) {
+        pool.forEach(d => window._driverGroupParticipants.add(d.name));
+    }
+    window.renderDriverGroupUI();
+    // Don't call runSim here — main.js calls it right after init
+    if (pool.length > 0) window.applyDriverGroupToRace(false);
+};
+
 window.toggleConfigPanel = function(event) {
     if (event && event.target.closest('.starter-indicator, .starter-radio, .driver-input')) return;
     const panel = document.getElementById('configPanel');
@@ -2042,4 +2219,113 @@ window.refreshVenueWeather = async function(rawLocation, selectedPlace) {
             if (typeof window.renderPreview === 'function') window.renderPreview();
         }
     }
+};
+
+// ==========================================
+// 🖐️ DASHBOARD PANEL DRAG-TO-REORDER
+// ==========================================
+
+window.initDashboardDrag = function() {
+    const area = document.getElementById('dashboardScrollArea');
+    if (!area) return;
+
+    // Mark direct child panels as draggable
+    const markDraggable = () => {
+        Array.from(area.children).forEach(child => {
+            if (child.id === 'strategyToastContainer') return; // skip toasts
+            if (child.tagName === 'DIV' && !child.classList.contains('drag-handle-added')) {
+                child.setAttribute('draggable', 'true');
+                child.classList.add('drag-handle-added');
+                child.style.cursor = 'grab';
+                child.addEventListener('dragstart', _onDashPanelDragStart);
+                child.addEventListener('dragover', _onDashPanelDragOver);
+                child.addEventListener('drop', _onDashPanelDrop);
+                child.addEventListener('dragend', _onDashPanelDragEnd);
+
+                // Touch support via long-press
+                let touchTimer;
+                child.addEventListener('touchstart', (e) => {
+                    touchTimer = setTimeout(() => {
+                        window._dashDragging = child;
+                        child.style.opacity = '0.5';
+                    }, 400);
+                }, { passive: true });
+                child.addEventListener('touchmove', (e) => {
+                    if (!window._dashDragging) return;
+                    const t = e.touches[0];
+                    const target = document.elementFromPoint(t.clientX, t.clientY)?.closest('#dashboardScrollArea > div');
+                    if (target && target !== window._dashDragging) {
+                        const rect = target.getBoundingClientRect();
+                        const after = t.clientY > rect.top + rect.height / 2;
+                        area.insertBefore(window._dashDragging, after ? target.nextSibling : target);
+                    }
+                }, { passive: true });
+                child.addEventListener('touchend', () => {
+                    clearTimeout(touchTimer);
+                    if (window._dashDragging) {
+                        window._dashDragging.style.opacity = '';
+                        window._dashDragging = null;
+                        window._saveDashboardOrder();
+                    }
+                });
+            }
+        });
+    };
+
+    markDraggable();
+    // Re-mark when panels appear (live timing etc)
+    new MutationObserver(markDraggable).observe(area, { childList: true });
+
+    // Restore saved order
+    window._restoreDashboardOrder();
+};
+
+window._dashDragSrc = null;
+
+function _onDashPanelDragStart(e) {
+    window._dashDragSrc = this;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', this.id || '');
+    setTimeout(() => { if (this) this.style.opacity = '0.4'; }, 0);
+}
+
+function _onDashPanelDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    const area = document.getElementById('dashboardScrollArea');
+    if (!area || !window._dashDragSrc || this === window._dashDragSrc) return;
+    const rect = this.getBoundingClientRect();
+    const after = e.clientY > rect.top + rect.height / 2;
+    area.insertBefore(window._dashDragSrc, after ? this.nextSibling : this);
+}
+
+function _onDashPanelDrop(e) {
+    e.stopPropagation();
+    e.preventDefault();
+    window._saveDashboardOrder();
+}
+
+function _onDashPanelDragEnd() {
+    if (this) this.style.opacity = '';
+    window._dashDragSrc = null;
+}
+
+window._saveDashboardOrder = function() {
+    const area = document.getElementById('dashboardScrollArea');
+    if (!area) return;
+    const order = Array.from(area.children).map(c => c.id || c.className.slice(0, 30));
+    try { localStorage.setItem('strateger_dashboard_order', JSON.stringify(order)); } catch(e) {}
+};
+
+window._restoreDashboardOrder = function() {
+    const area = document.getElementById('dashboardScrollArea');
+    if (!area) return;
+    try {
+        const order = JSON.parse(localStorage.getItem('strateger_dashboard_order') || 'null');
+        if (!Array.isArray(order) || order.length === 0) return;
+        order.forEach(id => {
+            const el = id ? document.getElementById(id) : null;
+            if (el && el.parentElement === area) area.appendChild(el);
+        });
+    } catch(e) {}
 };

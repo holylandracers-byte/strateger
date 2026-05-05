@@ -764,9 +764,12 @@ window.initRace = function() {
     window.state.targetStintMs = window.state.stintTargets[0] || (window.config.maxStint * 60000);
 
     document.getElementById('setupScreen').classList.add('hidden');
-    document.getElementById('previewScreen').classList.add('hidden'); 
+    document.getElementById('previewScreen').classList.add('hidden');
     document.getElementById('raceDashboard').classList.remove('hidden');
-    
+
+    // Init draggable panels after dashboard is visible
+    if (typeof window.initDashboardDrag === 'function') window.initDashboardDrag();
+
     // === Show chat button only in race dashboard ===
     const chatBtn = document.getElementById('chatToggleBtn');
     if (chatBtn) chatBtn.style.display = 'block';

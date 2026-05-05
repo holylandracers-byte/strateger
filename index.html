@@ -116,11 +116,12 @@
         </div>
 
         <!-- Team name — always visible in header center -->
-        <div class="flex-1 flex justify-center px-2 min-w-0">
-            <input type="text" id="teamNameInput" placeholder="Team Name"
-                   oninput="window.applyTeamName && window.applyTeamName(this.value)"
+        <div class="flex-1 flex flex-col items-center justify-center px-2 min-w-0">
+            <span class="text-[8px] text-gray-600 uppercase tracking-widest font-bold leading-none mb-0.5 select-none" data-i18n="lblTeamName">Team Name</span>
+            <input type="text" id="teamNameInput"
                    data-i18n="lblTeamName"
-                   class="bg-transparent border-b border-gray-600 focus:border-ice text-white text-sm font-bold text-center placeholder-gray-600 outline-none max-w-[160px] w-full transition py-0.5" autocomplete="off">
+                   oninput="window.applyTeamName && window.applyTeamName(this.value)"
+                   class="bg-transparent border-b border-gray-600 focus:border-ice text-white text-sm font-bold text-center placeholder-gray-500 outline-none max-w-[180px] w-full transition py-0.5" autocomplete="off">
         </div>
 
         <div class="flex items-center gap-1 sm:gap-2">
@@ -132,7 +133,7 @@
             <div id="liveIndicator" class="hidden sync-dot live-dot"></div>
 
             <button id="proStatusBtn" onclick="window.showProStatus()" class="hidden bg-gradient-to-r from-gold/20 to-amber-500/20 hover:from-gold/30 hover:to-amber-500/30 text-gold text-[10px] font-bold px-2 py-1 rounded-full border border-gold/50 transition flex items-center gap-1">
-                ⭐ <span data-i18n="proBadge">PRO</span>
+                <span data-i18n="proBadge">⭐</span>
             </button>
 
             <button id="shareRaceBtn" onclick="window.copyInviteLink()" class="hidden bg-gradient-to-r from-ice to-blue-500 hover:from-blue-400 hover:to-ice text-navy-950 text-xs font-bold px-3 py-1.5 rounded-full shadow-lg transition transform active:scale-95 flex items-center gap-1">
@@ -181,13 +182,7 @@
 
         <!-- Hero / Branding -->
         <div class="max-w-6xl mx-auto text-center mb-3 pt-1">
-            <div class="header-title font-bold tracking-widest text-white ml-2 sm:block">
-                STRAT<span class="text-ice">EGER</span>
-            </div>
-            <div class="text-[9px] text-gray-400 uppercase tracking-wider ml-2 sm:block" data-i18n="appSubtitle">
-                Endurance Race Strategy Manager
-            </div>
-            <div id="googleActionsBar" class="hidden grid grid-cols-4 gap-2 mt-3">
+            <div id="googleActionsBar" class="hidden grid grid-cols-4 gap-2 mt-1">
                 <button onclick="window.showTeamEmailModal()" class="bg-navy-800 border border-gray-700 hover:border-ice p-2 rounded flex flex-col items-center gap-1 group">
                     <i class="fas fa-envelope text-ice group-hover:scale-110 transition"></i>
                     <span class="text-[9px] text-gray-400">Email</span>
@@ -440,7 +435,7 @@
                     <div class="border-b border-gray-600 pb-2">
                         <div class="flex items-center gap-2">
                             <span class="text-sm text-gray-300" data-i18n="lblSquads">Squads</span>
-                            <span class="text-[9px] bg-gold/20 text-gold px-1 py-0.5 rounded font-bold border border-gold/30">⭐ PRO</span>
+                            <span class="text-[9px] bg-gold/20 text-gold px-1 py-0.5 rounded font-bold border border-gold/30">⭐</span>
                             <select id="numSquads" onchange="window.toggleSquadsInput(); window.runSim()" class="bg-navy-900 text-white text-sm border border-gray-600 rounded px-2 py-1 cursor-pointer">
                                 <option value="0" data-i18n-opt="squadOff">Off</option>
                                 <option value="2" data-i18n-opt="squad2">2 Squads</option>
@@ -468,7 +463,7 @@
                         <label class="flex items-center gap-2 cursor-pointer">
                             <input type="checkbox" id="trackFuel" onchange="window.toggleFuelInput(); window.runSim()" class="accent-fuel w-4 h-4">
                             <span class="text-sm text-gray-300" data-i18n="lblFuel">Fuel Constraints</span>
-                            <span class="text-[9px] bg-gold/20 text-gold px-1 py-0.5 rounded font-bold border border-gold/30">⭐ PRO</span>
+                            <span class="text-[9px] bg-gold/20 text-gold px-1 py-0.5 rounded font-bold border border-gold/30">⭐</span>
                         </label>
                         <span class="text-xs text-gray-500 ml-6 block mt-1" data-i18n="lblFuelHint">Track fuel tank capacity</span>
                     </div>
@@ -526,11 +521,15 @@
                     <i class="fas fa-chevron-down ml-auto text-xs text-gray-500 collapse-icon transition-transform"></i>
                 </h2>
                 <div class="collapse-body">
-                <div id="driversList" class="space-y-2"></div>
-                <div class="flex gap-2 mt-2">
-                    <button onclick="window.addDriverField(); window.runSim()" class="btn-small bg-blue-600 w-full" data-i18n="addDriver">+ Add</button>
-                    <button onclick="window.removeDriverField(); window.runSim()" class="btn-small bg-red-600 w-12">-</button>
-                </div>
+                    <!-- Driver Group Manager -->
+                    <div id="driverGroupContainer" class="mb-3"></div>
+
+                    <!-- Race driver list (populated from group) -->
+                    <div id="driversList" class="space-y-2"></div>
+                    <div class="flex gap-2 mt-2">
+                        <button onclick="window.addDriverField(); window.runSim()" class="btn-small bg-blue-600 w-full" data-i18n="addDriver">+ Add</button>
+                        <button onclick="window.removeDriverField(); window.runSim()" class="btn-small bg-red-600 w-12">-</button>
+                    </div>
                 </div>
             </div>
 
@@ -1584,23 +1583,24 @@
     </div>
 
     <!-- ONBOARDING OVERLAY -->
-    <div id="onboardingOverlay" class="hidden fixed inset-0 bg-black/80 z-[140] flex items-center justify-center p-4">
-        <div class="bg-navy-900 border border-ice/50 rounded-xl p-6 max-w-sm w-full shadow-2xl text-center">
-            <div id="onboardStep" class="transition-opacity duration-300">
-                <div id="onboardEmoji" class="text-5xl mb-3">🏁</div>
-                <h2 id="onboardTitle" class="text-xl font-bold text-ice mb-2" data-i18n="onboardWelcome">Welcome to Strateger!</h2>
-                <p id="onboardText" class="text-sm text-gray-400 mb-4"></p>
-                <div id="onboardDots" class="flex justify-center gap-2 mb-4">
-                    <span class="w-2 h-2 rounded-full bg-ice"></span>
-                    <span class="w-2 h-2 rounded-full bg-gray-600"></span>
-                    <span class="w-2 h-2 rounded-full bg-gray-600"></span>
-                    <span class="w-2 h-2 rounded-full bg-gray-600"></span>
-                </div>
-            </div>
-            <div class="flex gap-2">
-                <button onclick="window.skipOnboarding()" class="flex-1 bg-navy-800 text-gray-400 py-2 rounded hover:bg-navy-700 transition text-sm" data-i18n="onboardSkip">Skip</button>
-                <button onclick="window.nextOnboardStep()" id="onboardNextBtn" class="flex-1 bg-ice text-navy-950 font-bold py-2 rounded hover:bg-cyan-300 transition text-sm" data-i18n="onboardNext">Next</button>
-            </div>
+    <div id="onboardingOverlay" class="hidden fixed inset-0 bg-black/85 z-[140] flex items-center justify-center p-4">
+        <div class="bg-navy-900 border border-ice/50 rounded-2xl p-6 max-w-sm w-full shadow-2xl text-center">
+            <div class="text-5xl mb-3">🏁</div>
+            <h2 class="text-xl font-bold text-ice mb-2" data-i18n="onboardWelcome">Welcome to Strateger!</h2>
+            <p class="text-sm text-gray-400 mb-5" data-i18n="onboardDemoHint">
+                The best way to get started is to run a quick demo race — it takes 30 seconds and shows you exactly how everything works.
+            </p>
+
+            <button onclick="window.skipOnboarding(); window.showDemoConfig();"
+                class="w-full bg-gradient-to-r from-neon to-green-500 hover:from-green-400 hover:to-green-600 text-black font-bold py-3 rounded-xl shadow-lg transition text-base flex items-center justify-center gap-2 mb-3">
+                <i class="fas fa-play-circle"></i>
+                <span data-i18n="onboardRunDemo">Run Demo Race</span>
+            </button>
+
+            <button onclick="window.skipOnboarding()"
+                class="w-full bg-navy-800 hover:bg-navy-700 text-gray-400 py-2 rounded-lg transition text-sm" data-i18n="onboardSkip">
+                I'll explore on my own
+            </button>
         </div>
     </div>
 
