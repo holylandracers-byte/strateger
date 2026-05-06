@@ -391,7 +391,7 @@ window.translations = {
         unitMin: "m", unitHour: "h",
         raceHistory: "Race History", noRaceHistory: "No race history yet. Complete a race to see it here.",
         proBadge: "⭐",
-        addDriverToGroup: "Add driver to group…", driverGroupHint: "Tap a driver to include/exclude from this race", clickToAddToRace: "Add to race", clickToRemoveFromRace: "Remove from race", removeFromGroup: "Remove from group",
+        addDriverToGroup: "Add driver to group…", driverGroupHint: "Tap a driver to include/exclude from this race", clickToAddToRace: "Add to race", clickToRemoveFromRace: "Remove from race", removeFromGroup: "Remove from group", minTwoDrivers: "Minimum 2 drivers required",
         lblTeamName: "Team Name",
     },
     he: {
@@ -524,7 +524,7 @@ window.translations = {
         exportPdf: "ייצוא PDF", exportImage: "שתף כתמונה", exportingPdf: "מייצא PDF...",
         raceHistory: "היסטוריית מירוצים", noRaceHistory: "אין היסטוריית מירוצים. סיים מירוץ כדי לראות אותו כאן.",
         proBadge: "⭐",
-        addDriverToGroup: "הוסף נהג לקבוצה…", driverGroupHint: "לחץ על נהג כדי להוסיף/להסיר מהמירוץ", clickToAddToRace: "הוסף למירוץ", clickToRemoveFromRace: "הסר מהמירוץ", removeFromGroup: "הסר מהקבוצה",
+        addDriverToGroup: "הוסף נהג לקבוצה…", driverGroupHint: "לחץ על נהג כדי להוסיף/להסיר מהמירוץ", clickToAddToRace: "הוסף למירוץ", clickToRemoveFromRace: "הסר מהמירוץ", removeFromGroup: "הסר מהקבוצה", minTwoDrivers: "נדרשים לפחות 2 נהגים",
         lblTeamName: "שם הקבוצה",
     },
     fr: {
@@ -2023,6 +2023,7 @@ window.finalDiscardRace = function() {
         weatherTooFarOut: 'Date too far — forecast unavailable',
         minUnit: 'min',
         confirmFinish: 'CONFIRM RACE FINISH',
+        minTwoDrivers: 'Minimum 2 drivers required',
     };
 
     const localized = {
@@ -2035,6 +2036,7 @@ window.finalDiscardRace = function() {
             lblTrackLocation: '📍 מיקום המסלול', lblLocationPlaceholder: 'חפש מעגל או עיר...', lblLocationHint: 'משמש לתחזית מזג אוויר', lblShowWeather: 'הצג מזג אוויר בתצוגת סטינטים',
             locationWeather: 'מיקום ומזג אוויר', weatherTooFarOut: 'תאריך רחוק מדי — תחזית לא זמינה', minUnit: 'דק\'',
             confirmFinish: 'אישור סיום מירוץ',
+            minTwoDrivers: 'נדרשים לפחות 2 נהגים',
         },
         fr: {
             demoRaceLength: 'Duree de course', demoLenSprint: 'Sprint 30 min', demoLenClub: 'Club 1 h', demoLenEndurance: 'Endurance 3 h', demoLenPro: 'Pro 6 h', demoLenCustom: 'Personnalise...',

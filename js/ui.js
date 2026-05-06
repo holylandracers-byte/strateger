@@ -25,6 +25,32 @@ window.saveDriverPool = function(pool) {
     } catch(e) {}
 };
 
+// ── minimum-2 guarantee ──────────────────────────────────────────────────────
+// The race always has at least 2 active driver slots.
+// Slot 0 = Driver 1 placeholder, Slot 1 = Driver 2 placeholder.
+// As real drivers are added to the pool they replace placeholders in order.
+// A slot is only removed when the pool contains ≥ 3 real (non-placeholder) drivers.
+
+window._PLACEHOLDER_NAMES = function() {
+    const t = window.t || (k => k);
+    return [`${t('ltDriver')} 1`, `${t('ltDriver')} 2`];
+};
+
+// Return the effective active driver list: pool drivers + placeholder fill to min 2
+window._effectiveDriverSlots = function() {
+    const pool = window.getDriverPool();
+    const selected = pool.filter(d => window._driverGroupParticipants.has(d.name));
+    const ph = window._PLACEHOLDER_NAMES();
+    const slots = [...selected];
+    // Pad with placeholders until we have at least 2 slots
+    let phIdx = 0;
+    while (slots.length < 2) {
+        slots.push({ name: ph[phIdx], color: '#4b5563', _placeholder: true });
+        phIdx++;
+    }
+    return slots;
+};
+
 window.addDriverToPool = function(name) {
     if (!name || !name.trim()) return;
     const pool = window.getDriverPool();
@@ -33,29 +59,17 @@ window.addDriverToPool = function(name) {
         pool.push({ name: trimmed, color: window._nextDriverColor() });
         window.saveDriverPool(pool);
     }
+    // Auto-select newly added driver
+    window._driverGroupParticipants.add(trimmed);
     window.renderDriverGroupUI();
 };
 
 window.removeDriverFromPool = function(name) {
-    const pool = window.getDriverPool().filter(d => d.name !== name);
-    window.saveDriverPool(pool);
-    // Purge from participant selection so stale entries never appear in preview
+    const newPool = window.getDriverPool().filter(d => d.name !== name);
+    window.saveDriverPool(newPool);
     window._driverGroupParticipants.delete(name);
     window.renderDriverGroupUI();
-    // Re-apply race drivers and re-run simulation to flush stale preview data
-    if (pool.length > 0) {
-        window.applyDriverGroupToRace(true);
-    } else {
-        // No drivers left: clear the driversList and reset previewData
-        const list = document.getElementById('driversList');
-        if (list) list.innerHTML = '';
-        window.previewData = null;
-        const scheduleEl = document.getElementById('driverScheduleList');
-        if (scheduleEl) scheduleEl.innerHTML = '';
-        const summaryEl = document.getElementById('strategySummary');
-        if (summaryEl) summaryEl.innerHTML = '';
-        if (typeof window.runSim === 'function') window.runSim();
-    }
+    window.applyDriverGroupToRace(true);
 };
 
 window._nextDriverColor = function() {
@@ -64,10 +78,13 @@ window._nextDriverColor = function() {
     return PALETTE[pool.length % PALETTE.length];
 };
 
-window._driverGroupParticipants = new Set(); // names selected for this race
+window._driverGroupParticipants = new Set();
 
 window.toggleDriverParticipant = function(name) {
     if (window._driverGroupParticipants.has(name)) {
+        // Block deselect if it would leave fewer than 2 active slots
+        const currentSelected = window.getDriverPool().filter(d => window._driverGroupParticipants.has(d.name));
+        if (currentSelected.length <= 2) return; // already at minimum — do nothing
         window._driverGroupParticipants.delete(name);
     } else {
         window._driverGroupParticipants.add(name);
@@ -77,20 +94,14 @@ window.toggleDriverParticipant = function(name) {
 };
 
 window.applyDriverGroupToRace = function(triggerSim = true) {
-    const pool = window.getDriverPool();
-    const selected = pool.filter(d => window._driverGroupParticipants.has(d.name));
-
     const list = document.getElementById('driversList');
     if (!list) return;
 
-    // Always wipe existing rows — placeholder "Driver 1/2" rows must never coexist with pool drivers
-    list.innerHTML = '';
-
-    // If nothing selected yet, leave list empty and bail
-    if (selected.length === 0) return;
-
+    const slots = window._effectiveDriverSlots();
     const numSquads = parseInt(document.getElementById('numSquads')?.value) || 0;
-    selected.forEach((d, i) => {
+
+    list.innerHTML = '';
+    slots.forEach((d, i) => {
         const squadIdx = numSquads > 0 ? i % numSquads : 0;
         window.createDriverInput(d.name, i === 0, squadIdx);
         const rows = list.querySelectorAll('.driver-row');
@@ -98,8 +109,15 @@ window.applyDriverGroupToRace = function(triggerSim = true) {
         if (lastRow) {
             const colorPicker = lastRow.querySelector('.driver-color-picker');
             if (colorPicker) colorPicker.value = d.color || '#22d3ee';
+            if (d._placeholder) {
+                lastRow.classList.add('opacity-50');
+                // Mark the input so updateDriversFromUI can skip it
+                const inp = lastRow.querySelector('.driver-input');
+                if (inp) inp.dataset.placeholder = 'true';
+            }
         }
     });
+
     if (triggerSim && typeof window.runSim === 'function') window.runSim();
 };
 
@@ -115,21 +133,28 @@ window.renderDriverGroupUI = function() {
     const tagsDiv = document.createElement('div');
     tagsDiv.className = 'flex flex-wrap gap-1.5 mb-2';
 
+    const selectedCount = pool.filter(d => window._driverGroupParticipants.has(d.name)).length;
+
     pool.forEach(d => {
         const active = window._driverGroupParticipants.has(d.name);
+        // A selected driver is locked (cannot deselect) when doing so would drop below 2
+        const locked = active && selectedCount <= 2;
+
         const tag = document.createElement('button');
         tag.type = 'button';
         tag.className = `driver-group-tag flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold border transition select-none ${
             active
                 ? 'text-navy-950 border-transparent shadow-md'
                 : 'bg-navy-950 text-gray-400 border-gray-600 hover:border-gray-400'
-        }`;
+        }${locked ? ' cursor-default' : ''}`;
         if (active) {
             tag.style.background = d.color;
             tag.style.borderColor = d.color;
         }
-        tag.title = active ? t('clickToRemoveFromRace') : t('clickToAddToRace');
-        tag.onclick = () => window.toggleDriverParticipant(d.name);
+        tag.title = locked
+            ? (t('minTwoDrivers') || 'Minimum 2 drivers required')
+            : active ? t('clickToRemoveFromRace') : t('clickToAddToRace');
+        tag.onclick = () => locked ? null : window.toggleDriverParticipant(d.name);
 
         const nameSpan = document.createElement('span');
         nameSpan.textContent = d.name;
@@ -195,8 +220,8 @@ window.initDriverGroupUI = function() {
         pool.forEach(d => window._driverGroupParticipants.add(d.name));
     }
     window.renderDriverGroupUI();
-    // Don't call runSim here — main.js calls it right after init
-    if (pool.length > 0) window.applyDriverGroupToRace(false);
+    // Always apply — even empty pool produces 2 placeholder slots
+    window.applyDriverGroupToRace(false);
 };
 
 window.toggleConfigPanel = function(event) {
@@ -732,7 +757,7 @@ window.renderPreview = function() {
         const borderWarning = outOfBounds ? 'ring-1 ring-red-500' : '';
 
         return `
-            <div class="flex items-center gap-1 bg-navy-950 p-2 rounded border-l-4 mb-1 text-xs cursor-grab active:cursor-grabbing ${borderWarning}"
+            <div class="flex items-center gap-1 bg-navy-950 rounded border-l-4 mb-1 text-xs cursor-grab active:cursor-grabbing ${borderWarning}"
                  style="border-left-color: ${stint.color}"
                  draggable="${window._isTouchDevice ? 'false' : 'true'}" data-index="${index}"
                  ondragstart="window.handleDragStart(event)"
@@ -791,19 +816,20 @@ window.renderPreview = function() {
         summary[s.driverName].stints += 1;
     });
 
+    // Compact inline chip: color dot + name + time + stints count
     const summaryHtml = Object.entries(summary).map(([name, data]) => {
-        return `
-            <div class="bg-navy-950 p-1.5 sm:p-2 rounded border-t-2 flex flex-col items-center justify-center text-center shadow-md h-14 sm:h-20" style="border-color: ${data.color}">
-                <div class="text-[9px] sm:text-[10px] font-bold text-gray-300 truncate w-full">${name}</div>
-                <div class="text-xs sm:text-sm text-white font-mono font-bold my-0.5 sm:my-1">${window.formatTimeHMS(data.time)}</div>
-                <div class="text-[8px] sm:text-[9px] text-gray-500 bg-navy-900 px-1.5 sm:px-2 rounded-full">${data.stints} ${window.t ? window.t('stints') : 'stints'}</div>
-            </div>
-        `;
+        const timeStr = window.formatTimeHMS(data.time);
+        return `<span class="inline-flex items-center gap-1 bg-navy-950 border rounded-full px-2 py-0.5 shrink-0 whitespace-nowrap text-[9px]" style="border-color:${data.color}40">
+            <span class="w-1.5 h-1.5 rounded-full shrink-0" style="background:${data.color}"></span>
+            <span class="font-bold text-gray-200 max-w-[5rem] truncate">${name}</span>
+            <span class="font-mono text-white">${timeStr}</span>
+            <span class="text-gray-600">${data.stints}×</span>
+        </span>`;
     }).join('');
-    
+
     const summaryEl = document.getElementById('strategySummary');
     if (summaryEl) {
-        summaryEl.className = "grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-1.5 sm:gap-2 p-2";
+        summaryEl.className = "flex items-center gap-1.5 flex-wrap";
         summaryEl.innerHTML = summaryHtml;
     }
 };
@@ -851,7 +877,7 @@ window.updateStats = function(currentStintMs) {
         
         // Driver % share
         const pct = grandTotal > 0 ? Math.round((displayTotalTime / grandTotal) * 100) : 0;
-        const pctBar = `<div class="w-full bg-gray-800 rounded-full h-1 mt-0.5"><div class="h-1 rounded-full" style="width:${pct}%;background:${d.color || '#3b82f6'}"></div></div>`;
+        const pctBar = `<div class="w-full bg-gray-800 rounded-full h-1.5 mt-0.5"><div class="h-1.5 rounded-full" style="width:${pct}%;background:${d.color || '#3b82f6'}"></div></div>`;
         
         mainRow.innerHTML = `
             <td class="text-center cursor-pointer p-2 hover:text-ice" onclick="window.toggleLog(${i})">${d.isExpanded ? '▲' : '▼'}</td>

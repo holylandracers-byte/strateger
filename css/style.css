@@ -1338,9 +1338,9 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 }
 
 /* ---- Responsive: preview screen on wide screen ---- */
-@media (min-width: 640px) {
-    #previewScreen > div {
-        max-width: 600px;
+@media (min-width: 640px) and (orientation: portrait) {
+    #previewInner {
+        max-width: 560px;
         margin: 0 auto;
     }
     #liveAdjustModal > .adjust-sheet {
@@ -1352,6 +1352,49 @@ input[type="date"]::-webkit-calendar-picker-indicator {
         border-bottom: 1px solid rgba(34,211,238,0.25);
         margin-bottom: 32px;
     }
+}
+
+/* ── Preview screen: landscape adaptive layout ── */
+/* Portrait / narrow: stack vertically (default, no action bar change needed) */
+
+/* Landscape (width > height): spread horizontally */
+@media (orientation: landscape) {
+    #previewScreen {
+        overflow: hidden !important;
+    }
+    #previewInner {
+        flex-direction: row !important;
+        max-width: 100% !important;
+        gap: 8px;
+    }
+    #previewMainCol {
+        flex: 1 1 0;
+        min-width: 0;
+    }
+    /* Action bar becomes a narrow right column */
+    #previewActionBar {
+        flex-direction: column !important;
+        width: 120px !important;
+        flex-shrink: 0;
+    }
+    #previewActionBar button {
+        width: 100%;
+        justify-content: center;
+    }
+    /* Driver strip stays horizontal */
+    #previewDriverStrip {
+        flex-wrap: nowrap;
+    }
+}
+
+/* ── Driver % bar in stats table: slightly taller ── */
+#statsTable .h-1 {
+    height: 4px !important;
+}
+
+/* ── Stint progress bar in race dashboard: taller current indicator ── */
+#raceInfoPanel .driver-data .h-1 {
+    height: 4px !important;
 }
 
 /* Onboarding overlay */

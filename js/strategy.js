@@ -3,17 +3,19 @@
 // ==========================================
 
 window.updateDriversFromUI = function() {
-    const inputs = document.querySelectorAll('.driver-input');
-    const radios = document.querySelectorAll('.starter-radio');
+    // Exclude placeholder rows injected by the minimum-driver framework
+    const realRows = Array.from(document.querySelectorAll('#driversList .driver-row')).filter(row => !row.classList.contains('opacity-50'));
+    const inputs = realRows.map(row => row.querySelector('.driver-input')).filter(Boolean);
+    const radios = realRows.map(row => row.querySelector('.starter-radio')).filter(Boolean);
     if (!inputs.length) return;
 
     let starterIdx = 0;
     radios.forEach((r, i) => { if (r.checked) starterIdx = i; });
 
     const SQUAD_LABELS = ['A','B','C','D'];
-    const squadValues = document.querySelectorAll('.squad-value');
-    const colorPickers = document.querySelectorAll('.driver-color-picker');
-    window.drivers = Array.from(inputs).map((input, i) => {
+    const squadValues = realRows.map(row => row.querySelector('.squad-value')).filter(Boolean);
+    const colorPickers = realRows.map(row => row.querySelector('.driver-color-picker')).filter(Boolean);
+    window.drivers = inputs.map((input, i) => {
         const existingColor = colorPickers[i]?.value ||
             ((window.drivers && window.drivers[i]) ? window.drivers[i].color : `hsl(${(i * 360 / inputs.length)}, 70%, 50%)`);
         const sqIdx = parseInt(squadValues[i]?.value) || 0;
