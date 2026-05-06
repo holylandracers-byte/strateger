@@ -2288,6 +2288,78 @@ window.refreshVenueWeather = async function(rawLocation, selectedPlace) {
 };
 
 // ==========================================
+// ↕ DASHBOARD PANEL RESIZER (drag divider)
+// ==========================================
+
+window.initDashPanelResizer = function() {
+    const resizer = document.getElementById('dashPanelResizer');
+    const wrapper = document.getElementById('racePanelsWrapper');
+    const infoPanel = document.getElementById('raceInfoPanel');
+    if (!resizer || !wrapper || !infoPanel) return;
+
+    const STORAGE_KEY = 'strateger_dash_split';
+    const isLandscape = () => window.matchMedia('(min-width:768px) and (orientation:landscape)').matches;
+
+    // Restore saved split
+    const saved = parseFloat(localStorage.getItem(STORAGE_KEY));
+    const initialPct = (saved >= 15 && saved <= 85) ? saved : 60;
+    document.documentElement.style.setProperty('--dash-info-pct', initialPct + '%');
+
+    let dragging = false;
+    let startPos = 0;
+    let startPct = initialPct;
+
+    function getPct(e) {
+        const rect = wrapper.getBoundingClientRect();
+        if (isLandscape()) {
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            return Math.min(85, Math.max(15, ((clientX - rect.left) / rect.width) * 100));
+        } else {
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return Math.min(85, Math.max(15, ((clientY - rect.top) / rect.height) * 100));
+        }
+    }
+
+    function applyPct(pct) {
+        document.documentElement.style.setProperty('--dash-info-pct', pct + '%');
+        try { localStorage.setItem(STORAGE_KEY, pct); } catch(e) {}
+    }
+
+    function onStart(e) {
+        dragging = true;
+        resizer.classList.add('active');
+        startPct = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dash-info-pct')) || 60;
+        e.preventDefault();
+    }
+    function onMove(e) {
+        if (!dragging) return;
+        applyPct(getPct(e));
+        e.preventDefault();
+    }
+    function onEnd() {
+        if (!dragging) return;
+        dragging = false;
+        resizer.classList.remove('active');
+    }
+
+    resizer.addEventListener('mousedown', onStart);
+    resizer.addEventListener('touchstart', onStart, { passive: false });
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('touchmove', onMove, { passive: false });
+    window.addEventListener('mouseup', onEnd);
+    window.addEventListener('touchend', onEnd);
+
+    // Double-tap / double-click to reset to 50/50
+    let lastTap = 0;
+    resizer.addEventListener('dblclick', () => applyPct(50));
+    resizer.addEventListener('touchend', () => {
+        const now = Date.now();
+        if (now - lastTap < 350) applyPct(50);
+        lastTap = now;
+    });
+};
+
+// ==========================================
 // 🖐️ DASHBOARD PANEL DRAG-TO-REORDER
 // ==========================================
 
@@ -2805,6 +2877,33 @@ window._togglePreviewAdjustPanel = function() {
 // ==========================================
 // ⚡ QUICK MODE PRESETS (hero pill strip)
 // ==========================================
+
+window._heroCollapsed = localStorage.getItem('strateger_hero_collapsed') === 'true';
+
+window.toggleHero = function() {
+    window._heroCollapsed = !window._heroCollapsed;
+    localStorage.setItem('strateger_hero_collapsed', window._heroCollapsed ? 'true' : 'false');
+    window._applyHeroState();
+};
+
+window._applyHeroState = function() {
+    const body = document.getElementById('heroBody');
+    const sub = document.getElementById('heroSubText');
+    const icon = document.getElementById('heroToggleIcon');
+    const label = document.getElementById('heroToggleLabel');
+    const t = window.t || (k => k);
+    if (window._heroCollapsed) {
+        body && body.classList.add('hidden');
+        sub && sub.classList.add('hidden');
+        icon && icon.classList.replace('fa-chevron-up', 'fa-chevron-down');
+        if (label) label.setAttribute('data-i18n', 'heroExpand'), label.textContent = t('heroExpand') || 'Setup';
+    } else {
+        body && body.classList.remove('hidden');
+        sub && sub.classList.remove('hidden');
+        icon && icon.classList.replace('fa-chevron-down', 'fa-chevron-up');
+        if (label) label.setAttribute('data-i18n', 'heroCollapse'), label.textContent = t('heroCollapse') || 'Hide';
+    }
+};
 
 window.setQuickMode = function(mode) {
     const presets = {

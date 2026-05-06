@@ -27,6 +27,9 @@ document.addEventListener('DOMContentLoaded', () => {
         else document.body.style.background = savedBg || '';
     }
 
+    // Apply hero collapse state
+    if (typeof window._applyHeroState === 'function') window._applyHeroState();
+
     // Init driver group UI (loads saved pool, pre-selects all, populates driversList)
     if (typeof window.initDriverGroupUI === 'function') {
         window.initDriverGroupUI();
@@ -1110,147 +1113,123 @@ window.renderFrame = function() {
 
 function updateRemainingStrategyLogic(raceRemainingMs) {
     const panel = document.getElementById('remainingStintsPanel');
-    const textField = document.getElementById('remStintsText');
+    const pillsEl = document.getElementById('remStintsText');
     const timeField = document.getElementById('remTimeText');
     const t = window.t || ((k) => k);
-    
+
     if (!panel || window.role !== 'host') return;
     panel.classList.remove('hidden');
 
-    // קריאת הגדרות - המרה למספרים למניעת שגיאות
     const maxStintVal = parseFloat(window.config.maxStint) || 60;
-    const minStintVal = parseFloat(window.config.minStint) || 15; // הערך שהגדרת (למשל 30)
-    
+    const minStintVal = parseFloat(window.config.minStint) || 15;
     const maxStintMs = maxStintVal * 60000;
     const minStintMs = minStintVal * 60000;
     const pitTimeMs = (parseFloat(window.config.minPitSec) || 60) * 1000;
-    
-    // חישוב סטינטים עתידיים
+
     const stopsDone = window.state.pitCount;
     const totalStopsRequired = parseInt(window.config.reqStops) || 0;
     const futureStints = Math.max(0, totalStopsRequired - stopsDone);
-    
-    // חישוב זמן נטו שנשאר לנהיגה בעתיד
+
     const now = window.getSyncedNow();
     const currentStintElapsed = (now - window.state.stintStart) + (window.state.stintOffset || 0);
     const targetStintMs = window.state.targetStintMs || maxStintMs;
-    // הזמן שנשאר לנהוג בסטינט הנוכחי עד ליעד שלו
     const timeToFinishCurrent = Math.max(0, targetStintMs - currentStintElapsed);
-    
     const futurePitTimeLoss = futureStints * pitTimeMs;
-    // ה"בריכה" של הזמן שנשאר לחלק בין הסטינטים העתידיים
     const futurePoolMs = raceRemainingMs - timeToFinishCurrent - futurePitTimeLoss;
 
+    timeField.innerText = window.formatTimeHMS(raceRemainingMs);
+
+    // Helper: build one stint pill
+    function pill(label, cls, title) {
+        return `<span class="stint-outlook-pill ${cls}" title="${title || ''}">${label}</span>`;
+    }
+
     if (raceRemainingMs <= 0) {
-        textField.innerText = t('finalLap');
+        pillsEl.innerHTML = pill(t('finalLap'), 'pill-final');
         return;
     }
 
-    // אם אין יותר עצירות (אנחנו בסטינט האחרון)
     if (futureStints === 0) {
-        textField.innerHTML = `<span class="text-ice font-bold">${t('finalLap')} / ${t('rest')}</span>`;
-        timeField.innerText = window.formatTimeHMS(raceRemainingMs);
+        pillsEl.innerHTML = pill(t('finalLap'), 'pill-final') + pill(t('rest'), 'pill-rest');
         return;
     }
 
-    // --- חישוב החלוקה ---
     const minTotalTime = futureStints * minStintMs;
     const maxTotalTime = futureStints * maxStintMs;
     const bufferMs = futurePoolMs - minTotalTime;
-    const bufferMin = Math.floor(bufferMs / 60000);
-
-    let html = "";
-
-    // כותרת קטנה: כמה סטינטים נשארו
-    html += `<div class="text-[10px] text-gray-400 mb-1 border-b border-gray-700 pb-1">
-                ${t('future')}: <span class="text-white font-bold">${futureStints} ${t('stopsHeader')}</span>
-             </div>`;
 
     if (bufferMs < 0) {
-        // המצב שתיארת: גם אם ניסע מינימום בכל הסטינטים, חסר זמן!
         const missingMin = Math.abs(Math.ceil(bufferMs / 60000));
-        html += `<span class="text-red-500 font-bold animate-pulse">${t('impossible')} (-${missingMin}m)</span>`;
-    } 
-    else if (futurePoolMs > maxTotalTime) {
-        // נשאר יותר מדי זמן -> חייבים להוסיף עצירה
-        const extraMin = Math.ceil((futurePoolMs - maxTotalTime) / 60000);
-        html += `<span class="text-red-500 font-bold">${t('addStop')} (+${extraMin}m)</span>`;
-    } 
-    else {
-        // === Balanced split strategy ===
-        // Calculate equal distribution across future stints
-        const avgMs = futurePoolMs / futureStints;
-        const avgMin = Math.floor(avgMs / 60000);
-        
-        // Check if equal distribution is valid (within min/max bounds)
-        const equalValid = avgMs >= minStintMs && avgMs <= maxStintMs;
-        
-        // Greedy approach: fill as many stints as possible at max, leave rest
-        const fullMaxStints = Math.floor(futurePoolMs / maxStintMs);
-        const greedyCount = Math.min(futureStints - 1, fullMaxStints);
-        const timeUsedByMax = greedyCount * maxStintMs;
-        const greedyRemainingTime = futurePoolMs - timeUsedByMax;
-        const greedyRestCount = futureStints - greedyCount;
-        const greedyRestAvgMs = greedyRemainingTime / greedyRestCount;
-        const greedyRestAvgMin = Math.floor(greedyRestAvgMs / 60000);
-        
-        // Use greedy only if the rest stints are >= min; otherwise fall back to balanced
-        const greedyValid = greedyRestAvgMs >= minStintMs;
-        
-        if (greedyValid && greedyCount > 0) {
-            // Greedy approach works — show MAX stints + rest
-            if (greedyCount > 0) {
-                html += `${greedyCount}x <span class="text-neon font-bold">${t('max')}</span> `;
-            }
-            
-            if (greedyRestCount > 0) {
-                let color = "text-white";
-                let note = `(${t('rest')})`;
-                
-                if (greedyRestAvgMin > (maxStintVal - 5)) {
-                    color = "text-neon"; 
-                } else {
-                    color = "text-yellow-400"; 
-                }
-
-                html += `+ ${greedyRestCount}x <span class="${color} font-bold">${greedyRestAvgMin}m ${note}</span>`;
-            }
-        } else {
-            // Greedy would create invalid stints — use balanced distribution
-            let color = "text-white";
-            let note = `(${t('rest')})`;
-            
-            if (!equalValid && avgMs < minStintMs) {
-                color = "text-red-500 animate-pulse font-bold";
-                note = `(< ${minStintVal}m!)`;
-            } else if (!equalValid && avgMs > maxStintMs) {
-                color = "text-red-500 font-bold";
-                note = `(> ${maxStintVal}m!)`;
-            } else if (avgMin > (maxStintVal - 5)) {
-                color = "text-neon";
-            } else if (avgMin >= minStintVal) {
-                color = "text-yellow-400";
-            }
-            
-            html += `${futureStints}x <span class="${color} font-bold">~${avgMin}m ${note}</span>`;
-        }
-
-        // Buffer line: how much "spare" above minimum
-        html += `<div class="text-[9px] text-gray-500 mt-1">
-                    ${t('buffer')}: ${bufferMin}m
-                 </div>`;
-        // Margin: show how far each stint is from the min/max limits
-        const marginFromMax = Math.floor((maxStintMs - avgMs) / 60000);
-        const marginFromMin = Math.floor((avgMs - minStintMs) / 60000);
-        if (marginFromMax >= 0 && marginFromMin >= 0) {
-            html += `<div class="text-[9px] text-gray-500">
-                        ±${Math.min(marginFromMax, marginFromMin)}m ${t('buffer')}
-                     </div>`;
-        }
+        pillsEl.innerHTML = pill(`${t('impossible')} −${missingMin}m`, 'pill-impossible');
+        return;
     }
-    
-    textField.innerHTML = html;
-    timeField.innerText = window.formatTimeHMS(raceRemainingMs);
+
+    if (futurePoolMs > maxTotalTime) {
+        const extraMin = Math.ceil((futurePoolMs - maxTotalTime) / 60000);
+        pillsEl.innerHTML = pill(`${t('addStop')} +${extraMin}m`, 'pill-add-stop');
+        return;
+    }
+
+    // --- Build per-stint breakdown ---
+    const avgMs = futurePoolMs / futureStints;
+    const avgMin = Math.round(avgMs / 60000);
+
+    // Greedy: as many MAX stints as possible, rest get the leftover
+    const fullMaxStints = Math.floor(futurePoolMs / maxStintMs);
+    const greedyCount = Math.min(futureStints - 1, fullMaxStints);
+    const greedyRemainingMs = futurePoolMs - greedyCount * maxStintMs;
+    const greedyRestCount = futureStints - greedyCount;
+    const greedyRestAvgMs = greedyRemainingMs / greedyRestCount;
+    const greedyValid = greedyRestAvgMs >= minStintMs;
+
+    // Build an array of N stint descriptors
+    const stintDescriptors = [];
+    if (greedyValid && greedyCount > 0) {
+        for (let i = 0; i < greedyCount; i++) stintDescriptors.push({ type: 'max', ms: maxStintMs });
+        const restMin = Math.round(greedyRestAvgMs / 60000);
+        const restNearMax = greedyRestAvgMs >= maxStintMs * 0.9;
+        for (let i = 0; i < greedyRestCount; i++) stintDescriptors.push({ type: restNearMax ? 'max' : 'normal', ms: greedyRestAvgMs, min: restMin });
+    } else {
+        // Balanced — all equal
+        const isNearMax = avgMs >= maxStintMs * 0.9;
+        const isTooShort = avgMs < minStintMs;
+        const isTooLong = avgMs > maxStintMs;
+        const type = isTooShort || isTooLong ? 'impossible' : isNearMax ? 'max' : 'normal';
+        for (let i = 0; i < futureStints; i++) stintDescriptors.push({ type, ms: avgMs, min: avgMin });
+    }
+
+    // Collapse consecutive identical pills into "Nx" groups, then render
+    // Group: [{type, min, count}]
+    const groups = [];
+    stintDescriptors.forEach(s => {
+        const last = groups[groups.length - 1];
+        const key = s.type === 'normal' ? `normal-${s.min}` : s.type;
+        if (last && last.key === key) {
+            last.count++;
+        } else {
+            groups.push({ key, type: s.type, min: s.min, count: 1 });
+        }
+    });
+
+    let phtml = '';
+    groups.forEach(g => {
+        const prefix = g.count > 1 ? `${g.count}× ` : '';
+        if (g.type === 'max') {
+            phtml += pill(`${prefix}${t('max')} (${maxStintVal}m)`, 'pill-max');
+        } else if (g.type === 'normal') {
+            phtml += pill(`${prefix}${g.min}m`, 'pill-normal');
+        } else {
+            phtml += pill(`${prefix}${g.min}m ⚠`, 'pill-impossible');
+        }
+    });
+
+    // Buffer hint
+    const bufferMin = Math.floor(bufferMs / 60000);
+    if (bufferMin > 0) {
+        phtml += `<span class="text-[9px] text-gray-600 self-center ml-1">+${bufferMin}m</span>`;
+    }
+
+    pillsEl.innerHTML = phtml;
 }
 
 window.updatePitModalLogic = function() {
@@ -4173,6 +4152,162 @@ Optimize for:
     .catch(err => {
         console.error('AI Strategy error:', err);
         window.showToast('Could not reach AI service. Using standard strategy.', 'error');
+    });
+};
+
+// ==========================================
+// 📄 RACE RULES PDF — upload, parse, AI strategy
+// ==========================================
+
+window._rulesPdfText = null;
+window._rulesPdfFileName = null;
+
+window.openRulesPdfModal = function() {
+    const modal = document.getElementById('rulesPdfModal');
+    if (modal) modal.classList.remove('hidden');
+};
+
+window.closeRulesPdfModal = function() {
+    const modal = document.getElementById('rulesPdfModal');
+    if (modal) modal.classList.add('hidden');
+};
+
+window.clearRulesPdf = function() {
+    window._rulesPdfText = null;
+    window._rulesPdfFileName = null;
+    const preview = document.getElementById('rulesPdfPreview');
+    const badge = document.getElementById('rulesPdfBadge');
+    const analyzeBtn = document.getElementById('rulesPdfAnalyzeBtn');
+    const input = document.getElementById('rulesPdfInput');
+    if (preview) preview.classList.add('hidden');
+    if (badge) badge.classList.add('hidden');
+    if (analyzeBtn) analyzeBtn.disabled = true;
+    if (input) input.value = '';
+};
+
+window.handleRulesPdfUpload = async function(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const statusEl = document.getElementById('rulesPdfStatus');
+    const previewEl = document.getElementById('rulesPdfPreview');
+    const nameEl = document.getElementById('rulesPdfName');
+    const pagesEl = document.getElementById('rulesPdfPages');
+    const analyzeBtn = document.getElementById('rulesPdfAnalyzeBtn');
+
+    if (statusEl) { statusEl.textContent = (window.t && window.t('rulesPdfReading')) || 'Reading PDF…'; statusEl.classList.remove('hidden'); }
+
+    try {
+        if (!window.pdfjsLib) throw new Error('PDF.js not loaded');
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        const numPages = pdf.numPages;
+        let fullText = '';
+        for (let p = 1; p <= Math.min(numPages, 60); p++) {
+            const page = await pdf.getPage(p);
+            const content = await page.getTextContent();
+            fullText += content.items.map(i => i.str).join(' ') + '\n';
+        }
+        window._rulesPdfText = fullText.slice(0, 12000); // cap to avoid token overflow
+        window._rulesPdfFileName = file.name;
+
+        if (nameEl) nameEl.textContent = file.name;
+        if (pagesEl) pagesEl.textContent = `${numPages} ${(window.t && window.t('pages')) || 'pages'}`;
+        if (previewEl) previewEl.classList.remove('hidden');
+        if (statusEl) statusEl.classList.add('hidden');
+        if (analyzeBtn) analyzeBtn.disabled = false;
+        const badge = document.getElementById('rulesPdfBadge');
+        if (badge) badge.classList.remove('hidden');
+    } catch (err) {
+        console.error('PDF read error:', err);
+        if (statusEl) { statusEl.textContent = (window.t && window.t('rulesPdfError')) || 'Could not read PDF.'; }
+    }
+};
+
+window.analyzeRulesPdf = function() {
+    if (!window._rulesPdfText) return;
+    if (!window.checkProFeature('aiStrategy')) { window.showProGate('AI Strategy'); return; }
+
+    window.closeRulesPdfModal();
+    if (typeof window.runSim === 'function') window.runSim();
+
+    const lang = window.currentLang || 'en';
+    const config = window.config || {};
+    const drivers = (window.drivers || []).map(d => d.name);
+    const t = window.t || (k => k);
+
+    const prompt = `You are a motorsport race strategy expert. A user has uploaded their race regulations PDF. Read the rules carefully and suggest the best race strategy.
+
+RACE RULES DOCUMENT:
+---
+${window._rulesPdfText}
+---
+
+CURRENT RACE SETUP:
+- Duration: ${config.duration || '?'} hours
+- Required pit stops: ${config.reqStops || '?'}
+- Min stint: ${config.minStint || '?'} min, Max stint: ${config.maxStint || '?'} min
+- Pit stop time: ${config.pitTime || '?'} seconds
+- Drivers: ${drivers.join(', ') || 'Not set'}
+${(window.previewData?.timeline || []).filter(t => t.type === 'stint').length > 0
+    ? 'Current strategy: ' + (window.previewData.timeline || []).filter(t => t.type === 'stint').map((s,i) => `Stint ${i+1}: ${s.driverName} ${Math.round(s.duration/60000)}min`).join(', ')
+    : ''}
+
+IMPORTANT: Respond in language "${lang}". Give:
+1. Key rules that affect strategy (mandatory stops, min/max driver times, pit window restrictions, etc.)
+2. Your strategic recommendation based on the rules
+3. Optional: a JSON block for stint adjustments in this exact format:
+{"stints": [{"driverIdx": 0, "durationMin": 45}, ...]}
+
+Be concise and practical.`;
+
+    window.showToast('📄 Analyzing race rules…', 'info', 8000);
+
+    fetch(window.APP_CONFIG.API_BASE + '/.netlify/functions/ai-strategy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (!data.success || !data.content?.[0]?.text) {
+            window.showToast(t('rulesPdfAiError') || 'AI returned no result.', 'warning');
+            return;
+        }
+        const text = data.content[0].text.trim();
+
+        // Try to extract and apply JSON stint block
+        const jsonMatch = text.match(/\{[\s\S]*"stints"[\s\S]*\}/);
+        if (jsonMatch && window.previewData?.timeline) {
+            try {
+                const aiResult = JSON.parse(jsonMatch[0]);
+                if (aiResult.stints && Array.isArray(aiResult.stints)) {
+                    const stints = window.previewData.timeline.filter(t => t.type === 'stint');
+                    aiResult.stints.forEach((s, i) => {
+                        if (stints[i]) {
+                            if (s.driverIdx != null && window.drivers[s.driverIdx]) {
+                                const d = window.drivers[s.driverIdx];
+                                stints[i].driverIdx = s.driverIdx;
+                                stints[i].driverName = d.name;
+                                stints[i].color = d.color;
+                            }
+                            if (s.durationMin > 0) stints[i].duration = s.durationMin * 60000;
+                        }
+                    });
+                    window.renderPreview && window.renderPreview();
+                }
+            } catch (e) { /* no valid stint JSON — fine */ }
+        }
+
+        // Show full analysis in a toast + console
+        const shortAdvice = text.replace(/\{[\s\S]*\}/g, '').trim().slice(0, 300);
+        window.showToast(`📄 ${shortAdvice}`, 'success', 12000);
+        console.log('[Rules PDF AI]', text);
+    })
+    .catch(err => {
+        console.error('Rules PDF AI error:', err);
+        window.showToast(t('rulesPdfAiError') || 'Could not reach AI service.', 'error');
     });
 };
 

@@ -137,11 +137,24 @@ body:has(#qualifyingDashboard:not(.hidden)) {
 
 /* raceDashboard fills the space below the sticky header.
    Use a CSS var so it's easy to tune per device. */
-:root { --header-h: 46px; }
+:root { --header-h: 46px; --dash-info-pct: 60%; --dash-ctrl-pct: 40%; }
 
 #raceDashboard:not(.hidden) {
     height: calc(100dvh - var(--header-h));
     min-height: 0;
+}
+
+/* Portrait: raceInfoPanel height driven by CSS var (set by resizer JS) */
+#racePanelsWrapper { display: flex !important; flex-direction: column !important; }
+#raceInfoPanel {
+    flex: 0 0 var(--dash-info-pct, 60%) !important;
+    min-height: 80px !important;
+    overflow-y: auto !important;
+}
+#raceControlDock {
+    flex: 1 1 0 !important;
+    min-height: 80px !important;
+    overflow-y: auto !important;
 }
 
 /* ==================== TABLET LANDSCAPE: 2-COLUMN RACE DASHBOARD ==================== */
@@ -152,18 +165,21 @@ body:has(#qualifyingDashboard:not(.hidden)) {
         flex-direction: row !important;
         align-items: stretch;
     }
-    /* Left: info panel — 2/3 width, scrollable */
+    /* Left: info panel — flex-based width (default 60%), scrollable */
     #raceInfoPanel {
-        flex: 2 1 0 !important;
-        border-right: 1px solid rgba(55,65,81,0.6);
+        flex: 0 0 var(--dash-info-pct, 60%) !important;
+        min-width: 200px !important;
+        max-width: calc(100% - 240px) !important;
+        border-right: none !important;
         padding: 12px !important;
         gap: 10px !important;
     }
-    /* Right: control dock — fixed right column, never scrolls */
+    /* Right: control dock — takes remaining width, never scrolls */
     #raceControlDock {
-        flex: 0 0 340px !important;
+        flex: 1 1 0 !important;
+        min-width: 200px !important;
         border-top: none !important;
-        border-left: 1px solid rgba(55,65,81,0.6);
+        border-left: 1px solid rgba(55,65,81,0.6) !important;
         display: flex !important;
         flex-direction: column !important;
         justify-content: flex-end !important;
@@ -296,7 +312,7 @@ header {
     }
 
     #setupScreen, #raceDashboard {
-        max-width: 600px;
+        /* max-width: 600px; */
         margin: 0 auto;
         background-color: var(--navy-950);
         box-shadow: 0 0 50px rgba(0, 0, 0, 0.8);
@@ -308,7 +324,7 @@ header {
     }
 
     header {
-        max-width: 600px;
+        /* max-width: 600px; */
         margin: 0 auto;
     }
 }
@@ -382,6 +398,65 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 /* Drag & Drop Stint Reorder */
 .draggable-source { opacity: 0.4; }
 .drag-over { outline: 2px dashed var(--ice); outline-offset: -2px; border-radius: 4px; }
+
+/* ==================== DASHBOARD PANEL RESIZER ==================== */
+/* Portrait (default): horizontal bar between top and bottom panels */
+.dash-resizer {
+    width: 100%;
+    height: 10px;
+    cursor: row-resize;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    z-index: 30;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
+    flex-shrink: 0;
+}
+.dash-resizer-handle {
+    width: 40px;
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(255,255,255,0.15);
+    transition: background 0.2s;
+}
+.dash-resizer:hover .dash-resizer-handle,
+.dash-resizer.active .dash-resizer-handle {
+    background: rgba(34,211,238,0.6);
+}
+/* Landscape: becomes a vertical divider */
+@media (min-width: 768px) and (orientation: landscape) {
+    .dash-resizer {
+        width: 10px;
+        height: 100%;
+        cursor: col-resize;
+        flex-direction: column;
+    }
+    .dash-resizer-handle {
+        width: 4px;
+        height: 40px;
+    }
+}
+
+/* ==================== STRATEGY OUTLOOK PILLS ==================== */
+.stint-outlook-pill {
+    display: inline-flex;
+    align-items: center;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 999px;
+    white-space: nowrap;
+    line-height: 1.4;
+}
+.pill-max      { background: rgba(163,230,53,0.15); color: #a3e635; border: 1px solid rgba(163,230,53,0.4); }
+.pill-normal   { background: rgba(255,255,255,0.06); color: #e5e7eb; border: 1px solid rgba(255,255,255,0.15); }
+.pill-final    { background: rgba(34,211,238,0.12); color: #22d3ee; border: 1px solid rgba(34,211,238,0.3); }
+.pill-rest     { background: rgba(107,114,128,0.15); color: #9ca3af; border: 1px solid rgba(107,114,128,0.3); }
+.pill-impossible { background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.4); animation: pulse 1.5s infinite; }
+.pill-add-stop   { background: rgba(239,68,68,0.12); color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
 
 /* ==================== DRIVER COLOR PICKER ==================== */
 .driver-color-picker {

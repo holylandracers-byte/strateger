@@ -390,9 +390,17 @@ window.translations = {
         demoSelectFeatures: "Select Pro features to test", demoLiveTimingDesc: "Simulated 20-team leaderboard", demoRainLabel: "Rain Simulation", demoRainDesc: "Random rain events with pace changes", demoPenaltyDesc: "Random penalties & time additions", demoTiresLabel: "Tire Degradation", demoTiresDesc: "Lap times increase over stint", demoSquadsLabel: "Squads", demoSquadsDesc: "Driver groups with rotation", demoFuelLabel: "Fuel Management", demoFuelDesc: "Track fuel level & pit for refueling",
         unitMin: "m", unitHour: "h",
         raceHistory: "Race History", noRaceHistory: "No race history yet. Complete a race to see it here.",
-        proBadge: "⭐",
+        proBadge: "PRO",
         addDriverToGroup: "Add driver to group…", driverGroupHint: "Tap a driver to include/exclude from this race", clickToAddToRace: "Add to race", clickToRemoveFromRace: "Remove from race", removeFromGroup: "Remove from group", minTwoDrivers: "Minimum 2 drivers required",
         lblTeamName: "Team Name",
+        heroTitle: "Race Strategy", heroSub: "Plan stints · Manage drivers · Win races",
+        qpSprint: "⚡ Sprint", qpEndurance: "🏁 Endurance", qpQualify: "⏱️ + Qualifying", qpDemo: "🎬 Demo", qpLibrary: "📚 Library",
+        heroCollapse: "Hide", heroExpand: "Setup",
+        rulesPdfBtn: "Upload Race Rules (PDF)", rulesPdfLoaded: "Rules Loaded",
+        rulesPdfModalTitle: "Race Rules PDF", rulesPdfModalSub: "AI will read the rules and suggest the best strategy in your language",
+        rulesPdfDrop: "Click to select PDF", rulesPdfDropHint: "Max ~50 pages recommended",
+        rulesPdfReading: "Reading PDF…", rulesPdfError: "Could not read PDF.", rulesPdfAiError: "AI returned no result.",
+        rulesPdfClear: "Remove", rulesPdfAnalyze: "Analyze & Suggest Strategy", pages: "pages",
     },
     he: {
         ltSearchType: "סנן לפי:", ltTeam: "קבוצה", ltDriver: "נהג", ltKart: "מספר קארט", ltPlaceholder: "הכנס ערך לחיפוש...",
@@ -523,9 +531,17 @@ window.translations = {
         undoPit: "בטל כניסה", undoPitToast: "כניסה לפיטס בוטלה", undoCountdown: "בטל",
         exportPdf: "ייצוא PDF", exportImage: "שתף כתמונה", exportingPdf: "מייצא PDF...",
         raceHistory: "היסטוריית מירוצים", noRaceHistory: "אין היסטוריית מירוצים. סיים מירוץ כדי לראות אותו כאן.",
-        proBadge: "⭐",
+        proBadge: "PRO",
         addDriverToGroup: "הוסף נהג לקבוצה…", driverGroupHint: "לחץ על נהג כדי להוסיף/להסיר מהמירוץ", clickToAddToRace: "הוסף למירוץ", clickToRemoveFromRace: "הסר מהמירוץ", removeFromGroup: "הסר מהקבוצה", minTwoDrivers: "נדרשים לפחות 2 נהגים",
         lblTeamName: "שם הקבוצה",
+        heroTitle: "אסטרטגיית מירוץ", heroSub: "תכנן סטינטים · נהל נהגים · נצח",
+        qpSprint: "⚡ ספרינט", qpEndurance: "🏁 סיבולת", qpQualify: "⏱️ + כשירות", qpDemo: "🎬 דמו", qpLibrary: "📚 ספרייה",
+        heroCollapse: "הסתר", heroExpand: "הגדרות",
+        rulesPdfBtn: "העלה תקנון מירוץ (PDF)", rulesPdfLoaded: "תקנון נטען",
+        rulesPdfModalTitle: "תקנון מירוץ PDF", rulesPdfModalSub: "הבינה המלאכותית תקרא את התקנון ותציע אסטרטגיה מיטבית בשפתך",
+        rulesPdfDrop: "לחץ לבחירת PDF", rulesPdfDropHint: "מומלץ עד ~50 עמודים",
+        rulesPdfReading: "קורא PDF…", rulesPdfError: "לא ניתן לקרוא את ה-PDF.", rulesPdfAiError: "הבינה המלאכותית לא החזירה תוצאה.",
+        rulesPdfClear: "הסר", rulesPdfAnalyze: "נתח והצע אסטרטגיה", pages: "עמודים",
     },
     fr: {
         ltSearchType: "Filtrer par:", ltTeam: "Équipe", ltDriver: "Pilote", ltKart: "Kart n°", ltPlaceholder: "Rechercher...",
@@ -657,6 +673,14 @@ window.translations = {
         soundMute: "Muet", soundUnmute: "Activer le son",
         undoPit: "Annuler Pit", undoPitToast: "Entrée pit annulée", undoCountdown: "Annuler",
         exportPdf: "Exporter PDF", exportImage: "Partager en image", exportingPdf: "Génération PDF...",
+        heroTitle: "Stratégie de Course", heroSub: "Planifier · Gérer · Gagner",
+        qpSprint: "⚡ Sprint", qpEndurance: "🏁 Endurance", qpQualify: "⏱️ + Qualif.", qpDemo: "🎬 Démo", qpLibrary: "📚 Bibliothèque",
+        heroCollapse: "Réduire", heroExpand: "Config",
+        rulesPdfBtn: "Importer le règlement (PDF)", rulesPdfLoaded: "Règlement chargé",
+        rulesPdfModalTitle: "Règlement de Course PDF", rulesPdfModalSub: "L'IA lira le règlement et suggérera la meilleure stratégie dans votre langue",
+        rulesPdfDrop: "Cliquez pour sélectionner un PDF", rulesPdfDropHint: "Max ~50 pages recommandées",
+        rulesPdfReading: "Lecture du PDF…", rulesPdfError: "Impossible de lire le PDF.", rulesPdfAiError: "L'IA n'a retourné aucun résultat.",
+        rulesPdfClear: "Supprimer", rulesPdfAnalyze: "Analyser et suggérer une stratégie", pages: "pages",
     },
     pt: {
         ltSearchType: "Filtrar por:", ltTeam: "Equipe", ltDriver: "Piloto", ltKart: "Kart nº", ltPlaceholder: "Pesquisar...",
@@ -782,6 +806,14 @@ window.translations = {
         undoPit: "Cancelar Box", undoPitToast: "Entrada cancelada", undoCountdown: "Cancelar",
         exportPdf: "Exportar PDF", exportImage: "Compartilhar Imagem", exportingPdf: "Gerando PDF...",
         stintsLeft: "STINTS RESTANTES", future: "FUTURO", addStop: "ADICIONAR PARADA", finalLap: "VOLTA FINAL",
+        heroTitle: "Estratégia de Corrida", heroSub: "Planejar · Gerir · Vencer",
+        qpSprint: "⚡ Sprint", qpEndurance: "🏁 Resistência", qpQualify: "⏱️ + Qualif.", qpDemo: "🎬 Demo", qpLibrary: "📚 Biblioteca",
+        heroCollapse: "Recolher", heroExpand: "Config",
+        rulesPdfBtn: "Carregar Regulamento (PDF)", rulesPdfLoaded: "Regulamento Carregado",
+        rulesPdfModalTitle: "Regulamento PDF", rulesPdfModalSub: "A IA lê as regras e sugere a melhor estratégia no seu idioma",
+        rulesPdfDrop: "Clique para selecionar PDF", rulesPdfDropHint: "Máx ~50 páginas recomendadas",
+        rulesPdfReading: "Lendo PDF…", rulesPdfError: "Não foi possível ler o PDF.", rulesPdfAiError: "IA não retornou resultado.",
+        rulesPdfClear: "Remover", rulesPdfAnalyze: "Analisar e Sugerir Estratégia", pages: "páginas",
     },
     ru: {
         ltSearchType: "Фильтр по:", ltTeam: "Команда", ltDriver: "Пилот", ltKart: "Карт №", ltPlaceholder: "Поиск...",
@@ -910,6 +942,14 @@ window.translations = {
         soundMute: "Без звука", soundUnmute: "Включить звук",
         undoPit: "Отменить пит", undoPitToast: "Вход в пит отменён", undoCountdown: "Отмена",
         exportPdf: "Экспорт PDF", exportImage: "Поделиться картинкой", exportingPdf: "Создание PDF...",
+        heroTitle: "Стратегия гонки", heroSub: "Планировать · Управлять · Побеждать",
+        qpSprint: "⚡ Спринт", qpEndurance: "🏁 Выносливость", qpQualify: "⏱️ + Квали", qpDemo: "🎬 Демо", qpLibrary: "📚 Библиотека",
+        heroCollapse: "Скрыть", heroExpand: "Настройки",
+        rulesPdfBtn: "Загрузить регламент (PDF)", rulesPdfLoaded: "Регламент загружен",
+        rulesPdfModalTitle: "Регламент гонки PDF", rulesPdfModalSub: "ИИ прочитает правила и предложит лучшую стратегию на вашем языке",
+        rulesPdfDrop: "Нажмите для выбора PDF", rulesPdfDropHint: "Рекомендуется до ~50 страниц",
+        rulesPdfReading: "Чтение PDF…", rulesPdfError: "Не удалось прочитать PDF.", rulesPdfAiError: "ИИ не вернул результат.",
+        rulesPdfClear: "Удалить", rulesPdfAnalyze: "Анализировать и предложить стратегию", pages: "страниц",
     },
     ar: {
         ltSearchType: "تصفية حسب:", ltTeam: "الفريق", ltDriver: "السائق", ltKart: "رقم الكارت", ltPlaceholder: "البحث...",
@@ -1038,6 +1078,9 @@ window.translations = {
         soundMute: "كتم الصوت", soundUnmute: "إلغاء كتم الصوت",
         undoPit: "إلغاء الحفرة", undoPitToast: "تم إلغاء دخول الحفرة", undoCountdown: "إلغاء",
         exportPdf: "تصدير PDF", exportImage: "مشاركة كصورة", exportingPdf: "إنشاء PDF...",
+        heroTitle: "استراتيجية السباق", heroSub: "خطط · أدر · انتصر",
+        qpSprint: "⚡ سبرينت", qpEndurance: "🏁 تحمل", qpQualify: "⏱️ + تأهيل", qpDemo: "🎬 عرض", qpLibrary: "📚 مكتبة",
+        heroCollapse: "إخفاء", heroExpand: "إعدادات",
     },
     es: {
         ltSearchType: "Filtrar por:", ltTeam: "Equipo", ltDriver: "Piloto", ltKart: "Kart nº", ltPlaceholder: "Buscar...",
@@ -1166,6 +1209,9 @@ window.translations = {
         soundMute: "Silenciar", soundUnmute: "Activar sonido",
         undoPit: "Deshacer Pit", undoPitToast: "Entrada al pit deshecha", undoCountdown: "Deshacer",
         exportPdf: "Exportar PDF", exportImage: "Compartir Imagen", exportingPdf: "Generando PDF...",
+        heroTitle: "Estrategia de Carrera", heroSub: "Planificar · Gestionar · Ganar",
+        qpSprint: "⚡ Sprint", qpEndurance: "🏁 Resistencia", qpQualify: "⏱️ + Clasif.", qpDemo: "🎬 Demo", qpLibrary: "📚 Biblioteca",
+        heroCollapse: "Ocultar", heroExpand: "Config",
     },
     it: {
         ltSearchType: "Filtra per:", ltTeam: "Squadra", ltDriver: "Pilota", ltKart: "Kart n°", ltPlaceholder: "Ricerca...", previewTitle: "Anteprima strategia", addToCalendar: "Aggiungi al calendario", timeline: "Cronologia", driverSchedule: "Orario piloti", totalTime: "Tempo totale", close: "Chiudi",
@@ -1242,6 +1288,9 @@ window.translations = {
         soundMute: "Muto", soundUnmute: "Riattiva",
         undoPit: "Annulla Pit", undoPitToast: "Ingresso pit annullato", undoCountdown: "Annulla",
         exportPdf: "Esporta PDF", exportImage: "Condividi Immagine", exportingPdf: "Generazione PDF...",
+        heroTitle: "Strategia di Gara", heroSub: "Pianifica · Gestisci · Vinci",
+        qpSprint: "⚡ Sprint", qpEndurance: "🏁 Resistenza", qpQualify: "⏱️ + Qualifiche", qpDemo: "🎬 Demo", qpLibrary: "📚 Libreria",
+        heroCollapse: "Nascondi", heroExpand: "Config",
     },
     ka: {
         ltSearchType: "ფილტრი:", ltTeam: "გუნდი", ltDriver: "მძღოლი", ltKart: "კარტი #", ltPlaceholder: "ძებნა...",
@@ -1368,6 +1417,9 @@ window.translations = {
         soundMute: "დადუმება", soundUnmute: "ხმის ჩართვა",
         undoPit: "გაუქმება", undoPitToast: "პიტი გაუქმებულია", undoCountdown: "გაუქმება",
         exportPdf: "PDF ექსპორტი", exportImage: "გაზიარება სურათად", exportingPdf: "PDF-ის გენერაცია...",
+        heroTitle: "სარბოლო სტრატეგია", heroSub: "დაგეგმე · მართე · გაიმარჯვე",
+        qpSprint: "⚡ სპრინტი", qpEndurance: "🏁 გამძლეობა", qpQualify: "⏱️ + კვალიფ.", qpDemo: "🎬 დემო", qpLibrary: "📚 ბიბლიოთეკა",
+        heroCollapse: "დამალვა", heroExpand: "პარამეტრები",
     },
     de: {
         ltSearchType: "Filter nach:", ltTeam: "Team", ltDriver: "Fahrer", ltKart: "Kart Nr.", ltPlaceholder: "Suchen...", previewTitle: "Strategievorschau", addToCalendar: "Zum Kalender hinzufügen", timeline: "Zeitleiste", driverSchedule: "Fahrerplan", totalTime: "Gesamtzeit", close: "Schließen",
@@ -1444,6 +1496,9 @@ window.translations = {
         soundMute: "Stummschalten", soundUnmute: "Ton einschalten",
         undoPit: "Pit rückgängig", undoPitToast: "Pit-Einfahrt rückgängig", undoCountdown: "Rückgängig",
         exportPdf: "PDF exportieren", exportImage: "Als Bild teilen", exportingPdf: "PDF wird erstellt...",
+        heroTitle: "Rennstrategie", heroSub: "Planen · Verwalten · Gewinnen",
+        qpSprint: "⚡ Sprint", qpEndurance: "🏁 Ausdauer", qpQualify: "⏱️ + Quali", qpDemo: "🎬 Demo", qpLibrary: "📚 Bibliothek",
+        heroCollapse: "Ausblenden", heroExpand: "Setup",
     },
     ja: {
         ltSearchType: "フィルタリング:", ltTeam: "チーム", ltDriver: "ドライバー", ltKart: "カート番号", ltPlaceholder: "検索...", previewTitle: "戦略プレビュー", addToCalendar: "カレンダーに追加", timeline: "タイムライン", driverSchedule: "ドライバースケジュール", totalTime: "総時間", close: "閉じる",
@@ -1520,6 +1575,9 @@ window.translations = {
         soundMute: "ミュート", soundUnmute: "ミュート解除",
         undoPit: "ピット取消", undoPitToast: "ピット入場取消", undoCountdown: "取消",
         exportPdf: "PDFエクスポート", exportImage: "画像で共有", exportingPdf: "PDF生成中...",
+        heroTitle: "レース戦略", heroSub: "計画 · 管理 · 勝利",
+        qpSprint: "⚡ スプリント", qpEndurance: "🏁 耐久", qpQualify: "⏱️ + 予選", qpDemo: "🎬 デモ", qpLibrary: "📚 ライブラリ",
+        heroCollapse: "隠す", heroExpand: "設定",
     },
     el: {
         ltSearchType: "Φιλτράρισμα:", ltTeam: "Ομάδα", ltDriver: "Οδηγός", ltKart: "Καρτ αρ.", ltPlaceholder: "Αναζήτηση...",
@@ -1647,6 +1705,9 @@ window.translations = {
         soundMute: "Σίγαση", soundUnmute: "Ενεργοποίηση ήχου",
         undoPit: "Αναίρεση Pit", undoPitToast: "Είσοδος pit αναιρέθηκε", undoCountdown: "Αναίρεση",
         exportPdf: "Εξαγωγή PDF", exportImage: "Κοινοποίηση Εικόνας", exportingPdf: "Δημιουργία PDF...",
+        heroTitle: "Στρατηγική Αγώνα", heroSub: "Σχεδίασε · Διαχειρίσου · Νίκησε",
+        qpSprint: "⚡ Σπριντ", qpEndurance: "🏁 Αντοχή", qpQualify: "⏱️ + Κατάταξη", qpDemo: "🎬 Δείγμα", qpLibrary: "📚 Βιβλιοθήκη",
+        heroCollapse: "Απόκρυψη", heroExpand: "Ρυθμίσεις",
     }
 };
 
@@ -1713,6 +1774,7 @@ window.setLanguage = function(lang) {
     if (typeof window.updateWeatherUI === 'function') window.updateWeatherUI();
     if (typeof window.renderFrame === 'function') window.renderFrame();
     if (typeof window.renderPreview === 'function' && window.previewData) window.renderPreview();
+    if (typeof window._applyHeroState === 'function') window._applyHeroState();
     // Re-run sim so simResult text is translated to the new language
     if (typeof window.runSim === 'function' && window.drivers && window.drivers.length > 0) window.runSim();
 };
@@ -1741,9 +1803,14 @@ window.saveHostState = function() {
             drivers: [] 
         };
         
-        const driverInputs = document.querySelectorAll('.driver-input');
-        driverInputs.forEach(input => {
-            draft.drivers.push({ name: input.value });
+        const driverRows = document.querySelectorAll('#driversList .driver-row');
+        driverRows.forEach(row => {
+            if (row.classList.contains('opacity-50')) return; // skip placeholders
+            const input = row.querySelector('.driver-input');
+            const name = input ? input.value.trim() : '';
+            if (!name) return; // skip blank
+            const colorPicker = row.querySelector('.driver-color-picker');
+            draft.drivers.push({ name, color: colorPicker ? colorPicker.value : undefined });
         });
 
         localStorage.setItem(window.DRAFT_CONFIG_KEY, JSON.stringify(draft));
@@ -1760,12 +1827,15 @@ window.loadDraftConfig = function() {
         if(draft.minStint) document.getElementById('minStint').value = draft.minStint;
         if(draft.maxStint) document.getElementById('maxStint').value = draft.maxStint;
         
-        if (draft.drivers && draft.drivers.length > 0 && typeof window.createDriverInput === 'function') {
-            const list = document.getElementById('driversList');
-            if(list) list.innerHTML = ''; 
-            draft.drivers.forEach((d, i) => {
-                window.createDriverInput(d.name, i===0, 'A'); 
-            });
+        if (draft.drivers && draft.drivers.length > 0) {
+            const pool = draft.drivers.filter(d => d.name && d.name.trim());
+            if (pool.length > 0 && typeof window.saveDriverPool === 'function') {
+                window.saveDriverPool(pool.map(d => ({ name: d.name.trim(), color: d.color || window._nextDriverColor?.() || '#22d3ee' })));
+                if (window._driverGroupParticipants) {
+                    window._driverGroupParticipants.clear();
+                    pool.forEach(d => window._driverGroupParticipants.add(d.name.trim()));
+                }
+            }
         }
     } catch(e) { console.error("Error loading draft", e); }
 };

@@ -539,7 +539,7 @@ window.runSim = function() {
 
     if (durationResult.error) {
         const resEl = document.getElementById('simResult');
-        if (resEl) {
+        if (resEl && window._sessionMode !== 'qualify') {
             resEl.innerText = "⚠️ " + durationResult.error;
             resEl.classList.remove('hidden');
             resEl.style.borderColor = 'red';
@@ -562,7 +562,7 @@ window.runSim = function() {
 
     if (result.error) {
         const resEl = document.getElementById('simResult');
-        if (resEl) {
+        if (resEl && window._sessionMode !== 'qualify') {
             resEl.innerText = "⚠️ " + result.error;
             resEl.classList.remove('hidden');
             resEl.style.borderColor = 'red';
@@ -639,7 +639,7 @@ window.runSim = function() {
         const isRTL = document.documentElement.dir === 'rtl';
         const um = t('unitMin') || 'm';
         const uh = t('unitHour') || 'h';
-        resEl.classList.remove('hidden');
+        if (window._sessionMode !== 'qualify') resEl.classList.remove('hidden');
         resEl.style.borderColor = '#22d3ee';
         resEl.style.color = '#22d3ee';
         resEl.style.direction = isRTL ? 'rtl' : 'ltr';
@@ -769,8 +769,9 @@ window.initRace = function() {
     document.getElementById('previewScreen').classList.add('hidden');
     document.getElementById('raceDashboard').classList.remove('hidden');
 
-    // Init draggable panels after dashboard is visible
+    // Init draggable panels and resizer after dashboard is visible
     if (typeof window.initDashboardDrag === 'function') window.initDashboardDrag();
+    if (typeof window.initDashPanelResizer === 'function') window.initDashPanelResizer();
 
     // === Show chat button only in race dashboard ===
     const chatBtn = document.getElementById('chatToggleBtn');
