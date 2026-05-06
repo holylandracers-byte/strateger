@@ -2022,6 +2022,7 @@ window.finalDiscardRace = function() {
         locationWeather: 'Location & Weather',
         weatherTooFarOut: 'Date too far — forecast unavailable',
         minUnit: 'min',
+        confirmFinish: 'CONFIRM RACE FINISH',
     };
 
     const localized = {
@@ -2033,6 +2034,7 @@ window.finalDiscardRace = function() {
             raceFinishedClose: 'סגור',
             lblTrackLocation: '📍 מיקום המסלול', lblLocationPlaceholder: 'חפש מעגל או עיר...', lblLocationHint: 'משמש לתחזית מזג אוויר', lblShowWeather: 'הצג מזג אוויר בתצוגת סטינטים',
             locationWeather: 'מיקום ומזג אוויר', weatherTooFarOut: 'תאריך רחוק מדי — תחזית לא זמינה', minUnit: 'דק\'',
+            confirmFinish: 'אישור סיום מירוץ',
         },
         fr: {
             demoRaceLength: 'Duree de course', demoLenSprint: 'Sprint 30 min', demoLenClub: 'Club 1 h', demoLenEndurance: 'Endurance 3 h', demoLenPro: 'Pro 6 h', demoLenCustom: 'Personnalise...',

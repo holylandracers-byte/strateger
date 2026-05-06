@@ -385,7 +385,40 @@ window._qualifyRenderTick = function() {
 
 // ─── Run / segment advancement ────────────────────────────────────────────────
 
-window.qualifyNextRun = function() {
+window._qualifyPitInterval = null;
+window._qualifyPitStartMs = null;
+
+window._qualifyShowPitDock = function(minSec) {
+    const dock = document.getElementById('qualifyPitDock');
+    const timer = document.getElementById('qualifyPitTimer');
+    const exitBtn = document.getElementById('qualifyPitExitBtn');
+    if (!dock) return;
+    dock.classList.remove('hidden');
+    if (exitBtn) exitBtn.disabled = true;
+    window._qualifyPitStartMs = Date.now();
+    clearInterval(window._qualifyPitInterval);
+    window._qualifyPitInterval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - window._qualifyPitStartMs) / 1000);
+        const remaining = Math.max(0, minSec - elapsed);
+        if (timer) {
+            timer.textContent = remaining > 0
+                ? `-${String(Math.floor(remaining / 60)).padStart(2,'0')}:${String(remaining % 60).padStart(2,'0')}`
+                : `+${String(Math.floor(elapsed / 60)).padStart(2,'0')}:${String(elapsed % 60).padStart(2,'0')}`;
+            timer.classList.toggle('text-green-400', remaining === 0);
+            timer.classList.toggle('text-yellow-400', remaining > 0);
+        }
+        if (exitBtn) exitBtn.disabled = remaining > 0;
+    }, 500);
+};
+
+window._qualifyHidePitDock = function() {
+    clearInterval(window._qualifyPitInterval);
+    window._qualifyPitInterval = null;
+    const dock = document.getElementById('qualifyPitDock');
+    if (dock) dock.classList.add('hidden');
+};
+
+window._qualifyExecuteNextRun = function() {
     const qs = window._qualifyState;
     if (!qs) return;
 
@@ -404,6 +437,54 @@ window.qualifyNextRun = function() {
     qs.runStartMs = Date.now();
     window.saveQualifyState();
 
+    if (qs.currentIdx >= qs.schedule.length) {
+        const segPanel = document.getElementById('qualifyNextSegmentPanel');
+        if (segPanel && qs.cfg.segCount > 1 && (qs.currentSegment || 1) < qs.cfg.segCount) {
+            segPanel.classList.remove('hidden');
+            clearInterval(window._qualifyInterval);
+            window._qualifyInterval = null;
+        } else {
+            window.stopQualifying(true);
+        }
+    }
+};
+
+window.qualifyNextRun = function() {
+    const qs = window._qualifyState;
+    if (!qs) return;
+    const pitRule = qs.cfg?.pitRule || 'none';
+    const pitMinSec = parseInt(qs.cfg?.pitMinSec) || 30;
+
+    // If pit dock is already visible, ignore — user must exit via pit exit button
+    const pitDock = document.getElementById('qualifyPitDock');
+    if (pitRule !== 'none' && pitDock && !pitDock.classList.contains('hidden')) return;
+
+    if (pitRule !== 'none') {
+        window._qualifyHidePitDock();
+        window._qualifyShowPitDock(pitMinSec);
+        // Record the run time immediately but delay advancement to pit exit
+        if (qs.currentIdx < qs.schedule.length) {
+            const cur = qs.schedule[qs.currentIdx];
+            const timeMs = Date.now() - qs.runStartMs;
+            qs.log.push({ ...cur, timeMs });
+            if (!window._qualifyTeamStatus[cur.driverName]) {
+                window._qualifyTeamStatus[cur.driverName] = { advanced: false, times: [], color: cur.color };
+            }
+            window._qualifyTeamStatus[cur.driverName].times.push(timeMs);
+            window._qualifyRenderStageResults();
+            qs.currentIdx++;
+            qs.runStartMs = Date.now();
+            window.saveQualifyState();
+        }
+    } else {
+        window._qualifyExecuteNextRun();
+    }
+};
+
+window.qualifyPitExit = function() {
+    window._qualifyHidePitDock();
+    const qs = window._qualifyState;
+    if (!qs) return;
     if (qs.currentIdx >= qs.schedule.length) {
         const segPanel = document.getElementById('qualifyNextSegmentPanel');
         if (segPanel && qs.cfg.segCount > 1 && (qs.currentSegment || 1) < qs.cfg.segCount) {
@@ -458,6 +539,7 @@ window.startNextQSegment = function() {
 
 window.stopQualifying = function(offerRace) {
     if (window._qualifyInterval) { clearInterval(window._qualifyInterval); window._qualifyInterval = null; }
+    window._qualifyHidePitDock();
     window.clearQualifyState();
     const qDash = document.getElementById('qualifyingDashboard');
     if (qDash) { qDash.classList.add('hidden'); qDash.style.display = ''; }

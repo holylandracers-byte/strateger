@@ -808,6 +808,10 @@ window.tick = function() {
         window.showToast('🏁 ' + (window.t ? window.t('raceFinished') : 'RACE FINISHED!'), 'success', 6000);
         window.haptic('success');
 
+        // Show confirm finish button in the bottom dock
+        const finishBtn = document.getElementById('confirmRaceFinishBtn');
+        if (finishBtn) finishBtn.classList.remove('hidden');
+
         // Finalize the last driver's stint BEFORE saving history
         if (typeof window.finalizeLastStint === 'function') window.finalizeLastStint();
 
@@ -821,6 +825,18 @@ window.tick = function() {
         return;
     }
     window.renderFrame();
+};
+
+window.confirmRaceFinish = function() {
+    const btn = document.getElementById('confirmRaceFinishBtn');
+    if (btn) btn.classList.add('hidden');
+    // Show summary if available, otherwise go back to setup
+    if (typeof window.showRaceSummary === 'function') {
+        window.showRaceSummary();
+    } else {
+        document.getElementById('raceDashboard')?.classList.add('hidden');
+        document.getElementById('setupScreen')?.classList.remove('hidden');
+    }
 };
 
 // Stops all running intervals/timers when the race ends
@@ -1494,13 +1510,55 @@ window._executePitEntry = function(isShortStint) {
 
     if (window.pitInterval) clearInterval(window.pitInterval);
     window.pitInterval = setInterval(window.updatePitModalLogic, 100);
-    
+
+    // Show inline pit dock in the bottom dock
+    window._showInlinePitDock();
+
     if (typeof window.broadcast === 'function') window.broadcast();
     window.renderFrame();
 };
 
+window._inlinePitInterval = null;
+
+window._showInlinePitDock = function() {
+    const dock = document.getElementById('pitInlineDock');
+    const timerEl = document.getElementById('pitInlineTimer');
+    const banner = document.getElementById('pitInlineReadyBanner');
+    if (!dock) return;
+    dock.classList.remove('hidden');
+    if (banner) banner.classList.add('hidden');
+    clearInterval(window._inlinePitInterval);
+    window._inlinePitInterval = setInterval(() => {
+        const now = (window.getSyncedNow && typeof window.getSyncedNow === 'function') ? window.getSyncedNow() : Date.now();
+        const elapsed = (now - (window.state.pitStart || now)) / 1000;
+        const required = Math.max(0, parseInt(window.config.minPitTime || window.config.pitTime) || 0);
+        const remaining = Math.max(0, required - elapsed);
+        if (timerEl) {
+            timerEl.textContent = remaining > 0
+                ? `-${String(Math.floor(remaining / 60)).padStart(2,'0')}:${String(Math.floor(remaining % 60)).padStart(2,'0')}`
+                : `+${String(Math.floor(elapsed / 60)).padStart(2,'0')}:${String(Math.floor(elapsed % 60)).padStart(2,'0')}`;
+            timerEl.className = remaining > 0
+                ? 'text-2xl font-mono font-black text-yellow-400'
+                : 'text-2xl font-mono font-black text-green-400';
+        }
+        if (banner && remaining === 0) {
+            banner.textContent = (window.t ? window.t('go') : 'GO! GO! GO!');
+            banner.className = 'flex-1 py-2 rounded-lg text-center font-black text-base tracking-wider bg-green-600/30 text-green-300';
+            banner.classList.remove('hidden');
+        }
+    }, 250);
+};
+
+window._hideInlinePitDock = function() {
+    clearInterval(window._inlinePitInterval);
+    window._inlinePitInterval = null;
+    const dock = document.getElementById('pitInlineDock');
+    if (dock) dock.classList.add('hidden');
+};
+
 window.cancelPitStop = function() {
     if (window.pitInterval) clearInterval(window.pitInterval);
+    window._hideInlinePitDock();
     
     window.state.isInPit = false;
     window.state.pendingPitEntry = false;
@@ -1789,7 +1847,8 @@ window.confirmPitExit = function(autoDetected) {
 
     if (window.pitInterval) clearInterval(window.pitInterval);
     document.getElementById('pitModal').classList.add('hidden');
-    
+    window._hideInlinePitDock();
+
     if (window.drivers[prevDriverIdx]) {
         const driver = window.drivers[prevDriverIdx];
         if (!driver.logs) driver.logs = [];

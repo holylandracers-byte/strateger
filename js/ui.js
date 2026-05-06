@@ -39,7 +39,23 @@ window.addDriverToPool = function(name) {
 window.removeDriverFromPool = function(name) {
     const pool = window.getDriverPool().filter(d => d.name !== name);
     window.saveDriverPool(pool);
+    // Purge from participant selection so stale entries never appear in preview
+    window._driverGroupParticipants.delete(name);
     window.renderDriverGroupUI();
+    // Re-apply race drivers and re-run simulation to flush stale preview data
+    if (pool.length > 0) {
+        window.applyDriverGroupToRace(true);
+    } else {
+        // No drivers left: clear the driversList and reset previewData
+        const list = document.getElementById('driversList');
+        if (list) list.innerHTML = '';
+        window.previewData = null;
+        const scheduleEl = document.getElementById('driverScheduleList');
+        if (scheduleEl) scheduleEl.innerHTML = '';
+        const summaryEl = document.getElementById('strategySummary');
+        if (summaryEl) summaryEl.innerHTML = '';
+        if (typeof window.runSim === 'function') window.runSim();
+    }
 };
 
 window._nextDriverColor = function() {
@@ -63,11 +79,15 @@ window.toggleDriverParticipant = function(name) {
 window.applyDriverGroupToRace = function(triggerSim = true) {
     const pool = window.getDriverPool();
     const selected = pool.filter(d => window._driverGroupParticipants.has(d.name));
-    if (selected.length === 0) return;
 
     const list = document.getElementById('driversList');
     if (!list) return;
+
+    // Always wipe existing rows — placeholder "Driver 1/2" rows must never coexist with pool drivers
     list.innerHTML = '';
+
+    // If nothing selected yet, leave list empty and bail
+    if (selected.length === 0) return;
 
     const numSquads = parseInt(document.getElementById('numSquads')?.value) || 0;
     selected.forEach((d, i) => {
@@ -187,6 +207,27 @@ window.toggleConfigPanel = function(event) {
         panel.classList.toggle('hidden');
         if (arrow) arrow.innerText = panel.classList.contains('hidden') ? '▼' : '▲';
     }
+};
+
+// Smart "Add Driver" button: routes through the pool when one exists,
+// falls back to bare addDriverField when the pool is empty (first-time use).
+window._addDriverSmartBtn = function() {
+    const pool = window.getDriverPool();
+    if (pool.length > 0) {
+        // Pool exists — focus the pool name input so user adds via the group system
+        const input = document.getElementById('driverGroupInput');
+        if (input) { input.focus(); input.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
+    } else {
+        // No pool yet — create a bare driver row as before
+        window.addDriverField();
+        window.runSim();
+    }
+};
+
+window.ensureMinimumDrivers = function(n) {
+    const list = document.getElementById('driversList');
+    if (!list) return;
+    while (list.children.length < n) window.addDriverField();
 };
 
 window.addDriverField = function() {
@@ -703,15 +744,14 @@ window.renderPreview = function() {
                     <span class="text-gray-500 text-center font-mono text-[10px]">#${index + 1}</span>
                     <button onclick="window.moveStint(${index}, 1)" class="text-gray-500 hover:text-white text-[10px] leading-none px-1 ${isLast ? 'invisible' : ''}" title="Move Down">▼</button>
                 </div>
-                <div class="flex-1 min-w-0">
-                    <div class="font-bold text-white truncate">${stint.driverName}</div>
-                    <div class="flex flex-wrap items-center gap-1 text-gray-400 text-[10px]">
-                        <span>${startTimeStr}</span>
-                        <span class="text-ice">${arrow}</span>
-                        <span>${endTimeStr}</span>
-                        ${pitIndicator}
-                        ${stintForecastTag}
-                    </div>
+                <div class="flex-1 min-w-0 flex items-center gap-1.5 flex-wrap">
+                    <span class="font-bold text-white truncate max-w-[6rem]">${stint.driverName}</span>
+                    <span class="text-gray-600 text-[10px]">|</span>
+                    <span class="text-gray-400 text-[10px]">${startTimeStr}</span>
+                    <span class="text-ice text-[10px]">${arrow}</span>
+                    <span class="text-gray-400 text-[10px]">${endTimeStr}</span>
+                    ${pitIndicator}
+                    ${stintForecastTag}
                 </div>
                 <input type="number" value="${durationMin}" min="${minStintMin}" max="${maxStintMin}"
                        onchange="window.updateStintDuration(${index}, this.value)"
@@ -2329,3 +2369,459 @@ window._restoreDashboardOrder = function() {
         });
     } catch(e) {}
 };
+
+// ==========================================
+// 🎬 PREVIEW SCREEN HELPERS (v2)
+// ==========================================
+
+window._closePreview = function() {
+    document.getElementById('previewScreen').classList.add('hidden');
+    document.getElementById('setupScreen').classList.remove('hidden');
+};
+
+// Render a mini stint chart in a container element
+window.renderMiniStintChart = function(containerId, stints, maxMs) {
+    const el = document.getElementById(containerId);
+    if (!el) return;
+    if (!stints || stints.length === 0) { el.innerHTML = ''; return; }
+    const cap = maxMs || Math.max(...stints.map(s => s.duration || 0)) || 1;
+    const PALETTE = ['#22d3ee','#a3e635','#f97316','#ef4444','#8b5cf6','#ec4899','#facc15','#34d399'];
+    el.innerHTML = stints.map((s, i) => {
+        const h = Math.max(4, Math.round((s.duration / cap) * 24));
+        const color = s.color || PALETTE[i % PALETTE.length];
+        return `<div class="mini-stint-bar" style="height:${h}px;background:${color}" title="${s.driverName || ''}: ${Math.round(s.duration/60000)}m"></div>`;
+    }).join('');
+};
+
+// Update mini chart in preview header after render
+const _origRenderPreview = window.renderPreview;
+window.renderPreview = function() {
+    if (_origRenderPreview) _origRenderPreview.call(this);
+    // Update mini chart
+    if (window.previewData?.timeline) {
+        const stints = window.previewData.timeline.filter(t => t.type === 'stint');
+        const maxMs = stints.length > 0 ? Math.max(...stints.map(s => s.duration)) : 0;
+        window.renderMiniStintChart('miniStintChart', stints, maxMs);
+        // Update driver count label
+        const summary = {};
+        stints.forEach(s => { summary[s.driverName] = true; });
+        const countEl = document.getElementById('previewDriverCount');
+        if (countEl) {
+            const n = Object.keys(summary).length;
+            countEl.textContent = n > 0 ? `${n} driver${n !== 1 ? 's' : ''} · ${stints.length} stints` : '';
+        }
+    }
+};
+
+// ==========================================
+// 🎭 DEMO MODAL
+// ==========================================
+
+window._selectedDemoScenario = 'sprint';
+
+const _DEMO_SCENARIOS = {
+    sprint: {
+        label: 'Sprint Race', hours: 1, stops: 4, drivers: ['Alice', 'Bob', 'Charlie'],
+        colors: ['#22d3ee', '#a3e635', '#f97316'],
+        chartColors: ['#22d3ee', '#a3e635', '#f97316', '#22d3ee', '#a3e635']
+    },
+    endurance: {
+        label: 'Endurance Classic', hours: 6, stops: 12, drivers: ['Driver 1', 'Driver 2', 'Driver 3', 'Driver 4'],
+        colors: ['#22d3ee', '#a3e635', '#f97316', '#8b5cf6'],
+        chartColors: ['#22d3ee','#a3e635','#f97316','#8b5cf6','#22d3ee','#a3e635','#f97316','#8b5cf6','#22d3ee','#a3e635','#f97316','#8b5cf6','#22d3ee']
+    },
+    night24: {
+        label: '24h Night Race', hours: 24, stops: 48, drivers: ['Alpha A', 'Alpha B', 'Alpha C', 'Beta A', 'Beta B', 'Beta C'],
+        colors: ['#3b82f6','#06b6d4','#8b5cf6','#f97316','#ef4444','#ec4899'],
+        chartColors: [] // filled below
+    }
+};
+// Fill night24 chart colors
+for (let i = 0; i < 49; i++) {
+    _DEMO_SCENARIOS.night24.chartColors.push(['#3b82f6','#06b6d4','#8b5cf6','#f97316','#ef4444','#ec4899'][i % 6]);
+}
+
+window._renderDemoCharts = function() {
+    Object.entries(_DEMO_SCENARIOS).forEach(([key, sc]) => {
+        const el = document.getElementById('demoChart_' + key);
+        if (!el) return;
+        const stints = sc.chartColors.map((color, i) => ({
+            color,
+            duration: (sc.hours * 3600000) / sc.chartColors.length + (Math.random() - 0.5) * 120000
+        }));
+        const maxMs = Math.max(...stints.map(s => s.duration));
+        el.innerHTML = stints.map(s => {
+            const h = Math.max(4, Math.round((s.duration / maxMs) * 14));
+            return `<div class="mini-stint-bar" style="height:${h}px;background:${s.color}"></div>`;
+        }).join('');
+    });
+};
+
+window.openDemoModal = function() {
+    const modal = document.getElementById('demoModal');
+    if (!modal) { window.showDemoConfig && window.showDemoConfig(); return; }
+    modal.classList.remove('hidden');
+    window._renderDemoCharts();
+};
+
+window.closeDemoModal = function() {
+    const modal = document.getElementById('demoModal');
+    if (modal) modal.classList.add('hidden');
+};
+
+window.selectDemoScenario = function(cardEl, scenario) {
+    document.querySelectorAll('#demoScenarioCards .demo-strategy-card').forEach(c => c.classList.remove('selected'));
+    if (cardEl) cardEl.classList.add('selected');
+    window._selectedDemoScenario = scenario;
+};
+
+window.launchSelectedDemo = function() {
+    window.closeDemoModal();
+    const sc = _DEMO_SCENARIOS[window._selectedDemoScenario] || _DEMO_SCENARIOS.sprint;
+    // Apply the scenario config to the form
+    const durationEl = document.getElementById('raceDuration');
+    const stopsEl = document.getElementById('reqPitStops');
+    if (durationEl) durationEl.value = sc.hours;
+    if (stopsEl) stopsEl.value = sc.stops;
+    // Clear existing drivers and apply demo drivers
+    const list = document.getElementById('driversList');
+    if (list) list.innerHTML = '';
+    window._driverGroupParticipants.clear();
+    sc.drivers.forEach(name => {
+        window.addDriverToPool(name);
+        window._driverGroupParticipants.add(name);
+    });
+    window.saveDriverPool(sc.drivers.map((name, i) => ({ name, color: sc.colors[i] })));
+    window.renderDriverGroupUI();
+    window.applyDriverGroupToRace(false);
+    // Re-run sim and open preview
+    if (typeof window.runSim === 'function') window.runSim();
+    setTimeout(() => window.generatePreview && window.generatePreview(false, true), 100);
+};
+
+// ==========================================
+// 🔧 LIVE-ADJUST MODAL
+// ==========================================
+
+window._adjustScenario = 'race';
+window._pendingAdjustment = null;
+
+const _ADJUST_SCENARIOS = {
+    race: {
+        label: 'Mid-Race',
+        controls: [
+            { id: 'adj_elapsedRace', label: 'Elapsed race time (%)', type: 'range', min: 0, max: 95, step: 5, default: 50 },
+            { id: 'adj_extraStops', label: 'Extra pit stops', type: 'range', min: 0, max: 5, step: 1, default: 0 },
+            { id: 'adj_driverOut', label: 'Driver unavailable (index)', type: 'range', min: -1, max: 5, step: 1, default: -1 },
+        ]
+    },
+    qualify: {
+        label: 'Qualifying',
+        controls: [
+            { id: 'adj_qElapsed', label: 'Session elapsed (%)', type: 'range', min: 0, max: 95, step: 5, default: 30 },
+            { id: 'adj_qExtraRun', label: 'Extra qualifying run', type: 'range', min: 0, max: 3, step: 1, default: 0 },
+        ]
+    },
+    safety: {
+        label: 'Safety Car',
+        controls: [
+            { id: 'adj_scDuration', label: 'Safety car duration (min)', type: 'range', min: 0, max: 30, step: 2, default: 10 },
+            { id: 'adj_scElapsed', label: 'Occurs at race % elapsed', type: 'range', min: 5, max: 90, step: 5, default: 40 },
+        ]
+    },
+    weather: {
+        label: 'Weather Change',
+        controls: [
+            { id: 'adj_rainAt', label: 'Rain starts at race % elapsed', type: 'range', min: 5, max: 90, step: 5, default: 50 },
+            { id: 'adj_rainDuration', label: 'Rain duration (min)', type: 'range', min: 0, max: 60, step: 5, default: 20 },
+            { id: 'adj_wetPitExtra', label: 'Extra wet pit time (s)', type: 'range', min: 0, max: 120, step: 10, default: 30 },
+        ]
+    }
+};
+
+window.openLiveAdjustModal = function() {
+    const modal = document.getElementById('liveAdjustModal');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    window.setAdjustScenario(window._adjustScenario || 'race');
+};
+
+window.closeLiveAdjustModal = function() {
+    const modal = document.getElementById('liveAdjustModal');
+    if (modal) modal.classList.add('hidden');
+};
+
+window.setAdjustScenario = function(scenario) {
+    window._adjustScenario = scenario;
+    // Update tab styles
+    const tabIds = ['race', 'qualify', 'safety', 'weather'];
+    const activeClasses = { race: 'active-race', qualify: 'active-qualify', safety: 'active-safety', weather: 'active-weather' };
+    tabIds.forEach(s => {
+        const tab = document.getElementById('adjTab_' + s);
+        if (!tab) return;
+        tab.className = 'scenario-tab';
+        if (s === scenario) tab.classList.add(activeClasses[s]);
+    });
+    // Render controls
+    const container = document.getElementById('adjustScenarioControls');
+    if (!container) return;
+    const def = _ADJUST_SCENARIOS[scenario];
+    if (!def) return;
+    container.innerHTML = def.controls.map(ctrl => `
+        <div class="space-y-1">
+            <div class="flex justify-between items-center">
+                <label class="text-[10px] text-gray-400 font-bold uppercase tracking-wide">${ctrl.label}</label>
+                <span id="${ctrl.id}_val" class="text-xs font-mono text-ice font-bold">${ctrl.default}${ctrl.id.includes('elapsed') || ctrl.id.includes('At') ? '%' : ctrl.id.includes('Duration') || ctrl.id.includes('duration') ? 'm' : ''}</span>
+            </div>
+            <input type="range" id="${ctrl.id}" min="${ctrl.min}" max="${ctrl.max}" step="${ctrl.step}" value="${ctrl.default}"
+                oninput="window._onAdjustSlider('${ctrl.id}', this.value)"
+                class="w-full accent-cyan-400 h-1.5 rounded appearance-none cursor-pointer bg-navy-800">
+        </div>
+    `).join('');
+    window._computeAdjustOutcome();
+};
+
+window._onAdjustSlider = function(id, val) {
+    const display = document.getElementById(id + '_val');
+    if (display) {
+        const unit = id.includes('elapsed') || id.includes('At') ? '%' : id.includes('Duration') || id.includes('duration') ? 'm' : '';
+        display.textContent = val + unit;
+    }
+    window._computeAdjustOutcome();
+};
+
+window._computeAdjustOutcome = function() {
+    if (!window.previewData?.timeline || !window.config) {
+        window._setAdjustOutcome({ pits: '—', stint: '—', drive: '—', risk: '—', pct: { pits: 60, stint: 60, drive: 90, risk: 10 }, classes: { pits: 'safe', stint: 'safe', drive: 'safe', risk: 'safe' }, deltas: { pits: '—', stint: '—', drive: '—', risk: '—' }, deltaClasses: { pits: 'delta-neutral', stint: 'delta-neutral', drive: 'delta-neutral', risk: 'delta-neutral' } });
+        return;
+    }
+    const sc = window._adjustScenario;
+    const stints = window.previewData.timeline.filter(t => t.type === 'stint');
+    const pits = window.previewData.timeline.filter(t => t.type === 'pit');
+    const basePits = pits.length;
+    const basePitMs = window.config.pitTime * 1000 || 120000;
+    const baseAvgStint = stints.length > 0 ? stints.reduce((a, s) => a + s.duration, 0) / stints.length : 0;
+    const baseDrive = stints.reduce((a, s) => a + s.duration, 0);
+    const raceMs = window.config.raceMs || 0;
+
+    let adjPits = basePits, adjStint = baseAvgStint, adjDrive = baseDrive, riskPct = 10;
+
+    if (sc === 'race') {
+        const extra = parseInt(document.getElementById('adj_extraStops')?.value || 0);
+        const driverOut = parseInt(document.getElementById('adj_driverOut')?.value || -1);
+        adjPits = basePits + extra;
+        adjDrive = baseDrive - extra * basePitMs;
+        adjStint = adjPits > 0 ? adjDrive / (adjPits + 1) : adjDrive;
+        riskPct = driverOut >= 0 ? 55 : extra > 2 ? 40 : 15;
+    } else if (sc === 'safety') {
+        const scMin = parseInt(document.getElementById('adj_scDuration')?.value || 0);
+        const scMs = scMin * 60000;
+        adjDrive = Math.max(0, baseDrive - scMs);
+        adjStint = stints.length > 0 ? adjDrive / stints.length : 0;
+        riskPct = scMin > 15 ? 50 : scMin > 5 ? 30 : 10;
+        adjPits = scMin > 5 ? Math.max(0, basePits - 1) : basePits;
+    } else if (sc === 'weather') {
+        const extraSec = parseInt(document.getElementById('adj_wetPitExtra')?.value || 0);
+        const extraMs = extraSec * 1000;
+        adjPits = Math.max(0, basePits - 2); // typically go longer stints in rain
+        adjDrive = baseDrive + extraMs * adjPits;
+        adjStint = adjPits > 0 ? adjDrive / (adjPits + 1) : adjDrive;
+        riskPct = extraSec > 60 ? 65 : extraSec > 20 ? 35 : 15;
+    } else if (sc === 'qualify') {
+        adjPits = basePits;
+        adjStint = baseAvgStint;
+        adjDrive = baseDrive;
+        riskPct = 5;
+    }
+
+    const fmtMin = ms => `${Math.round(ms / 60000)}m`;
+    const deltaPits = adjPits - basePits;
+    const deltaStint = adjStint - baseAvgStint;
+    const deltaDrive = adjDrive - baseDrive;
+
+    const pitsBarPct = Math.min(100, Math.round((adjPits / Math.max(1, basePits + 5)) * 100));
+    const stintBarPct = Math.min(100, Math.round((adjStint / (raceMs / 2)) * 100));
+    const driveBarPct = raceMs > 0 ? Math.min(100, Math.round((adjDrive / raceMs) * 100)) : 80;
+
+    window._pendingAdjustment = { sc, adjPits, adjStint, adjDrive, riskPct, raceMs };
+
+    window._setAdjustOutcome({
+        pits: String(adjPits),
+        stint: fmtMin(adjStint),
+        drive: fmtMin(adjDrive),
+        risk: riskPct > 50 ? '⚠️ High' : riskPct > 25 ? '🟡 Med' : '✅ Low',
+        pct: { pits: pitsBarPct, stint: stintBarPct, drive: driveBarPct, risk: riskPct },
+        classes: {
+            pits: deltaPits > 2 ? 'risk' : deltaPits > 0 ? 'warn' : 'safe',
+            stint: deltaStint < -600000 ? 'risk' : deltaStint < 0 ? 'warn' : 'safe',
+            drive: deltaDrive < -1800000 ? 'risk' : deltaDrive < 0 ? 'warn' : 'safe',
+            risk: riskPct > 50 ? 'risk' : riskPct > 25 ? 'warn' : 'safe'
+        },
+        deltas: {
+            pits: deltaPits !== 0 ? (deltaPits > 0 ? '+' : '') + deltaPits : '—',
+            stint: deltaStint !== 0 ? (deltaStint > 0 ? '+' : '') + Math.round(deltaStint / 60000) + 'm' : '—',
+            drive: deltaDrive !== 0 ? (deltaDrive > 0 ? '+' : '') + Math.round(deltaDrive / 60000) + 'm' : '—',
+            risk: ''
+        },
+        deltaClasses: {
+            pits: deltaPits > 0 ? 'delta-negative' : deltaPits < 0 ? 'delta-positive' : 'delta-neutral',
+            stint: deltaStint < -300000 ? 'delta-negative' : deltaStint > 300000 ? 'delta-positive' : 'delta-neutral',
+            drive: deltaDrive < -600000 ? 'delta-negative' : deltaDrive > 600000 ? 'delta-positive' : 'delta-neutral',
+            risk: riskPct > 50 ? 'delta-negative' : 'delta-neutral'
+        }
+    });
+
+    // Show recommendation
+    const recBox = document.getElementById('adjustRecommendation');
+    const recText = document.getElementById('adjustRecommendationText');
+    if (recBox && recText) {
+        let rec = '';
+        if (sc === 'safety' && parseInt(document.getElementById('adj_scDuration')?.value || 0) > 5) {
+            rec = 'Use the safety car window to pit early — saves time vs. a free-air stop later.';
+        } else if (sc === 'weather' && parseInt(document.getElementById('adj_wetPitExtra')?.value || 0) > 30) {
+            rec = 'Consider delaying your next stop until conditions improve to minimise wet-tyre time in the pits.';
+        } else if (sc === 'race' && parseInt(document.getElementById('adj_extraStops')?.value || 0) > 1) {
+            rec = 'Extra stops cost track position. Only worthwhile if the pace delta exceeds the time loss per stop.';
+        } else {
+            recBox.classList.add('hidden');
+            return;
+        }
+        recText.textContent = rec;
+        recBox.classList.remove('hidden');
+    }
+};
+
+window._setAdjustOutcome = function(data) {
+    const ids = ['Pits', 'Stint', 'Drive', 'Risk'];
+    ids.forEach(key => {
+        const lk = key.toLowerCase();
+        const outEl = document.getElementById('ladjOut' + key);
+        const barEl = document.getElementById('ladjBar' + key);
+        const deltaEl = document.getElementById('ladjDelta' + key);
+        if (outEl) outEl.textContent = data[lk] || '—';
+        if (barEl) {
+            barEl.style.width = (data.pct[lk] || 0) + '%';
+            barEl.className = 'outcome-bar-fill ' + (data.classes[lk] || 'safe');
+        }
+        if (deltaEl) {
+            deltaEl.textContent = data.deltas?.[lk] || '—';
+            deltaEl.className = 'delta-badge ' + (data.deltaClasses?.[lk] || 'delta-neutral');
+        }
+    });
+};
+
+window.applyLiveAdjustment = function() {
+    if (!window._pendingAdjustment || !window.previewData?.timeline) {
+        window.closeLiveAdjustModal();
+        return;
+    }
+    const { sc, adjPits, adjStint, adjDrive, raceMs } = window._pendingAdjustment;
+    const stints = window.previewData.timeline.filter(t => t.type === 'stint');
+    const pits = window.previewData.timeline.filter(t => t.type === 'pit');
+
+    if (sc === 'safety' || sc === 'weather' || sc === 'race') {
+        // Redistribute drive time evenly across existing stints
+        if (stints.length > 0 && adjDrive > 0) {
+            const perStint = Math.round(adjDrive / stints.length / 1000) * 1000;
+            stints.forEach((s, i) => {
+                s.duration = i < stints.length - 1 ? perStint : adjDrive - perStint * (stints.length - 1);
+            });
+        }
+        // Recalculate timeline times
+        if (typeof window.recalculateTimelineTimes === 'function') window.recalculateTimelineTimes();
+    }
+
+    window._pendingAdjustment = null;
+    window.closeLiveAdjustModal();
+
+    // Show outcome in preview panel
+    const panel = document.getElementById('previewAdjustPanel');
+    const label = document.getElementById('adjustScenarioLabel');
+    if (panel) panel.classList.remove('hidden', 'collapsed');
+    if (label) {
+        const names = { race: '🏎️ Race', qualify: '⏱️ Qualify', safety: '🟡 Safety Car', weather: '🌧️ Weather' };
+        label.textContent = names[sc] || sc;
+        label.className = 'delta-badge ' + (sc === 'race' ? 'delta-negative' : sc === 'qualify' ? 'delta-neutral' : sc === 'safety' ? 'delta-neutral' : 'delta-positive');
+    }
+    // Sync outcome bars in preview panel
+    if (stints.length > 0) {
+        const adjDriveVal = stints.reduce((a, s) => a + s.duration, 0);
+        const adjStintVal = adjDriveVal / stints.length;
+        const pitCount = pits.length;
+        const fmtMin = ms => `${Math.round(ms / 60000)}m`;
+        const fields = [
+            { key: 'Pits', val: String(pitCount), pct: Math.min(100, Math.round(pitCount / 20 * 100)), cls: 'safe', delta: '—', deltaCls: 'delta-neutral' },
+            { key: 'Stint', val: fmtMin(adjStintVal), pct: Math.min(100, Math.round(adjStintVal / (raceMs / 2) * 100)), cls: 'safe', delta: '—', deltaCls: 'delta-neutral' },
+            { key: 'Drive', val: fmtMin(adjDriveVal), pct: raceMs > 0 ? Math.min(100, Math.round(adjDriveVal / raceMs * 100)) : 80, cls: 'safe', delta: '—', deltaCls: 'delta-neutral' }
+        ];
+        fields.forEach(f => {
+            const out = document.getElementById('adjOut' + f.key);
+            const bar = document.getElementById('adjBar' + f.key);
+            const dlt = document.getElementById('adjDelta' + f.key);
+            if (out) out.textContent = f.val;
+            if (bar) { bar.style.width = f.pct + '%'; bar.className = 'outcome-bar-fill ' + f.cls; }
+            if (dlt) { dlt.textContent = f.delta; dlt.className = 'delta-badge ' + f.deltaCls; }
+        });
+    }
+
+    window.renderPreview();
+    if (typeof window.showToast === 'function') window.showToast('✅ Scenario applied to strategy', 'success', 2500);
+};
+
+window._togglePreviewAdjustPanel = function() {
+    const panel = document.getElementById('previewAdjustPanel');
+    const icon = document.getElementById('adjustPanelIcon');
+    if (!panel) return;
+    panel.classList.toggle('collapsed');
+    if (icon) icon.style.transform = panel.classList.contains('collapsed') ? 'rotate(-90deg)' : 'rotate(0deg)';
+};
+
+// ==========================================
+// ⚡ QUICK MODE PRESETS (hero pill strip)
+// ==========================================
+
+window.setQuickMode = function(mode) {
+    const presets = {
+        sprint: { duration: 1, stops: 4, minStint: 10, maxStint: 20, pitTime: 90 },
+        endurance: { duration: 6, stops: 12, minStint: 25, maxStint: 40, pitTime: 120 }
+    };
+    const p = presets[mode];
+    if (!p) return;
+    const setVal = (id, v) => { const el = document.getElementById(id); if (el) { el.value = v; } };
+    setVal('raceDuration', p.duration);
+    setVal('reqPitStops', p.stops);
+    setVal('minStint', p.minStint);
+    setVal('maxStint', p.maxStint);
+    setVal('minPitTime', p.pitTime);
+    if (typeof window.runSim === 'function') window.runSim();
+    // Highlight active pill
+    document.querySelectorAll('.quick-pill').forEach(pill => {
+        const isMatch = pill.textContent.toLowerCase().includes(mode === 'sprint' ? 'sprint' : 'endurance');
+        pill.classList.toggle('active', isMatch);
+    });
+    if (typeof window.showToast === 'function') window.showToast(`⚡ ${mode.charAt(0).toUpperCase() + mode.slice(1)} preset loaded`, 'success', 1800);
+};
+
+// Update hero mini chart whenever previewData changes
+window._updateHeroChart = function() {
+    const el = document.getElementById('heroMiniChart');
+    if (!el) return;
+    if (!window.previewData?.timeline) { el.innerHTML = ''; return; }
+    const stints = window.previewData.timeline.filter(t => t.type === 'stint');
+    if (stints.length === 0) { el.innerHTML = ''; return; }
+    const maxMs = Math.max(...stints.map(s => s.duration));
+    el.innerHTML = stints.slice(0, 16).map(s => {
+        const h = Math.max(4, Math.round((s.duration / maxMs) * 20));
+        return `<div class="mini-stint-bar" style="height:${h}px;background:${s.color || '#22d3ee'}"></div>`;
+    }).join('');
+};
+
+// Hook into runSim to also update hero chart
+const _origRunSimForHero = window.runSim;
+if (_origRunSimForHero) {
+    window.runSim = function(...args) {
+        const result = _origRunSimForHero.apply(this, args);
+        setTimeout(window._updateHeroChart, 50);
+        return result;
+    };
+}
