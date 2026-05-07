@@ -30,6 +30,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Apply hero collapse state
     if (typeof window._applyHeroState === 'function') window._applyHeroState();
 
+    // Show/hide consecutive stints row based on allowDouble initial state
+    if (typeof window.toggleMaxConsecutive === 'function') window.toggleMaxConsecutive();
+
     // Init driver group UI (loads saved pool, pre-selects all, populates driversList)
     if (typeof window.initDriverGroupUI === 'function') {
         window.initDriverGroupUI();
@@ -1120,11 +1123,23 @@ function updateRemainingStrategyLogic(raceRemainingMs) {
     if (!panel || window.role !== 'host') return;
     panel.classList.remove('hidden');
 
-    const maxStintVal = parseFloat(window.config.maxStint) || 60;
-    const minStintVal = parseFloat(window.config.minStint) || 15;
-    const maxStintMs = maxStintVal * 60000;
-    const minStintMs = minStintVal * 60000;
-    const pitTimeMs = (parseFloat(window.config.minPitSec) || 60) * 1000;
+    // Support optional min/max — if not set, treat as unconstrained
+    const maxStintRaw = parseFloat(window.config.maxStint);
+    const minStintRaw = parseFloat(window.config.minStint);
+    const hasMaxStint = !isNaN(maxStintRaw) && maxStintRaw > 0;
+    const hasMinStint = !isNaN(minStintRaw) && minStintRaw > 0;
+
+    // 2-minute tolerance band around max and min
+    const TOLERANCE_MS = 2 * 60000;
+
+    const maxStintVal = hasMaxStint ? maxStintRaw : null;
+    const minStintVal = hasMinStint ? minStintRaw : null;
+    const maxStintMs = hasMaxStint ? maxStintRaw * 60000 : Infinity;
+    const minStintMs = hasMinStint ? minStintRaw * 60000 : 0;
+
+    // Pit time: optional — if not set, use 0
+    const pitTimeSec = parseFloat(window.config.minPitSec) || parseFloat(window.config.pitTime) || 0;
+    const pitTimeMs = pitTimeSec * 1000;
 
     const stopsDone = window.state.pitCount;
     const totalStopsRequired = parseInt(window.config.reqStops) || 0;
@@ -1132,7 +1147,7 @@ function updateRemainingStrategyLogic(raceRemainingMs) {
 
     const now = window.getSyncedNow();
     const currentStintElapsed = (now - window.state.stintStart) + (window.state.stintOffset || 0);
-    const targetStintMs = window.state.targetStintMs || maxStintMs;
+    const targetStintMs = window.state.targetStintMs || (hasMaxStint ? maxStintMs : 60 * 60000);
     const timeToFinishCurrent = Math.max(0, targetStintMs - currentStintElapsed);
     const futurePitTimeLoss = futureStints * pitTimeMs;
     const futurePoolMs = raceRemainingMs - timeToFinishCurrent - futurePitTimeLoss;
@@ -1142,6 +1157,13 @@ function updateRemainingStrategyLogic(raceRemainingMs) {
     // Helper: build one stint pill
     function pill(label, cls, title) {
         return `<span class="stint-outlook-pill ${cls}" title="${title || ''}">${label}</span>`;
+    }
+
+    // Classify a stint duration in ms using 2-minute tolerance bands
+    function classifyStint(ms) {
+        if (hasMaxStint && ms >= maxStintMs - TOLERANCE_MS) return 'max';
+        if (hasMinStint && ms <= minStintMs + TOLERANCE_MS) return 'min';
+        return 'normal';
     }
 
     if (raceRemainingMs <= 0) {
@@ -1156,15 +1178,15 @@ function updateRemainingStrategyLogic(raceRemainingMs) {
 
     const minTotalTime = futureStints * minStintMs;
     const maxTotalTime = futureStints * maxStintMs;
-    const bufferMs = futurePoolMs - minTotalTime;
+    const bufferMs = hasMinStint ? (futurePoolMs - minTotalTime) : 0;
 
-    if (bufferMs < 0) {
+    if (hasMinStint && bufferMs < 0) {
         const missingMin = Math.abs(Math.ceil(bufferMs / 60000));
         pillsEl.innerHTML = pill(`${t('impossible')} −${missingMin}m`, 'pill-impossible');
         return;
     }
 
-    if (futurePoolMs > maxTotalTime) {
+    if (hasMaxStint && futurePoolMs > maxTotalTime) {
         const extraMin = Math.ceil((futurePoolMs - maxTotalTime) / 60000);
         pillsEl.innerHTML = pill(`${t('addStop')} +${extraMin}m`, 'pill-add-stop');
         return;
@@ -1175,35 +1197,36 @@ function updateRemainingStrategyLogic(raceRemainingMs) {
     const avgMin = Math.round(avgMs / 60000);
 
     // Greedy: as many MAX stints as possible, rest get the leftover
-    const fullMaxStints = Math.floor(futurePoolMs / maxStintMs);
-    const greedyCount = Math.min(futureStints - 1, fullMaxStints);
-    const greedyRemainingMs = futurePoolMs - greedyCount * maxStintMs;
-    const greedyRestCount = futureStints - greedyCount;
-    const greedyRestAvgMs = greedyRemainingMs / greedyRestCount;
-    const greedyValid = greedyRestAvgMs >= minStintMs;
-
-    // Build an array of N stint descriptors
     const stintDescriptors = [];
-    if (greedyValid && greedyCount > 0) {
-        for (let i = 0; i < greedyCount; i++) stintDescriptors.push({ type: 'max', ms: maxStintMs });
-        const restMin = Math.round(greedyRestAvgMs / 60000);
-        const restNearMax = greedyRestAvgMs >= maxStintMs * 0.9;
-        for (let i = 0; i < greedyRestCount; i++) stintDescriptors.push({ type: restNearMax ? 'max' : 'normal', ms: greedyRestAvgMs, min: restMin });
+    if (hasMaxStint) {
+        const fullMaxStints = Math.floor(futurePoolMs / maxStintMs);
+        const greedyCount = Math.min(futureStints - 1, fullMaxStints);
+        const greedyRemainingMs = futurePoolMs - greedyCount * maxStintMs;
+        const greedyRestCount = futureStints - greedyCount;
+        const greedyRestAvgMs = greedyRemainingMs / greedyRestCount;
+        const greedyValid = !hasMinStint || greedyRestAvgMs >= minStintMs;
+
+        if (greedyValid && greedyCount > 0) {
+            for (let i = 0; i < greedyCount; i++) stintDescriptors.push({ type: 'max', ms: maxStintMs });
+            const restMin = Math.round(greedyRestAvgMs / 60000);
+            const restType = classifyStint(greedyRestAvgMs);
+            for (let i = 0; i < greedyRestCount; i++) stintDescriptors.push({ type: restType, ms: greedyRestAvgMs, min: restMin });
+        } else {
+            // Balanced — all equal
+            const type = classifyStint(avgMs);
+            for (let i = 0; i < futureStints; i++) stintDescriptors.push({ type, ms: avgMs, min: avgMin });
+        }
     } else {
-        // Balanced — all equal
-        const isNearMax = avgMs >= maxStintMs * 0.9;
-        const isTooShort = avgMs < minStintMs;
-        const isTooLong = avgMs > maxStintMs;
-        const type = isTooShort || isTooLong ? 'impossible' : isNearMax ? 'max' : 'normal';
+        // No max constraint — just show the average
+        const type = (hasMinStint && avgMs < minStintMs) ? 'impossible' : 'normal';
         for (let i = 0; i < futureStints; i++) stintDescriptors.push({ type, ms: avgMs, min: avgMin });
     }
 
     // Collapse consecutive identical pills into "Nx" groups, then render
-    // Group: [{type, min, count}]
     const groups = [];
     stintDescriptors.forEach(s => {
         const last = groups[groups.length - 1];
-        const key = s.type === 'normal' ? `normal-${s.min}` : s.type;
+        const key = (s.type === 'normal' || s.type === 'min') ? `${s.type}-${s.min}` : s.type;
         if (last && last.key === key) {
             last.count++;
         } else {
@@ -1215,7 +1238,11 @@ function updateRemainingStrategyLogic(raceRemainingMs) {
     groups.forEach(g => {
         const prefix = g.count > 1 ? `${g.count}× ` : '';
         if (g.type === 'max') {
-            phtml += pill(`${prefix}${t('max')} (${maxStintVal}m)`, 'pill-max');
+            const label = hasMaxStint ? ` (${maxStintVal}m)` : '';
+            phtml += pill(`${prefix}${t('max')}${label}`, 'pill-max');
+        } else if (g.type === 'min') {
+            const label = hasMinStint ? ` (${minStintVal}m)` : '';
+            phtml += pill(`${prefix}${t('min') || 'MIN'}${label}`, 'pill-min');
         } else if (g.type === 'normal') {
             phtml += pill(`${prefix}${g.min}m`, 'pill-normal');
         } else {
@@ -1223,10 +1250,12 @@ function updateRemainingStrategyLogic(raceRemainingMs) {
         }
     });
 
-    // Buffer hint
-    const bufferMin = Math.floor(bufferMs / 60000);
-    if (bufferMin > 0) {
-        phtml += `<span class="text-[9px] text-gray-600 self-center ml-1">+${bufferMin}m</span>`;
+    // Buffer hint (only meaningful when min is constrained)
+    if (hasMinStint) {
+        const bufferMin = Math.floor(bufferMs / 60000);
+        if (bufferMin > 0) {
+            phtml += `<span class="text-[9px] text-gray-600 self-center ml-1">+${bufferMin}m</span>`;
+        }
     }
 
     pillsEl.innerHTML = phtml;
@@ -3826,6 +3855,66 @@ window.toggleTimerMode = function() {
     const icon = document.getElementById('timerModeIcon');
     if (icon) icon.textContent = window._timerMode === 'remaining' ? '⏳' : '⏱';
     window.showToast(window._timerMode === 'elapsed' ? '⏱ Elapsed time' : '⏳ Remaining time', 'info', 1500);
+};
+
+// ==========================================
+// 📺 LIVE STRATEGY PREVIEW (mid-race)
+// ==========================================
+
+window.openLivePreview = function() {
+    const previewScreen = document.getElementById('previewScreen');
+    const raceDashboard = document.getElementById('raceDashboard');
+    if (!previewScreen || !window.previewData) return;
+
+    // Mark which stints are done/current based on globalStintNumber
+    const currentStintNum = (window.state.globalStintNumber || 1);
+    const stints = window.previewData.timeline.filter(s => s.type === 'stint');
+    stints.forEach((s, i) => {
+        s._done = (i + 1) < currentStintNum;
+        s._current = (i + 1) === currentStintNum;
+    });
+
+    raceDashboard.classList.add('hidden');
+    previewScreen.classList.remove('hidden');
+
+    // Inject back-to-race button if not already present
+    if (!document.getElementById('livePreviewBackBtn')) {
+        const backBtn = document.createElement('button');
+        backBtn.id = 'livePreviewBackBtn';
+        backBtn.className = 'fixed top-4 right-4 z-50 bg-navy-800 hover:bg-navy-700 border border-gray-600 text-white text-sm font-bold py-2 px-4 rounded-xl shadow-lg transition';
+        backBtn.innerHTML = (window.t ? window.t('backToRace') || '← Back to Race' : '← Back to Race');
+        backBtn.onclick = window.closeLivePreview;
+        document.body.appendChild(backBtn);
+    } else {
+        document.getElementById('livePreviewBackBtn').classList.remove('hidden');
+    }
+
+    if (typeof window.renderPreview === 'function') window.renderPreview();
+    // Disable editing while in live-preview mode
+    document.querySelectorAll('#previewScreen input, #previewScreen button:not(#livePreviewBackBtn)').forEach(el => {
+        el._wasDisabled = el.disabled;
+        el.disabled = true;
+        el.style.pointerEvents = 'none';
+        el.style.opacity = '0.5';
+    });
+};
+
+window.closeLivePreview = function() {
+    const previewScreen = document.getElementById('previewScreen');
+    const raceDashboard = document.getElementById('raceDashboard');
+    if (!previewScreen || !raceDashboard) return;
+    document.querySelectorAll('#previewScreen input, #previewScreen button:not(#livePreviewBackBtn)').forEach(el => {
+        el.disabled = !!el._wasDisabled;
+        el.style.pointerEvents = '';
+        el.style.opacity = '';
+    });
+    previewScreen.classList.add('hidden');
+    raceDashboard.classList.remove('hidden');
+    const backBtn = document.getElementById('livePreviewBackBtn');
+    if (backBtn) backBtn.classList.add('hidden');
+    if (window.previewData && window.previewData.timeline) {
+        window.previewData.timeline.forEach(s => { delete s._done; delete s._current; });
+    }
 };
 
 // ==========================================

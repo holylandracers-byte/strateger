@@ -341,6 +341,8 @@ window.translations = {
         autoStarting: "Auto-starting race...",
         lblAutoStart: "Auto-start at race time",
         lblDoublesHint: "Same driver back-to-back",
+        lblMaxConsecutive: "Max consecutive stints per driver",
+        consec2: "2", consec3: "3", consecUnlimited: "Unlimited",
         lblSquadsHint: "Rotate driver groups for night shifts & long races", lblSquadsHintActive: "Drivers split into {n} rotating groups",
         lblFuelHint: "Smart fuel stint constraints & tank management",
         statusHeader: "Status",
@@ -401,6 +403,9 @@ window.translations = {
         rulesPdfDrop: "Click to select PDF", rulesPdfDropHint: "Max ~50 pages recommended",
         rulesPdfReading: "Reading PDF…", rulesPdfError: "Could not read PDF.", rulesPdfAiError: "AI returned no result.",
         rulesPdfClear: "Remove", rulesPdfAnalyze: "Analyze & Suggest Strategy", pages: "pages",
+        saveSettings: "Save", backToRace: "← Back to Race",
+        livePreviewBtn: "▶ PLAN",
+        appearance: "Appearance",
     },
     he: {
         ltSearchType: "סנן לפי:", ltTeam: "קבוצה", ltDriver: "נהג", ltKart: "מספר קארט", ltPlaceholder: "הכנס ערך לחיפוש...",
@@ -489,6 +494,8 @@ window.translations = {
         autoStarting: "מתחיל מירוץ אוטומטית...",
         lblAutoStart: "התחלה אוטומטית בזמן המירוץ",
         lblDoublesHint: "אותו נהג שוב",
+        lblMaxConsecutive: "מקסימום סטינטים רצופים לנהג",
+        consec2: "2", consec3: "3", consecUnlimited: "ללא הגבלה",
         lblSquadsHint: "סיבוב חוליות נהגים למשמרות לילה ומירוצים ארוכים", lblSquadsHintActive: "הנהגים מחולקים ל-{n} חוליות מתחלפות",
         lblFuelHint: "אילוצי דלק חכמים וניהול מיכל",
         statusHeader: "מצב",
@@ -542,6 +549,9 @@ window.translations = {
         rulesPdfDrop: "לחץ לבחירת PDF", rulesPdfDropHint: "מומלץ עד ~50 עמודים",
         rulesPdfReading: "קורא PDF…", rulesPdfError: "לא ניתן לקרוא את ה-PDF.", rulesPdfAiError: "הבינה המלאכותית לא החזירה תוצאה.",
         rulesPdfClear: "הסר", rulesPdfAnalyze: "נתח והצע אסטרטגיה", pages: "עמודים",
+        saveSettings: "שמור", backToRace: "← חזרה למירוץ",
+        livePreviewBtn: "▶ תוכנית",
+        appearance: "מראה",
     },
     fr: {
         ltSearchType: "Filtrer par:", ltTeam: "Équipe", ltDriver: "Pilote", ltKart: "Kart n°", ltPlaceholder: "Rechercher...",
@@ -628,6 +638,8 @@ window.translations = {
         autoStarting: "Démarrage auto...",
         lblAutoStart: "Démarrage auto à l'heure",
         lblDoublesHint: "Même pilote consécutivement",
+        lblMaxConsecutive: "Relais consécutifs max par pilote",
+        consec2: "2", consec3: "3", consecUnlimited: "Illimité",
         lblSquadsHint: "Rotation des équipes pour les relais de nuit & longues courses", lblSquadsHintActive: "Pilotes répartis en {n} groupes rotatifs",
         lblFuelHint: "Contraintes carburant & gestion du réservoir",
         statusHeader: "Statut",
@@ -760,6 +772,8 @@ window.translations = {
         autoStarting: "Iniciando automaticamente...",
         lblAutoStart: "Início automático no horário",
         lblDoublesHint: "Mesmo piloto consecutivamente",
+        lblMaxConsecutive: "Máx. stints consecutivos por piloto",
+        consec2: "2", consec3: "3", consecUnlimited: "Ilimitado",
         lblSquadsHint: "Rotação de equipes para turnos noturnos & corridas longas", lblSquadsHintActive: "Pilotos divididos em {n} grupos rotativos",
         lblFuelHint: "Restrições inteligentes de combustível & gestão do tanque",
         statusHeader: "Status",
@@ -897,6 +911,8 @@ window.translations = {
         autoStarting: "Автостарт...",
         lblAutoStart: "Автостарт во время гонки",
         lblDoublesHint: "Одинаковый пилот подряд",
+        lblMaxConsecutive: "Макс. подряд стинтов на пилота",
+        consec2: "2", consec3: "3", consecUnlimited: "Без ограничений",
         lblSquadsHint: "Ротация групп для ночных смен и длинных гонок", lblSquadsHintActive: "Пилоты разделены на {n} сменных группы",
         lblFuelHint: "Умные ограничения по топливу и управление баком",
         statusHeader: "Статус",
@@ -1033,6 +1049,8 @@ window.translations = {
         autoStarting: "بدء تلقائي...",
         lblAutoStart: "بدء تلقائي في موعد السباق",
         lblDoublesHint: "نفس السائق متتالي",
+        lblMaxConsecutive: "الحد الأقصى للجولات المتتالية لكل سائق",
+        consec2: "2", consec3: "3", consecUnlimited: "غير محدود",
         lblSquadsHint: "تبديل مجموعات السائقين للمناوبات الليلية والسباقات الطويلة", lblSquadsHintActive: "السائقون مقسمون إلى {n} مجموعات متناوبة",
         lblFuelHint: "إدارة ذكية لقيود الوقود والخزان",
         statusHeader: "الحالة",
@@ -1164,6 +1182,8 @@ window.translations = {
         autoStarting: "Iniciando automáticamente...",
         lblAutoStart: "Inicio automático a la hora",
         lblDoublesHint: "Mismo piloto consecutivamente",
+        lblMaxConsecutive: "Máx. stints consecutivos por piloto",
+        consec2: "2", consec3: "3", consecUnlimited: "Ilimitado",
         lblSquadsHint: "Rotación de escuadrones para turnos nocturnos y carreras largas", lblSquadsHintActive: "Pilotos divididos en {n} grupos rotativos",
         lblFuelHint: "Restricciones inteligentes de combustible y gestión del depósito",
         statusHeader: "Estado",
@@ -1243,6 +1263,8 @@ window.translations = {
         autoStarting: "Avvio automatico...",
         lblAutoStart: "Avvio automatico all'orario",
         lblDoublesHint: "Stesso pilota consecutivamente",
+        lblMaxConsecutive: "Max stint consecutivi per pilota",
+        consec2: "2", consec3: "3", consecUnlimited: "Illimitato",
         lblSquadsHint: "Rotazione squadre per turni notturni & gare lunghe", lblSquadsHintActive: "Piloti divisi in {n} gruppi a rotazione",
         lblFuelHint: "Vincoli carburante intelligenti & gestione serbatoio",
         statusHeader: "Stato",
@@ -1372,6 +1394,8 @@ window.translations = {
         autoStarting: "ავტომატური დაწყება...",
         lblAutoStart: "ავტომატური დაწყება",
         lblDoublesHint: "ერთი და იგივე მძღოლი ზედიზედ",
+        lblMaxConsecutive: "მაქს. თანამიმდევრული სტინტები მძღოლზე",
+        consec2: "2", consec3: "3", consecUnlimited: "შეუზღუდავი",
         lblSquadsHint: "ჯგუფების როტაცია ღამის ცვლებისთვის და გრძელი რბოლებისთვის", lblSquadsHintActive: "მძღოლები დაყოფილია {n} მონაცვლე ჯგუფად",
         lblFuelHint: "ჭკვიანი საწვავის შეზღუდვები და ავზის მართვა",
         statusHeader: "სტატუსი",
@@ -1451,6 +1475,8 @@ window.translations = {
         autoStarting: "Automatischer Start...",
         lblAutoStart: "Autostart zur Rennzeit",
         lblDoublesHint: "Derselbe Fahrer hintereinander",
+        lblMaxConsecutive: "Max. aufeinanderfolgende Stints pro Fahrer",
+        consec2: "2", consec3: "3", consecUnlimited: "Unbegrenzt",
         lblSquadsHint: "Staffelrotation für Nachtschichten & Langstreckenrennen", lblSquadsHintActive: "Fahrer in {n} rotierende Gruppen aufgeteilt",
         lblFuelHint: "Intelligente Kraftstoffbeschränkungen & Tankmanagement",
         statusHeader: "Status",
@@ -1530,6 +1556,8 @@ window.translations = {
         autoStarting: "自動スタート中...",
         lblAutoStart: "レース時間に自動スタート",
         lblDoublesHint: "同じドライバーが連続",
+        lblMaxConsecutive: "ドライバーごとの最大連続スティント",
+        consec2: "2", consec3: "3", consecUnlimited: "無制限",
         lblSquadsHint: "夜間シフトとロングレース用のグループローテーション", lblSquadsHintActive: "ドライバーが{n}つのローテーショングループに分割",
         lblFuelHint: "スマート燃料制約とタンク管理",
         statusHeader: "ステータス",
@@ -1661,6 +1689,8 @@ window.translations = {
         autoStarting: "Αυτόματη εκκίνηση...",
         lblAutoStart: "Αυτόματη εκκίνηση στην ώρα",
         lblDoublesHint: "Ίδιος οδηγός διαδοχικά",
+        lblMaxConsecutive: "Μέγ. διαδοχικά stint ανά οδηγό",
+        consec2: "2", consec3: "3", consecUnlimited: "Απεριόριστο",
         lblSquadsHint: "Εναλλαγή ομάδων για νυχτερινές βάρδιες & μακρούς αγώνες", lblSquadsHintActive: "Οι οδηγοί χωρίστηκαν σε {n} εναλλασσόμενες ομάδες",
         lblFuelHint: "Έξυπνοι περιορισμοί καυσίμου & διαχείριση ντεπόζιτου",
         statusHeader: "Κατάσταση",
@@ -1849,6 +1879,80 @@ function attachConfigListeners() {
 }
 
 // ==========================================
+// 💾 SAVE SETTINGS (persists full config by deviceId)
+// ==========================================
+
+window.SAVED_SETTINGS_KEY = 'strateger_saved_settings';
+
+window.saveSettingsToDevice = function() {
+    const deviceId = window.getDeviceId ? window.getDeviceId() : 'default';
+    const all = JSON.parse(localStorage.getItem(window.SAVED_SETTINGS_KEY) || '{}');
+
+    const settings = {
+        savedAt: Date.now(),
+        duration: document.getElementById('raceDuration')?.value,
+        stops: document.getElementById('reqPitStops')?.value,
+        minStint: document.getElementById('minStint')?.value,
+        maxStint: document.getElementById('maxStint')?.value,
+        minPitTime: document.getElementById('minPitTime')?.value,
+        raceStartTime: document.getElementById('raceStartTime')?.value,
+        raceStartDate: document.getElementById('raceStartDate')?.value,
+        raceLocation: document.getElementById('raceLocation')?.value,
+        liveTimingUrl: document.getElementById('liveTimingUrl')?.value,
+        searchValue: document.getElementById('searchValue')?.value,
+        searchType: document.querySelector('input[name="searchType"]:checked')?.value,
+        allowDouble: document.getElementById('allowDouble')?.checked,
+        maxConsecutive: document.getElementById('maxConsecutive')?.value,
+        numSquads: document.getElementById('numSquads')?.value,
+        lang: window.currentLang || 'en',
+    };
+
+    all[deviceId] = settings;
+    localStorage.setItem(window.SAVED_SETTINGS_KEY, JSON.stringify(all));
+
+    // Brief visual feedback
+    const btn = document.getElementById('saveSettingsBtn');
+    if (btn) {
+        const orig = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-check text-neon"></i>';
+        btn.classList.add('border-neon/60', 'text-neon');
+        setTimeout(() => { btn.innerHTML = orig; btn.classList.remove('border-neon/60', 'text-neon'); }, 1500);
+    }
+};
+
+window.loadSavedSettings = function() {
+    const deviceId = window.getDeviceId ? window.getDeviceId() : 'default';
+    const all = JSON.parse(localStorage.getItem(window.SAVED_SETTINGS_KEY) || '{}');
+    const s = all[deviceId];
+    if (!s) return;
+
+    const set = (id, val) => { const el = document.getElementById(id); if (el && val !== undefined && val !== null && val !== '') el.value = val; };
+    const setChecked = (id, val) => { const el = document.getElementById(id); if (el && val !== undefined) el.checked = !!val; };
+
+    set('raceDuration', s.duration);
+    set('reqPitStops', s.stops);
+    set('minStint', s.minStint);
+    set('maxStint', s.maxStint);
+    set('minPitTime', s.minPitTime);
+    set('raceStartTime', s.raceStartTime);
+    set('raceStartDate', s.raceStartDate);
+    set('raceLocation', s.raceLocation);
+    set('liveTimingUrl', s.liveTimingUrl);
+    set('searchValue', s.searchValue);
+    setChecked('allowDouble', s.allowDouble);
+    set('maxConsecutive', s.maxConsecutive);
+    set('numSquads', s.numSquads);
+
+    if (s.searchType) {
+        const radio = document.querySelector(`input[name="searchType"][value="${s.searchType}"]`);
+        if (radio) radio.checked = true;
+    }
+    if (s.lang && typeof window.setLanguage === 'function') window.setLanguage(s.lang);
+
+    if (typeof window.runSim === 'function') window.runSim();
+};
+
+// ==========================================
 // 💾 SAVED RACE LOGIC (Persistence)
 // ==========================================
 
@@ -1883,7 +1987,8 @@ if (!window.__racePersistenceHooksAttached) {
 }
 
 window.checkForSavedRace = function() {
-    // 1. טעינת טיוטה (Draft) למסך ההגדרות
+    // 1. Load saved device settings first (overrides defaults), then draft config
+    window.loadSavedSettings();
     window.loadDraftConfig();
 
     // 1b. Always re-run simulation with current (restored) params

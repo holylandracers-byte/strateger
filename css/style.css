@@ -72,6 +72,55 @@ body {
 [dir="rtl"] #headerOverflowMenu {
     direction: ltr;
 }
+/* RTL text alignment for setup / content areas */
+[dir="rtl"] #setupScreen label,
+[dir="rtl"] #setupScreen h2,
+[dir="rtl"] #setupScreen p,
+[dir="rtl"] #setupScreen span:not([class*="font-mono"]) {
+    text-align: right;
+}
+/* Collapsible section headers: flip chevron to right side */
+[dir="rtl"] .collapsible-section h2 .collapse-icon,
+[dir="rtl"] .collapsible-section h2 .fa-chevron-down {
+    margin-left: 0;
+    margin-right: auto;
+    order: -1;
+}
+/* Flip flex rows that use icon+text layouts */
+[dir="rtl"] .collapsible-section h2 {
+    flex-direction: row-reverse;
+}
+[dir="rtl"] .collapsible-section h2 > i:first-child {
+    margin-right: 0;
+    margin-left: 0.5rem;
+}
+/* Setup grid labels */
+[dir="rtl"] #setupScreen .grid label {
+    display: block;
+    text-align: right;
+}
+/* Input-field placeholder alignment for RTL */
+[dir="rtl"] .input-field:not([type="number"]):not([type="time"]):not([type="date"]) {
+    text-align: right;
+}
+/* Driver row buttons / icon+text in RTL */
+[dir="rtl"] .driver-row {
+    flex-direction: row-reverse;
+}
+/* Stint pills in strategy outlook - keep LTR */
+[dir="rtl"] #remStintsText,
+[dir="rtl"] .stint-outlook-pill {
+    direction: ltr;
+}
+/* Preview screen: keep stint timeline LTR */
+[dir="rtl"] #previewScreen .stint-block,
+[dir="rtl"] #previewScreen .driver-block {
+    direction: ltr;
+}
+/* Dashboard info bar: keep LTR */
+[dir="rtl"] #dashboardInfoBar {
+    direction: ltr;
+}
 
 /* ==================== THEME TINTING ==================== */
 /* When a color theme is active, tint ALL app elements */
@@ -440,6 +489,34 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
     }
 }
 
+/* ==================== HORIZONTAL PANEL MOVE BUTTON ==================== */
+.dash-panel-move-btn {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 18px;
+    height: 18px;
+    display: none; /* only shown in horizontal layout */
+    align-items: center;
+    justify-content: center;
+    background: rgba(34,211,238,0.08);
+    border: 1px solid rgba(34,211,238,0.25);
+    border-radius: 4px;
+    color: rgba(34,211,238,0.6);
+    font-size: 11px;
+    cursor: pointer;
+    z-index: 5;
+    transition: background 0.15s, color 0.15s;
+    line-height: 1;
+}
+.dash-panel-move-btn:hover {
+    background: rgba(34,211,238,0.2);
+    color: #22d3ee;
+}
+@media (min-width: 768px) and (orientation: landscape) {
+    .dash-panel-move-btn { display: flex; }
+}
+
 /* ==================== STRATEGY OUTLOOK PILLS ==================== */
 .stint-outlook-pill {
     display: inline-flex;
@@ -452,6 +529,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
     line-height: 1.4;
 }
 .pill-max      { background: rgba(163,230,53,0.15); color: #a3e635; border: 1px solid rgba(163,230,53,0.4); }
+.pill-min      { background: rgba(249,115,22,0.15); color: #fb923c; border: 1px solid rgba(249,115,22,0.4); }
 .pill-normal   { background: rgba(255,255,255,0.06); color: #e5e7eb; border: 1px solid rgba(255,255,255,0.15); }
 .pill-final    { background: rgba(34,211,238,0.12); color: #22d3ee; border: 1px solid rgba(34,211,238,0.3); }
 .pill-rest     { background: rgba(107,114,128,0.15); color: #9ca3af; border: 1px solid rgba(107,114,128,0.3); }

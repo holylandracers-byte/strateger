@@ -374,6 +374,12 @@ window.updateStarterVisuals = function() {
     window.scrollTo(0, scrollY);
 };
 
+window.toggleMaxConsecutive = function() {
+    const allowed = document.getElementById('allowDouble')?.checked;
+    const row = document.getElementById('maxConsecutiveRow');
+    if (row) row.classList.toggle('hidden', !allowed);
+};
+
 window.toggleSquadsInput = function() {
     const numSquads = parseInt(document.getElementById('numSquads')?.value) || 0;
     const useSquads = numSquads > 0;
@@ -974,7 +980,7 @@ window.initTouchDrag = function(container) {
         if (!item) return;
         // Don't start drag on input elements or buttons
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') return;
-        
+
         touchItem = item;
         longPressTimer = setTimeout(() => {
             // Long press activated — start drag
@@ -985,17 +991,18 @@ window.initTouchDrag = function(container) {
             item.style.outline = '2px solid #22d3ee';
             window.showToast('🔀 Drag to reorder, or use ▲▼', 'info', 2000);
         }, 500); // 500ms long press
-    }, { passive: true });
-    
+    }, { passive: false });
+
     container.addEventListener('touchmove', function(e) {
-        // Cancel long-press if finger moves (user is scrolling)
+        // Cancel long-press if finger moves before drag is activated (user is scrolling)
         if (longPressTimer && !window._touchDragState) {
             clearTimeout(longPressTimer);
             longPressTimer = null;
+            return; // Let the scroll happen normally
         }
-        
+
         if (!window._touchDragState) return;
-        e.preventDefault(); // Prevent scroll while dragging
+        e.preventDefault(); // Safe: only called after drag is confirmed active
         
         // Find which item we're over
         const touch = e.touches[0];
@@ -2325,12 +2332,6 @@ window.initDashPanelResizer = function() {
         try { localStorage.setItem(STORAGE_KEY, pct); } catch(e) {}
     }
 
-    function onStart(e) {
-        dragging = true;
-        resizer.classList.add('active');
-        startPct = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dash-info-pct')) || 60;
-        e.preventDefault();
-    }
     function onMove(e) {
         if (!dragging) return;
         applyPct(getPct(e));
@@ -2340,14 +2341,26 @@ window.initDashPanelResizer = function() {
         if (!dragging) return;
         dragging = false;
         resizer.classList.remove('active');
+        // Detach global move listeners when drag ends so they don't block scroll elsewhere
+        window.removeEventListener('mousemove', onMove);
+        window.removeEventListener('touchmove', onMove);
+        window.removeEventListener('mouseup', onEnd);
+        window.removeEventListener('touchend', onEnd);
+    }
+    function onStart(e) {
+        dragging = true;
+        resizer.classList.add('active');
+        startPct = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dash-info-pct')) || 60;
+        e.preventDefault();
+        // Attach global move/end only for the duration of this drag
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('touchmove', onMove, { passive: false });
+        window.addEventListener('mouseup', onEnd);
+        window.addEventListener('touchend', onEnd);
     }
 
     resizer.addEventListener('mousedown', onStart);
     resizer.addEventListener('touchstart', onStart, { passive: false });
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('touchmove', onMove, { passive: false });
-    window.addEventListener('mouseup', onEnd);
-    window.addEventListener('touchend', onEnd);
 
     // Double-tap / double-click to reset to 50/50
     let lastTap = 0;
@@ -2360,11 +2373,12 @@ window.initDashPanelResizer = function() {
 };
 
 // ==========================================
-// 🖐️ DASHBOARD PANEL DRAG-TO-REORDER
+// 🖐️ DASHBOARD PANEL DRAG-TO-REORDER + HORIZONTAL PANELS
 // ==========================================
 
 window.initDashboardDrag = function() {
-    const area = document.getElementById('dashboardScrollArea');
+    // Support both dashboardScrollArea (Streger) and raceInfoPanel (Strateger)
+    const area = document.getElementById('dashboardScrollArea') || document.getElementById('raceInfoPanel');
     if (!area) return;
 
     // Mark direct child panels as draggable
@@ -2449,14 +2463,14 @@ function _onDashPanelDragEnd() {
 }
 
 window._saveDashboardOrder = function() {
-    const area = document.getElementById('dashboardScrollArea');
+    const area = document.getElementById('dashboardScrollArea') || document.getElementById('raceInfoPanel');
     if (!area) return;
     const order = Array.from(area.children).map(c => c.id || c.className.slice(0, 30));
     try { localStorage.setItem('strateger_dashboard_order', JSON.stringify(order)); } catch(e) {}
 };
 
 window._restoreDashboardOrder = function() {
-    const area = document.getElementById('dashboardScrollArea');
+    const area = document.getElementById('dashboardScrollArea') || document.getElementById('raceInfoPanel');
     if (!area) return;
     try {
         const order = JSON.parse(localStorage.getItem('strateger_dashboard_order') || 'null');
@@ -2467,6 +2481,86 @@ window._restoreDashboardOrder = function() {
         });
     } catch(e) {}
 };
+
+// ==========================================
+// ↔️ HORIZONTAL PANEL PINNING
+// Allows moving dashboard panel cards between left (raceInfoPanel)
+// and right (raceControlDock) columns when horizontal layout is active.
+// ==========================================
+
+const _DASH_PANEL_PLACEMENT_KEY = 'strateger_dash_panel_placement';
+
+function _isHorizontalLayout() {
+    const wrapper = document.getElementById('racePanelsWrapper');
+    if (!wrapper) return false;
+    return getComputedStyle(wrapper).flexDirection === 'row';
+}
+
+window.initHorizontalPanels = function() {
+    if (!_isHorizontalLayout()) return;
+
+    const infoPanel = document.getElementById('raceInfoPanel');
+    const controlDock = document.getElementById('raceControlDock');
+    if (!infoPanel || !controlDock) return;
+
+    // Assign IDs to unnamed direct children of raceInfoPanel for persistence
+    let autoIdx = 0;
+    Array.from(infoPanel.children).forEach(child => {
+        if (!child.id) {
+            child.id = 'dashPanel_auto_' + (autoIdx++);
+        }
+    });
+
+    // Restore saved placement
+    const saved = JSON.parse(localStorage.getItem(_DASH_PANEL_PLACEMENT_KEY) || '{}');
+    Object.entries(saved).forEach(([id, target]) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        if (target === 'right' && el.closest('#raceInfoPanel')) {
+            controlDock.insertBefore(el, controlDock.firstChild);
+        } else if (target === 'left' && el.closest('#raceControlDock')) {
+            infoPanel.appendChild(el);
+        }
+    });
+
+    // Add move-to-other-panel button to each moveable child
+    const addMoveBtn = (panel, targetPanel, targetKey) => {
+        Array.from(panel.children).forEach(child => {
+            if (!child.dataset || child.dataset.moveBtnAdded) return;
+            if (child.id === 'strategyToastContainer') return;
+            if (!child.classList.contains('rounded') && !child.classList.contains('rounded-lg') && !child.classList.contains('rounded-xl')) return;
+
+            const btn = document.createElement('button');
+            btn.className = 'dash-panel-move-btn';
+            btn.title = targetKey === 'right' ? 'Move to right panel' : 'Move to left panel';
+            btn.innerHTML = targetKey === 'right' ? '⇥' : '⇤';
+            btn.onclick = (e) => {
+                e.stopPropagation();
+                const savedPlacement = JSON.parse(localStorage.getItem(_DASH_PANEL_PLACEMENT_KEY) || '{}');
+                savedPlacement[child.id] = targetKey;
+                localStorage.setItem(_DASH_PANEL_PLACEMENT_KEY, JSON.stringify(savedPlacement));
+                targetPanel.insertBefore(child, targetPanel.firstChild);
+                window.initHorizontalPanels(); // re-scan after move
+            };
+
+            // Make child position:relative if needed to anchor the button
+            if (!child.style.position || child.style.position === 'static') {
+                child.style.position = 'relative';
+            }
+            child.appendChild(btn);
+            child.dataset.moveBtnAdded = '1';
+        });
+    };
+
+    addMoveBtn(infoPanel, controlDock, 'right');
+    addMoveBtn(controlDock, infoPanel, 'left');
+};
+
+// Re-init horizontal panels on orientation/resize so buttons appear/disappear correctly
+window.addEventListener('resize', () => {
+    if (document.getElementById('raceDashboard')?.classList.contains('hidden')) return;
+    if (typeof window.initHorizontalPanels === 'function') window.initHorizontalPanels();
+});
 
 // ==========================================
 // 🎬 PREVIEW SCREEN HELPERS (v2)

@@ -70,7 +70,8 @@ window.getSquadLabelsInUse = function() {
     return Array.from(labels);
 };
 
-window.selectMostRestedDriver = function(currentTime, driverStats, currentDriverIdx, config) {
+window.selectMostRestedDriver = function(currentTime, driverStats, currentDriverIdx, config, consecutiveCount) {
+    const maxConsec = config.maxConsecutive || 1; // 0 = unlimited
     const candidates = window.drivers
         .map((d, i) => ({
             ...d, idx: i,
@@ -78,16 +79,20 @@ window.selectMostRestedDriver = function(currentTime, driverStats, currentDriver
             driven: driverStats[i].driven
         }))
         .filter(d => {
-            if (!config.allowDouble && d.idx === currentDriverIdx && window.drivers.length > 1) return false;
+            if (window.drivers.length > 1 && d.idx === currentDriverIdx) {
+                if (!config.allowDouble) return false;
+                if (maxConsec > 0 && (consecutiveCount || 0) >= maxConsec) return false;
+            }
             if (config.maxDriverTotalMs > 0 && d.driven >= config.maxDriverTotalMs) return false;
             return true;
         })
         .sort((a, b) => b.restTime - a.restTime);
-    
+
     return candidates.length > 0 ? candidates[0].idx : null;
 };
 
-window.selectDriverFromSquad = function(squadLetter, currentTime, driverStats, currentDriverIdx, config) {
+window.selectDriverFromSquad = function(squadLetter, currentTime, driverStats, currentDriverIdx, config, consecutiveCount) {
+    const maxConsec = config.maxConsecutive || 1;
     const candidates = window.drivers
         .map((d, i) => ({
             ...d, idx: i,
@@ -96,12 +101,15 @@ window.selectDriverFromSquad = function(squadLetter, currentTime, driverStats, c
         }))
         .filter(d => {
             if (d.squad !== squadLetter) return false;
-            if (!config.allowDouble && d.idx === currentDriverIdx && window.drivers.length > 1) return false;
+            if (window.drivers.length > 1 && d.idx === currentDriverIdx) {
+                if (!config.allowDouble) return false;
+                if (maxConsec > 0 && (consecutiveCount || 0) >= maxConsec) return false;
+            }
             if (config.maxDriverTotalMs > 0 && d.driven >= config.maxDriverTotalMs) return false;
             return true;
         })
         .sort((a, b) => b.restTime - a.restTime);
-    
+
     return candidates.length > 0 ? candidates[0].idx : null;
 };
 
@@ -353,53 +361,57 @@ window.calculateStrategyLogic = function(config) {
     let currentDriverIdx = window.drivers.findIndex(d => d.isStarter);
     if (currentDriverIdx === -1) currentDriverIdx = 0;
     currentDriverIdx = (currentDriverIdx - 1 + window.drivers.length) % window.drivers.length;
-    
+
+    let consecutiveCount = 0; // How many stints in a row the current driver has done
+
     let driverStats = window.drivers.map(d => ({
         ...d,
         driven: 0,
         lastStintEnd: null,
         stintCount: 0
     }));
-    
+
     let timeline = [];
     let accumulatedRaceTime = 0;
-    
+
     for (let i = 0; i < totalStints; i++) {
         const duration = stintDurations[i];
         const isLast = (i === totalStints - 1);
         const stintStartTime = new Date(currentTime);
         const isNight = window.isNightPhase(stintStartTime);
-        
+
         let selectedIdx = -1;
         let activeSquad = null;
-        
+
         if (config.useSquads && allSquadLabels.length > 1 && squadWindow) {
             // Determine which squad should be driving at this stint's start time
             activeSquad = window.getScheduledSquad(stintStartTime, squadWindow, allSquadLabels);
-            
+
             if (activeSquad) {
                 // Inside squad window — pick from the scheduled squad
-                selectedIdx = window.selectDriverFromSquad(activeSquad, stintStartTime, driverStats, currentDriverIdx, extendedConfig);
+                selectedIdx = window.selectDriverFromSquad(activeSquad, stintStartTime, driverStats, currentDriverIdx, extendedConfig, consecutiveCount);
                 if (selectedIdx === null) {
                     // Fallback: try other squads in order
                     for (let s = 1; s < allSquadLabels.length; s++) {
                         const fallback = allSquadLabels[(allSquadLabels.indexOf(activeSquad) + s) % allSquadLabels.length];
-                        selectedIdx = window.selectDriverFromSquad(fallback, stintStartTime, driverStats, currentDriverIdx, extendedConfig);
+                        selectedIdx = window.selectDriverFromSquad(fallback, stintStartTime, driverStats, currentDriverIdx, extendedConfig, consecutiveCount);
                         if (selectedIdx !== null) break;
                     }
                 }
             } else {
                 // Outside squad window — all drivers share equally
-                selectedIdx = window.selectMostRestedDriver(stintStartTime, driverStats, currentDriverIdx, extendedConfig);
+                selectedIdx = window.selectMostRestedDriver(stintStartTime, driverStats, currentDriverIdx, extendedConfig, consecutiveCount);
             }
         } else {
-            selectedIdx = window.selectMostRestedDriver(stintStartTime, driverStats, currentDriverIdx, extendedConfig);
+            selectedIdx = window.selectMostRestedDriver(stintStartTime, driverStats, currentDriverIdx, extendedConfig, consecutiveCount);
         }
-        
+
         if (selectedIdx === null || selectedIdx === -1) {
             selectedIdx = (currentDriverIdx + 1) % window.drivers.length;
         }
-        
+
+        // Update consecutive count
+        consecutiveCount = (selectedIdx === currentDriverIdx) ? consecutiveCount + 1 : 1;
         currentDriverIdx = selectedIdx;
         driverStats[selectedIdx].driven += duration;
         driverStats[selectedIdx].stintCount++;
@@ -466,6 +478,8 @@ window.runSim = function() {
     const numSquads = parseInt(document.getElementById('numSquads')?.value) || 0;
     const useSquads = numSquads > 0;
     const allowDouble = document.getElementById('allowDouble')?.checked || false;
+    const maxConsecutiveRaw = parseInt(document.getElementById('maxConsecutive')?.value);
+    const maxConsecutive = allowDouble ? (isNaN(maxConsecutiveRaw) ? 2 : maxConsecutiveRaw) : 1;
     const minDriverMin = parseFloat(document.getElementById('minDriverTime').value) || 0;
     const maxDriverMin = parseFloat(document.getElementById('maxDriverTime').value) || 0;
 
@@ -527,6 +541,7 @@ window.runSim = function() {
         squadWindowStart: squadWindowStart,
         squadWindowEnd: squadWindowEnd,
         allowDouble: allowDouble,
+        maxConsecutive: maxConsecutive,
         minDriverTotal: minDriverMin,
         maxDriverTotal: maxDriverMin,
         totalNetDriveTime: totalNetDriveTime,
@@ -772,6 +787,11 @@ window.initRace = function() {
     // Init draggable panels and resizer after dashboard is visible
     if (typeof window.initDashboardDrag === 'function') window.initDashboardDrag();
     if (typeof window.initDashPanelResizer === 'function') window.initDashPanelResizer();
+    // Init horizontal panel pinning (only active in landscape/wide layout)
+    if (typeof window.initHorizontalPanels === 'function') {
+        // Small delay to let layout settle after transition
+        setTimeout(window.initHorizontalPanels, 150);
+    }
 
     // === Show chat button only in race dashboard ===
     const chatBtn = document.getElementById('chatToggleBtn');
