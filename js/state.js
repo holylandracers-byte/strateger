@@ -1858,7 +1858,8 @@ window.t = function(key) {
         ? localStorage.getItem('strateger_viewer_lang') || localStorage.getItem('strateger_lang') || 'en'
         : localStorage.getItem('strateger_lang') || 'en';
     const dict = window.translations[lang] || window.translations['en'];
-    return dict[key] || key;
+    const en = window.translations['en'] || {};
+    return dict[key] || en[key] || key;
 };
 
 // ==========================================

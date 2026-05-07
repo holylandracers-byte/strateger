@@ -2380,6 +2380,8 @@ window.initDashboardDrag = function() {
     // Support both dashboardScrollArea (Streger) and raceInfoPanel (Strateger)
     const area = document.getElementById('dashboardScrollArea') || document.getElementById('raceInfoPanel');
     if (!area) return;
+    // Keep the active drag container so handlers always target the correct window/layout.
+    window._dashDragArea = area;
 
     // Mark direct child panels as draggable
     const markDraggable = () => {
@@ -2405,11 +2407,14 @@ window.initDashboardDrag = function() {
                 child.addEventListener('touchmove', (e) => {
                     if (!window._dashDragging) return;
                     const t = e.touches[0];
-                    const target = document.elementFromPoint(t.clientX, t.clientY)?.closest('#dashboardScrollArea > div');
+                    const activeArea = window._dashDragArea || area;
+                    const target = document
+                        .elementFromPoint(t.clientX, t.clientY)
+                        ?.closest(`#${activeArea.id} > div`);
                     if (target && target !== window._dashDragging) {
                         const rect = target.getBoundingClientRect();
                         const after = t.clientY > rect.top + rect.height / 2;
-                        area.insertBefore(window._dashDragging, after ? target.nextSibling : target);
+                        activeArea.insertBefore(window._dashDragging, after ? target.nextSibling : target);
                     }
                 }, { passive: true });
                 child.addEventListener('touchend', () => {
@@ -2444,7 +2449,7 @@ function _onDashPanelDragStart(e) {
 function _onDashPanelDragOver(e) {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
-    const area = document.getElementById('dashboardScrollArea');
+    const area = window._dashDragArea || document.getElementById('dashboardScrollArea') || document.getElementById('raceInfoPanel');
     if (!area || !window._dashDragSrc || this === window._dashDragSrc) return;
     const rect = this.getBoundingClientRect();
     const after = e.clientY > rect.top + rect.height / 2;
@@ -2503,6 +2508,15 @@ window.initHorizontalPanels = function() {
     const controlDock = document.getElementById('raceControlDock');
     if (!infoPanel || !controlDock) return;
 
+    const removeAllMoveButtons = () => {
+        document.querySelectorAll('.dash-panel-move-btn').forEach(btn => btn.remove());
+        [infoPanel, controlDock].forEach(p => {
+            Array.from(p.children).forEach(child => {
+                if (child?.dataset) delete child.dataset.moveBtnAdded;
+            });
+        });
+    };
+
     // Assign IDs to unnamed direct children of raceInfoPanel for persistence
     let autoIdx = 0;
     Array.from(infoPanel.children).forEach(child => {
@@ -2511,7 +2525,7 @@ window.initHorizontalPanels = function() {
         }
     });
 
-    // Restore saved placement
+    // Restore saved placement (will be ignored if one-panel mode is active below)
     const saved = JSON.parse(localStorage.getItem(_DASH_PANEL_PLACEMENT_KEY) || '{}');
     Object.entries(saved).forEach(([id, target]) => {
         const el = document.getElementById(id);
@@ -2523,16 +2537,30 @@ window.initHorizontalPanels = function() {
         }
     });
 
+    // If everything fits in the main panel, keep a single panel layout.
+    const totalChildrenHeight = Array.from(infoPanel.children).reduce((sum, el) => sum + (el.offsetHeight || 0), 0);
+    const shouldUseSinglePanel = totalChildrenHeight > 0 && totalChildrenHeight <= infoPanel.clientHeight;
+    if (shouldUseSinglePanel) {
+        Array.from(controlDock.children).forEach(child => infoPanel.appendChild(child));
+        controlDock.classList.add('hidden');
+        removeAllMoveButtons();
+        return;
+    }
+    controlDock.classList.remove('hidden');
+
     // Add move-to-other-panel button to each moveable child
     const SKIP_IDS = new Set(['strategyToastContainer']);
     const addMoveBtn = (panel, targetPanel, targetKey) => {
         Array.from(panel.children).forEach(child => {
-            if (!child.dataset || child.dataset.moveBtnAdded) return;
+            if (!child.dataset) return;
             if (child.id && SKIP_IDS.has(child.id)) return;
             // Accept any div child that looks like a panel block (has an id or rounded corners)
             if (child.tagName !== 'DIV') return;
             const hasRounded = child.classList.contains('rounded') || child.classList.contains('rounded-lg') || child.classList.contains('rounded-xl');
             if (!child.id && !hasRounded) return;
+
+            const existingBtn = child.querySelector(':scope > .dash-panel-move-btn');
+            if (existingBtn) existingBtn.remove();
 
             const btn = document.createElement('button');
             btn.className = 'dash-panel-move-btn';

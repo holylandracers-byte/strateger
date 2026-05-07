@@ -1193,33 +1193,44 @@ function updateRemainingStrategyLogic(raceRemainingMs) {
     }
 
     // --- Build per-stint breakdown ---
-    const avgMs = futurePoolMs / futureStints;
-    const avgMin = Math.round(avgMs / 60000);
-
-    // Greedy: as many MAX stints as possible, rest get the leftover
+    // Prefer the real per-stint targets for this race when available.
     const stintDescriptors = [];
-    if (hasMaxStint) {
-        const fullMaxStints = Math.floor(futurePoolMs / maxStintMs);
-        const greedyCount = Math.min(futureStints - 1, fullMaxStints);
-        const greedyRemainingMs = futurePoolMs - greedyCount * maxStintMs;
-        const greedyRestCount = futureStints - greedyCount;
-        const greedyRestAvgMs = greedyRemainingMs / greedyRestCount;
-        const greedyValid = !hasMinStint || greedyRestAvgMs >= minStintMs;
+    const stintTargets = Array.isArray(window.state?.stintTargets) ? window.state.stintTargets : [];
+    const currentStintIdx = Math.max(0, (window.state?.globalStintNumber || 1) - 1);
+    const upcomingTargets = stintTargets.slice(currentStintIdx + 1, currentStintIdx + 1 + futureStints);
 
-        if (greedyValid && greedyCount > 0) {
-            for (let i = 0; i < greedyCount; i++) stintDescriptors.push({ type: 'max', ms: maxStintMs });
-            const restMin = Math.round(greedyRestAvgMs / 60000);
-            const restType = classifyStint(greedyRestAvgMs);
-            for (let i = 0; i < greedyRestCount; i++) stintDescriptors.push({ type: restType, ms: greedyRestAvgMs, min: restMin });
+    if (upcomingTargets.length === futureStints) {
+        upcomingTargets.forEach(ms => {
+            const safeMs = Math.max(0, Number(ms) || 0);
+            const type = classifyStint(safeMs);
+            stintDescriptors.push({ type, ms: safeMs, min: Math.round(safeMs / 60000) });
+        });
+    } else {
+        const avgMs = futurePoolMs / futureStints;
+        const avgMin = Math.round(avgMs / 60000);
+
+        // Fallback: derive a reasonable projection when explicit stint targets are not available.
+        if (hasMaxStint) {
+            const fullMaxStints = Math.floor(futurePoolMs / maxStintMs);
+            const greedyCount = Math.min(futureStints - 1, fullMaxStints);
+            const greedyRemainingMs = futurePoolMs - greedyCount * maxStintMs;
+            const greedyRestCount = futureStints - greedyCount;
+            const greedyRestAvgMs = greedyRemainingMs / greedyRestCount;
+            const greedyValid = !hasMinStint || greedyRestAvgMs >= minStintMs;
+
+            if (greedyValid && greedyCount > 0) {
+                for (let i = 0; i < greedyCount; i++) stintDescriptors.push({ type: 'max', ms: maxStintMs });
+                const restMin = Math.round(greedyRestAvgMs / 60000);
+                const restType = classifyStint(greedyRestAvgMs);
+                for (let i = 0; i < greedyRestCount; i++) stintDescriptors.push({ type: restType, ms: greedyRestAvgMs, min: restMin });
+            } else {
+                const type = classifyStint(avgMs);
+                for (let i = 0; i < futureStints; i++) stintDescriptors.push({ type, ms: avgMs, min: avgMin });
+            }
         } else {
-            // Balanced — all equal
-            const type = classifyStint(avgMs);
+            const type = (hasMinStint && avgMs < minStintMs) ? 'impossible' : 'normal';
             for (let i = 0; i < futureStints; i++) stintDescriptors.push({ type, ms: avgMs, min: avgMin });
         }
-    } else {
-        // No max constraint — just show the average
-        const type = (hasMinStint && avgMs < minStintMs) ? 'impossible' : 'normal';
-        for (let i = 0; i < futureStints; i++) stintDescriptors.push({ type, ms: avgMs, min: avgMin });
     }
 
     // Collapse consecutive identical pills into "Nx" groups, then render
