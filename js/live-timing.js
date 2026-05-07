@@ -1311,6 +1311,8 @@ window.updateDemoData = function() {
                 if (!comp.bestLap || comp.lastLap < comp.bestLap) {
                     comp.bestLap = comp.lastLap;
                 }
+                // Running average from all completed laps
+                comp.avgLap = Math.round(comp.lapTimes.reduce((a, b) => a + b, 0) / comp.lapTimes.length);
             }
         }
     });

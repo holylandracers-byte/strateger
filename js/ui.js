@@ -2524,11 +2524,15 @@ window.initHorizontalPanels = function() {
     });
 
     // Add move-to-other-panel button to each moveable child
+    const SKIP_IDS = new Set(['strategyToastContainer']);
     const addMoveBtn = (panel, targetPanel, targetKey) => {
         Array.from(panel.children).forEach(child => {
             if (!child.dataset || child.dataset.moveBtnAdded) return;
-            if (child.id === 'strategyToastContainer') return;
-            if (!child.classList.contains('rounded') && !child.classList.contains('rounded-lg') && !child.classList.contains('rounded-xl')) return;
+            if (child.id && SKIP_IDS.has(child.id)) return;
+            // Accept any div child that looks like a panel block (has an id or rounded corners)
+            if (child.tagName !== 'DIV') return;
+            const hasRounded = child.classList.contains('rounded') || child.classList.contains('rounded-lg') || child.classList.contains('rounded-xl');
+            if (!child.id && !hasRounded) return;
 
             const btn = document.createElement('button');
             btn.className = 'dash-panel-move-btn';

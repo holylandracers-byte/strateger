@@ -1244,7 +1244,7 @@ function updateRemainingStrategyLogic(raceRemainingMs) {
             const label = hasMinStint ? ` (${minStintVal}m)` : '';
             phtml += pill(`${prefix}${t('min') || 'MIN'}${label}`, 'pill-min');
         } else if (g.type === 'normal') {
-            phtml += pill(`${prefix}${g.min}m`, 'pill-normal');
+            phtml += pill(`${prefix}${t('norm') || 'NORM'} ${g.min}m`, 'pill-normal');
         } else {
             phtml += pill(`${prefix}${g.min}m ⚠`, 'pill-impossible');
         }
