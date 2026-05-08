@@ -72,6 +72,18 @@ body {
 [dir="rtl"] #headerOverflowMenu {
     direction: ltr;
 }
+
+/* Team identity in header: more distinctive branding look */
+.team-identity-label {
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+}
+.team-identity-input {
+    color: #e6fbff;
+    font-family: "Segoe UI Semibold", "Trebuchet MS", "Arial Rounded MT Bold", sans-serif;
+    letter-spacing: 0.04em;
+    text-shadow: 0 0 8px rgba(34, 211, 238, 0.25);
+}
 /* RTL text alignment for setup / content areas */
 [dir="rtl"] #setupScreen label,
 [dir="rtl"] #setupScreen h2,
@@ -1567,4 +1579,139 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 #muteToggleBtn.muted {
     color: #ef4444 !important;
     border-color: #ef4444 !important;
+}
+
+/* ===== RESPONSIVE UI IMPROVEMENTS ===== */
+
+/* Mid-range phones (381px–600px): increase touch targets and slightly loosen text */
+@media (max-width: 600px) {
+    /* Minimum touch target for header buttons */
+    header button {
+        min-height: 40px;
+        min-width: 40px;
+    }
+
+    /* Qualifying dashboard: stack panels cleanly */
+    #qualifyingDashboard .flex-col.md\:flex-row {
+        flex-direction: column !important;
+        overflow-y: auto !important;
+    }
+
+    /* Current driver strip: give name more room */
+    #qualifyCurrentDriver {
+        font-size: 1.35rem !important;
+    }
+
+    /* Qualifying quick-stats grid: 2-col is fine, just bump label size */
+    #qualifyingDashboard .grid-cols-2 .text-\[9px\] {
+        font-size: 10px !important;
+    }
+
+    /* Stint outlook pills: allow wrap on narrow screens */
+    #remStintsText {
+        flex-wrap: wrap;
+        row-gap: 4px;
+    }
+
+    /* Strategy overview: prevent pill overflow */
+    .stint-outlook-pill {
+        font-size: 10px !important;
+        padding: 2px 6px !important;
+    }
+
+    /* Preview footer buttons: always full-width on phones */
+    #previewScreen > div > .mt-4 {
+        flex-direction: column !important;
+    }
+    #previewScreen > div > .mt-4 > button {
+        width: 100% !important;
+        min-height: 44px;
+    }
+
+    /* Input fields: minimum touch height */
+    .input-field {
+        min-height: 38px;
+    }
+
+    /* Qualifying result table: keep it readable */
+    #qualifyStageResults .text-xs {
+        font-size: 11px !important;
+    }
+}
+
+/* Medium phones and small tablets (601px–767px): enable 2-panel qualifying layout
+   earlier than Tailwind's md: breakpoint (768px) */
+@media (min-width: 601px) and (max-width: 767px) {
+    #qualifyingDashboard .flex-col.md\:flex-row {
+        flex-direction: row !important;
+        gap: 12px !important;
+        padding: 12px !important;
+    }
+    #qualifyingDashboard .md\:w-\[40\%\] {
+        width: 42% !important;
+        overflow-y: auto !important;
+    }
+    #qualifyingDashboard .md\:rounded-xl {
+        border-radius: 0.75rem !important;
+    }
+    #qualifyingDashboard .md\:border {
+        border-width: 1px !important;
+    }
+    #qualifyingDashboard .md\:overflow-hidden {
+        overflow: hidden !important;
+    }
+    #qualifyingDashboard .md\:gap-3 {
+        gap: 12px !important;
+    }
+    #qualifyingDashboard .md\:p-3 {
+        padding: 12px !important;
+    }
+    #qualifyingDashboard .md\:mt-3 {
+        margin-top: 12px !important;
+    }
+}
+
+/* Very small phones (≤380px): hide secondary live timing columns already handled,
+   plus shrink qualifying timer to fit */
+@media (max-width: 380px) {
+    #qualifyTimerDisplay {
+        font-size: 2rem !important;
+    }
+    #qualifyingDashboard .grid-cols-2 {
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+    }
+}
+
+/* Landscape phones (short height): compress qualifying header */
+@media (max-height: 500px) and (orientation: landscape) {
+    #qualifyingDashboard {
+        top: 44px !important;
+    }
+    #qualifyingDashboard > div:first-child {
+        padding-top: 4px !important;
+        padding-bottom: 4px !important;
+    }
+    #qualifyTimerDisplay {
+        font-size: 1.5rem !important;
+    }
+    /* Side-by-side in landscape even on small phones */
+    #qualifyingDashboard .flex-col {
+        flex-direction: row !important;
+    }
+    #qualifyingDashboard .flex-col > div:first-child {
+        width: 45% !important;
+        overflow-y: auto;
+    }
+    #qualifyingDashboard .flex-col > div:last-child {
+        flex: 1;
+        overflow-y: auto;
+    }
+}
+
+/* Driver picker chips in qualifying multi mode */
+#qDriverPickerList button {
+    min-height: 30px;
+    line-height: 1.2;
+    white-space: nowrap;
 }

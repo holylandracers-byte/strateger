@@ -634,8 +634,7 @@ window.recalculateTargetStint = function() {
 
 window.syncRaceLocation = function(value) {
     const raceLocation = String(value || '').trim();
-    const calendarLocation = document.getElementById('calendarLocation');
-    if (calendarLocation && raceLocation) calendarLocation.value = raceLocation;
+    // Keep race location as the single source of truth.
     if (raceLocation && typeof window.refreshVenueWeather === 'function') {
         const selectedPlace = (typeof window.resolveVenueLocation === 'function') ? window.resolveVenueLocation(raceLocation) : null;
         window.refreshVenueWeather(raceLocation, selectedPlace);

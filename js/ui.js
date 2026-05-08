@@ -492,6 +492,7 @@ window.toggleFuelInput = function() {
 const _PHOTO_OVERLAY = 'linear-gradient(rgba(0,0,0,0.62), rgba(0,0,0,0.62))';
 const _photo = (id) =>
     `background-image: ${_PHOTO_OVERLAY}, url(https://images.unsplash.com/${id}?auto=format&fit=crop&w=1920&q=70); background-size: cover; background-position: center; background-repeat: no-repeat;`;
+const _PHOTO_THEME_IDS = new Set(['kart-race', 'kart-night', 'kart-pit', 'kart-onboard', 'kart-wet', 'kart-grid', 'kart-blaze', 'kart-helmet']);
 
 const _BG_THEMES = {
     '': '', // Default — CSS handles it
@@ -560,6 +561,16 @@ const _THEME_TINTS = {
 };
 
 window.setPageBackground = function(bg) {
+    if (_PHOTO_THEME_IDS.has(bg) && !window._proUnlocked) {
+        if (typeof window.showProGate === 'function') {
+            window.showProGate('Photo Themes');
+        }
+        if (typeof window.showToast === 'function') {
+            window.showToast('Photo themes are available for Pro users', 'warning', 2500);
+        }
+        return;
+    }
+
     // Clear all inline background styles first
     document.body.style.cssText = document.body.style.cssText.replace(/background[^;]*;?/gi, '');
     
@@ -627,6 +638,11 @@ window.toggleThemePanel = function() {
         const current = localStorage.getItem('strateger_bg') || '';
         panel.querySelectorAll('.bg-swatch').forEach(s => {
             s.classList.toggle('active', s.dataset.bg === current);
+            const isPhoto = _PHOTO_THEME_IDS.has(s.dataset.bg || '');
+            const locked = isPhoto && !window._proUnlocked;
+            s.classList.toggle('opacity-50', locked);
+            s.classList.toggle('cursor-not-allowed', locked);
+            s.title = locked ? `${s.title || 'Photo'} (Pro)` : (s.title || '');
         });
     }
 };
@@ -781,6 +797,19 @@ window.renderPreview = function() {
                     <span class="text-gray-400 text-[10px]">${startTimeStr}</span>
                     <span class="text-ice text-[10px]">${arrow}</span>
                     <span class="text-gray-400 text-[10px]">${endTimeStr}</span>
+                    ${isLast ? `<span class="inline-flex items-center ml-1" title="Final stint">
+                        <svg width="14" height="10" viewBox="0 0 14 10" aria-hidden="true">
+                            <rect x="0.5" y="0.5" width="13" height="9" rx="1" fill="#111" stroke="#666"/>
+                            <rect x="1" y="1" width="3" height="4" fill="#fff"/>
+                            <rect x="4" y="1" width="3" height="4" fill="#111"/>
+                            <rect x="7" y="1" width="3" height="4" fill="#fff"/>
+                            <rect x="10" y="1" width="3" height="4" fill="#111"/>
+                            <rect x="1" y="5" width="3" height="4" fill="#111"/>
+                            <rect x="4" y="5" width="3" height="4" fill="#fff"/>
+                            <rect x="7" y="5" width="3" height="4" fill="#111"/>
+                            <rect x="10" y="5" width="3" height="4" fill="#fff"/>
+                        </svg>
+                    </span>` : ''}
                     ${pitIndicator}
                     ${stintForecastTag}
                 </div>
@@ -789,7 +818,6 @@ window.renderPreview = function() {
                        class="w-14 bg-navy-800 border border-gray-600 text-white text-center text-xs rounded px-1 py-0.5 font-mono focus:border-ice focus:outline-none ${outOfBounds ? 'border-red-500 text-red-300' : ''}"
                        title="Stint duration (min)">
                 <span class="text-gray-500 text-[10px]">m</span>
-                ${isLast ? '🏁' : ''}
             </div>
         `;
     }).join('');
@@ -2088,16 +2116,8 @@ window.formatVenueShortName = function(place) {
     if (!place) return '';
     const rawName = String(place.name || '').trim();
     const name = rawName.split(',')[0].trim();
-    let country = String(place.country || '').trim();
-    if (!country) {
-        const parts = String(place.displayName || '').split(',').map(p => p.trim()).filter(Boolean);
-        country = parts.length > 1 ? parts[parts.length - 1] : '';
-    }
-    if (name && country) return `${name}, ${country}`;
     if (name) return name;
-    if (country) return country;
     const fallbackParts = String(place.displayName || '').split(',').map(p => p.trim()).filter(Boolean);
-    if (fallbackParts.length >= 2) return `${fallbackParts[0]}, ${fallbackParts[fallbackParts.length - 1]}`;
     return fallbackParts[0] || '';
 };
 

@@ -120,11 +120,10 @@
 
         <!-- Team name — always visible in header center -->
         <div class="flex-1 flex flex-col items-center justify-center px-2 min-w-0">
-            <span class="text-[8px] text-gray-600 uppercase tracking-widest font-bold leading-none mb-0.5 select-none" data-i18n="lblTeamName">Team Name</span>
             <input type="text" id="teamNameInput"
                    data-i18n="lblTeamName"
                    oninput="window.applyTeamName && window.applyTeamName(this.value)"
-                   class="bg-transparent border-b border-gray-600 focus:border-ice text-white text-sm font-bold text-center placeholder-gray-500 outline-none max-w-[180px] w-full transition py-0.5" autocomplete="off">
+                   class="team-identity-input bg-transparent border-b border-gray-600 focus:border-ice text-base font-bold text-center placeholder-gray-500 outline-none max-w-[220px] w-full transition py-0.5" autocomplete="off">
         </div>
 
         <div class="flex items-center gap-1 sm:gap-2">
@@ -150,7 +149,7 @@
             </button>
 
             <!-- Theme button: hidden on small screens (moved to ⋮ menu) -->
-            <button id="themeToggleBtn" onclick="window.toggleThemePanel()" class="hidden sm:flex bg-navy-800 hover:bg-navy-700 text-gray-300 hover:text-white text-xs font-bold px-2 py-1.5 rounded-full border border-gray-700 hover:border-gray-500 transition transform active:scale-95 items-center gap-1" title="Theme">
+            <button id="themeToggleBtn" onclick="window.toggleThemePanel()" class="flex bg-navy-800 hover:bg-navy-700 text-gray-300 hover:text-white text-xs font-bold px-2 py-1.5 rounded-full border border-gray-700 hover:border-gray-500 transition transform active:scale-95 items-center gap-1" title="Theme">
                 <i class="fas fa-palette"></i>
             </button>
 
@@ -165,7 +164,7 @@
             </button>
 
             <!-- ⋮ Overflow menu (mobile only) -->
-            <div class="relative sm:hidden">
+            <div class="hidden sm:hidden">
                 <button onclick="document.getElementById('headerOverflowMenu').classList.toggle('hidden')" class="bg-navy-800 hover:bg-navy-700 text-gray-300 hover:text-white text-sm font-bold w-9 h-9 rounded-full border border-gray-700 flex items-center justify-center">
                     <i class="fas fa-ellipsis-v"></i>
                 </button>
@@ -294,9 +293,8 @@
                         <button id="qpartAllBtn" onclick="window.setQParticipation('all')" class="flex-1 text-[10px] py-1.5 font-bold bg-blue-600 text-white transition" data-i18n="qualifyPartAll">All</button>
                     </div>
                     <div id="qMultiCountRow" class="hidden mt-1.5">
-                        <label class="text-[10px] text-gray-500" data-i18n="qualifyPartMultiCount">Number of drivers</label>
-                        <input type="number" id="qMultiCount" value="2" min="2" max="10"
-                            class="input-field text-blue-300 font-bold" oninput="window.updateQualifyPreview && window.updateQualifyPreview()">
+                        <label class="text-[10px] text-gray-500 block mb-1" data-i18n="qualifyPartMultiCount">Select drivers</label>
+                        <div id="qDriverPickerList" class="flex flex-wrap gap-1.5"></div>
                     </div>
                     <div class="mt-1.5">
                         <label class="text-[10px] text-gray-500" data-i18n="qualifyRuns">Runs per driver</label>
@@ -461,7 +459,7 @@
                     <div class="border-b border-gray-600 pb-2">
                         <label class="flex items-center gap-2 cursor-pointer">
                             <input type="checkbox" id="allowDouble" onchange="window.toggleMaxConsecutive(); window.runSim()" class="accent-ice w-4 h-4">
-                            <span class="text-sm text-gray-300" data-i18n="lblDoubles">Allow Double Stints</span>
+                            <span class="text-sm text-gray-300" data-i18n="lblDoubles">Allow consecutive stints</span>
                         </label>
                         <span class="text-xs text-gray-500 ml-6 block mt-1" data-i18n="lblDoublesHint">Same driver back-to-back</span>
                         <div id="maxConsecutiveRow" class="hidden flex items-center gap-2 mt-2 ml-6">
@@ -1369,6 +1367,31 @@
                     <div class="text-[9px] text-gray-500 uppercase font-bold tracking-widest mb-2" data-i18n="qualifyUpNext">Up Next</div>
                     <div id="qualifyNextList" class="space-y-1.5"></div>
                 </div>
+                <!-- Race-like quick widgets for qualifying -->
+                <div class="bg-navy-900 md:rounded-xl md:border md:border-gray-700 p-3 mt-0 md:mt-3">
+                    <div class="grid grid-cols-2 gap-2">
+                        <div class="bg-navy-950 rounded border border-gray-700 p-2 text-center">
+                            <div class="text-[9px] text-gray-500 uppercase font-bold" data-i18n="targetStint">Target</div>
+                            <div id="qualifyTargetStint" class="text-sm font-mono font-bold text-white">--:--</div>
+                        </div>
+                        <div class="bg-navy-950 rounded border border-gray-700 p-2 text-center">
+                            <div class="text-[9px] text-gray-500 uppercase font-bold" data-i18n="nextDriver">Next Driver</div>
+                            <div id="qualifyNextDriverQuick" class="text-sm font-bold text-neon truncate">---</div>
+                        </div>
+                        <div class="bg-navy-950 rounded border border-gray-700 p-2 text-center">
+                            <div class="text-[9px] text-gray-500 uppercase font-bold" data-i18n="pos">POS</div>
+                            <div id="qualifyLivePos" class="text-sm font-bold text-ice">-</div>
+                        </div>
+                        <div class="bg-navy-950 rounded border border-gray-700 p-2 text-center">
+                            <div class="text-[9px] text-gray-500 uppercase font-bold" data-i18n="best">BEST</div>
+                            <div id="qualifyLiveBest" class="text-sm font-mono text-neon">--</div>
+                        </div>
+                    </div>
+                    <button id="qualifyEnterPitBtn" onclick="window.qualifyEnterPit()" class="mt-2 w-full bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white font-bold py-2.5 rounded-xl transition active:scale-95 flex items-center justify-center gap-2">
+                        <i class="fas fa-flag-checkered"></i>
+                        <span data-i18n="enterPit">ENTER PIT</span>
+                    </button>
+                </div>
             </div>
 
             <!-- RIGHT PANEL — results + next segment + next run -->
@@ -1412,6 +1435,18 @@
                 </div>
                 <!-- Next Run button -->
                 <div class="bg-navy-900 border-t md:border-t-0 border-gray-800 p-3 shrink-0">
+                    <div class="bg-navy-950 border border-gray-700 rounded-lg overflow-hidden mb-3">
+                        <table class="w-full text-xs">
+                            <thead class="text-gray-400 text-[9px] bg-navy-900 border-b border-gray-700">
+                                <tr>
+                                    <th class="text-left p-1.5" data-i18n="driverHeader">DRIVER</th>
+                                    <th class="text-center p-1.5" data-i18n="stops">ST</th>
+                                    <th class="text-right p-1.5" data-i18n="best">BEST</th>
+                                </tr>
+                            </thead>
+                            <tbody id="qualifyStatsTable" class="divide-y divide-gray-800"></tbody>
+                        </table>
+                    </div>
                     <button id="qualifyNextBtn" onclick="window.qualifyNextRun()"
                         class="w-full bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-black py-5 rounded-2xl text-xl shadow-[0_0_20px_rgba(59,130,246,0.4)] transition active:scale-95 flex items-center justify-center gap-3">
                         <i class="fas fa-forward"></i>

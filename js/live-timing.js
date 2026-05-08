@@ -1208,11 +1208,11 @@ window.updateDemoData = function() {
     // Wet karting is significantly slower: ~8-15% slower depending on intensity
     if (rain) {
         if (rain.active) {
-            rain.paceMultiplier = 1.0 + rain.intensity * 0.15; // 4.5%–15% slower
+            rain.paceMultiplier = 1.0 + rain.intensity * 0.15; // up to 15% slower at full intensity
         } else if (rain.drying) {
-            // Gradually dry: pace recovers over the drying period
+            // Gradually dry: pace recovers from 8% down to 0% over the drying period
             const dryingProgress = Math.min(1, (raceElapsed - rain.lastChangeTime) / 180000); // ~3 min to fully dry
-            rain.paceMultiplier = 1.0 + rain.intensity * 0.15 * (1 - dryingProgress);
+            rain.paceMultiplier = 1.0 + rain.intensity * 0.08 * (1 - dryingProgress);
         } else {
             rain.paceMultiplier = 1.0;
         }

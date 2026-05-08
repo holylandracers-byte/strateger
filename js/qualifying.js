@@ -12,6 +12,7 @@ window._qualifyConfig = {
     segments: 3,
     participation: 'all',
     multiCount: 2,
+    selectedDrivers: null, // null = all; Set of driver names for 'multi' mode
     pitRule: 'none',
     pitMinSec: 30
 };
@@ -97,6 +98,44 @@ window.setQSegments = function(n) {
     window.saveHostState && window.saveHostState();
 };
 
+window._rebuildQDriverPicker = function() {
+    const list = document.getElementById('qDriverPickerList');
+    if (!list) return;
+    if (typeof window.updateDriversFromUI === 'function') window.updateDriversFromUI();
+    const drivers = window.drivers || [];
+    if (!window._qualifyConfig.selectedDrivers) {
+        window._qualifyConfig.selectedDrivers = new Set(drivers.map(d => d.name));
+    }
+    // Keep only valid driver names
+    const validNames = new Set(drivers.map(d => d.name));
+    window._qualifyConfig.selectedDrivers.forEach(n => { if (!validNames.has(n)) window._qualifyConfig.selectedDrivers.delete(n); });
+
+    list.innerHTML = '';
+    drivers.forEach(d => {
+        const selected = window._qualifyConfig.selectedDrivers.has(d.name);
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = `text-[10px] font-bold px-2 py-1 rounded-full border transition-all ${
+            selected ? 'border-blue-500 bg-blue-600/30 text-blue-300' : 'border-gray-600 bg-transparent text-gray-500'
+        }`;
+        chip.style.borderLeftColor = d.color || '';
+        chip.style.borderLeftWidth = '3px';
+        chip.textContent = d.name;
+        chip.onclick = () => {
+            if (window._qualifyConfig.selectedDrivers.has(d.name)) {
+                if (window._qualifyConfig.selectedDrivers.size > 1) {
+                    window._qualifyConfig.selectedDrivers.delete(d.name);
+                }
+            } else {
+                window._qualifyConfig.selectedDrivers.add(d.name);
+            }
+            window._rebuildQDriverPicker();
+            window.updateQualifyPreview && window.updateQualifyPreview();
+        };
+        list.appendChild(chip);
+    });
+};
+
 window.setQParticipation = function(mode) {
     window._qualifyConfig.participation = mode;
     const ids = { one: 'qpartOneBtn', multi: 'qpartMultiBtn', all: 'qpartAllBtn' };
@@ -108,6 +147,12 @@ window.setQParticipation = function(mode) {
     });
     const multiRow = document.getElementById('qMultiCountRow');
     if (multiRow) multiRow.classList.toggle('hidden', mode !== 'multi');
+    if (mode === 'multi') {
+        // Reset selection to all drivers when opening picker
+        if (typeof window.updateDriversFromUI === 'function') window.updateDriversFromUI();
+        window._qualifyConfig.selectedDrivers = new Set((window.drivers || []).map(d => d.name));
+        window._rebuildQDriverPicker();
+    }
     window.updateQualifyPreview && window.updateQualifyPreview();
     window.saveHostState && window.saveHostState();
 };
@@ -173,14 +218,20 @@ window.updateQualifyPreview = function() {
     const preview = document.getElementById('qualifyStrategyPreview');
     if (!preview) return;
 
+    // Keep driver picker in sync when in multi mode
+    if (cfg.participation === 'multi') {
+        window._rebuildQDriverPicker();
+    }
+
     if (!drivers.length) { preview.innerHTML = '<span class="text-gray-500">Add drivers to see qualifying strategy</span>'; return; }
 
     let activeDrivers;
     if (cfg.participation === 'one') {
         activeDrivers = [drivers[0]];
     } else if (cfg.participation === 'multi') {
-        const n = Math.min(parseInt(document.getElementById('qMultiCount')?.value) || 2, drivers.length);
-        activeDrivers = drivers.slice(0, n);
+        const sel = cfg.selectedDrivers;
+        activeDrivers = sel ? drivers.filter(d => sel.has(d.name)) : drivers;
+        if (!activeDrivers.length) activeDrivers = drivers.slice(0, 2);
     } else {
         activeDrivers = drivers;
     }
@@ -221,8 +272,9 @@ window.startQualifyingDirect = function() {
     if (cfg.participation === 'one') {
         activeDrivers = [drivers[0]];
     } else if (cfg.participation === 'multi') {
-        const n = Math.min(parseInt(document.getElementById('qMultiCount')?.value) || 2, drivers.length);
-        activeDrivers = drivers.slice(0, n);
+        const sel = cfg.selectedDrivers;
+        activeDrivers = sel ? drivers.filter(d => sel.has(d.name)) : drivers;
+        if (!activeDrivers.length) activeDrivers = drivers.slice(0, 2);
     } else {
         activeDrivers = drivers;
     }
@@ -369,6 +421,10 @@ window._qualifyRenderTick = function() {
         }
     }
 
+    if (typeof window._qualifyRenderRaceLikeWidgets === 'function') {
+        window._qualifyRenderRaceLikeWidgets(runLeft);
+    }
+
     if (sessionLeft <= 0) {
         const segPanel = document.getElementById('qualifyNextSegmentPanel');
         if (segPanel && qs && qs.cfg.segCount > 1 && (qs.currentSegment || 1) < qs.cfg.segCount) {
@@ -379,6 +435,68 @@ window._qualifyRenderTick = function() {
             window._qualifyInterval = null;
         } else {
             window.stopQualifying(true);
+        }
+    }
+};
+
+window._qualifyRenderRaceLikeWidgets = function(runLeftMs) {
+    const qs = window._qualifyState;
+    if (!qs) return;
+
+    const fmt = ms => {
+        const s = Math.max(0, Math.floor(ms / 1000));
+        return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+    };
+
+    const targetEl = document.getElementById('qualifyTargetStint');
+    if (targetEl) targetEl.textContent = fmt(runLeftMs || 0);
+
+    const nextDriverEl = document.getElementById('qualifyNextDriverQuick');
+    if (nextDriverEl) {
+        const next = qs.schedule[qs.currentIdx + 1];
+        nextDriverEl.textContent = next ? next.driverName : ((window.t && window.t('qualifyLastRun')) || 'Last run');
+    }
+
+    const posEl = document.getElementById('qualifyLivePos');
+    if (posEl) posEl.textContent = window.liveData?.position || '-';
+
+    const bestEl = document.getElementById('qualifyLiveBest');
+    if (bestEl) {
+        bestEl.textContent = (window.liveData?.bestLap && window.formatLapTime)
+            ? window.formatLapTime(window.liveData.bestLap)
+            : '--';
+    }
+
+    const statsEl = document.getElementById('qualifyStatsTable');
+    if (statsEl) {
+        const status = window._qualifyTeamStatus || {};
+        const rows = Object.keys(status).map(name => {
+            const d = status[name] || {};
+            const runs = Array.isArray(d.times) ? d.times.length : 0;
+            const best = runs ? Math.min(...d.times) : null;
+            return { name, runs, best, color: d.color || '#60a5fa' };
+        }).sort((a, b) => {
+            if (a.best == null && b.best == null) return a.name.localeCompare(b.name);
+            if (a.best == null) return 1;
+            if (b.best == null) return -1;
+            return a.best - b.best;
+        });
+
+        if (rows.length === 0) {
+            statsEl.innerHTML = `<tr><td colspan="3" class="p-2 text-center text-gray-600 text-[10px]">No runs yet</td></tr>`;
+        } else {
+            statsEl.innerHTML = rows.map(r => `
+                <tr>
+                    <td class="p-1.5">
+                        <div class="flex items-center gap-1.5 min-w-0">
+                            <span class="w-2 h-2 rounded-full shrink-0" style="background:${r.color}"></span>
+                            <span class="truncate text-white">${r.name}</span>
+                        </div>
+                    </td>
+                    <td class="p-1.5 text-center font-mono text-gray-300">${r.runs}</td>
+                    <td class="p-1.5 text-right font-mono text-neon">${r.best != null && window.formatLapTime ? window.formatLapTime(r.best) : '--'}</td>
+                </tr>
+            `).join('');
         }
     }
 };
@@ -479,6 +597,21 @@ window.qualifyNextRun = function() {
     } else {
         window._qualifyExecuteNextRun();
     }
+};
+
+window.qualifyEnterPit = function() {
+    const qs = window._qualifyState;
+    if (!qs) return;
+    const pitDock = document.getElementById('qualifyPitDock');
+    if (pitDock && !pitDock.classList.contains('hidden')) return;
+
+    const minSec = parseInt(qs.cfg?.pitMinSec) || 30;
+    window._qualifyShowPitDock(minSec);
+    window.showToast && window.showToast(
+        (window.t && window.t('inPit')) || 'In Pit',
+        'info',
+        1500
+    );
 };
 
 window.qualifyPitExit = function() {

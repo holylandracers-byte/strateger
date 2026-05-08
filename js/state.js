@@ -1852,6 +1852,64 @@ window.translations = {
     }
 };
 
+// Normalize keys that should stay consistent across all languages.
+(function normalizeGlobalTranslations() {
+    const teamNameByLang = {
+        en: 'Team Name',
+        he: 'שם הקבוצה',
+        fr: "Nom de l'equipe",
+        pt: 'Nome da equipe',
+        ru: 'Название команды',
+        ar: 'اسم الفريق',
+        es: 'Nombre del equipo',
+        it: 'Nome squadra',
+        ka: 'გუნდის სახელი',
+        de: 'Teamname',
+        ja: 'チーム名',
+        el: 'Ονομα ομάδας'
+    };
+    const settingsSavedByLang = {
+        en: 'Settings saved',
+        he: 'ההגדרות נשמרו',
+        fr: 'Parametres enregistres',
+        pt: 'Configuracoes salvas',
+        ru: 'Настройки сохранены',
+        ar: 'تم حفظ الإعدادات',
+        es: 'Configuracion guardada',
+        it: 'Impostazioni salvate',
+        ka: 'პარამეტრები შენახულია',
+        de: 'Einstellungen gespeichert',
+        ja: '設定を保存しました',
+        el: 'Οι ρυθμίσεις αποθηκεύτηκαν'
+    };
+    const lblDoublesByLang = {
+        en: 'Allow consecutive stints',
+        he: 'אפשר סטינטים רצופים',
+        fr: 'Autoriser les relais consecutifs',
+        pt: 'Permitir stints consecutivos',
+        ru: 'Разрешить последовательные стинты',
+        ar: 'السماح بمقاطع متتالية',
+        es: 'Permitir stints consecutivos',
+        it: 'Consenti stint consecutivi',
+        ka: 'დაუშვი ზედიზედ stint-ები',
+        de: 'Aufeinanderfolgende Stints erlauben',
+        ja: '連続スティントを許可',
+        el: 'Να επιτρέπονται διαδοχικά stint'
+    };
+
+    Object.keys(window.translations || {}).forEach(lang => {
+        const dict = window.translations[lang];
+        if (!dict) return;
+        dict.qualifyTitle = 'מקצה דירוג';
+        dict.lblTeamName = teamNameByLang[lang] || teamNameByLang.en;
+        dict.lblDoubles = lblDoublesByLang[lang] || lblDoublesByLang.en;
+        dict.settingsSaved = settingsSavedByLang[lang] || settingsSavedByLang.en;
+        if (lang === 'he') {
+            dict.proUpgradeTitle = 'שדרג ל-Pro';
+        }
+    });
+})();
+
 window.t = function(key) {
     // 🟢 Use viewer's own language preference if set
     const lang = window.role === 'viewer' 
@@ -2030,6 +2088,9 @@ window.saveSettingsToDevice = function() {
         btn.classList.add('border-neon/60', 'text-neon');
         setTimeout(() => { btn.innerHTML = orig; btn.classList.remove('border-neon/60', 'text-neon'); }, 1500);
     }
+    if (typeof window.showToast === 'function') {
+        window.showToast(window.t('settingsSaved'), 'success', 1500);
+    }
 };
 
 window.loadSavedSettings = function() {
@@ -2124,6 +2185,12 @@ window.checkForSavedRace = function() {
             const currentIdx = data.state.currentDriverIdx || 0;
             const driverName = data.drivers[currentIdx] ? data.drivers[currentIdx].name : 'Unknown';
             document.getElementById('savedRaceDriver').innerText = driverName;
+            const savedPitCount = data.liveData?.ourTeamPitCount ?? data.state?.pitCount ?? 0;
+            const savedStintNo = data.state?.globalStintNumber ?? ((data.state?.pitCount || 0) + 1);
+            const stopsEl = document.getElementById('savedRaceStops');
+            const stintEl = document.getElementById('savedRaceStint');
+            if (stopsEl) stopsEl.innerText = String(savedPitCount);
+            if (stintEl) stintEl.innerText = String(savedStintNo);
             
             const raceMs = data.config.raceMs || (data.config.duration * 3600000);
             const elapsed = Date.now() - data.state.startTime;

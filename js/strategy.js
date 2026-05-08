@@ -115,6 +115,7 @@ window.selectDriverFromSquad = function(squadLetter, currentTime, driverStats, c
 
 window.calculateStintDurations = function(config) {
     const raceMs = config.raceMs;
+    // Pit cycle duration is treated as entry + outlap together.
     const pitTimeMs = config.pitTime * 1000;
     const totalStints = config.stops + 1;
     const totalPitTime = config.stops * pitTimeMs;
@@ -254,47 +255,76 @@ window.calculateStintDurations = function(config) {
         }
     }
 
-    // Normalize durations to whole seconds to avoid sub-second drift.
-    const rounded = stintDurations.map(d => Math.round(d / 1000) * 1000);
-    const sumRounded = rounded.reduce((a, b) => a + b, 0);
-    let diff = totalNetDriveTime - sumRounded;
+    const normalizeDurations = (durations) => {
+        const rounded = durations.map(d => Math.round(d / 1000) * 1000);
+        const sumRounded = rounded.reduce((a, b) => a + b, 0);
+        let diff = totalNetDriveTime - sumRounded;
 
-    // Ensure we preserve constraints when applying the diff.
-    const canAdd = (idx) => rounded[idx] + 1000 <= effectiveMaxStint;
-    const canSub = (idx) => rounded[idx] - 1000 >= safeMinStintMs;
+        const canAdd = (idx) => rounded[idx] + 1000 <= effectiveMaxStint;
+        const canSub = (idx) => rounded[idx] - 1000 >= safeMinStintMs;
 
-    // Apply diff in 1s steps.
-    const steps = Math.round(Math.abs(diff) / 1000);
-    if (steps > 0) {
-        for (let step = 0; step < steps; step++) {
-            if (diff > 0) {
-                let applied = false;
-                for (let i = totalStints - 1; i >= 0; i--) {
-                    if (canAdd(i)) {
-                        rounded[i] += 1000;
-                        applied = true;
-                        break;
+        const steps = Math.round(Math.abs(diff) / 1000);
+        if (steps > 0) {
+            for (let step = 0; step < steps; step++) {
+                if (diff > 0) {
+                    let applied = false;
+                    for (let i = totalStints - 1; i >= 0; i--) {
+                        if (canAdd(i)) {
+                            rounded[i] += 1000;
+                            diff -= 1000;
+                            applied = true;
+                            break;
+                        }
                     }
-                }
-                if (!applied) break;
-            } else {
-                let applied = false;
-                for (let i = totalStints - 1; i >= 0; i--) {
-                    if (canSub(i)) {
-                        rounded[i] -= 1000;
-                        applied = true;
-                        break;
+                    if (!applied) break;
+                } else {
+                    let applied = false;
+                    for (let i = totalStints - 1; i >= 0; i--) {
+                        if (canSub(i)) {
+                            rounded[i] -= 1000;
+                            diff += 1000;
+                            applied = true;
+                            break;
+                        }
                     }
+                    if (!applied) break;
                 }
-                if (!applied) break;
             }
         }
-    }
 
-    // Final safeguard: guarantee the sum equals totalNetDriveTime exactly.
-    const finalSum = rounded.reduce((a, b) => a + b, 0);
-    if (finalSum !== totalNetDriveTime) {
-        rounded[totalStints - 1] += (totalNetDriveTime - finalSum);
+        const finalSum = rounded.reduce((a, b) => a + b, 0);
+        if (finalSum !== totalNetDriveTime) {
+            const tail = rounded.length - 1;
+            rounded[tail] = Math.max(safeMinStintMs, Math.min(effectiveMaxStint, rounded[tail] + (totalNetDriveTime - finalSum)));
+        }
+        return rounded;
+    };
+
+    let rounded = normalizeDurations(stintDurations);
+
+    // Weather-aware stint sizing:
+    // heavy rain at stint midpoint -> shorter stint, dry midpoint -> longer stint.
+    if (typeof window.getVenueForecastAt === 'function' && rounded.length > 0) {
+        const raceStartMs = Number.isFinite(Date.parse(window.raceStartTime)) ? Date.parse(window.raceStartTime) : Date.now();
+        let cursor = raceStartMs;
+        const adapted = rounded.map((dur, idx) => {
+            const midMs = cursor + Math.floor(dur / 2);
+            const fc = window.getVenueForecastAt(midMs);
+            const code = Number(fc?.weatherCode);
+            const precip = Number(fc?.precipitation || 0);
+            const heavyRain = ([65, 67, 82, 95, 96, 99].includes(code)) || precip >= 2.5;
+            const dry = ((code >= 0 && code <= 2) || code === 3) && precip < 0.2;
+
+            let next = dur;
+            if (heavyRain) next = Math.round(dur * 0.88);
+            else if (dry) next = Math.round(dur * 1.06);
+            next = Math.max(safeMinStintMs, Math.min(effectiveMaxStint, next));
+
+            cursor += dur;
+            if (idx < totalStints - 1) cursor += pitTimeMs;
+            return next;
+        });
+        rounded = normalizeDurations(adapted);
     }
 
     return { durations: rounded };
@@ -471,6 +501,7 @@ window.runSim = function() {
     const reqStops = parseInt(document.getElementById('reqPitStops').value) || 15;
     const minStintMin = parseFloat(document.getElementById('minStint').value) || 10;
     const maxStintMin = parseFloat(document.getElementById('maxStint').value) || 45;
+    // Input value is full pit cycle (entry + outlap).
     const pitTimeSec = parseInt(document.getElementById('minPitTime').value) || 120;
     const fuelMin = parseFloat(document.getElementById('fuelTime').value) || 0;
     const closedStartMin = parseFloat(document.getElementById('pitClosedStart').value) || 0;
