@@ -3,10 +3,10 @@
 // ==========================================
 
 function getLapWord(count) {
-    const lang = window.currentLang || localStorage.getItem('strateger_lang') || 'en';
-    if (lang === 'it') return count === 1 ? 'Giro' : 'Giri';
-    if (lang === 'he') return count === 1 ? 'הקפה' : 'הקפות';
-    return count === 1 ? 'lap' : 'laps';
+    // Use translation system so all 12 languages are supported automatically
+    return count === 1
+        ? (window.t ? window.t('lapSingular') : 'lap')
+        : (window.t ? window.t('lapPlural') : 'laps');
 }
 
 function formatLapGapFromDiff(diff) {
@@ -16,25 +16,52 @@ function formatLapGapFromDiff(diff) {
 
 function dedupeLiveCompetitors(list) {
     if (!Array.isArray(list) || list.length === 0) return [];
-    const map = new Map();
+
+    // Phase 1: deduplicate by rowId (authoritative — each rowId is a unique row from the feed).
+    // This prevents the crash where repeated packets for the same physical row produce
+    // multiple entries at identical positions 1/2/3 when kart and name are both absent.
+    const byRowId = new Map();
     for (const c of list) {
-        const key = c.kart
-            ? `kart:${String(c.kart).trim()}`
-            : (c.name
-                ? `name:${String(c.name).trim().toUpperCase()}`
-                : `pos:${parseInt(c.position, 10) || 0}`);
-        if (!map.has(key)) {
-            map.set(key, c);
-            continue;
-        }
-        const prev = map.get(key);
-        const score = (c.lastLap ? 1 : 0) + (c.bestLap ? 1 : 0) + ((c.laps || c.totalLaps || 0) > 0 ? 1 : 0);
-        const prevScore = (prev.lastLap ? 1 : 0) + (prev.bestLap ? 1 : 0) + ((prev.laps || prev.totalLaps || 0) > 0 ? 1 : 0);
-        if (score > prevScore) {
-            map.set(key, c);
+        const rid = c.rowId;
+        if (!rid) continue;
+        if (!byRowId.has(rid)) {
+            byRowId.set(rid, c);
+        } else {
+            // Keep the entry with more timing data (richer packet wins)
+            const prev = byRowId.get(rid);
+            const score = (c.lastLap ? 1 : 0) + (c.bestLap ? 1 : 0) + ((c.laps || c.totalLaps || 0) > 0 ? 1 : 0);
+            const prevScore = (prev.lastLap ? 1 : 0) + (prev.bestLap ? 1 : 0) + ((prev.laps || prev.totalLaps || 0) > 0 ? 1 : 0);
+            if (score > prevScore) byRowId.set(rid, c);
         }
     }
-    return Array.from(map.values()).sort((a, b) => (a.position || 999) - (b.position || 999));
+
+    // Items without a rowId fall through to the secondary key pass
+    const noRowId = list.filter(c => !c.rowId);
+
+    // Phase 2: deduplicate the rowId-less items (demo mode) by kart → name → unique position slot
+    const usedPositions = new Set(Array.from(byRowId.values()).map(c => c.position));
+    const secondary = new Map();
+    for (const c of noRowId) {
+        const kartStr = String(c.kart || '').trim();
+        const nameStr = String(c.name || '').trim().toUpperCase();
+        // Give each position its own unique key so two entries at P1 and P2 don't collide
+        const key = kartStr
+            ? `kart:${kartStr}`
+            : (nameStr
+                ? `name:${nameStr}`
+                : `pos:${parseInt(c.position, 10) || 0}:${Math.random()}`); // unique fallback
+        if (!secondary.has(key)) {
+            secondary.set(key, c);
+        } else {
+            const prev = secondary.get(key);
+            const score = (c.lastLap ? 1 : 0) + (c.bestLap ? 1 : 0) + ((c.laps || c.totalLaps || 0) > 0 ? 1 : 0);
+            const prevScore = (prev.lastLap ? 1 : 0) + (prev.bestLap ? 1 : 0) + ((prev.laps || prev.totalLaps || 0) > 0 ? 1 : 0);
+            if (score > prevScore) secondary.set(key, c);
+        }
+    }
+
+    const merged = [...byRowId.values(), ...secondary.values()];
+    return merged.sort((a, b) => (a.position || 999) - (b.position || 999));
 }
 
 // עדכון הגדרות החיפוש (צוות/נהג/מספר)
@@ -392,21 +419,25 @@ window.formatLapTime = function(ms) {
     if (!ms) return '--';
     const totalSec = ms / 1000;
     const min = Math.floor(totalSec / 60);
-    const sec = (totalSec % 60).toFixed(3);
-    return `${min}:${sec.padStart(6, '0')}`;
+    // Always use '.' internally then substitute locale decimal separator for display
+    const sec = (totalSec % 60).toFixed(3).padStart(6, '0');
+    const decSep = window.t ? window.t('numDecSep') : '.';
+    return `${min}:${decSep !== '.' ? sec.replace('.', decSep) : sec}`;
 };
 
 window.updateLiveTimingUI = function() {
-    // Always show panel if we have data, regardless of enabled flag
+    // Always show widget if we have data, regardless of enabled flag
     const hasData = window.liveData && (window.liveData.position || window.liveData.competitors.length > 0);
-    
-    const panel = document.getElementById('liveTimingPanel');
+
+    const wrapper = document.getElementById('liveTimingWidgetWrapper');
     const indicator = document.getElementById('liveIndicator');
-    
+
     if (hasData || window.liveTimingConfig.enabled) {
-        if (panel) panel.classList.remove('hidden');
+        if (wrapper) wrapper.classList.remove('hidden');
         if (indicator) indicator.classList.remove('hidden');
     }
+    // panel is always visible inside wrapper — no need to show/hide it directly
+    const panel = document.getElementById('liveTimingPanel');
 
     const heartbeatEl = document.getElementById('liveHeartbeat');
     if (heartbeatEl) {
@@ -451,8 +482,7 @@ window.updateLiveTimingUI = function() {
     const gapEl = document.getElementById('liveGap');
     if (gapEl) {
         if (window.liveData.position === 1) {
-            const leaderLabel = window.t('leaderLabel');
-            gapEl.innerText = leaderLabel !== 'leaderLabel' ? leaderLabel : 'LEADER';
+            gapEl.innerText = window.t ? window.t('leaderLabel') : 'LEADER';
             gapEl.className = 'text-sm font-mono text-gold';
         } else {
             // Compute lap-based gap from competitors data
@@ -461,12 +491,14 @@ window.updateLiveTimingUI = function() {
             const ourLaps = window.liveData.laps || 0;
             const leaderLaps = leader ? (leader.laps || leader.totalLaps || 0) : 0;
             const lapDiff = leaderLaps - ourLaps;
+            const decSep = window.t ? window.t('numDecSep') : '.';
             if (lapDiff >= 1) {
                 gapEl.innerText = formatLapGapFromDiff(lapDiff);
                 gapEl.className = 'text-sm font-mono text-fuel';
             } else if (window.liveData.gapToLeader) {
                 const gapSec = (window.liveData.gapToLeader / 1000).toFixed(1);
-                gapEl.innerText = `+${gapSec}s`;
+                const gapStr = decSep !== '.' ? gapSec.replace('.', decSep) : gapSec;
+                gapEl.innerText = `+${gapStr}s`;
                 gapEl.className = 'text-sm font-mono text-fuel';
             } else {
                 gapEl.innerText = '-';
@@ -591,27 +623,44 @@ window.updateCompetitorsTable = function() {
             if (catEl.className !== catCls) catEl.className = catCls;
         }
 
-        // ---- Name (rotate team ↔ driver every 5s) ----
+        // ---- Name (rotate team ↔ driver every 5s; Pro: show logo for our team) ----
         const nameEl = row.querySelector('.cr-name');
         if (nameEl) {
             const teamStr = (comp.team || '').trim();
             const driverStr = (comp.name || '').trim();
-            // Show team name primarily; rotate to driver name for 2s every 5s
-            const cycleMs = 5000;
-            const showDriver = teamStr && driverStr && teamStr !== driverStr
-                ? (Date.now() % cycleMs) > 3000   // 3s team, 2s driver
-                : false;
-            const displayName = showDriver ? driverStr : (teamStr || driverStr);
-            if (nameEl.textContent !== displayName) nameEl.textContent = displayName;
-            const nameCls = isUs ? 'cr-name text-ice font-bold' : 'cr-name';
-            if (nameEl.className !== nameCls) nameEl.className = nameCls;
+
+            // Pro logo: only for our team and only when a logo is stored
+            if (isUs && typeof window._getTeamLogoHtml === 'function') {
+                const logoHtml = window._getTeamLogoHtml(true);
+                if (logoHtml) {
+                    if (nameEl.innerHTML !== logoHtml) nameEl.innerHTML = logoHtml;
+                    const nameCls = 'cr-name text-ice font-bold';
+                    if (nameEl.className !== nameCls) nameEl.className = nameCls;
+                    nameEl.removeAttribute('data-text'); // clear text fallback
+                } else {
+                    // No logo — use text
+                    if (nameEl.textContent !== (teamStr || driverStr)) nameEl.textContent = teamStr || driverStr;
+                    const nameCls = 'cr-name text-ice font-bold';
+                    if (nameEl.className !== nameCls) nameEl.className = nameCls;
+                }
+            } else {
+                // Non-our-team or logo feature not available: rotate team/driver text
+                const cycleMs = 5000;
+                const showDriver = teamStr && driverStr && teamStr !== driverStr
+                    ? (Date.now() % cycleMs) > 3000
+                    : false;
+                const displayName = showDriver ? driverStr : (teamStr || driverStr);
+                if (nameEl.textContent !== displayName) nameEl.textContent = displayName;
+                const nameCls = isUs ? 'cr-name text-ice font-bold' : 'cr-name';
+                if (nameEl.className !== nameCls) nameEl.className = nameCls;
+            }
         }
 
         // ---- Badges (pit + penalty + top 3 lap) ----
         const badgesEl = row.querySelector('.cr-badges');
         if (badgesEl) {
             let badges = '';
-            if (comp.inPit) badges += '<span class="badge-pit">PIT</span>';
+            if (comp.inPit) badges += `<span class="badge-pit">${window.t ? window.t('pitLabel') : 'PIT'}</span>`;
             const penaltyVal = comp.penalty || comp.penaltyTime || 0;
             if (penaltyVal > 0) {
                 const penLabel = comp.penaltyTime ? `${comp.penaltyTime} Lap` : '';
@@ -626,9 +675,11 @@ window.updateCompetitorsTable = function() {
         // ---- Gap from P1 (lap-count based) ----
         const gapEl = row.querySelector('.cr-gap');
         if (gapEl) {
+            const decSep = window.t ? window.t('numDecSep') : '.';
             let gapHTML = '';
             if (comp.position === 1) {
-                gapHTML = '<span class="text-gold">P1</span>';
+                const leaderLbl = window.t ? window.t('leaderLabel') : 'P1';
+                gapHTML = `<span class="text-gold">${leaderLbl}</span>`;
             } else {
                 const leader = allCompetitors.find(c => c.position === 1);
                 const leaderLaps = leader ? (leader.laps || leader.totalLaps || 0) : 0;
@@ -644,7 +695,6 @@ window.updateCompetitorsTable = function() {
                     if (lapDiff > ourLapDiff) color = 'gap-behind';
                     else if (lapDiff < ourLapDiff) color = 'gap-ahead';
                     else if (lapDiff === ourLapDiff) {
-                        // Same lap count — compare time gap
                         const ourGapMs = ourTeam ? (ourTeam.gap ?? ourTeam.gapToLeader ?? 0) : 0;
                         if (gapMs > ourGapMs) color = 'gap-behind';
                         else if (gapMs < ourGapMs) color = 'gap-ahead';
@@ -653,14 +703,12 @@ window.updateCompetitorsTable = function() {
                 }
 
                 if (lapDiff >= 1) {
-                    // Show +N laps
                     const gapStr = formatLapGapFromDiff(lapDiff);
                     gapHTML = `<span class="${color}">${gapStr}</span>`;
                 } else if (gapMs > 0) {
-                    // Same lap — show time gap in seconds
                     const sec = gapMs / 1000;
-                    const gapStr = `+${sec.toFixed(1)}s`;
-                    gapHTML = `<span class="${color}">${gapStr}</span>`;
+                    const secStr = decSep !== '.' ? sec.toFixed(1).replace('.', decSep) : sec.toFixed(1);
+                    gapHTML = `<span class="${color}">+${secStr}s</span>`;
                 }
             }
             if (gapEl.innerHTML !== gapHTML) gapEl.innerHTML = gapHTML;
@@ -669,11 +717,9 @@ window.updateCompetitorsTable = function() {
         // ---- Interval (gap to car ahead) — lap-count based ----
         const intEl = row.querySelector('.cr-int');
         if (intEl) {
+            const decSep = window.t ? window.t('numDecSep') : '.';
             let intHTML = '';
-            if (comp.position === 1) {
-                intHTML = '';
-            } else {
-                // Find car ahead
+            if (comp.position !== 1) {
                 const carAhead = allCompetitors.find(c => c.position === comp.position - 1);
                 const aheadLaps = carAhead ? (carAhead.laps || carAhead.totalLaps || 0) : 0;
                 const compLaps = comp.laps || comp.totalLaps || 0;
@@ -684,7 +730,8 @@ window.updateCompetitorsTable = function() {
                     intHTML = `<span class="text-gray-500">${formatLapGapFromDiff(intLapDiff).replace('+', '')}</span>`;
                 } else if (intMs > 0) {
                     const intSec = intMs / 1000;
-                    intHTML = `<span class="text-gray-500">${intSec.toFixed(1)}s</span>`;
+                    const intStr = decSep !== '.' ? intSec.toFixed(1).replace('.', decSep) : intSec.toFixed(1);
+                    intHTML = `<span class="text-gray-500">${intStr}s</span>`;
                 }
             }
             if (intEl.innerHTML !== intHTML) intEl.innerHTML = intHTML;
@@ -799,8 +846,9 @@ window._updateKartRankingPanel = function() {
 
     const arrowChar = window._kartPanelOpen ? '▾' : '▸';
     const bodyDisplay = window._kartPanelOpen ? '' : 'display:none;';
+    const topKartsTitle = window.t ? window.t('topKartsTitle') : 'TOP KARTS';
     let html = `<div class="kart-panel-header" onclick="window._toggleKartPanel()">`;
-    html += `<span>🏎️ TOP KARTS</span><span id="kartRankingArrow">${arrowChar}</span></div>`;
+    html += `<span>🏎️ ${topKartsTitle}</span><span id="kartRankingArrow">${arrowChar}</span></div>`;
     html += `<div id="kartRankingBody" style="${bodyDisplay}">`;
     top.forEach(([kart, s]) => {
         const isFast = window._fastKarts.has(kart);
@@ -972,7 +1020,7 @@ window.stopLiveTiming = function() {
     // Reset demo state
     window.demoState = { competitors: [], updateInterval: null };
     
-    document.getElementById('liveTimingPanel')?.classList.add('hidden');
+    document.getElementById('liveTimingWidgetWrapper')?.classList.add('hidden');
     document.getElementById('liveIndicator')?.classList.add('hidden');
     
     // Reset UI elements
@@ -1498,3 +1546,374 @@ window.toggleCompetitorsTable = function() {
     if (table) table.classList.toggle('hidden', !window._competitorsTableOpen);
     if (btn) btn.textContent = window._competitorsTableOpen ? '📋' : '🗂️';
 };
+
+// ==================== DRAGGABLE + RESIZABLE WIDGET ====================
+
+(function initLiveTimingWidget() {
+    const STORAGE_KEY = 'strateger_lt_widget_pos';
+    const MIN_W = 220, MIN_H = 120;
+
+    let wrapper = null, dragHandle = null, resizeHandle = null;
+    let isDragging = false, isResizing = false;
+    let startX = 0, startY = 0, startLeft = 0, startTop = 0;
+    let startW = 0, startH = 0;
+
+    function clamp(val, lo, hi) { return Math.max(lo, Math.min(hi, val)); }
+
+    function savePos() {
+        if (!wrapper || !wrapper.classList.contains('lt-fixed')) return;
+        const pos = {
+            left: parseInt(wrapper.style.left) || 0,
+            top: parseInt(wrapper.style.top) || 0,
+            width: parseInt(wrapper.style.width) || 0,
+            height: parseInt(wrapper.style.height) || 0,
+            fixed: true
+        };
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(pos)); } catch(e) {}
+    }
+
+    function loadPos() {
+        try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (raw) return JSON.parse(raw);
+        } catch(e) {}
+        return null;
+    }
+
+    function applyPos(pos) {
+        if (!wrapper || !pos || !pos.fixed) return;
+        const vw = window.innerWidth, vh = window.innerHeight;
+        const w = Math.max(MIN_W, Math.min(pos.width || 300, vw - 16));
+        const h = Math.max(MIN_H, Math.min(pos.height || 300, vh - 16));
+        const left = clamp(pos.left || 0, 0, vw - w - 8);
+        const top = clamp(pos.top || 0, 0, vh - h - 8);
+        wrapper.style.left = left + 'px';
+        wrapper.style.top = top + 'px';
+        wrapper.style.width = w + 'px';
+        wrapper.style.height = h + 'px';
+        wrapper.classList.add('lt-fixed');
+    }
+
+    function makeFixed() {
+        if (!wrapper || wrapper.classList.contains('lt-fixed')) return;
+        // Capture current position relative to viewport
+        const rect = wrapper.getBoundingClientRect();
+        wrapper.classList.add('lt-fixed');
+        wrapper.style.left = rect.left + 'px';
+        wrapper.style.top = rect.top + 'px';
+        wrapper.style.width = rect.width + 'px';
+        wrapper.style.height = Math.max(MIN_H, rect.height) + 'px';
+    }
+
+    // Re-clamp position whenever window is resized (handles maximise/restore)
+    window.addEventListener('resize', function() {
+        if (!wrapper || !wrapper.classList.contains('lt-fixed')) return;
+        const vw = window.innerWidth, vh = window.innerHeight;
+        const w = Math.max(MIN_W, Math.min(parseInt(wrapper.style.width) || 300, vw - 16));
+        const h = Math.max(MIN_H, Math.min(parseInt(wrapper.style.height) || 300, vh - 16));
+        const left = clamp(parseInt(wrapper.style.left) || 0, 0, vw - w - 8);
+        const top = clamp(parseInt(wrapper.style.top) || 0, 0, vh - h - 8);
+        wrapper.style.left = left + 'px';
+        wrapper.style.top = top + 'px';
+        wrapper.style.width = w + 'px';
+        wrapper.style.height = h + 'px';
+    }, { passive: true });
+
+    // ---- Drag ----
+    function onDragStart(e) {
+        if (e.target.closest('button') || e.target.closest('select') || e.target.closest('input')) return;
+        makeFixed();
+        isDragging = true;
+        wrapper.classList.add('lt-dragging');
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        startX = clientX;
+        startY = clientY;
+        startLeft = parseInt(wrapper.style.left) || 0;
+        startTop = parseInt(wrapper.style.top) || 0;
+        e.preventDefault();
+    }
+
+    function onDragMove(e) {
+        if (!isDragging) return;
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        const vw = window.innerWidth, vh = window.innerHeight;
+        const w = parseInt(wrapper.style.width) || 300;
+        const h = parseInt(wrapper.style.height) || 200;
+        const newLeft = clamp(startLeft + (clientX - startX), 0, vw - w - 8);
+        const newTop = clamp(startTop + (clientY - startY), 0, vh - h - 8);
+        wrapper.style.left = newLeft + 'px';
+        wrapper.style.top = newTop + 'px';
+    }
+
+    function onDragEnd() {
+        if (!isDragging) return;
+        isDragging = false;
+        wrapper.classList.remove('lt-dragging');
+        savePos();
+    }
+
+    // ---- Resize ----
+    function onResizeStart(e) {
+        isResizing = true;
+        wrapper.classList.add('lt-resizing');
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        startX = clientX;
+        startY = clientY;
+        startW = parseInt(wrapper.style.width) || wrapper.offsetWidth;
+        startH = parseInt(wrapper.style.height) || wrapper.offsetHeight;
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    function onResizeMove(e) {
+        if (!isResizing) return;
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        const vw = window.innerWidth, vh = window.innerHeight;
+        const left = parseInt(wrapper.style.left) || 0;
+        const top = parseInt(wrapper.style.top) || 0;
+        const newW = clamp(startW + (clientX - startX), MIN_W, vw - left - 8);
+        const newH = clamp(startH + (clientY - startY), MIN_H, vh - top - 8);
+        wrapper.style.width = newW + 'px';
+        wrapper.style.height = newH + 'px';
+    }
+
+    function onResizeEnd() {
+        if (!isResizing) return;
+        isResizing = false;
+        wrapper.classList.remove('lt-resizing');
+        savePos();
+    }
+
+    function attachHandlers() {
+        wrapper = document.getElementById('liveTimingWidgetWrapper');
+        dragHandle = document.getElementById('liveTimingDragHandle');
+        resizeHandle = document.getElementById('liveTimingResizeHandle');
+        if (!wrapper || !dragHandle || !resizeHandle) return;
+
+        // Drag — mouse
+        dragHandle.addEventListener('mousedown', onDragStart);
+        document.addEventListener('mousemove', onDragMove);
+        document.addEventListener('mouseup', onDragEnd);
+        // Drag — touch
+        dragHandle.addEventListener('touchstart', onDragStart, { passive: false });
+        document.addEventListener('touchmove', function(e) {
+            if (isDragging) { e.preventDefault(); onDragMove(e); }
+        }, { passive: false });
+        document.addEventListener('touchend', onDragEnd);
+
+        // Resize — mouse
+        resizeHandle.addEventListener('mousedown', onResizeStart);
+        document.addEventListener('mousemove', function(e) { if (isResizing) onResizeMove(e); });
+        document.addEventListener('mouseup', onResizeEnd);
+        // Resize — touch
+        resizeHandle.addEventListener('touchstart', onResizeStart, { passive: false });
+        document.addEventListener('touchmove', function(e) {
+            if (isResizing) { e.preventDefault(); onResizeMove(e); }
+        }, { passive: false });
+        document.addEventListener('touchend', onResizeEnd);
+
+        // Restore saved position (only applies if previously fixed)
+        const saved = loadPos();
+        if (saved) applyPos(saved);
+    }
+
+    // Attach after DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', attachHandlers);
+    } else {
+        attachHandlers();
+    }
+})();
+
+// ==================== RACE CLOCK SYNC ====================
+// Keeps the widget's clock (liveRaceClock) in sync with the main app's race timer.
+// Handles: Apex countdown, RaceFacer timeLeftSeconds, demo mode, and DST-safe offsets.
+
+(function initRaceClockSync() {
+    const CLOCK_EL_ID = 'liveRaceClock';
+
+    function formatRaceTime(ms) {
+        if (ms == null || ms < 0) return '';
+        // Use the same format the main UI uses: H:MM:SS
+        const totalSec = Math.floor(ms / 1000);
+        const h = Math.floor(totalSec / 3600);
+        const m = Math.floor((totalSec % 3600) / 60);
+        const s = totalSec % 60;
+        const mm = String(m).padStart(2, '0');
+        const ss = String(s).padStart(2, '0');
+        return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
+    }
+
+    function tick() {
+        const el = document.getElementById(CLOCK_EL_ID);
+        if (!el) return;
+
+        // Priority 1: live timing feed has provided a countdown (Apex/RaceFacer)
+        const ld = window.liveData;
+        if (ld && ld.raceTimeLeftMs != null && ld._raceTimeReceivedAt) {
+            // Count down locally between feed packets — DST-safe: only elapsed wall-clock delta
+            const elapsed = Date.now() - ld._raceTimeReceivedAt;
+            const adjusted = Math.max(0, ld.raceTimeLeftMs - elapsed);
+            el.textContent = formatRaceTime(adjusted);
+            el.title = window.t ? window.t('raceClockLabel') : 'RACE TIME';
+            return;
+        }
+
+        // Priority 2: main app race timer (derived from window.state)
+        const st = window.state;
+        const cfg = window.config;
+        if (st && st.isRunning && st.startTime && cfg) {
+            const raceDurationMs = (parseFloat(cfg.duration) || 0) * 3600000;
+            if (raceDurationMs > 0) {
+                const elapsed = Date.now() - st.startTime;
+                const remaining = Math.max(0, raceDurationMs - elapsed);
+                el.textContent = formatRaceTime(remaining);
+                el.title = window.t ? window.t('raceClockLabel') : 'RACE TIME';
+                return;
+            }
+        }
+
+        // No data
+        el.textContent = '';
+    }
+
+    // Run every second regardless of feed heartbeat rate
+    setInterval(tick, 1000);
+    tick();
+})();
+
+// ==================== PRO TEAM LOGO UPLOAD ====================
+
+(function initTeamLogo() {
+    const LOGO_KEY = 'strateger_team_logo';
+    const MAX_BYTES = 2 * 1024 * 1024; // 2 MB
+    const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/svg+xml'];
+
+    // Load stored logo on init
+    window._teamLogoDataUrl = null;
+    try {
+        const stored = localStorage.getItem(LOGO_KEY);
+        if (stored) window._teamLogoDataUrl = stored;
+    } catch(e) {}
+
+    // Show the upload button only for Pro users, after panel is visible
+    function refreshLogoBtn() {
+        const btn = document.getElementById('teamLogoUploadBtn');
+        if (!btn) return;
+        const isPro = !!(window._proUnlocked);
+        btn.classList.toggle('hidden', !isPro);
+        if (isPro) {
+            const labelKey = window._teamLogoDataUrl ? 'teamLogoChange' : 'teamLogoUpload';
+            btn.title = window.t ? window.t(labelKey) : (window._teamLogoDataUrl ? 'Change Logo' : 'Upload Logo');
+        }
+    }
+
+    // Called when the user clicks the logo upload button
+    window.openTeamLogoUpload = function() {
+        if (!window.checkProFeature('teamLogo')) {
+            window.showProGate('Team Logo');
+            return;
+        }
+        // Show remove option if logo already set
+        if (window._teamLogoDataUrl) {
+            const removeLabel = window.t ? window.t('teamLogoRemove') : 'Remove logo';
+            if (confirm(removeLabel + '?')) {
+                window._teamLogoDataUrl = null;
+                try { localStorage.removeItem(LOGO_KEY); } catch(e) {}
+                refreshLogoBtn();
+                return;
+            }
+        }
+        const input = document.getElementById('teamLogoFileInput');
+        if (input) { input.value = ''; input.click(); }
+    };
+
+    // Called by the hidden file input's onchange
+    window._handleTeamLogoFile = function(input) {
+        const file = input.files && input.files[0];
+        if (!file) return;
+
+        const btn = document.getElementById('teamLogoUploadBtn');
+
+        // Validate type
+        if (!ALLOWED_TYPES.includes(file.type)) {
+            const msg = window.t ? window.t('teamLogoInvalidType') : 'Only JPG, PNG or SVG allowed';
+            if (typeof window.showToast === 'function') window.showToast('⚠️ ' + msg, 'error', 4000);
+            return;
+        }
+
+        // Validate size
+        if (file.size > MAX_BYTES) {
+            const msg = window.t ? window.t('teamLogoTooLarge') : 'File too large (max 2 MB)';
+            if (typeof window.showToast === 'function') window.showToast('⚠️ ' + msg, 'error', 4000);
+            return;
+        }
+
+        // Show uploading state
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = window.t ? window.t('teamLogoUploading') : 'Uploading…';
+        }
+
+        const reader = new FileReader();
+        reader.onload = function(ev) {
+            const dataUrl = ev.target.result;
+            // Sanitize: only accept data URLs with image MIME prefix
+            if (!dataUrl || !dataUrl.startsWith('data:image/')) {
+                if (btn) { btn.disabled = false; refreshLogoBtn(); }
+                return;
+            }
+            window._teamLogoDataUrl = dataUrl;
+            try { localStorage.setItem(LOGO_KEY, dataUrl); } catch(e) {
+                // Quota exceeded — fall back gracefully (logo available in memory only)
+                console.warn('[TeamLogo] localStorage quota exceeded; logo stored in memory only');
+            }
+            if (btn) btn.disabled = false;
+            refreshLogoBtn();
+            // Redraw competitors table to show the new logo
+            if (typeof window.updateCompetitorsTable === 'function') window.updateCompetitorsTable();
+        };
+        reader.onerror = function() {
+            if (btn) { btn.disabled = false; refreshLogoBtn(); }
+        };
+        reader.readAsDataURL(file);
+    };
+
+    // Expose helper for the competitors table renderer to call
+    window._getTeamLogoHtml = function(isOurTeam) {
+        if (!isOurTeam || !window._teamLogoDataUrl) return null;
+        // Escape the data URL for use in an HTML attribute (it's a data: URL so no XSS risk,
+        // but we still sanitize: only allow data:image/ prefix, no JS execution possible)
+        const safe = window._teamLogoDataUrl.replace(/"/g, '&quot;');
+        return `<span class="team-logo-cell"><img src="${safe}" alt="" loading="lazy"></span>`;
+    };
+
+    // Refresh button visibility whenever Pro status changes
+    const _origActivate = window.activateProLicense;
+    if (typeof _origActivate === 'function') {
+        window.activateProLicense = async function(key, email) {
+            const result = await _origActivate(key, email);
+            refreshLogoBtn();
+            return result;
+        };
+    }
+    const _origDeactivate = window.deactivateProLicense;
+    if (typeof _origDeactivate === 'function') {
+        window.deactivateProLicense = function() {
+            _origDeactivate();
+            refreshLogoBtn();
+        };
+    }
+
+    // Initial state
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', refreshLogoBtn);
+    } else {
+        refreshLogoBtn();
+    }
+})();
+

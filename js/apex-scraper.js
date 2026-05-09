@@ -400,8 +400,15 @@ class ApexTimingScraper {
             const newPos = parseInt(posMatch[2]);
             const comp = this.competitors.get(rowId);
             if (comp) {
-                comp.previousPosition = comp.position;
-                comp.position = newPos;
+                // Guard against out-of-order packets: only accept a position update that
+                // arrived within 5 seconds of a newer full-row update (_updatedAt).
+                // This prevents a stale |#| packet from overwriting a freshly-parsed grid row.
+                const isStale = comp._updatedAt && (Date.now() - comp._updatedAt) < 200 &&
+                                comp.position !== 0 && Math.abs(newPos - comp.position) > 5;
+                if (!isStale) {
+                    comp.previousPosition = comp.position;
+                    comp.position = newPos;
+                }
                 if (!deferEmit) this.emitUpdate();
                 return true;
             }
@@ -450,13 +457,18 @@ class ApexTimingScraper {
     }
 
     mergeCompetitor(prev, next) {
-        if (!prev) return next;
+        if (!prev) return { ...next, _updatedAt: Date.now() };
 
         const merged = { ...prev, ...next };
 
-        const textFields = ['kartNumber', 'driverName', 'firstName', 'lastName', 'sector1', 'sector2', 'sector3', 'lastLap', 'bestLap', 'gap', 'category'];
+        // Preserve any non-empty/non-dash field from previous state when the new packet omits it.
+        // This handles missing-sector packets that arrive without S1/S2/S3 data.
+        const textFields = ['kartNumber', 'driverName', 'firstName', 'lastName',
+                            'sector1', 'sector2', 'sector3', 'lastLap', 'bestLap', 'gap', 'category'];
         for (const field of textFields) {
-            if ((!next[field] || next[field] === '-') && prev[field]) {
+            const newVal = next[field];
+            const isEmpty = newVal == null || newVal === '' || newVal === '-' || newVal === '--';
+            if (isEmpty && prev[field] && prev[field] !== '-' && prev[field] !== '--') {
                 merged[field] = prev[field];
             }
         }
@@ -467,6 +479,9 @@ class ApexTimingScraper {
         if (!next.bestLapMs && prev.bestLapMs) merged.bestLapMs = prev.bestLapMs;
         if ((!next.pitCount || next.pitCount < 0) && prev.pitCount) merged.pitCount = prev.pitCount;
         if (next.inPit == null && prev.inPit != null) merged.inPit = prev.inPit;
+
+        // Track when this competitor's record was last updated (for out-of-order packet detection)
+        merged._updatedAt = Date.now();
 
         return merged;
     }
@@ -624,9 +639,9 @@ class ApexTimingScraper {
                         else if (v === 'out' || v === 'so') comp.inPit = false;
                         break;
                     }
-                    case 'sector1':    comp.sector1 = value; break;
-                    case 'sector2':    comp.sector2 = value; break;
-                    case 'sector3':    comp.sector3 = value; break;
+                    case 'sector1':    if (value && value !== '-' && value !== '--') comp.sector1 = value; break;
+                    case 'sector2':    if (value && value !== '-' && value !== '--') comp.sector2 = value; break;
+                    case 'sector3':    if (value && value !== '-' && value !== '--') comp.sector3 = value; break;
                     case 'pitCount':   comp.pitCount = parseInt(value) || 0; break;
                     case 'penalty': {
                         const penSec = parseInt(value);
@@ -650,9 +665,9 @@ class ApexTimingScraper {
             case 4: comp.driverName = value; break;
             case 5: comp.firstName = value; break;
             case 6: comp.lastName = value; break;
-            case 7: comp.sector1 = value; break;
-            case 8: comp.sector2 = value; break;
-            case 9: comp.sector3 = value; break;
+            case 7: if (value && value !== '-' && value !== '--') comp.sector1 = value; break;
+            case 8: if (value && value !== '-' && value !== '--') comp.sector2 = value; break;
+            case 9: if (value && value !== '-' && value !== '--') comp.sector3 = value; break;
             case 10: {
                 comp.lastLap = value;
                 const ms2 = this.parseTimeToMs(value);

@@ -1715,3 +1715,153 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     line-height: 1.2;
     white-space: nowrap;
 }
+
+/* ==================== LIVE-TIMING WIDGET: DRAGGABLE + RESIZABLE ==================== */
+
+/*
+ * The widget wrapper is positioned fixed by default (overlapping mode) once the
+ * user starts dragging.  Before any drag the wrapper sits inline in the normal
+ * document flow and the inner panel keeps its current appearance.
+ *
+ * Maximised/minimised window support: we clamp the widget to the viewport so it
+ * never goes off-screen.  CSS min-width/min-height stop it from collapsing to
+ * zero during resize.  overflow:hidden on the wrapper clips anything that would
+ * otherwise scroll outside the visible area.
+ */
+
+.lt-widget-wrapper {
+    /* Inline by default — takes part in normal page flow */
+    position: relative;
+    z-index: 100;
+    min-width: 220px;
+    min-height: 80px;
+    /* Visible overflow guard: the resize handle protrudes slightly */
+    overflow: visible;
+}
+
+/* Once the user has dragged the widget it becomes fixed */
+.lt-widget-wrapper.lt-fixed {
+    position: fixed;
+    overflow: hidden;
+    border-radius: 8px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 0 0 1px rgba(239,68,68,0.25);
+    /* Clamp inside the viewport so it never leaves the screen */
+    max-width: calc(100vw - 16px);
+    max-height: calc(100vh - 16px);
+}
+
+.lt-widget-inner {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    border-radius: inherit;
+}
+
+/* Table area fills remaining vertical space when the widget is resized */
+.lt-table-scroll {
+    flex: 1 1 0;
+    overflow-y: auto;
+    min-height: 60px;
+    max-height: none; /* override the old inline max-height once we're in fixed mode */
+}
+.lt-widget-wrapper:not(.lt-fixed) .lt-table-scroll {
+    max-height: 180px; /* keep original behaviour in inline mode */
+}
+
+/* ---- Drag handle ---- */
+.lt-drag-handle {
+    touch-action: none; /* prevent scroll interference on touch devices */
+    -webkit-touch-callout: none;
+}
+.lt-widget-wrapper.lt-fixed .lt-drag-handle {
+    cursor: grab;
+}
+.lt-widget-wrapper.lt-fixed .lt-drag-handle:active {
+    cursor: grabbing;
+}
+
+/* ---- Resize handle ---- */
+.lt-resize-handle {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 18px;
+    height: 18px;
+    cursor: se-resize;
+    touch-action: none;
+    background: linear-gradient(135deg, transparent 50%, rgba(239,68,68,0.35) 50%);
+    border-bottom-right-radius: 8px;
+    z-index: 10;
+}
+/* Only show the resize handle when in fixed (floating) mode */
+.lt-widget-wrapper:not(.lt-fixed) .lt-resize-handle {
+    display: none;
+}
+
+/* ---- RTL: flip resize handle to bottom-left ---- */
+[dir="rtl"] .lt-resize-handle {
+    right: auto;
+    left: 0;
+    cursor: sw-resize;
+    transform: scaleX(-1);
+    border-bottom-right-radius: 0;
+    border-bottom-left-radius: 8px;
+}
+
+/* ---- During active drag: disable pointer events on inner content ---- */
+.lt-widget-wrapper.lt-dragging .lt-widget-inner * {
+    pointer-events: none;
+}
+/* ---- During active resize: same ---- */
+.lt-widget-wrapper.lt-resizing .lt-widget-inner * {
+    pointer-events: none;
+}
+
+/* Resize hint icon only visible in floating mode */
+.lt-resize-hint {
+    display: none;
+}
+.lt-widget-wrapper.lt-fixed .lt-resize-hint {
+    display: inline;
+}
+
+/* ==================== TEAM LOGO (PRO) ==================== */
+
+.team-logo-cell {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    height: 20px;
+    overflow: hidden;
+}
+.team-logo-cell img {
+    max-height: 18px;
+    max-width: 56px;
+    object-fit: contain;
+    border-radius: 2px;
+}
+/* Logo upload button */
+.team-logo-upload-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.6rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: rgba(34,211,238,0.12);
+    border: 1px solid rgba(34,211,238,0.3);
+    color: #22d3ee;
+    cursor: pointer;
+    transition: background 0.15s;
+    white-space: nowrap;
+}
+.team-logo-upload-btn:hover {
+    background: rgba(34,211,238,0.22);
+}
+.team-logo-upload-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}

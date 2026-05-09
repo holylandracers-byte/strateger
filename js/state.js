@@ -37,7 +37,8 @@ window.FREE_LIMITS = {
     pdfExport: false,
     fuelTracking: false,
     googleCalendar: false,
-    googleEmail: false
+    googleEmail: false,
+    teamLogo: false
 };
 
 // Restore Pro license from localStorage on load
@@ -82,6 +83,7 @@ window.checkProFeature = function(featureName) {
     if (featureName === 'fuelTracking') return window.FREE_LIMITS.fuelTracking;
     if (featureName === 'googleCalendar') return window.FREE_LIMITS.googleCalendar;
     if (featureName === 'googleEmail') return window.FREE_LIMITS.googleEmail;
+    if (featureName === 'teamLogo') return window.FREE_LIMITS.teamLogo;
     return true; // default: free
 };
 
@@ -406,6 +408,14 @@ window.translations = {
         saveSettings: "Save", backToRace: "← Back to Race",
         livePreviewBtn: "▶ PLAN",
         appearance: "Appearance",
+        // Live-timing widget strings
+        leaderLabel: "LEADER", pitLabel: "PIT",
+        lapSingular: "lap", lapPlural: "laps",
+        topKartsTitle: "TOP KARTS", numDecSep: ".",
+        raceClockLabel: "RACE TIME",
+        teamLogoUpload: "Upload Logo", teamLogoChange: "Change Logo", teamLogoRemove: "Remove",
+        teamLogoUploading: "Uploading…", teamLogoTooLarge: "File too large (max 2 MB)",
+        teamLogoInvalidType: "Only JPG, PNG or SVG allowed",
         norm: "NORM",
     },
     he: {
@@ -553,6 +563,13 @@ window.translations = {
         saveSettings: "שמור", backToRace: "← חזרה למירוץ",
         livePreviewBtn: "▶ תוכנית",
         appearance: "מראה",
+        leaderLabel: "מוביל", pitLabel: "פיטס",
+        lapSingular: "הקפה", lapPlural: "הקפות",
+        topKartsTitle: "קארטים מובילים", numDecSep: ".",
+        raceClockLabel: "זמן מירוץ",
+        teamLogoUpload: "העלה לוגו", teamLogoChange: "החלף לוגו", teamLogoRemove: "הסר",
+        teamLogoUploading: "מעלה…", teamLogoTooLarge: "קובץ גדול מדי (מקסימום 2 MB)",
+        teamLogoInvalidType: "רק JPG, PNG או SVG",
         norm: "רגיל",
     },
     fr: {
@@ -695,6 +712,13 @@ window.translations = {
         rulesPdfDrop: "Cliquez pour sélectionner un PDF", rulesPdfDropHint: "Max ~50 pages recommandées",
         rulesPdfReading: "Lecture du PDF…", rulesPdfError: "Impossible de lire le PDF.", rulesPdfAiError: "L'IA n'a retourné aucun résultat.",
         rulesPdfClear: "Supprimer", rulesPdfAnalyze: "Analyser et suggérer une stratégie", pages: "pages",
+        leaderLabel: "LEADER", pitLabel: "BOX",
+        lapSingular: "tour", lapPlural: "tours",
+        topKartsTitle: "TOP KARTS", numDecSep: ",",
+        raceClockLabel: "TEMPS DE COURSE",
+        teamLogoUpload: "Importer logo", teamLogoChange: "Changer logo", teamLogoRemove: "Supprimer",
+        teamLogoUploading: "Envoi…", teamLogoTooLarge: "Fichier trop grand (max 2 Mo)",
+        teamLogoInvalidType: "Seulement JPG, PNG ou SVG",
         norm: "NORM",
     },
     pt: {
@@ -838,6 +862,13 @@ window.translations = {
         qualifyPartMultiCount: "Número de pilotos", qualifyRuns: "Voltas por piloto",
         qualifyPitMin: "Tempo mínimo", qualifyPitMinSec: "Segundos mínimos no box",
         onboardWelcome: "Bem-vindo ao Strateger!", onboardDemoHint: "A melhor forma de começar é correr uma corrida demo — leva 30 segundos e mostra tudo como funciona.", onboardRunDemo: "Correr Demo",
+        leaderLabel: "LÍDER", pitLabel: "BOX",
+        lapSingular: "volta", lapPlural: "voltas",
+        topKartsTitle: "TOP KARTS", numDecSep: ",",
+        raceClockLabel: "TEMPO DE CORRIDA",
+        teamLogoUpload: "Enviar logo", teamLogoChange: "Alterar logo", teamLogoRemove: "Remover",
+        teamLogoUploading: "Enviando…", teamLogoTooLarge: "Ficheiro demasiado grande (máx. 2 MB)",
+        teamLogoInvalidType: "Apenas JPG, PNG ou SVG",
         norm: "NORM",
     },
     ru: {
@@ -982,6 +1013,13 @@ window.translations = {
         appearance: "Внешний вид",
         raceHistory: "История гонок", noRaceHistory: "Нет истории. Завершите гонку, чтобы увидеть её здесь.",
         onboardWelcome: "Добро пожаловать в Strateger!", onboardDemoHint: "Лучший способ начать — запустить демо-гонку. Занимает 30 секунд и показывает всё в действии.", onboardRunDemo: "Запустить демо",
+        leaderLabel: "ЛИДЕР", pitLabel: "ПИТ",
+        lapSingular: "круг", lapPlural: "кругов",
+        topKartsTitle: "ТОП КАРТЫ", numDecSep: ",",
+        raceClockLabel: "ВРЕМЯ ГОНКИ",
+        teamLogoUpload: "Загрузить лого", teamLogoChange: "Изменить лого", teamLogoRemove: "Удалить",
+        teamLogoUploading: "Загрузка…", teamLogoTooLarge: "Файл слишком большой (макс. 2 МБ)",
+        teamLogoInvalidType: "Только JPG, PNG или SVG",
         norm: "НОРМ",
     },
     ar: {
@@ -1128,6 +1166,13 @@ window.translations = {
         onboardWelcome: "مرحباً بك في Strateger!", onboardDemoHint: "أفضل طريقة للبدء هي تشغيل سباق تجريبي — يستغرق 30 ثانية ويُظهر كيف يعمل كل شيء.", onboardRunDemo: "تشغيل سباق تجريبي",
         qualifyPartMultiCount: "عدد السائقين", qualifyRuns: "جولات لكل سائق",
         qualifyPitMin: "الحد الأدنى للوقت", qualifyPitMinSec: "الحد الأدنى من الثواني في الحفرة",
+        leaderLabel: "القائد", pitLabel: "حفرة",
+        lapSingular: "دورة", lapPlural: "دورات",
+        topKartsTitle: "أفضل الكارتات", numDecSep: ".",
+        raceClockLabel: "وقت السباق",
+        teamLogoUpload: "رفع الشعار", teamLogoChange: "تغيير الشعار", teamLogoRemove: "إزالة",
+        teamLogoUploading: "جارٍ الرفع…", teamLogoTooLarge: "الملف كبير جدًا (الحد الأقصى 2 ميغابايت)",
+        teamLogoInvalidType: "JPG أو PNG أو SVG فقط",
         norm: "عادي",
     },
     es: {
@@ -1274,6 +1319,13 @@ window.translations = {
         onboardWelcome: "¡Bienvenido a Strateger!", onboardDemoHint: "La mejor forma de empezar es correr una demo rápida — tarda 30 segundos y muestra exactamente cómo funciona todo.", onboardRunDemo: "Correr Demo",
         qualifyPartMultiCount: "Número de pilotos", qualifyRuns: "Vueltas por piloto",
         qualifyPitMin: "Tiempo mínimo", qualifyPitMinSec: "Segundos mínimos en boxes",
+        leaderLabel: "LÍDER", pitLabel: "BOX",
+        lapSingular: "vuelta", lapPlural: "vueltas",
+        topKartsTitle: "TOP KARTS", numDecSep: ",",
+        raceClockLabel: "TIEMPO DE CARRERA",
+        teamLogoUpload: "Subir logo", teamLogoChange: "Cambiar logo", teamLogoRemove: "Quitar",
+        teamLogoUploading: "Subiendo…", teamLogoTooLarge: "Archivo demasiado grande (máx. 2 MB)",
+        teamLogoInvalidType: "Solo JPG, PNG o SVG",
         norm: "NORM",
     },
     it: {
@@ -1368,6 +1420,13 @@ window.translations = {
         onboardWelcome: "Benvenuto su Strateger!", onboardDemoHint: "Il modo migliore per iniziare è una demo rapida — ci vogliono 30 secondi e mostra esattamente come funziona tutto.", onboardRunDemo: "Avvia Demo",
         qualifyPartMultiCount: "Numero di piloti", qualifyRuns: "Giri per pilota",
         qualifyPitMin: "Tempo minimo", qualifyPitMinSec: "Secondi minimi ai box",
+        leaderLabel: "LEADER", pitLabel: "BOX",
+        lapSingular: "giro", lapPlural: "giri",
+        topKartsTitle: "TOP KART", numDecSep: ",",
+        raceClockLabel: "TEMPO GARA",
+        teamLogoUpload: "Carica logo", teamLogoChange: "Cambia logo", teamLogoRemove: "Rimuovi",
+        teamLogoUploading: "Caricamento…", teamLogoTooLarge: "File troppo grande (max 2 MB)",
+        teamLogoInvalidType: "Solo JPG, PNG o SVG",
         norm: "NORM",
     },
     ka: {
@@ -1513,6 +1572,13 @@ window.translations = {
         onboardWelcome: "კეთილი იყოს Strateger-ში!", onboardDemoHint: "საუკეთესო გზაა სწრაფი დემო — 30 წამი სჭირდება და ყველაფერს გიჩვენებს.", onboardRunDemo: "დემოს გაშვება",
         qualifyPartMultiCount: "მძღოლების რაოდენობა", qualifyRuns: "სირბილი მძღოლზე",
         qualifyPitMin: "მინიმალური დრო", qualifyPitMinSec: "მინიმალური წამები პიტში",
+        leaderLabel: "ლიდერი", pitLabel: "პიტი",
+        lapSingular: "წრე", lapPlural: "წრე",
+        topKartsTitle: "საუკეთესო კარტები", numDecSep: ".",
+        raceClockLabel: "რბოლის დრო",
+        teamLogoUpload: "ლოგოს ატვირთვა", teamLogoChange: "ლოგოს შეცვლა", teamLogoRemove: "წაშლა",
+        teamLogoUploading: "იტვირთება…", teamLogoTooLarge: "ფაილი ძალიან დიდია (მაქს. 2 MB)",
+        teamLogoInvalidType: "მხოლოდ JPG, PNG ან SVG",
         norm: "NORM",
     },
     de: {
@@ -1608,6 +1674,13 @@ window.translations = {
         onboardWelcome: "Willkommen bei Strateger!", onboardDemoHint: "Am besten startest du mit einer kurzen Demo — dauert 30 Sekunden und zeigt alles in Aktion.", onboardRunDemo: "Demo starten",
         qualifyPartMultiCount: "Anzahl Fahrer", qualifyRuns: "Runden pro Fahrer",
         qualifyPitMin: "Mindestzeit", qualifyPitMinSec: "Mindestsekunden in der Box",
+        leaderLabel: "FÜHREND", pitLabel: "BOX",
+        lapSingular: "Runde", lapPlural: "Runden",
+        topKartsTitle: "TOP KARTS", numDecSep: ",",
+        raceClockLabel: "RENNZEIT",
+        teamLogoUpload: "Logo hochladen", teamLogoChange: "Logo ändern", teamLogoRemove: "Entfernen",
+        teamLogoUploading: "Wird hochgeladen…", teamLogoTooLarge: "Datei zu groß (max. 2 MB)",
+        teamLogoInvalidType: "Nur JPG, PNG oder SVG",
         norm: "NORM",
     },
     ja: {
@@ -1703,6 +1776,13 @@ window.translations = {
         onboardWelcome: "Strategerへようこそ！", onboardDemoHint: "まずデモを試してみましょう — 30秒でアクションを確認できます。", onboardRunDemo: "デモを開始",
         qualifyPartMultiCount: "ドライバー数", qualifyRuns: "ドライバーあたりの周回数",
         qualifyPitMin: "最小時間", qualifyPitMinSec: "ピット内の最小秒数",
+        leaderLabel: "リーダー", pitLabel: "ピット",
+        lapSingular: "周", lapPlural: "周",
+        topKartsTitle: "トップカート", numDecSep: ".",
+        raceClockLabel: "レース時間",
+        teamLogoUpload: "ロゴをアップロード", teamLogoChange: "ロゴを変更", teamLogoRemove: "削除",
+        teamLogoUploading: "アップロード中…", teamLogoTooLarge: "ファイルが大きすぎます（最大 2 MB）",
+        teamLogoInvalidType: "JPG、PNG、または SVG のみ",
         norm: "NORM",
     },
     el: {
@@ -1848,6 +1928,13 @@ window.translations = {
         onboardWelcome: "Καλωσήρθατε στο Strateger!", onboardDemoHint: "Ξεκινήστε με ένα σύντομο demo — διαρκεί 30 δευτερόλεπτα και δείχνει τα πάντα σε δράση.", onboardRunDemo: "Εκκίνηση Demo",
         qualifyPartMultiCount: "Αριθμός οδηγών", qualifyRuns: "Γύροι ανά οδηγό",
         qualifyPitMin: "Ελάχιστος χρόνος", qualifyPitMinSec: "Ελάχιστα δευτερόλεπτα στο pit",
+        leaderLabel: "ΑΡΧΗΓΟΣ", pitLabel: "ΠΙΤ",
+        lapSingular: "γύρος", lapPlural: "γύροι",
+        topKartsTitle: "TOP KART", numDecSep: ",",
+        raceClockLabel: "ΧΡΟΝΟΣ ΑΓΩΝΑ",
+        teamLogoUpload: "Ανέβασμα λογότυπου", teamLogoChange: "Αλλαγή λογότυπου", teamLogoRemove: "Αφαίρεση",
+        teamLogoUploading: "Ανέβασμα…", teamLogoTooLarge: "Αρχείο πολύ μεγάλο (μέγ. 2 MB)",
+        teamLogoInvalidType: "Μόνο JPG, PNG ή SVG",
         norm: "ΚΑΝΟΝ",
     }
 };

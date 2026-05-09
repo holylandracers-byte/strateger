@@ -960,13 +960,21 @@
             <!-- TOP PANEL: strategy info + driver stats (scrollable if needed on very small screens) -->
             <div id="raceInfoPanel" class="min-h-0 overflow-y-auto p-2 space-y-2">
 
-                <div id="liveTimingPanel" class="hidden bg-navy-900/80 border-b border-red-500/50 p-2 rounded mb-2">
-                    <div class="flex justify-between items-center mb-1">
+                <!-- Live-timing widget wrapper: draggable + resizable -->
+                <div id="liveTimingWidgetWrapper" class="lt-widget-wrapper hidden">
+                <div id="liveTimingPanel" class="bg-navy-900/80 border border-red-500/50 p-2 rounded lt-widget-inner">
+                    <!-- Drag handle -->
+                    <div id="liveTimingDragHandle" class="lt-drag-handle flex justify-between items-center mb-1 cursor-move select-none">
                         <div class="flex items-center gap-2">
                             <span class="sync-dot live-dot"></span>
                             <span class="text-xs font-bold" data-i18n="live">LIVE</span>
+                            <!-- Race clock synced to main timer -->
+                            <span class="text-[10px] text-gray-400 font-mono ml-1" id="liveRaceClock"></span>
                         </div>
                         <div class="flex items-center gap-1">
+                            <span class="lt-resize-hint text-[9px] text-gray-600 select-none mr-1">⇲</span>
+                            <!-- Pro: team logo upload button (hidden for free tier) -->
+                            <button id="teamLogoUploadBtn" class="team-logo-upload-btn hidden" onclick="window.openTeamLogoUpload()" title="Upload Logo">📷</button>
                             <button id="apexViewToggle" onclick="window.toggleApexIframe()" class="text-[10px] bg-navy-700 border border-gray-600 text-gray-300 px-2 py-0.5 rounded" title="Toggle original Apex view">🌐</button>
                             <button onclick="window.stopLiveTiming()" class="text-[10px] bg-red-900 text-white px-2 rounded" data-i18n="stop">Stop</button>
                         </div>
@@ -1002,11 +1010,18 @@
                             <div id="liveTotalCars" class="text-sm font-bold text-gray-300">-</div>
                         </div>
                     </div>
-                    <div id="competitorsTable" class="mt-2 overflow-y-auto" style="max-height:180px;"></div>
+                    <!-- Heartbeat row -->
+                    <div class="flex justify-between items-center mt-1 px-0.5">
+                        <span id="liveHeartbeat" class="text-[10px] text-gray-400">HB --</span>
+                    </div>
+                    <div id="competitorsTable" class="mt-2 overflow-y-auto lt-table-scroll"></div>
                     <div id="apexIframeContainer" class="hidden mt-1">
                         <iframe id="apexIframe" src="" class="w-full rounded" style="height:240px;border:none;background:#0a1120;" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
                     </div>
                     <div id="kartRankingPanel" class="hidden mt-1 p-2 bg-navy-950 rounded border border-gray-700/50"></div>
+                    <!-- Resize handle (bottom-right corner) -->
+                    <div id="liveTimingResizeHandle" class="lt-resize-handle" title="Resize"></div>
+                </div>
                 </div>
 
                 <!-- Strategy + current driver + stint timer — all in one compact row -->
@@ -1834,6 +1849,9 @@
             </div>
         </div>
     </div>
+
+    <!-- Hidden file input for team logo upload -->
+    <input type="file" id="teamLogoFileInput" accept="image/jpeg,image/png,image/svg+xml" class="hidden" onchange="window._handleTeamLogoFile(this)">
 
     <!-- PRO UPGRADE MODAL -->
     <div id="proUpgradeModal" class="hidden fixed inset-0 bg-navy-950/95 z-[130] flex items-center justify-center p-4">
