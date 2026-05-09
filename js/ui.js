@@ -73,9 +73,13 @@ window.removeDriverFromPool = function(name) {
 };
 
 window._nextDriverColor = function() {
-    const PALETTE = ['#22d3ee','#a3e635','#f97316','#ef4444','#8b5cf6','#ec4899','#facc15','#34d399'];
+    const PALETTE = ['#22d3ee','#a3e635','#f97316','#ef4444','#8b5cf6','#ec4899','#facc15','#34d399',
+                     '#f472b6','#38bdf8','#4ade80','#fb923c','#a78bfa','#fbbf24','#34d399','#e879f9'];
     const pool = window.getDriverPool();
-    return PALETTE[pool.length % PALETTE.length];
+    const used = new Set(pool.map(d => d.color));
+    const unused = PALETTE.filter(c => !used.has(c));
+    const pick = unused.length > 0 ? unused : PALETTE;
+    return pick[Math.floor(Math.random() * pick.length)];
 };
 
 window._driverGroupParticipants = new Set();
@@ -108,10 +112,15 @@ window.applyDriverGroupToRace = function(triggerSim = true) {
         const lastRow = rows[rows.length - 1];
         if (lastRow) {
             const colorPicker = lastRow.querySelector('.driver-color-picker');
-            if (colorPicker) colorPicker.value = d.color || '#22d3ee';
+            if (colorPicker && d.color) {
+                colorPicker.value = d.color;
+                const swatch = lastRow.querySelector('.driver-color-swatch');
+                const accent = lastRow.querySelector('.driver-accent-bar');
+                if (swatch) swatch.style.background = d.color;
+                if (accent) accent.style.background = d.color;
+            }
             if (d._placeholder) {
                 lastRow.classList.add('opacity-50');
-                // Mark the input so updateDriversFromUI can skip it
                 const inp = lastRow.querySelector('.driver-input');
                 if (inp) inp.dataset.placeholder = 'true';
             }
@@ -272,23 +281,45 @@ window.removeDriverField = function() {
 
 window.createDriverInput = function(val, checked, squad) {
     const div = document.createElement('div');
-    div.className = "driver-row flex items-center gap-2 bg-navy-950 rounded border border-gray-700 mb-2 cursor-default";
+    div.className = "driver-row cursor-default";
     div.onclick = (e) => e.stopPropagation();
 
     const radioId = 'starter_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
-    
-    const label = document.createElement('label');
-    label.className = "flex items-center cursor-pointer p-1 rounded hover:bg-white/5 shrink-0";
-    label.addEventListener('click', (e) => {
-        e.preventDefault(); 
-        e.stopPropagation();
-        const allRadios = document.querySelectorAll('.starter-radio');
-        allRadios.forEach(r => r.checked = false);
-        document.getElementById(radioId).checked = true;
-        window.updateStarterVisuals();
-        window.runSim();
-    });
 
+    // ── Color swatch (left edge accent bar + clickable swatch) ──
+    const DRIVER_PALETTE = ['#22d3ee','#a3e635','#f97316','#ef4444','#8b5cf6','#ec4899','#facc15','#34d399',
+                            '#f472b6','#38bdf8','#4ade80','#fb923c','#a78bfa','#fbbf24','#e879f9'];
+    const usedColors = new Set([...document.querySelectorAll('#driversList .driver-color-picker')].map(el => el.value));
+    const unusedPalette = DRIVER_PALETTE.filter(c => !usedColors.has(c));
+    const pickFrom = unusedPalette.length > 0 ? unusedPalette : DRIVER_PALETTE;
+    const chosenColor = pickFrom[Math.floor(Math.random() * pickFrom.length)];
+
+    const colorPicker = document.createElement('input');
+    colorPicker.type = 'color';
+    colorPicker.className = 'driver-color-picker';
+    colorPicker.value = chosenColor;
+    colorPicker.title = 'Driver color';
+    colorPicker.addEventListener('click', (e) => e.stopPropagation());
+    colorPicker.onchange = () => {
+        accentBar.style.background = colorPicker.value;
+        colorSwatch.style.background = colorPicker.value;
+        window.runSim();
+    };
+
+    // Left accent bar
+    const accentBar = document.createElement('div');
+    accentBar.className = 'driver-accent-bar';
+    accentBar.style.background = chosenColor;
+
+    // Color swatch circle (wraps hidden <input type=color>)
+    const colorSwatch = document.createElement('div');
+    colorSwatch.className = 'driver-color-swatch';
+    colorSwatch.style.background = chosenColor;
+    colorSwatch.title = 'Change color';
+    colorSwatch.addEventListener('click', (e) => { e.stopPropagation(); colorPicker.click(); });
+    colorSwatch.appendChild(colorPicker);
+
+    // ── Starter toggle ──
     const radio = document.createElement('input');
     radio.type = 'radio';
     radio.name = 'starter';
@@ -296,38 +327,49 @@ window.createDriverInput = function(val, checked, squad) {
     radio.className = 'starter-radio sr-only';
     radio.checked = checked;
 
-    const indicator = document.createElement('div');
-    indicator.className = 'starter-indicator w-8 h-8 rounded-full border-2 flex items-center justify-center text-sm transition ' + 
-        (checked ? 'border-ice bg-ice/30 text-white shadow-[0_0_8px_rgba(34,211,238,0.5)]' : 'border-gray-600 text-gray-500 hover:border-gray-400');
-    indicator.textContent = '🏁';
+    const starterBtn = document.createElement('button');
+    starterBtn.type = 'button';
+    starterBtn.className = 'driver-starter-btn' + (checked ? ' is-starter' : '');
+    starterBtn.title = 'Set as race starter';
+    starterBtn.innerHTML = '<svg viewBox="0 0 16 16" fill="currentColor" width="12" height="12"><path d="M2 2h12v2L8 9l6 5H2V2z"/></svg>';
+    starterBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        document.querySelectorAll('.starter-radio').forEach(r => r.checked = false);
+        radio.checked = true;
+        window.updateStarterVisuals();
+        window.runSim();
+    });
 
-    label.appendChild(radio);
-    label.appendChild(indicator);
+    const indicator = document.createElement('div');
+    indicator.className = 'starter-indicator hidden';
+
+    // ── Name input ──
+    const nameWrap = document.createElement('div');
+    nameWrap.className = 'driver-name-wrap';
 
     const driverInput = document.createElement('input');
     driverInput.type = 'text';
     driverInput.value = val;
-    driverInput.className = 'driver-input bg-transparent text-white w-full outline-none font-bold text-sm px-2 focus:bg-navy-900 rounded';
+    driverInput.className = 'driver-input';
+    driverInput.placeholder = 'Driver name';
     driverInput.addEventListener('click', (e) => e.stopPropagation());
     driverInput.onchange = () => window.runSim();
 
-    // Color picker
-    const DRIVER_PALETTE = ['#22d3ee','#a3e635','#f97316','#ef4444','#8b5cf6','#ec4899','#facc15','#34d399'];
-    const colorIdx = document.getElementById('driversList')?.children.length || 0;
-    const colorPicker = document.createElement('input');
-    colorPicker.type = 'color';
-    colorPicker.className = 'driver-color-picker';
-    colorPicker.value = DRIVER_PALETTE[colorIdx % DRIVER_PALETTE.length];
-    colorPicker.title = 'Driver color';
-    colorPicker.addEventListener('click', (e) => e.stopPropagation());
-    colorPicker.onchange = () => window.runSim();
+    const starterLabel = document.createElement('span');
+    starterLabel.className = 'driver-starter-label' + (checked ? '' : ' hidden');
+    starterLabel.textContent = 'STARTER';
 
+    nameWrap.appendChild(driverInput);
+    nameWrap.appendChild(starterLabel);
+
+    // ── Squad toggle ──
     const SQUAD_COLORS = ['#3b82f6','#06b6d4','#a855f7','#f97316'];
     const SQUAD_LABELS = ['A','B','C','D'];
     const squadIdx = typeof squad === 'number' ? squad : (squad === 'B' ? 1 : squad === 'C' ? 2 : squad === 'D' ? 3 : 0);
 
     const squadLabel = document.createElement('div');
-    squadLabel.className = 'squad-toggle-container flex items-center cursor-pointer ml-auto bg-navy-800 rounded px-2 py-1 border border-gray-600 hidden select-none shrink-0';
+    squadLabel.className = 'squad-toggle-container hidden select-none';
     squadLabel.addEventListener('click', (e) => e.stopPropagation());
 
     const squadHidden = document.createElement('input');
@@ -338,7 +380,7 @@ window.createDriverInput = function(val, checked, squad) {
     const squadDisplay = document.createElement('div');
     squadDisplay.innerText = SQUAD_LABELS[squadIdx];
     squadDisplay.style.background = SQUAD_COLORS[squadIdx];
-    squadDisplay.className = 'w-6 h-5 rounded text-[10px] flex items-center justify-center font-bold text-white cursor-pointer select-none';
+    squadDisplay.className = 'squad-badge';
     squadDisplay.onclick = function(e) {
         e.stopPropagation();
         const numSquads = parseInt(document.getElementById('numSquads')?.value) || 2;
@@ -353,22 +395,32 @@ window.createDriverInput = function(val, checked, squad) {
     squadLabel.appendChild(squadHidden);
     squadLabel.appendChild(squadDisplay);
 
-    div.appendChild(label);
-    div.appendChild(driverInput);
-    div.appendChild(colorPicker);
+    div.appendChild(accentBar);
+    div.appendChild(colorSwatch);
+    div.appendChild(radio);
+    div.appendChild(indicator);
+    div.appendChild(starterBtn);
+    div.appendChild(nameWrap);
     div.appendChild(squadLabel);
-    
+
     document.getElementById('driversList').appendChild(div);
 };
 
 window.updateStarterVisuals = function() {
     const scrollY = window.scrollY;
-    document.querySelectorAll('.starter-indicator').forEach(ind => {
-        const radio = ind.previousElementSibling;
-        if (radio && radio.checked) {
-            ind.className = 'starter-indicator w-8 h-8 rounded-full border-2 border-ice bg-ice/30 shadow-[0_0_8px_rgba(34,211,238,0.5)] flex items-center justify-center text-sm';
+    document.querySelectorAll('.driver-row').forEach(row => {
+        const radio = row.querySelector('.starter-radio');
+        const btn = row.querySelector('.driver-starter-btn');
+        const lbl = row.querySelector('.driver-starter-label');
+        if (!radio) return;
+        if (radio.checked) {
+            btn && btn.classList.add('is-starter');
+            lbl && lbl.classList.remove('hidden');
+            row.classList.add('is-starter-row');
         } else {
-            ind.className = 'starter-indicator w-8 h-8 rounded-full border-2 border-gray-500 flex items-center justify-center text-sm hover:border-ice transition';
+            btn && btn.classList.remove('is-starter');
+            lbl && lbl.classList.add('hidden');
+            row.classList.remove('is-starter-row');
         }
     });
     window.scrollTo(0, scrollY);
@@ -3096,3 +3148,293 @@ if (_origRunSimForHero) {
         return result;
     };
 }
+
+// ==========================================
+// 🏁 RIGHT-ZONE WIDGET SYSTEM
+// ==========================================
+
+;(function() {
+    'use strict';
+
+    const WIDGET_ORDER_KEY = 'strateger_widget_order';
+    const WIDGET_COLLAPSED_KEY = 'strateger_widget_collapsed';
+    const LAYOUT_TPL_KEY = 'strateger_layout_tpl';
+    const SNAP_GRID = 20;
+
+    // ---- Layout templates ----
+    // Each template describes: lt-zone-w percentage, which widgets are visible/collapsed,
+    // and order of widgets in the right zone.
+    const TEMPLATES = {
+        classic: {
+            ltZoneW: '58%',
+            widgets: ['widgetLayoutTemplates','widgetDriverInfo','widgetStintData','widgetStrategy'],
+            collapsed: [],
+        },
+        pit: {
+            ltZoneW: '42%',
+            widgets: ['widgetLayoutTemplates','widgetDriverInfo','widgetStintData','widgetStrategy'],
+            collapsed: ['widgetStrategy'],
+        },
+        strategy: {
+            ltZoneW: '50%',
+            widgets: ['widgetLayoutTemplates','widgetStrategy','widgetStintData','widgetDriverInfo'],
+            collapsed: [],
+        },
+        compact: {
+            ltZoneW: '65%',
+            widgets: ['widgetLayoutTemplates','widgetDriverInfo','widgetStintData','widgetStrategy'],
+            collapsed: ['widgetStintData','widgetStrategy'],
+        },
+    };
+
+    // Show/hide right-widgets-area on wide screens
+    function updateWidgetAreaVisibility() {
+        const area = document.getElementById('rightWidgetsArea');
+        if (!area) return;
+        const wide = window.matchMedia('(min-width: 1024px)').matches;
+        if (wide) {
+            area.classList.remove('hidden');
+            area.style.display = 'flex';
+        } else {
+            area.classList.add('hidden');
+            area.style.display = '';
+        }
+    }
+
+    // Apply a layout template
+    window.applyLayoutTemplate = function(tplName) {
+        const tpl = TEMPLATES[tplName];
+        if (!tpl) return;
+        // Save
+        try { localStorage.setItem(LAYOUT_TPL_KEY, tplName); } catch(e) {}
+        // Update CSS var
+        document.documentElement.style.setProperty('--lt-zone-w', tpl.ltZoneW);
+        // Reorder widgets
+        const area = document.getElementById('rightWidgetsArea');
+        if (area) {
+            tpl.widgets.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) area.appendChild(el);
+            });
+        }
+        // Apply collapsed states
+        tpl.widgets.forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            if (tpl.collapsed.includes(id)) {
+                el.classList.add('collapsed');
+                const btn = el.querySelector('.widget-collapse-btn');
+                if (btn) btn.textContent = '▸';
+            } else {
+                el.classList.remove('collapsed');
+                const btn = el.querySelector('.widget-collapse-btn');
+                if (btn) btn.textContent = '▾';
+            }
+        });
+        // Update active template button
+        document.querySelectorAll('.layout-tpl-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.tpl === tplName);
+        });
+    };
+
+    // Collapse/expand a widget
+    window.toggleWidget = function(widgetId) {
+        const el = document.getElementById(widgetId);
+        if (!el) return;
+        const collapsed = el.classList.toggle('collapsed');
+        const btn = el.querySelector('.widget-collapse-btn');
+        if (btn) btn.textContent = collapsed ? '▸' : '▾';
+        // Persist
+        try {
+            const saved = JSON.parse(localStorage.getItem(WIDGET_COLLAPSED_KEY) || '{}');
+            saved[widgetId] = collapsed;
+            localStorage.setItem(WIDGET_COLLAPSED_KEY, JSON.stringify(saved));
+        } catch(e) {}
+    };
+
+    // ---- Widget drag reorder (within right zone) ----
+    let _wDragSrc = null;
+    let _wDropZone = null;
+
+    function initWidgetDragReorder() {
+        const area = document.getElementById('rightWidgetsArea');
+        if (!area) return;
+
+        area.addEventListener('mousedown', onWidgetDragStart, true);
+        area.addEventListener('touchstart', onWidgetTouchStart, { passive: false });
+    }
+
+    function onWidgetDragStart(e) {
+        const handle = e.target.closest('.widget-drag-handle');
+        if (!handle) return;
+        const widget = handle.closest('.right-zone-widget');
+        if (!widget) return;
+        e.preventDefault();
+
+        _wDragSrc = widget;
+        const originalRect = widget.getBoundingClientRect();
+        const offsetX = e.clientX - originalRect.left;
+        const offsetY = e.clientY - originalRect.top;
+
+        // Ghost element
+        const ghost = widget.cloneNode(true);
+        ghost.style.cssText = `position:fixed;left:${originalRect.left}px;top:${originalRect.top}px;width:${originalRect.width}px;opacity:0.85;pointer-events:none;z-index:9999;border:1px solid rgba(34,211,238,0.6);border-radius:10px;`;
+        document.body.appendChild(ghost);
+
+        // Drop zone placeholder
+        const ph = document.createElement('div');
+        ph.className = 'widget-drop-zone active';
+        ph.style.height = originalRect.height + 'px';
+        widget.parentNode.insertBefore(ph, widget);
+        widget.style.display = 'none';
+        _wDropZone = ph;
+
+        function onMove(me) {
+            const cx = me.clientX ?? me.touches?.[0]?.clientX;
+            const cy = me.clientY ?? me.touches?.[0]?.clientY;
+            if (cx == null) return;
+            ghost.style.left = (cx - offsetX) + 'px';
+            ghost.style.top  = (cy - offsetY) + 'px';
+            // Find drop target
+            const area2 = document.getElementById('rightWidgetsArea');
+            if (!area2) return;
+            const siblings = [...area2.querySelectorAll('.right-zone-widget:not([style*="display: none"])')];
+            let inserted = false;
+            for (const sib of siblings) {
+                const sr = sib.getBoundingClientRect();
+                if (cy < sr.top + sr.height / 2) {
+                    area2.insertBefore(_wDropZone, sib);
+                    inserted = true;
+                    break;
+                }
+            }
+            if (!inserted) area2.appendChild(_wDropZone);
+        }
+
+        function onUp() {
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+            document.removeEventListener('touchmove', onMove);
+            document.removeEventListener('touchend', onUp);
+            // Place widget where placeholder is
+            if (_wDropZone && _wDropZone.parentNode) {
+                _wDropZone.parentNode.insertBefore(_wDragSrc, _wDropZone);
+                _wDropZone.remove();
+            }
+            _wDragSrc.style.display = '';
+            ghost.remove();
+            _wDragSrc = null;
+            _wDropZone = null;
+        }
+
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+        document.addEventListener('touchmove', onMove, { passive: false });
+        document.addEventListener('touchend', onUp);
+    }
+
+    function onWidgetTouchStart(e) {
+        const handle = e.target.closest('.widget-drag-handle');
+        if (!handle) return;
+        e.preventDefault();
+        onWidgetDragStart({ target: e.target, clientX: e.touches[0].clientX, clientY: e.touches[0].clientY, preventDefault: () => {} });
+    }
+
+    // ---- Snap-to-grid for the live timing floating widget ----
+    // Overrides the raw pixel position with the nearest grid multiple.
+    window._snapToGrid = function(x, y) {
+        return {
+            x: Math.round(x / SNAP_GRID) * SNAP_GRID,
+            y: Math.round(y / SNAP_GRID) * SNAP_GRID,
+        };
+    };
+
+    function observeLtWrapper() {
+        // Snap logic is handled directly in live-timing.js onDragEnd.
+        // This function is kept as a no-op so init() still calls it without error.
+    }
+
+    // ---- Mirror key values from left-panel to right-zone widgets ----
+    window._syncRightZoneWidgets = function() {
+        // Driver info
+        const driverNameEl = document.getElementById('currentDriverName');
+        const stintTimerEl = document.getElementById('stintTimerDisplay');
+        const dotEl        = document.getElementById('currentDriverDot');
+        if (driverNameEl) {
+            const wn = document.getElementById('wDriverName');
+            if (wn) wn.textContent = driverNameEl.textContent;
+        }
+        if (dotEl) {
+            const wd = document.getElementById('wDriverDot');
+            if (wd) wd.style.background = dotEl.style.background;
+        }
+        if (stintTimerEl) {
+            const wt = document.getElementById('wStintTimer');
+            if (wt) wt.textContent = stintTimerEl.textContent;
+        }
+        // Stint data
+        const targetEl = document.getElementById('strategyTargetStint');
+        if (targetEl) {
+            const wts = document.getElementById('wTargetStint');
+            if (wts) wts.textContent = targetEl.textContent;
+        }
+        const pitCountEl = document.getElementById('pitCountDisplay');
+        if (pitCountEl) {
+            const wpc = document.getElementById('wPitCount');
+            if (wpc) wpc.innerHTML = pitCountEl.innerHTML;
+        }
+        const statusEl = document.getElementById('pitStatusIndicator');
+        if (statusEl) {
+            const ws = document.getElementById('wStatus');
+            if (ws) ws.textContent = statusEl.textContent;
+        }
+        // Strategy outlook pills — mirror from remStintsText
+        const outlookEl = document.getElementById('remStintsText');
+        const wOutlook  = document.getElementById('wStrategyOutlook');
+        if (outlookEl && wOutlook) {
+            wOutlook.innerHTML = outlookEl.innerHTML;
+        }
+    };
+
+    // ---- Persist / restore collapsed state ----
+    function restoreCollapsedState() {
+        try {
+            const saved = JSON.parse(localStorage.getItem(WIDGET_COLLAPSED_KEY) || '{}');
+            Object.entries(saved).forEach(([id, collapsed]) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                if (collapsed) {
+                    el.classList.add('collapsed');
+                    const btn = el.querySelector('.widget-collapse-btn');
+                    if (btn) btn.textContent = '▸';
+                }
+            });
+        } catch(e) {}
+    }
+
+    // ---- Init ----
+    function init() {
+        updateWidgetAreaVisibility();
+        window.addEventListener('resize', updateWidgetAreaVisibility);
+        initWidgetDragReorder();
+        restoreCollapsedState();
+        observeLtWrapper();
+        // Apply saved layout template
+        try {
+            const saved = localStorage.getItem(LAYOUT_TPL_KEY);
+            if (saved && TEMPLATES[saved]) window.applyLayoutTemplate(saved);
+        } catch(e) {}
+        // Sync right zone every second during race
+        setInterval(() => {
+            if (document.getElementById('raceDashboard')?.classList.contains('hidden') === false) {
+                window._syncRightZoneWidgets();
+            }
+        }, 1000);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+})();

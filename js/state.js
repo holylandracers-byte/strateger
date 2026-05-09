@@ -416,6 +416,7 @@ window.translations = {
         teamLogoUpload: "Upload Logo", teamLogoChange: "Change Logo", teamLogoRemove: "Remove",
         teamLogoUploading: "Uploading…", teamLogoTooLarge: "File too large (max 2 MB)",
         teamLogoInvalidType: "Only JPG, PNG or SVG allowed",
+        stintAvg: "Stint Avg",
         norm: "NORM",
     },
     he: {
@@ -570,6 +571,7 @@ window.translations = {
         teamLogoUpload: "העלה לוגו", teamLogoChange: "החלף לוגו", teamLogoRemove: "הסר",
         teamLogoUploading: "מעלה…", teamLogoTooLarge: "קובץ גדול מדי (מקסימום 2 MB)",
         teamLogoInvalidType: "רק JPG, PNG או SVG",
+        stintAvg: "ממוצע סטינט",
         norm: "רגיל",
     },
     fr: {
@@ -719,6 +721,7 @@ window.translations = {
         teamLogoUpload: "Importer logo", teamLogoChange: "Changer logo", teamLogoRemove: "Supprimer",
         teamLogoUploading: "Envoi…", teamLogoTooLarge: "Fichier trop grand (max 2 Mo)",
         teamLogoInvalidType: "Seulement JPG, PNG ou SVG",
+        stintAvg: "Moy. Relais",
         norm: "NORM",
     },
     pt: {
@@ -869,6 +872,7 @@ window.translations = {
         teamLogoUpload: "Enviar logo", teamLogoChange: "Alterar logo", teamLogoRemove: "Remover",
         teamLogoUploading: "Enviando…", teamLogoTooLarge: "Ficheiro demasiado grande (máx. 2 MB)",
         teamLogoInvalidType: "Apenas JPG, PNG ou SVG",
+        stintAvg: "Méd. Stint",
         norm: "NORM",
     },
     ru: {
@@ -1020,6 +1024,7 @@ window.translations = {
         teamLogoUpload: "Загрузить лого", teamLogoChange: "Изменить лого", teamLogoRemove: "Удалить",
         teamLogoUploading: "Загрузка…", teamLogoTooLarge: "Файл слишком большой (макс. 2 МБ)",
         teamLogoInvalidType: "Только JPG, PNG или SVG",
+        stintAvg: "Ср. Стинт",
         norm: "НОРМ",
     },
     ar: {
@@ -1173,6 +1178,7 @@ window.translations = {
         teamLogoUpload: "رفع الشعار", teamLogoChange: "تغيير الشعار", teamLogoRemove: "إزالة",
         teamLogoUploading: "جارٍ الرفع…", teamLogoTooLarge: "الملف كبير جدًا (الحد الأقصى 2 ميغابايت)",
         teamLogoInvalidType: "JPG أو PNG أو SVG فقط",
+        stintAvg: "متوسط الشوط",
         norm: "عادي",
     },
     es: {
@@ -1326,6 +1332,7 @@ window.translations = {
         teamLogoUpload: "Subir logo", teamLogoChange: "Cambiar logo", teamLogoRemove: "Quitar",
         teamLogoUploading: "Subiendo…", teamLogoTooLarge: "Archivo demasiado grande (máx. 2 MB)",
         teamLogoInvalidType: "Solo JPG, PNG o SVG",
+        stintAvg: "Prom. Stint",
         norm: "NORM",
     },
     it: {
@@ -1427,6 +1434,7 @@ window.translations = {
         teamLogoUpload: "Carica logo", teamLogoChange: "Cambia logo", teamLogoRemove: "Rimuovi",
         teamLogoUploading: "Caricamento…", teamLogoTooLarge: "File troppo grande (max 2 MB)",
         teamLogoInvalidType: "Solo JPG, PNG o SVG",
+        stintAvg: "Media Stint",
         norm: "NORM",
     },
     ka: {
@@ -1579,6 +1587,7 @@ window.translations = {
         teamLogoUpload: "ლოგოს ატვირთვა", teamLogoChange: "ლოგოს შეცვლა", teamLogoRemove: "წაშლა",
         teamLogoUploading: "იტვირთება…", teamLogoTooLarge: "ფაილი ძალიან დიდია (მაქს. 2 MB)",
         teamLogoInvalidType: "მხოლოდ JPG, PNG ან SVG",
+        stintAvg: "სტინტის საშ.",
         norm: "NORM",
     },
     de: {
@@ -1681,6 +1690,7 @@ window.translations = {
         teamLogoUpload: "Logo hochladen", teamLogoChange: "Logo ändern", teamLogoRemove: "Entfernen",
         teamLogoUploading: "Wird hochgeladen…", teamLogoTooLarge: "Datei zu groß (max. 2 MB)",
         teamLogoInvalidType: "Nur JPG, PNG oder SVG",
+        stintAvg: "Stint Ø",
         norm: "NORM",
     },
     ja: {
@@ -1783,6 +1793,7 @@ window.translations = {
         teamLogoUpload: "ロゴをアップロード", teamLogoChange: "ロゴを変更", teamLogoRemove: "削除",
         teamLogoUploading: "アップロード中…", teamLogoTooLarge: "ファイルが大きすぎます（最大 2 MB）",
         teamLogoInvalidType: "JPG、PNG、または SVG のみ",
+        stintAvg: "スティント平均",
         norm: "NORM",
     },
     el: {
@@ -1935,6 +1946,7 @@ window.translations = {
         teamLogoUpload: "Ανέβασμα λογότυπου", teamLogoChange: "Αλλαγή λογότυπου", teamLogoRemove: "Αφαίρεση",
         teamLogoUploading: "Ανέβασμα…", teamLogoTooLarge: "Αρχείο πολύ μεγάλο (μέγ. 2 MB)",
         teamLogoInvalidType: "Μόνο JPG, PNG ή SVG",
+        stintAvg: "Μέσος Stint",
         norm: "ΚΑΝΟΝ",
     }
 };

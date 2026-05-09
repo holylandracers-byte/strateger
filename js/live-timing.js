@@ -514,6 +514,44 @@ window.updateLiveTimingUI = function() {
     }
     
     window.updateCompetitorsTable();
+
+    // ---- Competitor table header: show/hide based on whether we have sector data ----
+    const tableHeader = document.getElementById('competitorsTableHeader');
+    if (tableHeader) {
+        const hasSectors = (window.liveData.competitors || []).some(c => c.sector1 || c.sector2);
+        tableHeader.style.display = hasSectors ? 'grid' : 'none';
+    }
+
+    // ---- Update right-zone widget: stint average for our team ----
+    const wStintAvgEl = document.getElementById('wStintAvg');
+    if (wStintAvgEl) {
+        const hist = window.liveData.stintLapHistory || [];
+        if (hist.length > 0) {
+            const stintAvgMs = Math.round(hist.reduce((a, b) => a + b, 0) / hist.length);
+            const overallAvgMs = window.liveData.avgLap || 0;
+            wStintAvgEl.textContent = window.formatLapTime(stintAvgMs);
+            // Trend vs overall
+            if (overallAvgMs > 0) {
+                if (stintAvgMs < overallAvgMs * 0.998) {
+                    wStintAvgEl.className = 'stint-avg-badge improving';
+                } else if (stintAvgMs > overallAvgMs * 1.002) {
+                    wStintAvgEl.className = 'stint-avg-badge degrading';
+                } else {
+                    wStintAvgEl.className = 'stint-avg-badge';
+                }
+            }
+        } else {
+            // Fall back to demo stintAvgLap for our team competitor
+            const ourComp = (window.liveData.competitors || []).find(c => c.isOurTeam);
+            if (ourComp && ourComp.stintAvgLap) {
+                wStintAvgEl.textContent = window.formatLapTime(ourComp.stintAvgLap);
+                wStintAvgEl.className = 'stint-avg-badge';
+            } else {
+                wStintAvgEl.textContent = '--:--.---';
+                wStintAvgEl.className = 'stint-avg-badge';
+            }
+        }
+    }
 };
 
 window.updateCompetitorsTable = function() {
@@ -594,9 +632,10 @@ window.updateCompetitorsTable = function() {
             const posTxt = String(comp.position);
             if (posEl.textContent !== posTxt) posEl.textContent = posTxt;
             let posCls = 'cr-pos';
-            if (comp.position === 1) posCls += ' text-gold';
-            else if (comp.position === 2) posCls += ' text-silver';
-            else if (comp.position === 3) posCls += ' text-bronze';
+            if (comp.position === 1) posCls += ' p1';
+            else if (comp.position === 2) posCls += ' p2';
+            else if (comp.position === 3) posCls += ' p3';
+            else posCls += ' text-gray-400';
             if (posEl.className !== posCls) posEl.className = posCls;
         }
 
@@ -636,24 +675,40 @@ window.updateCompetitorsTable = function() {
                     if (nameEl.innerHTML !== logoHtml) nameEl.innerHTML = logoHtml;
                     const nameCls = 'cr-name text-ice font-bold';
                     if (nameEl.className !== nameCls) nameEl.className = nameCls;
-                    nameEl.removeAttribute('data-text'); // clear text fallback
+                    nameEl.removeAttribute('data-text');
                 } else {
-                    // No logo — use text
-                    if (nameEl.textContent !== (teamStr || driverStr)) nameEl.textContent = teamStr || driverStr;
+                    const displayName = teamStr || driverStr;
+                    if (nameEl.textContent !== displayName) nameEl.textContent = displayName;
                     const nameCls = 'cr-name text-ice font-bold';
                     if (nameEl.className !== nameCls) nameEl.className = nameCls;
                 }
             } else {
-                // Non-our-team or logo feature not available: rotate team/driver text
                 const cycleMs = 5000;
                 const showDriver = teamStr && driverStr && teamStr !== driverStr
                     ? (Date.now() % cycleMs) > 3000
                     : false;
                 const displayName = showDriver ? driverStr : (teamStr || driverStr);
                 if (nameEl.textContent !== displayName) nameEl.textContent = displayName;
-                const nameCls = isUs ? 'cr-name text-ice font-bold' : 'cr-name';
+
+                // Adaptive font size based on name length
+                const len = displayName.length;
+                let nameCls = isUs ? 'cr-name text-ice font-bold' : 'cr-name';
+                if (len > 18) nameCls += ' name-xlong';
+                else if (len > 13) nameCls += ' name-long';
                 if (nameEl.className !== nameCls) nameEl.className = nameCls;
             }
+
+            // Marquee: apply if text is wider than the cell (checked lazily)
+            requestAnimationFrame(() => {
+                if (!nameEl || !nameEl.parentElement) return;
+                const overflow = nameEl.scrollWidth > nameEl.clientWidth + 2;
+                if (overflow) {
+                    const dist = -(nameEl.scrollWidth - nameEl.clientWidth + 4);
+                    nameEl.style.setProperty('--marquee-dist', dist + 'px');
+                    // Only add marquee class on hover row or our-team row to avoid distraction
+                    if (isUs) nameEl.classList.add('name-marquee-active');
+                }
+            });
         }
 
         // ---- Badges (pit + penalty + top 3 lap) ----
@@ -762,12 +817,21 @@ window.updateCompetitorsTable = function() {
             if (lapEl.className !== lapCls) lapEl.className = lapCls;
         }
 
-        // ---- Avg lap ----
+        // ---- Avg lap (per-stint preferred; fall back to overall) ----
         const avgEl = row.querySelector('.cr-avg');
         if (avgEl) {
-            const avgMs = comp.avgLap || 0;
+            // Use per-stint average when available (demo mode sets stintAvgLap)
+            const stintAvgMs = comp.stintAvgLap || 0;
+            const avgMs = stintAvgMs > 0 ? stintAvgMs : (comp.avgLap || 0);
             const avgTxt = avgMs > 0 ? window.formatLapTime(avgMs) : '';
             if (avgEl.textContent !== avgTxt) avgEl.textContent = avgTxt;
+            // Trend: compare stint avg to overall avg to detect degradation
+            let avgCls = 'cr-avg';
+            if (stintAvgMs > 0 && comp.avgLap > 0) {
+                if (stintAvgMs < comp.avgLap * 0.998) avgCls += ' avg-improving';
+                else if (stintAvgMs > comp.avgLap * 1.002) avgCls += ' avg-degrading';
+            }
+            if (avgEl.className !== avgCls) avgEl.className = avgCls;
         }
     });
 
@@ -1322,12 +1386,13 @@ window.updateDemoData = function() {
                 // In pit: advance time by the pit duration
                 const pitEnd = comp._pitEnterTime + comp.pitTimeMs;
                 if (pitEnd <= raceElapsed) {
-                    // Pit stop finished
+                    // Pit stop finished — reset per-stint lap tracking
                     comp.elapsed = pitEnd;
                     comp.pitTimeSpent += comp.pitTimeMs;
                     comp.pitsDone++;
                     comp.pitCount = comp.pitsDone;
                     comp.inPit = false;
+                    comp.stintLaps = [];  // new stint starts
                 } else {
                     // Still in pit, jump to current time
                     comp.elapsed = raceElapsed;
@@ -1356,11 +1421,17 @@ window.updateDemoData = function() {
                 comp.laps++;
                 comp.lastLap = Math.round(lapTime);
                 comp.lapTimes.push(comp.lastLap);
+                if (!comp.stintLaps) comp.stintLaps = [];
+                comp.stintLaps.push(comp.lastLap);
                 if (!comp.bestLap || comp.lastLap < comp.bestLap) {
                     comp.bestLap = comp.lastLap;
                 }
-                // Running average from all completed laps
+                // Overall average
                 comp.avgLap = Math.round(comp.lapTimes.reduce((a, b) => a + b, 0) / comp.lapTimes.length);
+                // Per-stint average (only laps since last pit)
+                comp.stintAvgLap = comp.stintLaps.length > 0
+                    ? Math.round(comp.stintLaps.reduce((a, b) => a + b, 0) / comp.stintLaps.length)
+                    : comp.avgLap;
             }
         }
     });
@@ -1619,12 +1690,30 @@ window.toggleCompetitorsTable = function() {
         wrapper.style.height = h + 'px';
     }, { passive: true });
 
+    // ---- Snap-grid overlay helpers ----
+    function showSnapGrid() {
+        if (document.getElementById('ltSnapGridOverlay')) return;
+        const el = document.createElement('div');
+        el.id = 'ltSnapGridOverlay';
+        document.body.appendChild(el);
+    }
+    function hideSnapGrid() {
+        const el = document.getElementById('ltSnapGridOverlay');
+        if (el) el.remove();
+    }
+    // Snap to nearest 20px grid
+    function snapPos(x, y) {
+        const g = 20;
+        return { x: Math.round(x / g) * g, y: Math.round(y / g) * g };
+    }
+
     // ---- Drag ----
     function onDragStart(e) {
         if (e.target.closest('button') || e.target.closest('select') || e.target.closest('input')) return;
         makeFixed();
         isDragging = true;
         wrapper.classList.add('lt-dragging');
+        showSnapGrid();
         const clientX = e.touches ? e.touches[0].clientX : e.clientX;
         const clientY = e.touches ? e.touches[0].clientY : e.clientY;
         startX = clientX;
@@ -1651,6 +1740,16 @@ window.toggleCompetitorsTable = function() {
         if (!isDragging) return;
         isDragging = false;
         wrapper.classList.remove('lt-dragging');
+        hideSnapGrid();
+        // Snap final position to grid
+        const rawLeft = parseInt(wrapper.style.left) || 0;
+        const rawTop  = parseInt(wrapper.style.top)  || 0;
+        const snapped = snapPos(rawLeft, rawTop);
+        const vw = window.innerWidth, vh = window.innerHeight;
+        const w = parseInt(wrapper.style.width) || wrapper.offsetWidth;
+        const h = parseInt(wrapper.style.height) || wrapper.offsetHeight;
+        wrapper.style.left = clamp(snapped.x, 0, vw - w - 8) + 'px';
+        wrapper.style.top  = clamp(snapped.y, 0, vh - h - 8) + 'px';
         savePos();
     }
 
