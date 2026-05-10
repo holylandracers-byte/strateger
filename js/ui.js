@@ -127,7 +127,7 @@ window.applyDriverGroupToRace = function(triggerSim = true) {
         }
     });
 
-    if (triggerSim && typeof window.runSim === 'function') window.runSim();
+    if (triggerSim && !window._initRunSimSuppressed && typeof window.runSim === 'function') window.runSim();
 };
 
 window.renderDriverGroupUI = function() {
@@ -354,11 +354,32 @@ window.createDriverInput = function(val, checked, squad) {
     driverInput.className = 'driver-input';
     driverInput.placeholder = 'Driver name';
     driverInput.addEventListener('click', (e) => e.stopPropagation());
+
+    let _prevName = val;
     driverInput.oninput = () => {
         if (typeof window.scheduleRunSim === 'function') window.scheduleRunSim(400);
         else if (typeof window.runSim === 'function') window.runSim();
     };
-    driverInput.onchange = () => { if (typeof window.runSim === 'function') window.runSim(); };
+    driverInput.onchange = () => {
+        const newName = driverInput.value.trim();
+        if (newName && newName !== _prevName && typeof window.getDriverPool === 'function') {
+            // Rename in pool: update entry, re-sync participants set, re-render group tags
+            const pool = window.getDriverPool();
+            const entry = pool.find(d => d.name === _prevName);
+            if (entry) {
+                const wasParticipant = window._driverGroupParticipants?.has(_prevName);
+                entry.name = newName;
+                if (typeof window.saveDriverPool === 'function') window.saveDriverPool(pool);
+                if (wasParticipant) {
+                    window._driverGroupParticipants.delete(_prevName);
+                    window._driverGroupParticipants.add(newName);
+                }
+                if (typeof window.renderDriverGroupUI === 'function') window.renderDriverGroupUI();
+            }
+            _prevName = newName;
+        }
+        if (typeof window.runSim === 'function') window.runSim();
+    };
 
     const starterLabel = document.createElement('span');
     starterLabel.className = 'driver-starter-label' + (checked ? '' : ' hidden');

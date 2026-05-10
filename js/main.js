@@ -9,8 +9,12 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log("🚀 Strateger Initializing...");
     window._autoStartFired = false;
 
+    // Suppress intermediate runSim calls during the entire init sequence;
+    // a single deferred run fires at the end via checkForSavedRace → scheduleRunSim.
+    window._initRunSimSuppressed = true;
+
     // 🟢 Load viewer's own language preference if available
-    let savedLang = window.role === 'viewer' 
+    let savedLang = window.role === 'viewer'
         ? localStorage.getItem('strateger_viewer_lang') || localStorage.getItem('strateger_lang')
         : localStorage.getItem('strateger_lang');
     
@@ -48,11 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typeof window.initVenueLocationPicker === 'function') {
         window.initVenueLocationPicker();
     }
-
-    // Calculate initial strategy from default params
-    if (typeof window.runSim === 'function') {
-        window.runSim();
-    }
+    // runSim is triggered once by checkForSavedRace (called below) — no separate call needed
     
     const urlParams = new URLSearchParams(window.location.search);
     const joinCode = urlParams.get('join');
@@ -1940,6 +1940,31 @@ window.confirmPitExit = function(autoDetected) {
     window.state.isInPit = false;
     window.state.stintStart = now;
     window.state.stintOffset = 0;
+
+    // On-the-go strategy recalc: compare actual stint duration to plan, redistribute if drifted
+    (function _recalcOnPitExit() {
+        const completedIdx = Math.max(0, (window.state.globalStintNumber || 1) - 1);
+        const targets = window.state.stintTargets;
+        if (!Array.isArray(targets) || targets.length === 0) return;
+        const planned = targets[completedIdx];
+        if (!planned || planned <= 0) return;
+        const drift = Math.abs(driveDuration - planned);
+        if (drift < 3 * 60000) return; // <3 min drift — no recalc needed
+        // Remaining stints after the completed one
+        const remaining = targets.slice(completedIdx + 1);
+        if (remaining.length === 0) return;
+        const totalPlannedRemaining = remaining.reduce((a, b) => a + b, 0);
+        const timeSaved = planned - driveDuration; // positive = did shorter stint
+        const newTotal = totalPlannedRemaining + timeSaved;
+        if (newTotal <= 0) return;
+        const scale = newTotal / totalPlannedRemaining;
+        const newRemaining = remaining.map(t => Math.round(t * scale));
+        for (let i = 0; i < newRemaining.length; i++) {
+            targets[completedIdx + 1 + i] = newRemaining[i];
+        }
+        console.log(`♻️ Pit exit recalc: actual ${(driveDuration/60000).toFixed(1)}m vs planned ${(planned/60000).toFixed(1)}m — redistributed ${newRemaining.length} remaining stints`);
+    })();
+
     window.state.globalStintNumber++;
 
     // Reset stint lap tracking for new driver/stint

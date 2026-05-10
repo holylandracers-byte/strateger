@@ -2074,8 +2074,8 @@ window.setLanguage = function(lang) {
     if (typeof window.renderFrame === 'function') window.renderFrame();
     if (typeof window.renderPreview === 'function' && window.previewData) window.renderPreview();
     if (typeof window._applyHeroState === 'function') window._applyHeroState();
-    // Re-run sim so simResult text is translated to the new language
-    if (typeof window.runSim === 'function' && window.drivers && window.drivers.length > 0) window.runSim();
+    // Re-run sim so simResult text is translated to the new language (skip during init burst)
+    if (!window._initRunSimSuppressed && typeof window.runSim === 'function' && window.drivers && window.drivers.length > 0) window.runSim();
 };
 
 // ==========================================
@@ -2221,7 +2221,7 @@ window.loadSavedSettings = function() {
     }
     if (s.lang && typeof window.setLanguage === 'function') window.setLanguage(s.lang);
 
-    if (typeof window.runSim === 'function') window.runSim();
+    if (!window._initRunSimSuppressed && typeof window.runSim === 'function') window.runSim();
 };
 
 // ==========================================
@@ -2259,12 +2259,15 @@ if (!window.__racePersistenceHooksAttached) {
 }
 
 window.checkForSavedRace = function() {
-    // 1. Load saved device settings first (overrides defaults), then draft config
+    // Suppress intermediate runSim calls during the init burst; do one final run after
+    window._initRunSimSuppressed = true;
     window.loadSavedSettings();
     window.loadDraftConfig();
+    window._initRunSimSuppressed = false;
 
-    // 1b. Always re-run simulation with current (restored) params
-    if (typeof window.runSim === 'function') window.runSim();
+    // Single deferred run after all settings are loaded
+    if (typeof window.scheduleRunSim === 'function') window.scheduleRunSim(0);
+    else if (typeof window.runSim === 'function') window.runSim();
 
     // 2. בדיקת מירוץ פעיל
     const savedData = localStorage.getItem(window.RACE_STATE_KEY);
