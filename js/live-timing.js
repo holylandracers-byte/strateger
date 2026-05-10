@@ -1899,17 +1899,40 @@ window.toggleCompetitorsTable = function() {
         if (stored) window._teamLogoDataUrl = stored;
     } catch(e) {}
 
-    // Show the upload button only for Pro users, after panel is visible
+    // Sync all logo UI: widget btn, header btn, header logo img
     function refreshLogoBtn() {
-        const btn = document.getElementById('teamLogoUploadBtn');
-        if (!btn) return;
         const isPro = !!(window._proUnlocked);
-        btn.classList.toggle('hidden', !isPro);
-        if (isPro) {
-            const labelKey = window._teamLogoDataUrl ? 'teamLogoChange' : 'teamLogoUpload';
-            btn.title = window.t ? window.t(labelKey) : (window._teamLogoDataUrl ? 'Change Logo' : 'Upload Logo');
+        const hasLogo = !!(window._teamLogoDataUrl);
+
+        // Widget drag handle button
+        const btn = document.getElementById('teamLogoUploadBtn');
+        if (btn) {
+            btn.classList.toggle('hidden', !isPro);
+            if (isPro) {
+                const labelKey = hasLogo ? 'teamLogoChange' : 'teamLogoUpload';
+                btn.title = window.t ? window.t(labelKey) : (hasLogo ? 'Change Logo' : 'Upload Logo');
+            }
+        }
+
+        // Header upload button (shown for Pro when no logo yet)
+        const hBtn = document.getElementById('headerTeamLogoBtn');
+        if (hBtn) hBtn.classList.toggle('hidden', !(isPro && !hasLogo));
+
+        // Header logo preview image (shown when logo set)
+        const hImg = document.getElementById('headerTeamLogoImg');
+        if (hImg) {
+            if (hasLogo) {
+                hImg.src = window._teamLogoDataUrl;
+                hImg.classList.remove('hidden');
+            } else {
+                hImg.classList.add('hidden');
+                hImg.src = '';
+            }
         }
     }
+
+    // Expose so pro-activation handler can refresh logo buttons immediately
+    window._refreshTeamLogoBtn = refreshLogoBtn;
 
     // Called when the user clicks the logo upload button
     window.openTeamLogoUpload = function() {

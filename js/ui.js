@@ -354,7 +354,11 @@ window.createDriverInput = function(val, checked, squad) {
     driverInput.className = 'driver-input';
     driverInput.placeholder = 'Driver name';
     driverInput.addEventListener('click', (e) => e.stopPropagation());
-    driverInput.onchange = () => window.runSim();
+    driverInput.oninput = () => {
+        if (typeof window.scheduleRunSim === 'function') window.scheduleRunSim(400);
+        else if (typeof window.runSim === 'function') window.runSim();
+    };
+    driverInput.onchange = () => { if (typeof window.runSim === 'function') window.runSim(); };
 
     const starterLabel = document.createElement('span');
     starterLabel.className = 'driver-starter-label' + (checked ? '' : ' hidden');

@@ -303,7 +303,13 @@ window.calculateStintDurations = function(config) {
     let rounded = normalizeDurations(stintDurations);
 
     // Weather-aware stint sizing:
-    // heavy rain at stint midpoint -> shorter stint, dry midpoint -> longer stint.
+    // heavy rain → shorter stints, light rain → slightly shorter, dry → slightly longer.
+    // Also exposes weather per-stint for driver swap frequency hints.
+    const weatherPerStint = new Array(totalStints).fill('dry');
+    const trackCond = window.state?.trackCondition;
+    const liveRain = (trackCond === 'wet');
+    const liveLight = (trackCond === 'drying');
+
     if (typeof window.getVenueForecastAt === 'function' && rounded.length > 0) {
         const raceStartMs = Number.isFinite(Date.parse(window.raceStartTime)) ? Date.parse(window.raceStartTime) : Date.now();
         let cursor = raceStartMs;
@@ -313,10 +319,14 @@ window.calculateStintDurations = function(config) {
             const code = Number(fc?.weatherCode);
             const precip = Number(fc?.precipitation || 0);
             const heavyRain = ([65, 67, 82, 95, 96, 99].includes(code)) || precip >= 2.5;
+            const lightRain = ([51, 53, 55, 61, 63, 80, 81].includes(code)) || (precip >= 0.5 && precip < 2.5);
             const dry = ((code >= 0 && code <= 2) || code === 3) && precip < 0.2;
 
+            weatherPerStint[idx] = heavyRain ? 'heavy' : lightRain ? 'light' : 'dry';
+
             let next = dur;
-            if (heavyRain) next = Math.round(dur * 0.88);
+            if (heavyRain) next = Math.round(dur * 0.82);        // shorten significantly
+            else if (lightRain) next = Math.round(dur * 0.92);   // shorten moderately
             else if (dry) next = Math.round(dur * 1.06);
             next = Math.max(safeMinStintMs, Math.min(effectiveMaxStint, next));
 
@@ -325,9 +335,18 @@ window.calculateStintDurations = function(config) {
             return next;
         });
         rounded = normalizeDurations(adapted);
+    } else if (liveRain || liveLight) {
+        // No forecast provider but live track condition is rain — shorten all stints
+        const factor = liveRain ? 0.82 : 0.92;
+        const adapted = rounded.map(dur => {
+            const next = Math.max(safeMinStintMs, Math.min(effectiveMaxStint, Math.round(dur * factor)));
+            return next;
+        });
+        rounded = normalizeDurations(adapted);
+        weatherPerStint.fill(liveRain ? 'heavy' : 'light');
     }
 
-    return { durations: rounded };
+    return { durations: rounded, weatherPerStint };
 };
 
 // Determine if a given time falls inside the squad window.
@@ -359,7 +378,8 @@ window.calculateStrategyLogic = function(config) {
     }
     
     const stintDurations = durationResult.durations;
-    
+    const weatherPerStint = durationResult.weatherPerStint || new Array(stintDurations.length).fill('dry');
+
     console.log(`📋 Planned stint durations: ${stintDurations.map(d => (d/60000).toFixed(1) + 'm').join(', ')}`);
     
     // Build race start time from config
@@ -450,6 +470,7 @@ window.calculateStrategyLogic = function(config) {
         const end = new Date(start.getTime() + duration);
         driverStats[selectedIdx].lastStintEnd = new Date(end);
         
+        const stintWeather = weatherPerStint[i] || 'dry';
         timeline.push({
             type: 'stint',
             stintNumber: i + 1,
@@ -460,6 +481,7 @@ window.calculateStrategyLogic = function(config) {
             isNightPhase: isNight,
             squadModeActive: activeSquad !== null,
             activeSquad: activeSquad,
+            weather: stintWeather,
             start, end, startTime: start, endTime: end, duration
         });
         
@@ -494,6 +516,13 @@ window._setStartBtnState = function(valid) {
     btn.classList.toggle('cursor-not-allowed', !valid);
     btn.classList.toggle('pointer-events-none', !valid);
     btn.title = valid ? '' : '⚠️ Fix strategy params before starting';
+};
+
+// Debounce guard: prevents parallel/rapid re-runs
+let _runSimTimer = null;
+window.scheduleRunSim = function(delayMs) {
+    clearTimeout(_runSimTimer);
+    _runSimTimer = setTimeout(() => { window.runSim(); }, delayMs || 0);
 };
 
 window.runSim = function() {

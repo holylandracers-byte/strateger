@@ -690,3 +690,73 @@ window.stopQualifying = function(offerRace) {
         );
     }
 };
+
+// ==========================================
+// QUALIFYING PREVIEW
+// ==========================================
+
+window.openQualifyPreview = function() {
+    const qs = window._qualifyState;
+    if (!qs || !qs.schedule) return;
+
+    const t = window.t || (k => k);
+    const remaining = qs.schedule.slice(qs.currentIdx || 0);
+    const done = qs.schedule.slice(0, qs.currentIdx || 0);
+    const timePerRunMin = qs.timePerRunMs ? Math.round(qs.timePerRunMs / 60000) : null;
+
+    let html = '<div style="padding:16px;max-width:480px;margin:0 auto;font-family:inherit">';
+    html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">';
+    html += '<h2 style="color:#93c5fd;font-size:16px;font-weight:900;text-transform:uppercase;letter-spacing:.08em">' + (t('qualifyScreenTitle') || 'Qualifying') + ' — ' + (t('livePreviewBtn') || 'PLAN') + '</h2>';
+    html += '<button onclick="window._closeQualifyPreview()" style="color:#9ca3af;font-size:18px;background:none;border:none;cursor:pointer">&#x2715;</button>';
+    html += '</div>';
+
+    if (timePerRunMin) {
+        html += '<div style="font-size:10px;color:#6b7280;margin-bottom:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em">' + (t('qualifyDuration') || 'Duration') + ': ' + timePerRunMin + 'm / ' + (t('qualifyRun') || 'run') + '</div>';
+    }
+
+    // Done runs (greyed)
+    done.forEach(run => {
+        html += '<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;background:#0d1424;margin-bottom:4px;opacity:.4">';
+        html += '<span style="width:12px;height:12px;border-radius:50%;background:' + (run.color || '#374151') + ';flex-shrink:0"></span>';
+        html += '<span style="color:#d1d5db;font-weight:700;font-size:13px;flex:1">' + run.driverName + '</span>';
+        html += '<span style="color:#6b7280;font-size:11px">' + (t('qualifyRun') || 'Run') + ' ' + run.run + ' &nbsp; ✔</span>';
+        html += '</div>';
+    });
+
+    // Current run (highlighted)
+    if (remaining.length > 0) {
+        const cur = remaining[0];
+        html += '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:10px;background:#172554;border:2px solid #3b82f6;margin-bottom:4px;box-shadow:0 0 12px rgba(59,130,246,.3)">';
+        html += '<span style="width:14px;height:14px;border-radius:50%;background:' + (cur.color || '#3b82f6') + ';flex-shrink:0;box-shadow:0 0 6px ' + (cur.color || '#3b82f6') + '"></span>';
+        html += '<span style="color:#bfdbfe;font-weight:900;font-size:14px;flex:1">' + cur.driverName + '</span>';
+        html += '<span style="color:#93c5fd;font-size:11px;font-weight:700">▶ ' + (t('qualifyRun') || 'Run') + ' ' + cur.run + '</span>';
+        html += '</div>';
+    }
+
+    // Upcoming runs
+    remaining.slice(1).forEach(run => {
+        html += '<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;background:#0d1424;margin-bottom:4px">';
+        html += '<span style="width:12px;height:12px;border-radius:50%;background:' + (run.color || '#374151') + ';flex-shrink:0"></span>';
+        html += '<span style="color:#d1d5db;font-weight:700;font-size:13px;flex:1">' + run.driverName + '</span>';
+        html += '<span style="color:#6b7280;font-size:11px">' + (t('qualifyRun') || 'Run') + ' ' + run.run + '</span>';
+        html += '</div>';
+    });
+
+    html += '</div>';
+
+    let overlay = document.getElementById('qualifyPreviewOverlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'qualifyPreviewOverlay';
+        overlay.style.cssText = 'position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.75);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:16px';
+        overlay.onclick = function(e) { if (e.target === overlay) window._closeQualifyPreview(); };
+        document.body.appendChild(overlay);
+    }
+    overlay.innerHTML = '<div style="background:#0d1424;border:1px solid rgba(59,130,246,.3);border-radius:16px;max-height:80vh;overflow-y:auto;box-shadow:0 32px 64px rgba(0,0,0,.8);min-width:280px;max-width:500px;width:100%">' + html + '</div>';
+    overlay.style.display = 'flex';
+};
+
+window._closeQualifyPreview = function() {
+    const ov = document.getElementById('qualifyPreviewOverlay');
+    if (ov) ov.style.display = 'none';
+};

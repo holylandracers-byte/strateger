@@ -1113,6 +1113,62 @@ window.renderFrame = function() {
     }
 };
 
+// On-the-go strategy recalc: if actual current stint diverges >6 min from plan,
+// redistribute remaining stint targets from the current stint onward.
+// This keeps future pills accurate after an unplanned long/short stint.
+const _STINT_DRIFT_THRESHOLD_MS = 6 * 60000;
+let _lastDriftCheck = 0;
+function _maybeRecalcAfterDrift() {
+    if (!window.state?.raceStarted || !window.state?.stintStart) return;
+    const now = Date.now();
+    if (now - _lastDriftCheck < 15000) return; // check at most every 15 s
+    _lastDriftCheck = now;
+
+    const currentStintIdx = Math.max(0, (window.state.globalStintNumber || 1) - 1);
+    const planned = Array.isArray(window.state.stintTargets) ? window.state.stintTargets[currentStintIdx] : null;
+    if (!planned) return;
+
+    const elapsed = (now - window.state.stintStart) + (window.state.stintOffset || 0);
+    const drift = Math.abs(elapsed - planned);
+    if (drift < _STINT_DRIFT_THRESHOLD_MS) return;
+
+    // Current stint already deviated — update its target to actual elapsed so far,
+    // then regenerate remaining stint targets using the available future time.
+    const raceMs = (window.config?.duration || 0) * 3600000;
+    const raceStartMs = window.state.startTime || Date.now();
+    const totalElapsedMs = now - raceStartMs;
+    const raceRemainingMs = Math.max(0, raceMs - totalElapsedMs);
+
+    const pitTimeSec = parseFloat(window.config?.minPitSec || window.config?.pitTime) || 0;
+    const pitTimeMs = pitTimeSec * 1000;
+    const stopsDone = window.state.pitCount || 0;
+    const totalStops = parseInt(window.config?.reqStops) || 0;
+    const futureStints = Math.max(0, totalStops - stopsDone);
+    if (futureStints === 0) return;
+
+    const futurePitTimeLoss = futureStints * pitTimeMs;
+    const futurePool = raceRemainingMs - futurePitTimeLoss;
+    if (futurePool <= 0) return;
+
+    // Redistribute future stints evenly (respecting min/max if set)
+    const minStintMs = (parseFloat(window.config?.minStint) || 0) * 60000;
+    const maxStintMs = (parseFloat(window.config?.maxStint) || Infinity) * 60000;
+    const safMin = Math.max(minStintMs, 60000);
+    const safMax = maxStintMs === Infinity ? futurePool : maxStintMs;
+    const avgMs = futurePool / futureStints;
+    const clampedAvg = Math.max(safMin, Math.min(safMax, avgMs));
+
+    const newTargets = [...(window.state.stintTargets || [])];
+    // Fix current stint to actual elapsed so far
+    newTargets[currentStintIdx] = elapsed;
+    // Spread remaining evenly
+    for (let i = currentStintIdx + 1; i < currentStintIdx + 1 + futureStints && i < newTargets.length; i++) {
+        newTargets[i] = clampedAvg;
+    }
+    window.state.stintTargets = newTargets;
+    console.log(`♻️ Stint drift ${(drift/60000).toFixed(1)}m — recalculated remaining targets`);
+}
+
 function updateRemainingStrategyLogic(raceRemainingMs) {
     const panel = document.getElementById('remainingStintsPanel');
     const pillsEl = document.getElementById('remStintsText');
@@ -1121,6 +1177,9 @@ function updateRemainingStrategyLogic(raceRemainingMs) {
 
     if (!panel || window.role !== 'host') return;
     panel.classList.remove('hidden');
+
+    // Check if actual stint diverged from plan and update targets accordingly
+    _maybeRecalcAfterDrift();
 
     // Support optional min/max — if not set, treat as unconstrained
     const maxStintRaw = parseFloat(window.config.maxStint);
@@ -3049,7 +3108,7 @@ window.updateProUI = function() {
     const proBtn = document.getElementById('proStatusBtn');
     const lockLT = document.getElementById('proLockLiveTiming');
     const modal = document.getElementById('proUpgradeModal');
-    
+
     if (window._proUnlocked) {
         // Pro active — hide all upgrade prompts
         if (banner) banner.classList.add('hidden');
@@ -3062,6 +3121,8 @@ window.updateProUI = function() {
         if (proBtn) proBtn.classList.add('hidden');
         if (lockLT) lockLT.classList.remove('hidden');
     }
+    // Refresh logo button visibility (Pro feature)
+    if (typeof window._refreshTeamLogoBtn === 'function') window._refreshTeamLogoBtn();
 };
 
 // ==========================================

@@ -120,10 +120,16 @@
 
         <!-- Team name — always visible in header center -->
         <div class="flex-1 flex flex-col items-center justify-center px-2 min-w-0">
-            <input type="text" id="teamNameInput"
-                   data-i18n="lblTeamName"
-                   oninput="window.applyTeamName && window.applyTeamName(this.value)"
-                   class="team-identity-input bg-transparent border-b border-gray-600 focus:border-ice text-base font-bold text-center placeholder-gray-500 outline-none max-w-[220px] w-full transition py-0.5" autocomplete="off">
+            <div class="flex items-center gap-1.5 max-w-[240px] w-full justify-center">
+                <!-- Team logo preview (shown when logo set) -->
+                <img id="headerTeamLogoImg" class="hidden w-7 h-7 rounded object-contain cursor-pointer shrink-0" onclick="window.openTeamLogoUpload && window.openTeamLogoUpload()" title="Change logo" alt="">
+                <input type="text" id="teamNameInput"
+                       data-i18n="lblTeamName"
+                       oninput="window.applyTeamName && window.applyTeamName(this.value)"
+                       class="team-identity-input bg-transparent border-b border-gray-600 focus:border-ice text-base font-bold text-center placeholder-gray-500 outline-none w-full transition py-0.5" autocomplete="off">
+                <!-- Logo upload button (Pro only) -->
+                <button id="headerTeamLogoBtn" class="hidden shrink-0 text-gray-500 hover:text-ice transition text-sm leading-none" onclick="window.openTeamLogoUpload && window.openTeamLogoUpload()" title="Upload team logo">📷</button>
+            </div>
         </div>
 
         <div class="flex items-center gap-1 sm:gap-2">
@@ -1367,9 +1373,10 @@
                 </div>
                 <div id="qualifyTimerDisplay" class="text-3xl font-mono font-black text-white tracking-tight leading-none">00:00</div>
             </div>
-            <div class="text-right">
+            <div class="text-right flex flex-col items-end gap-0.5">
                 <div class="text-[9px] text-gray-500 uppercase font-bold" data-i18n="qualifySession">Session</div>
                 <div id="qualifySessionTimer" class="text-base font-mono font-bold text-blue-300">--:--</div>
+                <button onclick="window.openQualifyPreview()" class="text-[9px] text-blue-300 hover:text-white bg-blue-900/60 hover:bg-blue-700/60 border border-blue-600/40 rounded px-1.5 py-0.5 transition font-bold uppercase tracking-wide leading-none mt-0.5" data-i18n="livePreviewBtn">▶ PLAN</button>
             </div>
         </div>
         <!-- Two-panel body: left = current driver + up next | right = results + next segment + next run -->
