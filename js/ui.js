@@ -602,6 +602,18 @@ const _BG_THEMES = {
     'ferrari-rosso': 'background: linear-gradient(180deg, #0e0000 0%, #2a0808 25%, #4a0a0a 50%, #2a0808 75%, #0e0000 100%);',
     'mclaren-papaya': 'background: linear-gradient(180deg, #100800 0%, #201505 25%, #3a2008 40%, #4a2a0a 50%, #3a2008 60%, #201505 75%, #100800 100%);',
     'volcanic': 'background: linear-gradient(180deg, #0a0000 0%, #1a0500 20%, #2d0800 35%, #401005 50%, #2d0800 65%, #1a0500 80%, #0a0000 100%);',
+    'ice-blue': 'background: linear-gradient(180deg, #001830 0%, #003060 25%, #0055aa 50%, #003060 75%, #001830 100%);',
+    'teal-circuit': 'background: linear-gradient(180deg, #001a1a 0%, #005555 25%, #00a0a0 50%, #005555 75%, #001a1a 100%);',
+    'bronze-age': 'background: linear-gradient(180deg, #1a0e00 0%, #5c3300 25%, #a05a00 50%, #5c3300 75%, #1a0e00 100%);',
+    'toxic-green': 'background: linear-gradient(180deg, #001500 0%, #004400 25%, #009900 50%, #004400 75%, #001500 100%);',
+    'royal-navy': 'background: linear-gradient(180deg, #000033 0%, #000088 25%, #1a1acc 50%, #000088 75%, #000033 100%);',
+    'blood-moon': 'background: radial-gradient(ellipse at 50% 35%, #cc0000 0%, #660000 45%, #1a0000 100%);',
+    'solar-flare': 'background: linear-gradient(180deg, #1a0d00 0%, #cc6600 30%, #ff9900 50%, #cc6600 70%, #1a0d00 100%);',
+    'electric-yellow': 'background: linear-gradient(180deg, #111100 0%, #555500 25%, #aaaa00 50%, #555500 75%, #111100 100%);',
+    'cyan-surge': 'background: linear-gradient(180deg, #001515 0%, #00aaaa 40%, #00ffff 50%, #00aaaa 60%, #001515 100%);',
+    'magenta-wave': 'background: linear-gradient(180deg, #150015 0%, #880088 30%, #cc00cc 50%, #880088 70%, #150015 100%);',
+    'silver-chrome': 'background: linear-gradient(180deg, #0a0a0a 0%, #404040 25%, #aaaaaa 50%, #404040 75%, #0a0a0a 100%);',
+    'jade-dragon': 'background: linear-gradient(180deg, #001a0d 0%, #006633 30%, #00cc66 50%, #006633 70%, #001a0d 100%);',
     // === 📸 PHOTO THEMES (requires internet) ===
     'kart-race':    _photo('photo-1558618666-fcd25c85cd64'),
     'kart-night':   _photo('photo-1568605117036-5fe5e7bab0b7'),
@@ -635,6 +647,18 @@ const _THEME_TINTS = {
     'ferrari-rosso': { main: '#0e0000', panel: '#1a0505', border: '#3a1010' },
     'mclaren-papaya': { main: '#100800', panel: '#1a1208', border: '#352510' },
     'volcanic': { main: '#0a0000', panel: '#150500', border: '#301008' },
+    'ice-blue': { main: '#001020', panel: '#002040', border: '#0044aa' },
+    'teal-circuit': { main: '#001515', panel: '#003535', border: '#007070' },
+    'bronze-age': { main: '#120a00', panel: '#3a1e00', border: '#7a4400' },
+    'toxic-green': { main: '#001000', panel: '#003300', border: '#006600' },
+    'royal-navy': { main: '#000025', panel: '#000060', border: '#1515aa' },
+    'blood-moon': { main: '#1a0000', panel: '#440000', border: '#880000' },
+    'solar-flare': { main: '#1a0800', panel: '#3a1500', border: '#883300' },
+    'electric-yellow': { main: '#0e0e00', panel: '#222200', border: '#666600' },
+    'cyan-surge': { main: '#001212', panel: '#004444', border: '#007777' },
+    'magenta-wave': { main: '#100010', panel: '#330033', border: '#770077' },
+    'silver-chrome': { main: '#0a0a0a', panel: '#1e1e1e', border: '#555555' },
+    'jade-dragon': { main: '#001209', panel: '#003318', border: '#006633' },
     // === 📸 PHOTO THEME TINTS (near-black so UI stays readable over any photo) ===
     'kart-race':    { main: '#050505', panel: '#0c0c0c', border: '#222222' },
     'kart-night':   { main: '#03060e', panel: '#08101e', border: '#1a2030' },
@@ -647,6 +671,27 @@ const _THEME_TINTS = {
 };
 
 window.setPageBackground = function(bg) {
+    // Custom user photo
+    if (bg === 'custom-photo') {
+        if (!window._proUnlocked && !window._trialActive) {
+            window.showProGate('Custom Photo');
+            return;
+        }
+        const dataUrl = localStorage.getItem('strateger_custom_photo');
+        if (dataUrl) {
+            document.body.style.backgroundImage = `url(${dataUrl})`;
+            document.body.style.backgroundSize = 'cover';
+            document.body.style.backgroundPosition = 'center';
+            document.body.style.backgroundAttachment = 'fixed';
+            localStorage.setItem('strateger_bg', 'custom-photo');
+            document.querySelectorAll('.bg-swatch').forEach(s => s.classList.remove('active'));
+            const tp = document.getElementById('themePanel');
+            if (tp && !tp.classList.contains('hidden')) setTimeout(() => tp.classList.add('hidden'), 250);
+            return;
+        }
+        return;
+    }
+
     if (_PHOTO_THEME_IDS.has(bg) && !window._proUnlocked) {
         if (typeof window.showProGate === 'function') {
             window.showProGate('Photo Themes');
@@ -714,6 +759,44 @@ window.setPageBackground = function(bg) {
     }
 };
 
+// ── Custom photo background (Pro) ──────────────────────────────────────────
+window.applyCustomPhoto = function(input) {
+    if (!window.checkProFeature('photoThemes')) {
+        window.showProGate('Custom Photo');
+        input.value = '';
+        return;
+    }
+    const file = input.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+        window.showToast('Photo must be under 5MB', 'warning');
+        input.value = '';
+        return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const dataUrl = e.target.result;
+        localStorage.setItem('strateger_custom_photo', dataUrl);
+        // Show preview
+        const preview = document.getElementById('customPhotoPreview');
+        const img = document.getElementById('customPhotoImg');
+        if (preview && img) { img.src = dataUrl; preview.classList.remove('hidden'); }
+        // Auto-apply
+        window.setPageBackground('custom-photo');
+    };
+    reader.readAsDataURL(file);
+};
+
+window.clearCustomPhoto = function() {
+    localStorage.removeItem('strateger_custom_photo');
+    const preview = document.getElementById('customPhotoPreview');
+    if (preview) preview.classList.add('hidden');
+    const input = document.getElementById('customPhotoInput');
+    if (input) input.value = '';
+    // Switch back to default theme
+    window.setPageBackground('');
+};
+
 // Toggle theme picker panel (nav button)
 window.toggleThemePanel = function() {
     const panel = document.getElementById('themePanel');
@@ -725,11 +808,24 @@ window.toggleThemePanel = function() {
         panel.querySelectorAll('.bg-swatch').forEach(s => {
             s.classList.toggle('active', s.dataset.bg === current);
             const isPhoto = _PHOTO_THEME_IDS.has(s.dataset.bg || '');
-            const locked = isPhoto && !window._proUnlocked;
+            const locked = isPhoto && !window._proUnlocked && !window._trialActive;
             s.classList.toggle('opacity-50', locked);
             s.classList.toggle('cursor-not-allowed', locked);
             s.title = locked ? `${s.title || 'Photo'} (Pro)` : (s.title || '');
         });
+        // Show/hide custom photo upload based on Pro status
+        const isPro = window._proUnlocked || window._trialActive;
+        const gate = document.getElementById('customPhotoProGate');
+        const upload = document.getElementById('customPhotoUploadArea');
+        if (gate) gate.classList.toggle('hidden', isPro);
+        if (upload) upload.classList.toggle('hidden', !isPro);
+        // Restore existing custom photo preview
+        if (isPro) {
+            const saved = localStorage.getItem('strateger_custom_photo');
+            const preview = document.getElementById('customPhotoPreview');
+            const img = document.getElementById('customPhotoImg');
+            if (saved && preview && img) { img.src = saved; preview.classList.remove('hidden'); }
+        }
     }
 };
 
@@ -868,7 +964,7 @@ window.renderPreview = function() {
         // Reorder arrows inline so row stays single-line height (~24px)
         return `
             <div class="flex items-center gap-1 bg-navy-950 rounded border-l-4 cursor-grab active:cursor-grabbing ${borderWarning}" style="border-left-color:${stint.color};height:24px;padding:0 4px 0 0;overflow:hidden"
-                 draggable="${window._isTouchDevice ? 'false' : 'true'}" data-index="${index}"
+                 draggable="true" data-index="${index}"
                  ondragstart="window.handleDragStart(event)"
                  ondragover="window.handleDragOver(event)"
                  ondragleave="window.handleDragLeave(event)"
@@ -1069,7 +1165,7 @@ window.handleDrop = function(e) {
 window._touchDragState = null;
 
 window.initTouchDrag = function(container) {
-    if (!container || !window._isTouchDevice) return;
+    if (!container) return;
     
     let longPressTimer = null;
     let touchItem = null;

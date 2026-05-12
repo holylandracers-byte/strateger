@@ -517,3 +517,78 @@ window.createCalendarEvent = async function() {
 
 // Auto-init on load
 window.addEventListener('load', () => setTimeout(window.initGoogleAuth, 1500));
+
+// ==========================================
+// 🎁 ACCOUNT-LINKED FREE TRIAL
+// ==========================================
+// Trial is stored per Google account on the server.
+// This means the same account gets only ONE trial across all devices.
+
+window._syncTrialWithAccount = async function(userId) {
+    if (!userId) return;
+    try {
+        // Ask the server if this user has an existing trial record
+        const res = await fetch(window.APP_CONFIG.API_BASE + '/trial-status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId })
+        });
+        if (!res.ok) throw new Error('server error');
+        const data = await res.json();
+
+        if (data.trial_start) {
+            // Server has a trial record — use it (overrides local)
+            const ts = String(data.trial_start);
+            localStorage.setItem('strateger_trial_start', ts);
+            const elapsed = Date.now() - parseInt(ts, 10);
+            window._trialActive = elapsed < 3 * 24 * 60 * 60 * 1000;
+            window._trialUsed   = true;
+        } else if (localStorage.getItem('strateger_trial_start')) {
+            // Local trial exists but not on server — push it up
+            await window._pushTrialToServer(userId, localStorage.getItem('strateger_trial_start'));
+        }
+        if (typeof window.updateProUI === 'function') window.updateProUI();
+    } catch {
+        // Server unreachable — local trial state is already set, stay with it
+    }
+};
+
+window._pushTrialToServer = async function(userId, trialStart) {
+    try {
+        await fetch(window.APP_CONFIG.API_BASE + '/trial-start', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId, trial_start: trialStart })
+        });
+    } catch {}
+};
+
+// Patch: hook into existing sign-in to sync trial after Google login
+const _origFetchUserInfo = window.fetchGoogleUserInfo;
+window.fetchGoogleUserInfo = async function(accessToken) {
+    await _origFetchUserInfo(accessToken);
+    // After user info is loaded, sync trial with server using Google user ID
+    const savedUser = localStorage.getItem('strateger_google_user');
+    if (savedUser) {
+        try {
+            const u = JSON.parse(savedUser);
+            if (u.id) await window._syncTrialWithAccount(u.id);
+        } catch {}
+    }
+};
+
+// Patch startFreeTrial to also push to server when logged in
+const _origStartTrial = window.startFreeTrial;
+window.startFreeTrial = async function() {
+    const result = _origStartTrial ? _origStartTrial() : false;
+    if (!result) return false;
+    // Push trial start to server if user is logged in
+    const savedUser = localStorage.getItem('strateger_google_user');
+    if (savedUser) {
+        try {
+            const u = JSON.parse(savedUser);
+            if (u.id) await window._pushTrialToServer(u.id, localStorage.getItem('strateger_trial_start'));
+        } catch {}
+    }
+    return true;
+};

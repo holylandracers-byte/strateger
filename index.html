@@ -741,11 +741,11 @@
 
                 <!-- Driver summary strip: compact horizontal scroll, single row -->
                 <div id="previewDriverStrip" class="shrink-0 bg-navy-900/60 border border-gray-700/40 rounded-lg px-2 py-1.5">
-                    <div class="flex items-center gap-1 mb-1">
+                    <div class="flex items-center gap-1 flex-wrap">
                         <span class="text-[8px] font-black text-gray-500 uppercase tracking-wider shrink-0" data-i18n="driverSchedule">Stint Summary</span>
-                        <span id="previewDriverCount" class="text-[9px] text-gray-600 font-normal ml-auto shrink-0"></span>
+                        <div id="strategySummary" class="flex flex-wrap gap-1 flex-1 min-w-0"></div>
+                        <span id="previewDriverCount" class="text-[9px] text-gray-600 font-normal shrink-0 ml-auto"></span>
                     </div>
-                    <div id="strategySummary" class="flex flex-wrap gap-1"></div>
                 </div>
 
                 <!-- TIMELINE: flex-1, takes all remaining height -->
@@ -1833,6 +1833,54 @@
                         <div class="theme-preview" style="background: linear-gradient(180deg, #0a0000 0%, #401005 50%, #0a0000 100%);"></div>
                         <span class="theme-label">🌋 Volcanic</span>
                     </button>
+                    <button class="theme-swatch bg-swatch" data-bg="ice-blue" onclick="window.setPageBackground('ice-blue')">
+                        <div class="theme-preview" style="background: linear-gradient(180deg, #001830 0%, #0055aa 50%, #001830 100%);"></div>
+                        <span class="theme-label">🧊 Ice Blue</span>
+                    </button>
+                    <button class="theme-swatch bg-swatch" data-bg="teal-circuit" onclick="window.setPageBackground('teal-circuit')">
+                        <div class="theme-preview" style="background: linear-gradient(180deg, #001a1a 0%, #00a0a0 50%, #001a1a 100%);"></div>
+                        <span class="theme-label">🩵 Teal</span>
+                    </button>
+                    <button class="theme-swatch bg-swatch" data-bg="bronze-age" onclick="window.setPageBackground('bronze-age')">
+                        <div class="theme-preview" style="background: linear-gradient(180deg, #1a0e00 0%, #a05a00 50%, #1a0e00 100%);"></div>
+                        <span class="theme-label">🥉 Bronze</span>
+                    </button>
+                    <button class="theme-swatch bg-swatch" data-bg="toxic-green" onclick="window.setPageBackground('toxic-green')">
+                        <div class="theme-preview" style="background: linear-gradient(180deg, #001500 0%, #009900 50%, #001500 100%);"></div>
+                        <span class="theme-label">☢️ Toxic</span>
+                    </button>
+                    <button class="theme-swatch bg-swatch" data-bg="royal-navy" onclick="window.setPageBackground('royal-navy')">
+                        <div class="theme-preview" style="background: linear-gradient(180deg, #000033 0%, #1a1acc 50%, #000033 100%);"></div>
+                        <span class="theme-label">👑 Royal</span>
+                    </button>
+                    <button class="theme-swatch bg-swatch" data-bg="blood-moon" onclick="window.setPageBackground('blood-moon')">
+                        <div class="theme-preview" style="background: radial-gradient(ellipse at 50% 35%, #cc0000 0%, #1a0000 100%);"></div>
+                        <span class="theme-label">🌑 Blood Moon</span>
+                    </button>
+                    <button class="theme-swatch bg-swatch" data-bg="solar-flare" onclick="window.setPageBackground('solar-flare')">
+                        <div class="theme-preview" style="background: linear-gradient(180deg, #1a0d00 0%, #ff9900 50%, #1a0d00 100%);"></div>
+                        <span class="theme-label">☀️ Solar</span>
+                    </button>
+                    <button class="theme-swatch bg-swatch" data-bg="electric-yellow" onclick="window.setPageBackground('electric-yellow')">
+                        <div class="theme-preview" style="background: linear-gradient(180deg, #111100 0%, #aaaa00 50%, #111100 100%);"></div>
+                        <span class="theme-label">⚡ Yellow</span>
+                    </button>
+                    <button class="theme-swatch bg-swatch" data-bg="cyan-surge" onclick="window.setPageBackground('cyan-surge')">
+                        <div class="theme-preview" style="background: linear-gradient(180deg, #001515 0%, #00ffff 50%, #001515 100%);"></div>
+                        <span class="theme-label">🩵 Cyan</span>
+                    </button>
+                    <button class="theme-swatch bg-swatch" data-bg="magenta-wave" onclick="window.setPageBackground('magenta-wave')">
+                        <div class="theme-preview" style="background: linear-gradient(180deg, #150015 0%, #cc00cc 50%, #150015 100%);"></div>
+                        <span class="theme-label">💜 Magenta</span>
+                    </button>
+                    <button class="theme-swatch bg-swatch" data-bg="silver-chrome" onclick="window.setPageBackground('silver-chrome')">
+                        <div class="theme-preview" style="background: linear-gradient(180deg, #0a0a0a 0%, #aaaaaa 50%, #0a0a0a 100%);"></div>
+                        <span class="theme-label">🪙 Chrome</span>
+                    </button>
+                    <button class="theme-swatch bg-swatch" data-bg="jade-dragon" onclick="window.setPageBackground('jade-dragon')">
+                        <div class="theme-preview" style="background: linear-gradient(180deg, #001a0d 0%, #00cc66 50%, #001a0d 100%);"></div>
+                        <span class="theme-label">🐉 Jade</span>
+                    </button>
                 </div>
 
                 <!-- ─── Photo Themes ─── -->
@@ -1889,6 +1937,30 @@
                         </div>
                         <span class="theme-label">🪖 Helmet</span>
                     </button>
+                </div>
+
+                <!-- ─── Custom Photo (Pro) ─── -->
+                <div class="theme-category-label mt-4">
+                    <span class="theme-category-icon">🖼️</span> Custom Photo
+                    <span class="text-[10px] text-ice font-bold ml-2">PRO</span>
+                </div>
+                <div class="mt-2" id="customPhotoSection">
+                    <div id="customPhotoProGate" class="hidden text-[11px] text-gray-500 text-center py-2">
+                        <i class="fas fa-lock text-gold mr-1"></i> Upgrade to Pro to upload your own race photo background.
+                        <button onclick="window.showProGate('Custom Photo')" class="text-ice underline ml-1">Upgrade</button>
+                    </div>
+                    <div id="customPhotoUploadArea">
+                        <label id="customPhotoLabel" class="flex flex-col items-center justify-center gap-2 cursor-pointer border-2 border-dashed border-gray-600 hover:border-ice rounded-xl py-4 px-3 transition">
+                            <i class="fas fa-cloud-upload-alt text-2xl text-gray-500"></i>
+                            <span class="text-[11px] text-gray-400">Upload your photo (JPG/PNG, max 5MB)</span>
+                            <input type="file" id="customPhotoInput" accept="image/jpeg,image/png,image/webp" class="hidden" onchange="window.applyCustomPhoto(this)">
+                        </label>
+                        <div id="customPhotoPreview" class="hidden mt-2 relative rounded-xl overflow-hidden">
+                            <img id="customPhotoImg" src="" alt="Custom background" class="w-full h-28 object-cover rounded-xl">
+                            <button onclick="window.clearCustomPhoto()" class="absolute top-1 right-1 bg-black/70 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-black/90">✕</button>
+                            <button onclick="window.setPageBackground('custom-photo')" class="absolute bottom-1 left-1 right-1 bg-ice/90 text-black font-bold text-[10px] py-1 rounded-lg">Apply</button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1952,18 +2024,22 @@
 
             <!-- Step 1: Bank Transfer -->
             <div class="bg-navy-950/50 rounded-xl p-4 mb-4 border border-gray-700/50">
-                <p class="text-xs font-bold text-gray-300 mb-3">① Send $20 bank transfer to:</p>
-                <div class="bg-navy-900 border border-gray-600/60 rounded-lg p-3 space-y-1.5 font-mono text-xs">
+                <p class="text-xs font-bold text-gray-300 mb-3">① Send $20 via Wise to:</p>
+                <div class="bg-navy-900 border border-[#9fe870]/30 rounded-lg p-3 space-y-1.5 font-mono text-xs">
+                    <div class="flex items-center gap-1.5 mb-2">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="#9fe870" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        <span class="text-[#9fe870] font-bold text-[10px] uppercase tracking-wider">Wise Transfer</span>
+                    </div>
                     <div class="flex justify-between items-center">
                         <span class="text-gray-500">Amount</span>
                         <span class="text-gold font-bold text-sm">$20.00 USD</span>
                     </div>
                     <div class="flex justify-between items-start gap-2">
-                        <span class="text-gray-500 shrink-0">Bank</span>
-                        <span class="text-white text-right">Holy Land Racers</span>
+                        <span class="text-gray-500 shrink-0">Name</span>
+                        <span class="text-white text-right">Yaniv H</span>
                     </div>
                     <div class="flex justify-between items-start gap-2">
-                        <span class="text-gray-500 shrink-0">Email</span>
+                        <span class="text-gray-500 shrink-0">Wise Email</span>
                         <span class="text-ice select-all">yanih1997@gmail.com</span>
                     </div>
                     <div class="border-t border-gray-700/50 pt-1.5">
@@ -1972,7 +2048,7 @@
                     </div>
                 </div>
                 <div class="mt-3 bg-amber-900/20 border border-amber-500/20 rounded-lg p-2.5 text-[11px] text-amber-300/80">
-                    ⏳ After sending, email <span class="text-white font-bold">yanih1997@gmail.com</span> with your reference and the email address you want your license key sent to. The admin will confirm the transfer and send your key — usually within 24 hours.
+                    ⏳ After sending, email <span class="text-white font-bold">yanih1997@gmail.com</span> with your Wise reference and the email address for your license key. Admin confirms when the transfer clears — usually within 24 hours.
                 </div>
 
                 <!-- Coupon Code -->
