@@ -3325,7 +3325,7 @@ window.setQuickMode = function(mode) {
     const presets = {
         sprint:    { duration: 1,  stops: 4,  minStint: 10,  maxStint: 20,  pitTime: 90,  extraPits: 0,  minPitLapSec: 0,   pitClosedStart: 0,  pitClosedEnd: 0  },
         endurance: { duration: 6,  stops: 12, minStint: 25,  maxStint: 40,  pitTime: 120, extraPits: 0,  minPitLapSec: 0,   pitClosedStart: 0,  pitClosedEnd: 0  },
-        kart24h:   { duration: 24, stops: 0,  minStint: 0,   maxStint: 780, pitTime: 30,  extraPits: 10, minPitLapSec: 120, pitClosedStart: 10, pitClosedEnd: 10 }
+        kart24h:   { duration: 24, stops: 0,  minStint: 0,   maxStint: 0,   pitTime: 30,  extraPits: 10, minPitLapSec: 120, pitClosedStart: 10, pitClosedEnd: 10 }
     };
     const p = presets[mode];
     if (!p) return;
