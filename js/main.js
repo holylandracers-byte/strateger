@@ -980,8 +980,11 @@ window.renderFrame = function() {
         }
 
         const totalPlannedStops = window.config.reqStops || 0;
-        document.getElementById('pitCountDisplay').innerHTML = 
+        document.getElementById('pitCountDisplay').innerHTML =
             `<span class="text-neon text-xl">${window.state.pitCount}</span><span class="text-gray-500 text-xs">/${totalPlannedStops}</span>`;
+
+        // Update extra pit counter display
+        if (typeof window.updateExtraPitDisplay === 'function') window.updateExtraPitDisplay();
 
         // === Update pit status indicator ===
         const statusDisplay = document.getElementById('pitStatusIndicator');
@@ -1501,17 +1504,7 @@ window.confirmPitEntry = function(autoDetected) {
     // Guard: prevent re-entry if already in pit
     if (window.state.isInPit) return;
 
-    // Guard: when live timing is active, block manual pit entry — live timing is authoritative
-    if (!autoDetected && window.liveTimingConfig && window.liveTimingConfig.enabled && window.liveTimingManager) {
-        const stats = window.liveTimingManager.getStats();
-        if (stats && stats.isRunning) {
-            console.log('[PitEntry] Manual pit entry blocked — live timing is authoritative');
-            if (typeof window._fireStrategyNotification === 'function') {
-                window._fireStrategyNotification('🔒 Pit entry is auto-tracked from live timing', 'info');
-            }
-            return;
-        }
-    }
+    // Note: when live timing is active it will also auto-detect pits, but manual entry is always allowed.
     
     // Guard: cooldown to prevent rapid pit cycling (min 10s between manual pit entries)
     // Skip cooldown if auto-detected from live timing — live timing is authoritative
@@ -1587,6 +1580,9 @@ window._executePitEntry = function(isShortStint) {
         const pitReadyBanner = document.getElementById('pitReadyBanner');
         if (pitReadyBanner) pitReadyBanner.classList.add('hidden');
     }
+
+    // Set up extra pit UI (min lap countdown + toggle button)
+    if (typeof window._setupExtraPitUI === 'function') window._setupExtraPitUI();
 
     if (window.pitInterval) clearInterval(window.pitInterval);
     window.pitInterval = setInterval(window.updatePitModalLogic, 100);
@@ -1928,6 +1924,10 @@ window.confirmPitExit = function(autoDetected) {
     if (window.pitInterval) clearInterval(window.pitInterval);
     document.getElementById('pitModal').classList.add('hidden');
     window._hideInlinePitDock();
+
+    // Finalize extra pit count and stop min-lap countdown
+    if (typeof window._finalizeExtraPit === 'function') window._finalizeExtraPit();
+    if (typeof window._stopMinLapCountdown === 'function') window._stopMinLapCountdown();
 
     if (window.drivers[prevDriverIdx]) {
         const driver = window.drivers[prevDriverIdx];

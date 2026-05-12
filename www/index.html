@@ -219,6 +219,7 @@
                 <div id="heroBody" class="quick-actions-strip mt-3">
                     <button class="quick-pill" onclick="window.setSessionMode('race'); window.setQuickMode('sprint')" data-i18n="qpSprint">⚡ Sprint</button>
                     <button class="quick-pill" onclick="window.setSessionMode('race'); window.setQuickMode('endurance')" data-i18n="qpEndurance">🏁 Endurance</button>
+                    <button class="quick-pill" onclick="window.setSessionMode('race'); window.setQuickMode('kart24h')" data-i18n="qpKart24h">🏎 24H Kart</button>
                     <button class="quick-pill" onclick="window.setSessionMode('qualify')" data-i18n="qpQualify">⏱️ + Qualifying</button>
                     <button class="quick-pill" onclick="window.loadStrategyLibrary && window.loadStrategyLibrary()" data-i18n="qpLibrary">📚 Library</button>
                 </div>
@@ -540,6 +541,24 @@
                         <input type="number" id="pitClosedEnd" value="0" onchange="window.runSim()" class="input-field border-red-900/50">
                     </div>
                 </div>
+                <!-- Extra pit stops (e.g. mandatory extra pits in 24H kart races) -->
+                <div id="extraPitSection" class="hidden mb-3 bg-navy-950/60 border border-orange-800/40 rounded-lg p-2">
+                    <div class="flex items-center gap-1.5 mb-2">
+                        <span class="text-orange-400 text-xs">🔧</span>
+                        <span class="text-[10px] font-bold text-orange-300 uppercase tracking-wider" data-i18n="lblExtraPits">Extra Pit Stops</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="text-[9px] text-gray-400" data-i18n="lblReqExtraPits">Required Extra Pits</label>
+                            <input type="number" id="reqExtraPits" value="10" min="0" onchange="window.runSim()" class="input-field border-orange-800/50">
+                        </div>
+                        <div>
+                            <label class="text-[9px] text-gray-400" data-i18n="lblMinPitLapSec">Min Pit Lap (sec)</label>
+                            <input type="number" id="minPitLapSec" value="120" min="0" onchange="window.runSim()" class="input-field border-orange-800/50">
+                        </div>
+                    </div>
+                    <div class="text-[9px] text-gray-500 mt-1" data-i18n="lblExtraPitsHint">Extra pits are optional driver-change stops in the left lane. Pit lane closed first &amp; last 10 min.</div>
+                </div>
                 <div class="grid grid-cols-2 gap-4 mb-3">
                     <div>
                         <label class="text-xs text-gray-400" data-i18n="lblMinDrive">Min Driver Total (min)</label>
@@ -547,7 +566,7 @@
                     </div>
                     <div>
                         <label class="text-xs text-gray-400" data-i18n="lblMaxDrive">Max Driver Total (min)</label>
-                        <input type="number" id="maxDriverTime" placeholder="0" onchange="window.runSim()" class="input-field">
+                        <input type="number" id="maxDriverTime" placeholder="0" onchange="window.runSim(); window.updateDriverMaxTimeWarnings && window.updateDriverMaxTimeWarnings()" class="input-field">
                     </div>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
@@ -951,6 +970,10 @@
                 <div class="text-[10px] text-gray-500 uppercase font-bold" data-i18n="stops">Stops</div>
                 <div id="pitCountDisplay" class="text-base font-bold"><span class="text-neon">0</span>/<span>0</span></div>
             </div>
+            <div id="extraPitCountWidget" class="text-center hidden">
+                <div class="text-[10px] text-orange-400 uppercase font-bold">Extra</div>
+                <div id="extraPitCountDisplay" class="text-base font-bold"><span class="text-orange-300">0</span>/<span class="text-gray-500">10</span></div>
+            </div>
             <div id="pitStatusDisplay" class="text-center">
                 <div class="text-[10px] text-gray-500 uppercase font-bold" data-i18n="statusHeader">STATUS</div>
                 <div id="pitStatusIndicator" class="text-sm font-bold text-green-400">🏁 ON TRACK</div>
@@ -1306,8 +1329,20 @@
 
         <div id="pitWarningBox" class="hidden w-full max-w-xs bg-orange-600/50 border border-orange-500 text-white font-bold py-3 rounded-lg mb-2 text-center text-sm" data-i18n="orangeZone">⚠️ Orange zone - NOTIFY only</div>
 
+        <!-- Extra pit toggle (only shown when reqExtraPits > 0) -->
+        <div id="extraPitToggleRow" class="hidden w-full max-w-xs mb-3">
+            <button id="extraPitToggleBtn" onclick="window.toggleExtraPitFlag()" class="w-full flex items-center justify-between px-4 py-2 rounded-lg border border-orange-700/50 bg-navy-900 text-sm font-bold transition hover:border-orange-500">
+                <span class="text-gray-400" data-i18n="markExtraPit">Mark as Extra Pit</span>
+                <span id="extraPitFlagIcon" class="text-2xl">☐</span>
+            </button>
+            <!-- 120s minimum lap countdown -->
+            <div id="minLapCountdown" class="hidden mt-1 text-center text-[11px] font-mono">
+                <span class="text-orange-400">⏱ Min lap: </span><span id="minLapTimer" class="text-white font-bold">2:00</span><span class="text-gray-500"> remaining</span>
+            </div>
+        </div>
+
         <button id="confirmExitBtn" disabled onclick="window.confirmPitExit()" class="w-full max-w-xs bg-gray-800 text-gray-500 font-bold py-4 rounded-lg text-2xl border border-gray-700 transition-all" data-i18n="exitPits">Exit Pits</button>
-        
+
         <button onclick="window.cancelPitStop()" class="text-red-400 mt-6 text-sm underline hover:text-red-300" data-i18n="cancelEntry">Cancel Entry</button>
     </div>
     

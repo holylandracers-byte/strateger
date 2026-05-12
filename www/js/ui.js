@@ -975,7 +975,7 @@ window.renderPreview = function() {
                     <button onclick="window.moveStint(${index}, 1)" class="text-gray-600 hover:text-white ${isLast ? 'invisible' : ''}" style="font-size:7px;padding:0 2px;line-height:1;background:none;border:none;cursor:pointer" title="Down">▼</button>
                 </div>
                 <div class="flex-1 min-w-0 flex items-center gap-1" style="overflow:hidden;white-space:nowrap">
-                    <span class="font-bold text-white" style="font-size:11px;max-width:4.5rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0">${stint.driverName}</span>
+                    <span class="font-bold text-white hover:text-neon cursor-pointer underline decoration-dotted" style="font-size:11px;max-width:4.5rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0" title="Tap to swap driver" onclick="event.stopPropagation();window.openStintDriverPicker(${index}, this)">${stint.driverName}</span>
                     <span class="text-gray-500" style="font-size:9px;flex-shrink:0">${startTimeStr}${arrow}${endTimeStr}</span>
                     ${checkeredFlag}${pitIndicator}${stintForecastTag}
                 </div>
@@ -1035,6 +1035,79 @@ window.renderPreview = function() {
     }
 };
 
+// ── Stint driver picker ──────────────────────────────────────────────────────
+// Tap a driver name in the timeline to swap it with any other driver in the pool.
+window.openStintDriverPicker = function(stintIndex, anchorEl) {
+    // Remove any existing picker
+    const existing = document.getElementById('stintDriverPicker');
+    if (existing) { existing.remove(); if (existing._stintIdx === stintIndex) return; }
+
+    const pool = window.getDriverPool ? window.getDriverPool() : [];
+    const slots = window._effectiveDriverSlots ? window._effectiveDriverSlots() : pool;
+    const timeline = window.previewData && window.previewData.timeline;
+    if (!timeline) return;
+    const stints = timeline.filter(s => s.type === 'stint');
+    const current = stints[stintIndex];
+    if (!current) return;
+
+    // Build picker dropdown
+    const picker = document.createElement('div');
+    picker.id = 'stintDriverPicker';
+    picker._stintIdx = stintIndex;
+    picker.style.cssText = 'position:fixed;z-index:9999;background:#0f1923;border:1px solid #374151;border-radius:8px;padding:4px;box-shadow:0 8px 24px rgba(0,0,0,0.6);min-width:130px;';
+
+    // Position near anchor
+    const rect = anchorEl.getBoundingClientRect();
+    picker.style.left = Math.min(rect.left, window.innerWidth - 150) + 'px';
+    picker.style.top = (rect.bottom + 4) + 'px';
+
+    const header = document.createElement('div');
+    header.style.cssText = 'font-size:9px;color:#6b7280;padding:2px 6px 4px;text-transform:uppercase;letter-spacing:.06em;font-weight:700;border-bottom:1px solid #1f2937;margin-bottom:3px;';
+    header.textContent = (window.t ? window.t('swapDriver') : null) || 'Swap driver';
+    picker.appendChild(header);
+
+    const allDrivers = slots.length > 0 ? slots : pool;
+    allDrivers.forEach(driver => {
+        const isCurrent = driver.name === current.driverName;
+        const row = document.createElement('button');
+        row.style.cssText = `display:flex;align-items:center;gap:6px;width:100%;padding:4px 8px;border:none;background:${isCurrent ? 'rgba(34,211,238,0.12)' : 'transparent'};border-radius:5px;cursor:pointer;font-size:11px;color:${isCurrent ? '#22d3ee' : '#e5e7eb'};text-align:left;`;
+        row.innerHTML = `<span style="width:8px;height:8px;border-radius:50%;background:${driver.color};flex-shrink:0"></span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${driver.name}</span>${isCurrent ? '<span style="font-size:9px;color:#22d3ee">✓</span>' : ''}`;
+        if (!isCurrent) {
+            row.onmouseenter = () => row.style.background = 'rgba(255,255,255,0.07)';
+            row.onmouseleave = () => row.style.background = 'transparent';
+            row.onclick = (e) => {
+                e.stopPropagation();
+                picker.remove();
+                // Assign the new driver to this stint
+                const allStints = window.previewData.timeline.filter(s => s.type === 'stint');
+                const driverPool = window.getDriverPool ? window.getDriverPool() : [];
+                const driverData = driverPool.find(d => d.name === driver.name) || driver;
+                const idx = driverPool.indexOf(driverData);
+                allStints[stintIndex].driverName = driver.name;
+                allStints[stintIndex].color = driver.color;
+                allStints[stintIndex].driverIdx = idx >= 0 ? idx : stintIndex;
+                // Also update stintSchedule if it exists
+                if (window.state && window.state.stintSchedule && window.state.stintSchedule[stintIndex]) {
+                    window.state.stintSchedule[stintIndex].driverName = driver.name;
+                    window.state.stintSchedule[stintIndex].color = driver.color;
+                    window.state.stintSchedule[stintIndex].driverIdx = idx >= 0 ? idx : stintIndex;
+                }
+                window.renderPreview();
+                if (typeof window.broadcast === 'function') window.broadcast();
+            };
+        }
+        picker.appendChild(row);
+    });
+
+    document.body.appendChild(picker);
+
+    // Close on outside click
+    const close = (e) => {
+        if (!picker.contains(e.target)) { picker.remove(); document.removeEventListener('click', close); }
+    };
+    setTimeout(() => document.addEventListener('click', close), 0);
+};
+
 // פונקציית עדכון לוגים בזמן אמת
 window.updateStats = function(currentStintMs) {
     const tb = document.getElementById('statsTable'); 
@@ -1080,10 +1153,23 @@ window.updateStats = function(currentStintMs) {
         const pct = grandTotal > 0 ? Math.round((displayTotalTime / grandTotal) * 100) : 0;
         const pctBar = `<div class="w-full bg-gray-800 rounded-full h-1.5 mt-0.5"><div class="h-1.5 rounded-full" style="width:${pct}%;background:${d.color || '#3b82f6'}"></div></div>`;
         
+        // Driver max-time indicator
+        const maxDriverMin = parseFloat(document.getElementById('maxDriverTime')?.value || '0');
+        let maxTimeIndicator = '';
+        if (maxDriverMin > 0) {
+            const maxMs = maxDriverMin * 60000;
+            const warnMs = maxMs * 0.9;
+            if (displayTotalTime > maxMs) {
+                maxTimeIndicator = `<span class="text-[9px] text-red-400 font-bold ml-1 animate-pulse" title="Over max drive time!">🚨</span>`;
+            } else if (displayTotalTime >= warnMs) {
+                maxTimeIndicator = `<span class="text-[9px] text-orange-400 font-bold ml-1" title="Approaching max drive time">⚠️</span>`;
+            }
+        }
+
         mainRow.innerHTML = `
             <td class="text-center cursor-pointer p-2 hover:text-ice" onclick="window.toggleLog(${i})">${d.isExpanded ? '▲' : '▼'}</td>
-            <td class="py-2 pr-2"><div class="flex items-center">${colorDot}${d.name} ${isCurrent ? '🏎️' : ''}${squadBadge}</div></td>
-            <td class="py-2 text-center">${d.stints || 0}</td> <td class="py-2 text-right font-mono"><div>${window.formatTimeHMS(displayTotalTime)}</div><div class="flex items-center gap-1 justify-end"><span class="text-[9px] text-gray-500">${pct}%</span><div class="w-10">${pctBar}</div></div></td>
+            <td class="py-2 pr-2"><div class="flex items-center">${colorDot}${d.name} ${isCurrent ? '🏎️' : ''}${squadBadge}${maxTimeIndicator}</div></td>
+            <td class="py-2 text-center">${d.stints || 0}</td> <td class="py-2 text-right font-mono"><div>${window.formatTimeHMS(displayTotalTime)}${maxDriverMin > 0 ? `<span class="text-[8px] text-gray-600 ml-1">/${window.formatTimeHMS(maxDriverMin*60000)}</span>` : ''}</div><div class="flex items-center gap-1 justify-end"><span class="text-[9px] text-gray-500">${pct}%</span><div class="w-10">${pctBar}</div></div></td>
         `;
         tb.appendChild(mainRow);
 
@@ -2691,6 +2777,7 @@ function _isHorizontalLayout() {
 window.initHorizontalPanels = function() {
     if (!_isHorizontalLayout()) return;
 
+    const wrapper = document.getElementById('racePanelsWrapper');
     const infoPanel = document.getElementById('raceInfoPanel');
     const controlDock = document.getElementById('raceControlDock');
     if (!infoPanel || !controlDock) return;
@@ -2707,12 +2794,37 @@ window.initHorizontalPanels = function() {
     // Assign IDs to unnamed direct children of raceInfoPanel for persistence
     let autoIdx = 0;
     Array.from(infoPanel.children).forEach(child => {
-        if (!child.id) {
-            child.id = 'dashPanel_auto_' + (autoIdx++);
-        }
+        if (!child.id) child.id = 'dashPanel_auto_' + (autoIdx++);
     });
 
-    // Restore saved placement (will be ignored if one-panel mode is active below)
+    // ── Single-panel check: if all content fits without scrolling, collapse to one column ──
+    // Temporarily make infoPanel unconstrained to measure its natural content height
+    const prevFlex = infoPanel.style.flex;
+    infoPanel.style.flex = '1 1 auto';
+    const contentHeight = infoPanel.scrollHeight;
+    infoPanel.style.flex = prevFlex;
+    const availableHeight = wrapper ? wrapper.clientHeight : window.innerHeight;
+    const controlDockHeight = controlDock.scrollHeight || 0;
+    const totalNeeded = contentHeight + controlDockHeight;
+    const shouldUseSinglePanel = totalNeeded > 0 && totalNeeded <= availableHeight;
+
+    if (shouldUseSinglePanel) {
+        // Move all controlDock children into infoPanel and hide the right column
+        Array.from(controlDock.children).forEach(child => infoPanel.appendChild(child));
+        controlDock.classList.add('hidden');
+        removeAllMoveButtons();
+        return;
+    }
+
+    // ── Two-panel mode ──
+    controlDock.classList.remove('hidden');
+
+    // Ensure controlDock is a proper flex column with raceControlDock actions pinned to bottom.
+    // The dock itself is already the right-side bottom bar — keep it as a unit (no move buttons on it).
+    // Left side (infoPanel) = live timing widget + race status panels
+    // Right side (controlDock) = moveable widgets + pit entry / next driver at bottom
+
+    // Restore saved panel placement
     const saved = JSON.parse(localStorage.getItem(_DASH_PANEL_PLACEMENT_KEY) || '{}');
     Object.entries(saved).forEach(([id, target]) => {
         const el = document.getElementById(id);
@@ -2724,26 +2836,18 @@ window.initHorizontalPanels = function() {
         }
     });
 
-    // If everything fits in the main panel, keep a single panel layout.
-    const totalChildrenHeight = Array.from(infoPanel.children).reduce((sum, el) => sum + (el.offsetHeight || 0), 0);
-    const shouldUseSinglePanel = totalChildrenHeight > 0 && totalChildrenHeight <= infoPanel.clientHeight;
-    if (shouldUseSinglePanel) {
-        Array.from(controlDock.children).forEach(child => infoPanel.appendChild(child));
-        controlDock.classList.add('hidden');
-        removeAllMoveButtons();
-        return;
-    }
-    controlDock.classList.remove('hidden');
+    // Add move-to-other-panel button to moveable children
+    // raceControlDock's own fixed action rows (pitEntryBtn, penalty, pit timer) are NOT moveable.
+    const SKIP_IDS = new Set(['strategyToastContainer', 'pitInlineDock', 'confirmRaceFinishBtn', 'pitEntryBtn']);
+    const SKIP_CLASSES = new Set(['penalty-btn']);
 
-    // Add move-to-other-panel button to each moveable child
-    const SKIP_IDS = new Set(['strategyToastContainer']);
     const addMoveBtn = (panel, targetPanel, targetKey) => {
         Array.from(panel.children).forEach(child => {
             if (!child.dataset) return;
             if (child.id && SKIP_IDS.has(child.id)) return;
-            // Accept any div child that looks like a panel block (has an id or rounded corners)
+            if ([...child.classList].some(c => SKIP_CLASSES.has(c))) return;
             if (child.tagName !== 'DIV') return;
-            const hasRounded = child.classList.contains('rounded') || child.classList.contains('rounded-lg') || child.classList.contains('rounded-xl');
+            const hasRounded = child.classList.contains('rounded') || child.classList.contains('rounded-lg') || child.classList.contains('rounded-xl') || child.classList.contains('rounded-2xl');
             if (!child.id && !hasRounded) return;
 
             const existingBtn = child.querySelector(':scope > .dash-panel-move-btn');
@@ -2759,10 +2863,9 @@ window.initHorizontalPanels = function() {
                 savedPlacement[child.id] = targetKey;
                 localStorage.setItem(_DASH_PANEL_PLACEMENT_KEY, JSON.stringify(savedPlacement));
                 targetPanel.insertBefore(child, targetPanel.firstChild);
-                window.initHorizontalPanels(); // re-scan after move
+                window.initHorizontalPanels();
             };
 
-            // Make child position:relative if needed to anchor the button
             if (!child.style.position || child.style.position === 'static') {
                 child.style.position = 'relative';
             }
@@ -3220,24 +3323,198 @@ window._applyHeroState = function() {
 
 window.setQuickMode = function(mode) {
     const presets = {
-        sprint: { duration: 1, stops: 4, minStint: 10, maxStint: 20, pitTime: 90 },
-        endurance: { duration: 6, stops: 12, minStint: 25, maxStint: 40, pitTime: 120 }
+        sprint:    { duration: 1,  stops: 4,  minStint: 10,  maxStint: 20,  pitTime: 90,  extraPits: 0,  minPitLapSec: 0,   pitClosedStart: 0,  pitClosedEnd: 0  },
+        endurance: { duration: 6,  stops: 12, minStint: 25,  maxStint: 40,  pitTime: 120, extraPits: 0,  minPitLapSec: 0,   pitClosedStart: 0,  pitClosedEnd: 0  },
+        kart24h:   { duration: 24, stops: 0,  minStint: 0,   maxStint: 780, pitTime: 30,  extraPits: 10, minPitLapSec: 120, pitClosedStart: 10, pitClosedEnd: 10 }
     };
     const p = presets[mode];
     if (!p) return;
-    const setVal = (id, v) => { const el = document.getElementById(id); if (el) { el.value = v; } };
+    const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
     setVal('raceDuration', p.duration);
     setVal('reqPitStops', p.stops);
     setVal('minStint', p.minStint);
     setVal('maxStint', p.maxStint);
     setVal('minPitTime', p.pitTime);
+    setVal('pitClosedStart', p.pitClosedStart);
+    setVal('pitClosedEnd', p.pitClosedEnd);
+
+    // Extra pit config
+    const extraSection = document.getElementById('extraPitSection');
+    const reqExtraPitsEl = document.getElementById('reqExtraPits');
+    const minPitLapEl = document.getElementById('minPitLapSec');
+    if (extraSection) extraSection.classList.toggle('hidden', p.extraPits === 0);
+    if (reqExtraPitsEl) reqExtraPitsEl.value = p.extraPits;
+    if (minPitLapEl) minPitLapEl.value = p.minPitLapSec;
+
+    // For 24H kart: auto-set max driver time based on current driver count
+    if (mode === 'kart24h') {
+        window._autoSetKartDriverMaxTime();
+    }
+
     if (typeof window.runSim === 'function') window.runSim();
+
     // Highlight active pill
     document.querySelectorAll('.quick-pill').forEach(pill => {
-        const isMatch = pill.textContent.toLowerCase().includes(mode === 'sprint' ? 'sprint' : 'endurance');
-        pill.classList.toggle('active', isMatch);
+        const text = pill.textContent.toLowerCase();
+        const match = (mode === 'sprint' && text.includes('sprint')) ||
+                      (mode === 'endurance' && text.includes('endurance') && !text.includes('24h')) ||
+                      (mode === 'kart24h' && text.includes('24h'));
+        pill.classList.toggle('active', match);
     });
-    if (typeof window.showToast === 'function') window.showToast(`⚡ ${mode.charAt(0).toUpperCase() + mode.slice(1)} preset loaded`, 'success', 1800);
+    const label = { sprint: '⚡ Sprint', endurance: '🏁 Endurance', kart24h: '🏎 24H Kart' }[mode] || mode;
+    if (typeof window.showToast === 'function') window.showToast(`${label} preset loaded`, 'success', 1800);
+};
+
+// Auto-calculate max driver time for kart 24H based on team size (rulebook table)
+window._autoSetKartDriverMaxTime = function() {
+    const KART24H_MAX = { 2: 780, 3: 540, 4: 420, 5: 348, 6: 300, 7: 265, 8: 240 };
+    const driverCount = window.drivers ? window.drivers.length : parseInt(document.getElementById('numDrivers')?.value || '3');
+    const maxMin = KART24H_MAX[Math.min(8, Math.max(2, driverCount))] || 540;
+    const el = document.getElementById('maxDriverTime');
+    if (el) el.value = maxMin;
+    return maxMin;
+};
+
+// Call when driver count changes and kart24h mode is active
+window._onDriverCountChange = function() {
+    const reqExtraPits = parseInt(document.getElementById('reqExtraPits')?.value || '0');
+    if (reqExtraPits > 0) window._autoSetKartDriverMaxTime();
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 🔧 EXTRA PIT STOP SYSTEM
+// Tracks mandatory extra pits (e.g. 10 required in 24H kart races) separately
+// from driver-change kart-change pits.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Toggle the "this is an extra pit" flag on the current pit stop
+window.toggleExtraPitFlag = function() {
+    window._currentPitIsExtra = !window._currentPitIsExtra;
+    const icon = document.getElementById('extraPitFlagIcon');
+    if (icon) icon.textContent = window._currentPitIsExtra ? '☑' : '☐';
+    const btn = document.getElementById('extraPitToggleBtn');
+    if (btn) {
+        btn.style.borderColor = window._currentPitIsExtra ? '#f97316' : '';
+        btn.style.background = window._currentPitIsExtra ? 'rgba(249,115,22,0.15)' : '';
+    }
+};
+
+// Show/hide extra pit UI on pit entry
+window._setupExtraPitUI = function() {
+    window._currentPitIsExtra = false;
+    const reqExtraPits = parseInt(document.getElementById('reqExtraPits')?.value || '0');
+    const row = document.getElementById('extraPitToggleRow');
+    if (row) row.classList.toggle('hidden', reqExtraPits === 0);
+    const icon = document.getElementById('extraPitFlagIcon');
+    if (icon) icon.textContent = '☐';
+    const btn = document.getElementById('extraPitToggleBtn');
+    if (btn) { btn.style.borderColor = ''; btn.style.background = ''; }
+
+    // Start 120s min-lap countdown
+    const minLapSec = parseInt(document.getElementById('minPitLapSec')?.value || '0');
+    window._startMinLapCountdown(minLapSec);
+};
+
+// 120-second minimum pit lap countdown
+window._minLapInterval = null;
+window._startMinLapCountdown = function(totalSec) {
+    const row = document.getElementById('minLapCountdown');
+    const timerEl = document.getElementById('minLapTimer');
+    if (window._minLapInterval) clearInterval(window._minLapInterval);
+    if (!totalSec || totalSec <= 0 || !row) return;
+
+    const startMs = Date.now();
+    row.classList.remove('hidden');
+
+    const tick = () => {
+        const elapsed = (Date.now() - startMs) / 1000;
+        const remaining = Math.max(0, totalSec - elapsed);
+        const mins = Math.floor(remaining / 60);
+        const secs = Math.floor(remaining % 60);
+        if (timerEl) timerEl.textContent = `${mins}:${String(secs).padStart(2, '0')}`;
+
+        // Color coding
+        if (timerEl) {
+            if (remaining > 30) timerEl.className = 'text-orange-300 font-bold';
+            else if (remaining > 0) timerEl.className = 'text-red-400 font-bold animate-pulse';
+            else timerEl.className = 'text-neon font-bold';
+        }
+        if (timerEl) timerEl.closest('#minLapCountdown').querySelector('span:last-child').textContent =
+            remaining > 0 ? ' remaining' : ' ✅ cleared';
+
+        if (remaining <= 0) {
+            clearInterval(window._minLapInterval);
+            window._minLapInterval = null;
+        }
+    };
+    tick();
+    window._minLapInterval = setInterval(tick, 500);
+};
+
+// Stop countdown on pit exit
+window._stopMinLapCountdown = function() {
+    if (window._minLapInterval) { clearInterval(window._minLapInterval); window._minLapInterval = null; }
+    const row = document.getElementById('minLapCountdown');
+    if (row) row.classList.add('hidden');
+};
+
+// Register extra pit on pit exit if flagged
+window._finalizeExtraPit = function() {
+    if (window._currentPitIsExtra) {
+        window.state.extraPitCount = (window.state.extraPitCount || 0) + 1;
+        window._currentPitIsExtra = false;
+        window.updateExtraPitDisplay();
+    }
+};
+
+// Update extra pit counter display in race dashboard header
+window.updateExtraPitDisplay = function() {
+    const reqExtraPits = parseInt(document.getElementById('reqExtraPits')?.value ||
+                                  window.config?.reqExtraPits || '0');
+    const widget = document.getElementById('extraPitCountWidget');
+    const display = document.getElementById('extraPitCountDisplay');
+    if (!widget) return;
+    if (reqExtraPits <= 0) { widget.classList.add('hidden'); return; }
+    widget.classList.remove('hidden');
+    const done = window.state?.extraPitCount || 0;
+    const remaining = Math.max(0, reqExtraPits - done);
+    if (display) {
+        const doneColor = done >= reqExtraPits ? 'text-neon' : 'text-orange-300';
+        display.innerHTML = `<span class="${doneColor}">${done}</span><span class="text-gray-500">/${reqExtraPits}</span>`;
+    }
+    // Warn if behind pace
+    const raceMs = window.config?.raceMs || 0;
+    const elapsedMs = window.state?.startTime ? (Date.now() - window.state.startTime) : 0;
+    if (raceMs > 0 && elapsedMs > 0 && done < reqExtraPits) {
+        const pctRaceDone = elapsedMs / raceMs;
+        const expectedByNow = Math.floor(reqExtraPits * pctRaceDone);
+        if (done < expectedByNow - 1 && typeof window._fireStrategyNotification === 'function') {
+            window._fireStrategyNotification(
+                `🔧 ${remaining} extra pit${remaining !== 1 ? 's' : ''} still needed`,
+                'warning'
+            );
+        }
+    }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ⏱ DRIVER MAX TIME WARNINGS (live, shown in stats table)
+// ─────────────────────────────────────────────────────────────────────────────
+window.updateDriverMaxTimeWarnings = function() {
+    const maxDriverMin = parseFloat(document.getElementById('maxDriverTime')?.value || '0');
+    if (!maxDriverMin || !window.drivers) return;
+    const maxMs = maxDriverMin * 60000;
+    const warnMs = maxMs * 0.9; // warn at 90%
+    const now = window.getSyncedNow ? window.getSyncedNow() : Date.now();
+
+    window.drivers.forEach((d, i) => {
+        let totalMs = d.totalTime || 0;
+        if (i === window.state?.currentDriverIdx && !window.state?.isInPit) {
+            totalMs += (now - (window.state.stintStart || now)) + (window.state.stintOffset || 0);
+        }
+        d._overMaxTime = totalMs > maxMs;
+        d._nearMaxTime = !d._overMaxTime && totalMs >= warnMs;
+    });
 };
 
 // Update hero mini chart whenever previewData changes

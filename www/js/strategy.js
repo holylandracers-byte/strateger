@@ -593,6 +593,9 @@ window.runSim = function() {
     const totalPitTimeMs = reqStops * pitTimeMs;
     const totalNetDriveTime = raceMs - totalPitTimeMs; 
 
+    const reqExtraPits = parseInt(document.getElementById('reqExtraPits')?.value || '0') || 0;
+    const minPitLapSec = parseInt(document.getElementById('minPitLapSec')?.value || '0') || 0;
+
     const config = {
         duration: durationHours,
         raceMs: raceMs,
@@ -613,7 +616,9 @@ window.runSim = function() {
         minDriverTotal: minDriverMin,
         maxDriverTotal: maxDriverMin,
         totalNetDriveTime: totalNetDriveTime,
-        totalPitTime: totalPitTimeMs
+        totalPitTime: totalPitTimeMs,
+        reqExtraPits: reqExtraPits,
+        minPitLapSec: minPitLapSec
     };
 
     window.config = config;
@@ -801,6 +806,7 @@ window.initRace = function() {
     window.state.startTime = startTime;
     window.state.stintStart = startTime;
     window.state.pitCount = 0;
+    window.state.extraPitCount = 0;   // reset extra pit counter
     window.state.isInPit = false;
     window.state.stintOffset = 0;
     window.state.mode = 'normal';
