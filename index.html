@@ -541,13 +541,16 @@
                         <input type="number" id="pitClosedEnd" value="0" onchange="window.runSim()" class="input-field border-red-900/50">
                     </div>
                 </div>
-                <!-- Extra pit stops (e.g. mandatory extra pits in 24H kart races) -->
+                <!-- Extra pit stops (e.g. mandatory organizer kart-rotation pits in 24H kart races) -->
                 <div id="extraPitSection" class="hidden mb-3 bg-navy-950/60 border border-orange-800/40 rounded-lg p-2">
-                    <div class="flex items-center gap-1.5 mb-2">
-                        <span class="text-orange-400 text-xs">🔧</span>
-                        <span class="text-[10px] font-bold text-orange-300 uppercase tracking-wider" data-i18n="lblExtraPits">Extra Pit Stops</span>
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-orange-400 text-xs">🔧</span>
+                            <span class="text-[10px] font-bold text-orange-300 uppercase tracking-wider" data-i18n="lblExtraPits">Extra Pit Stops</span>
+                        </div>
+                        <span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-orange-900/50 text-orange-300" data-i18n="lblNoLimitEndurance">No Limit Endurance</span>
                     </div>
-                    <div class="grid grid-cols-2 gap-2">
+                    <div class="grid grid-cols-2 gap-2 mb-2">
                         <div>
                             <label class="text-[9px] text-gray-400" data-i18n="lblReqExtraPits">Required Extra Pits</label>
                             <input type="number" id="reqExtraPits" value="10" min="0" onchange="window.runSim()" class="input-field border-orange-800/50">
@@ -557,7 +560,14 @@
                             <input type="number" id="minPitLapSec" value="120" min="0" onchange="window.runSim()" class="input-field border-orange-800/50">
                         </div>
                     </div>
-                    <div class="text-[9px] text-gray-500 mt-1" data-i18n="lblExtraPitsHint">Extra pits are optional driver-change stops in the left lane. Pit lane closed first &amp; last 10 min.</div>
+                    <!-- Kart rotation: number of competing teams sets the forced pit window -->
+                    <div class="mb-2">
+                        <label class="text-[9px] text-gray-400" data-i18n="lblNumTeams">Competing Teams (kart rotation)</label>
+                        <input type="number" id="numTeams" value="0" min="0" placeholder="0 = disabled"
+                            onchange="window._updateKartRotationInfo(); window.runSim()" class="input-field border-orange-800/50">
+                        <div id="kartRotationInfo" class="text-[9px] text-orange-400 mt-0.5 hidden"></div>
+                    </div>
+                    <div class="text-[9px] text-gray-500 mt-1" data-i18n="lblExtraPitsHint">Organizer-forced kart change pits (left lane). Pit lane closed first &amp; last 10 min. Every team must drive every kart once.</div>
                 </div>
                 <div class="grid grid-cols-2 gap-4 mb-3">
                     <div>
@@ -971,7 +981,7 @@
                 <div id="pitCountDisplay" class="text-base font-bold"><span class="text-neon">0</span>/<span>0</span></div>
             </div>
             <div id="extraPitCountWidget" class="text-center hidden">
-                <div class="text-[10px] text-orange-400 uppercase font-bold">Extra</div>
+                <div class="text-[10px] text-orange-400 uppercase font-bold" data-i18n="lblExtraPitsShort">Kart Chg</div>
                 <div id="extraPitCountDisplay" class="text-base font-bold"><span class="text-orange-300">0</span>/<span class="text-gray-500">10</span></div>
             </div>
             <div id="pitStatusDisplay" class="text-center">

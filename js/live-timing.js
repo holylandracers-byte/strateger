@@ -1943,11 +1943,14 @@ window.toggleCompetitorsTable = function() {
         const el = document.getElementById(CLOCK_EL_ID);
         if (!el) return;
 
+        // Use synced clock throughout so live-timing widget and main race clock agree.
+        const syncedNow = (window.getSyncedNow && typeof window.getSyncedNow === 'function')
+            ? window.getSyncedNow() : Date.now();
+
         // Priority 1: live timing feed has provided a countdown (Apex/RaceFacer)
         const ld = window.liveData;
         if (ld && ld.raceTimeLeftMs != null && ld._raceTimeReceivedAt) {
-            // Count down locally between feed packets — DST-safe: only elapsed wall-clock delta
-            const elapsed = Date.now() - ld._raceTimeReceivedAt;
+            const elapsed = syncedNow - ld._raceTimeReceivedAt;
             const adjusted = Math.max(0, ld.raceTimeLeftMs - elapsed);
             el.textContent = formatRaceTime(adjusted);
             el.title = window.t ? window.t('raceClockLabel') : 'RACE TIME';
@@ -1960,7 +1963,7 @@ window.toggleCompetitorsTable = function() {
         if (st && st.isRunning && st.startTime && cfg) {
             const raceDurationMs = (parseFloat(cfg.duration) || 0) * 3600000;
             if (raceDurationMs > 0) {
-                const elapsed = Date.now() - st.startTime;
+                const elapsed = syncedNow - st.startTime;
                 const remaining = Math.max(0, raceDurationMs - elapsed);
                 el.textContent = formatRaceTime(remaining);
                 el.title = window.t ? window.t('raceClockLabel') : 'RACE TIME';

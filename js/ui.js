@@ -3346,9 +3346,13 @@ window.setQuickMode = function(mode) {
     if (reqExtraPitsEl) reqExtraPitsEl.value = p.extraPits;
     if (minPitLapEl) minPitLapEl.value = p.minPitLapSec;
 
-    // For 24H kart: auto-set max driver time based on current driver count
+    // For 24H kart: auto-set max driver time based on current driver count,
+    // reset numTeams field, and update rotation info display.
     if (mode === 'kart24h') {
         window._autoSetKartDriverMaxTime();
+        const numTeamsEl = document.getElementById('numTeams');
+        if (numTeamsEl) numTeamsEl.value = 0;
+        window._updateKartRotationInfo();
     }
 
     if (typeof window.runSim === 'function') window.runSim();
@@ -3363,6 +3367,26 @@ window.setQuickMode = function(mode) {
     });
     const label = { sprint: '⚡ Sprint', endurance: '🏁 Endurance', kart24h: '🏎 24H Kart' }[mode] || mode;
     if (typeof window.showToast === 'function') window.showToast(`${label} preset loaded`, 'success', 1800);
+};
+
+// Show kart rotation window info whenever numTeams changes
+window._updateKartRotationInfo = function() {
+    const numTeams = parseInt(document.getElementById('numTeams')?.value || '0') || 0;
+    const pitTimeSec = parseInt(document.getElementById('minPitTime')?.value || '0') || 30;
+    const infoEl = document.getElementById('kartRotationInfo');
+    if (!infoEl) return;
+    if (numTeams < 2) {
+        infoEl.classList.add('hidden');
+        return;
+    }
+    // Each team sits out (numTeams - 1) rotation slots while others change karts.
+    // Each slot = 1 pit stop. Total forced pit windows per team = numTeams - 1.
+    const rotationSlots = numTeams - 1;
+    const windowSec = rotationSlots * pitTimeSec;
+    const windowMin = Math.round(windowSec / 60);
+    const t = window.t || (k => k);
+    infoEl.textContent = `${numTeams} teams → ${rotationSlots} kart changes/team | rotation window: ~${windowMin}m`;
+    infoEl.classList.remove('hidden');
 };
 
 // Auto-calculate max driver time for kart 24H based on team size (rulebook table)
@@ -3484,7 +3508,8 @@ window.updateExtraPitDisplay = function() {
     }
     // Warn if behind pace
     const raceMs = window.config?.raceMs || 0;
-    const elapsedMs = window.state?.startTime ? (Date.now() - window.state.startTime) : 0;
+    const syncedNow = window.getSyncedNow ? window.getSyncedNow() : Date.now();
+    const elapsedMs = window.state?.startTime ? (syncedNow - window.state.startTime) : 0;
     if (raceMs > 0 && elapsedMs > 0 && done < reqExtraPits) {
         const pctRaceDone = elapsedMs / raceMs;
         const expectedByNow = Math.floor(reqExtraPits * pctRaceDone);

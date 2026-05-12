@@ -601,7 +601,12 @@ window.recalculateTargetStint = function() {
     if (!window.config || !window.state) return;
     
     if (window.state.mode === 'push') {
-        const maxStintMs = (window.config.maxStintMs) || (window.config.maxStint * 60000) || (60 * 60000);
+        // maxStint: 0 = unlimited (no-limit endurance) — use remaining race time as ceiling
+        const cfgMaxStint = window.config.maxStint || 0;
+        const raceMs = window.config.raceMs || (parseFloat(window.config.duration) * 3600000);
+        const maxStintMs = cfgMaxStint > 0
+            ? cfgMaxStint * 60000
+            : (window.config.maxStintMs || raceMs);
         window.state.targetStintMs = maxStintMs - 60000;
     } else if (window.state.mode === 'bad') {
         const minStintMs = (window.config.minStintMs) || (window.config.minStint * 60000) || (30 * 60000);
@@ -618,7 +623,7 @@ window.recalculateTargetStint = function() {
             let raceRemaining = raceMs - (now - window.state.startTime);
             // Use live timing race clock when available — interpolate between API updates
             if (window.liveData && window.liveData.raceTimeLeftMs != null) {
-                const sinceReceived = window.liveData._raceTimeReceivedAt ? (Date.now() - window.liveData._raceTimeReceivedAt) : 0;
+                const sinceReceived = window.liveData._raceTimeReceivedAt ? (now - window.liveData._raceTimeReceivedAt) : 0;
                 raceRemaining = Math.max(0, window.liveData.raceTimeLeftMs - sinceReceived);
             }
             const stintElapsed = (now - window.state.stintStart) + (window.state.stintOffset || 0);
@@ -935,9 +940,9 @@ window.renderFrame = function() {
         let raceRemainingRaw = raceMs - raceElapsedRaw;
         
         // Use live timing race clock when available (more accurate than local timer)
-        // Interpolate between API updates: subtract elapsed time since the last API response
+        // Interpolate between API updates using the same synced clock as the rest of the frame.
         if (window.liveData && window.liveData.raceTimeLeftMs != null && window.liveData.raceTimeLeftMs >= 0) {
-            const sinceReceived = window.liveData._raceTimeReceivedAt ? (Date.now() - window.liveData._raceTimeReceivedAt) : 0;
+            const sinceReceived = window.liveData._raceTimeReceivedAt ? (now - window.liveData._raceTimeReceivedAt) : 0;
             raceRemainingRaw = Math.max(0, window.liveData.raceTimeLeftMs - sinceReceived);
         }
 
@@ -1022,7 +1027,11 @@ window.renderFrame = function() {
             const stintSec = Math.floor(Math.max(0, currentStintTime) / 1000);
             document.getElementById('stintTimerDisplay').innerText = window.formatTimeHMS(stintSec * 1000);
             
-            const maxStintMs = (window.config.maxStintMs) || (window.config.maxStint * 60000) || (60 * 60000);
+            // maxStint: 0 = no-limit endurance — use full race duration as the bar ceiling
+            const cfgMax = window.config.maxStint || 0;
+            const maxStintMs = cfgMax > 0
+                ? cfgMax * 60000
+                : (window.config.maxStintMs || window.config.raceMs || (60 * 60000));
             const minStintMs = (window.config.minStint * 60000) || 0;
             const targetMs = window.state.targetStintMs || maxStintMs;
 
@@ -1122,8 +1131,8 @@ window.renderFrame = function() {
 const _STINT_DRIFT_THRESHOLD_MS = 6 * 60000;
 let _lastDriftCheck = 0;
 function _maybeRecalcAfterDrift() {
-    if (!window.state?.raceStarted || !window.state?.stintStart) return;
-    const now = Date.now();
+    if (!window.state?.isRunning || !window.state?.stintStart) return;
+    const now = (window.getSyncedNow && typeof window.getSyncedNow === 'function') ? window.getSyncedNow() : Date.now();
     if (now - _lastDriftCheck < 15000) return; // check at most every 15 s
     _lastDriftCheck = now;
 
@@ -1137,8 +1146,8 @@ function _maybeRecalcAfterDrift() {
 
     // Current stint already deviated — update its target to actual elapsed so far,
     // then regenerate remaining stint targets using the available future time.
-    const raceMs = (window.config?.duration || 0) * 3600000;
-    const raceStartMs = window.state.startTime || Date.now();
+    const raceMs = window.config?.raceMs || (window.config?.duration || 0) * 3600000;
+    const raceStartMs = window.state.startTime || now;
     const totalElapsedMs = now - raceStartMs;
     const raceRemainingMs = Math.max(0, raceMs - totalElapsedMs);
 
@@ -2959,7 +2968,7 @@ window.updateDriverMode = function() {
     let raceRemaining = raceMs - (now - window.state.startTime);
     // Use live timing race clock when available — interpolate between API updates
     if (window.liveData && window.liveData.raceTimeLeftMs != null) {
-        const sinceReceived = window.liveData._raceTimeReceivedAt ? (Date.now() - window.liveData._raceTimeReceivedAt) : 0;
+        const sinceReceived = window.liveData._raceTimeReceivedAt ? (now - window.liveData._raceTimeReceivedAt) : 0;
         raceRemaining = Math.max(0, window.liveData.raceTimeLeftMs - sinceReceived);
     }
     const maxStintMs = (window.config.maxStint * 60000) || (60 * 60000);
@@ -3005,8 +3014,8 @@ window.updateDriverMode = function() {
             if (str.startsWith('00:')) str = str.substring(3);
             stintTimerEl.innerText = str;
             // Color by zone
-            if (stintMs > targetMs) stintTimerEl.style.color = '#ef4444';
-            else if (stintMs > targetMs - (window.getEstimatedLapMs() || 60000) * 2) stintTimerEl.style.color = '#facc15';
+            if (currentStintMs > targetMs) stintTimerEl.style.color = '#ef4444';
+            else if (currentStintMs > targetMs - (window.getEstimatedLapMs() || 60000) * 2) stintTimerEl.style.color = '#facc15';
             else stintTimerEl.style.color = '#ffffff';
         }
     }
@@ -4068,14 +4077,14 @@ document.addEventListener('keydown', function(e) {
             if (window.state?.isInPit) {
                 const exitBtn = document.getElementById('confirmExitBtn');
                 if (exitBtn && !exitBtn.disabled) window.confirmPitExit();
-            } else if (window.state?.raceStarted && !window.state?.raceFinished) {
+            } else if (window.state?.isRunning && !window.state?.isFinished) {
                 window.confirmPitEntry();
             }
             break;
             
         case 'p':
         case 'P':  // P — Enter Pit
-            if (window.state?.raceStarted && !window.state?.raceFinished && !window.state?.isInPit) {
+            if (window.state?.isRunning && !window.state?.isFinished && !window.state?.isInPit) {
                 e.preventDefault();
                 window.confirmPitEntry();
             }
@@ -4083,28 +4092,28 @@ document.addEventListener('keydown', function(e) {
             
         case 's':
         case 'S':  // S — Start Race
-            if (!window.state?.raceStarted) {
+            if (!window.state?.isRunning) {
                 e.preventDefault();
                 window.initRace();
             }
             break;
             
         case '1':  // 1 — Push Mode
-            if (window.state?.raceStarted) {
+            if (window.state?.isRunning) {
                 e.preventDefault();
                 window.setMode('push');
             }
             break;
             
         case '2':  // 2 — Problem Mode
-            if (window.state?.raceStarted) {
+            if (window.state?.isRunning) {
                 e.preventDefault();
                 window.setMode('bad');
             }
             break;
             
         case '0':  // 0 — Reset Mode
-            if (window.state?.raceStarted) {
+            if (window.state?.isRunning) {
                 e.preventDefault();
                 window.setMode('normal');
             }
@@ -4112,7 +4121,7 @@ document.addEventListener('keydown', function(e) {
             
         case 'g':
         case 'G':  // G — Generate strategy
-            if (!window.state?.raceStarted) {
+            if (!window.state?.isRunning) {
                 e.preventDefault();
                 if (typeof window.runSim === 'function') window.runSim();
             }
@@ -4319,7 +4328,7 @@ window.updatePitWindowBanner = function() {
     const raceMs = window.config?.raceMs || 0;
     
     if (closedStartMs <= 0 && closedEndMs <= 0) { banner.classList.add('hidden'); return; }
-    if (!window.state?.raceStarted || window.state?.raceFinished) { banner.classList.add('hidden'); return; }
+    if (!window.state?.isRunning || window.state?.isFinished) { banner.classList.add('hidden'); return; }
     
     const elapsed = window.getSyncedNow() - window.state.startTime;
     const remaining = raceMs - elapsed;
@@ -4371,7 +4380,7 @@ window.updateNextDriverBanner = function() {
     const textEl = document.getElementById('nextDriverBannerText');
     if (!banner || !nameEl) return;
     
-    if (!window.state?.raceStarted || window.state?.raceFinished || window.state?.isInPit) {
+    if (!window.state?.isRunning || window.state?.isFinished || window.state?.isInPit) {
         banner.classList.add('hidden');
         return;
     }

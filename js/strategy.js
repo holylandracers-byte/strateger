@@ -595,6 +595,7 @@ window.runSim = function() {
 
     const reqExtraPits = parseInt(document.getElementById('reqExtraPits')?.value || '0') || 0;
     const minPitLapSec = parseInt(document.getElementById('minPitLapSec')?.value || '0') || 0;
+    const numTeams = parseInt(document.getElementById('numTeams')?.value || '0') || 0;
 
     const config = {
         duration: durationHours,
@@ -618,7 +619,15 @@ window.runSim = function() {
         totalNetDriveTime: totalNetDriveTime,
         totalPitTime: totalPitTimeMs,
         reqExtraPits: reqExtraPits,
-        minPitLapSec: minPitLapSec
+        minPitLapSec: minPitLapSec,
+        numTeams: numTeams,
+        // No Limit Endurance: no per-stint maximum, forced kart rotation by organizer.
+        // raceType = 'noLimitEndurance' when extra pits section is active (reqExtraPits > 0).
+        raceType: reqExtraPits > 0 ? 'noLimitEndurance' : 'standard',
+        // Forced kart rotation window per team (seconds): each rotation cycle =
+        // (numTeams - 1) * pitTimeSec. Each team must drive every kart once, so the
+        // organizer moves one team at a time and each team waits (numTeams-1) slots.
+        kartRotationWindowSec: numTeams > 1 ? (numTeams - 1) * pitTimeSec : 0
     };
 
     window.config = config;
@@ -683,7 +692,9 @@ window.runSim = function() {
     const avgStint = stints.length > 0 ? (actualDriveTime / stints.length / 60000).toFixed(1) : 0;
 
     // === Check if average stint is within bounds ===
-    const isAverageStintValid = avgStint >= minStintMin && avgStint <= maxStintMin;
+    // maxStint: 0 means unlimited (no-limit endurance) — skip the upper bound check.
+    const isAverageStintValid = (minStintMin <= 0 || avgStint >= minStintMin) &&
+                                (maxStintMin <= 0 || avgStint <= maxStintMin);
     const invalidStrategyWarning = document.getElementById('invalidStrategyWarning');
     
     if (!isAverageStintValid) {
@@ -805,6 +816,11 @@ window.initRace = function() {
     window.state.isFinished = false; // Reset finish flag from any previous race
     window.state.startTime = startTime;
     window.state.stintStart = startTime;
+    // Snap raceStartTime to the ACTUAL millisecond start so the strategy timeline
+    // (which is built from raceStartTime in calculateStrategyLogic) stays aligned
+    // with the race clock. Without this the strategy would be off by up to 59s
+    // because runSim truncates start-time seconds to :00.
+    window.raceStartTime = new Date(startTime).toISOString();
     window.state.pitCount = 0;
     window.state.extraPitCount = 0;   // reset extra pit counter
     window.state.isInPit = false;
