@@ -22,6 +22,11 @@ function gapToMs(gapValue) {
         const ms = mmss[3].padEnd(3, '0');
         return (parseInt(mmss[1]) * 60 + parseInt(mmss[2])) * 1000 + parseInt(ms);
     }
+    // "M:SS" or "M:SS." from Apex "to" token
+    const mmssNoMs = str.match(/^(\d+):(\d{2})\.?$/);
+    if (mmssNoMs) {
+        return (parseInt(mmssNoMs[1]) * 60 + parseInt(mmssNoMs[2])) * 1000;
+    }
     // "SS.mmm" (e.g., "5.387" or "65.123")
     const ss = str.match(/^(\d+)\.(\d{1,3})$/);
     if (ss) {
@@ -34,6 +39,25 @@ function gapToMs(gapValue) {
     // Fallback: parse as seconds
     const num = parseFloat(str);
     return !isNaN(num) ? Math.round(num * 1000) : 0;
+}
+
+/**
+ * Sanitize avg lap ms value from API.
+ * RaceFacer avg_lap_raw can return garbage (e.g. 6.77e-23, 1.86e+20).
+ * Valid kart lap times are between 20s (20000ms) and 3min (180000ms).
+ * Falls back to parsing the formatted avg_lap string.
+ */
+function sanitizeAvgLapMs(rawMs, formattedStr) {
+    // Check if rawMs is a sane value (between 20s and 3min)
+    if (typeof rawMs === 'number' && rawMs >= 20000 && rawMs <= 180000) {
+        return rawMs;
+    }
+    // Try parsing the formatted string (e.g. "0:56.052")
+    if (formattedStr) {
+        const parsed = gapToMs(formattedStr);
+        if (parsed >= 20000 && parsed <= 180000) return parsed;
+    }
+    return 0;
 }
 
 class LiveTimingManager {
@@ -54,6 +78,7 @@ class LiveTimingManager {
     detectProvider(url) {
         if (url.includes('racefacer')) return 'racefacer';
         if (url.includes('apex-timing') || url.includes('apex_timing') || url.includes('apextiming')) return 'apex';
+        if (url.includes('alphatiming.co.uk')) return 'alpha';
         return 'unknown';
     }
 
@@ -80,6 +105,7 @@ class LiveTimingManager {
             onUpdate: callbacks.onUpdate || null,
             onError: callbacks.onError || null,
             onFatalError: callbacks.onFatalError || null,
+            onComment: callbacks.onComment || null,
             updateInterval: callbacks.updateInterval || 5000
         };
 
@@ -92,6 +118,8 @@ class LiveTimingManager {
             this.startRaceFacerScraper(url);
         } else if (this.provider === 'apex') {
             this.startApexScraper(url);
+        } else if (this.provider === 'alpha') {
+            this.startAlphaScraper(url);
         } else {
             console.error('[LiveTimingManager] Unknown timing provider');
             if (this.config.onError) {
@@ -163,6 +191,55 @@ class LiveTimingManager {
     }
 
     /**
+     * התחל Alpha Timing scraper
+     */
+    startAlphaScraper(url) {
+        if (typeof AlphaTimingScraper === 'undefined') {
+            console.error('[LiveTimingManager] AlphaTimingScraper not loaded!');
+            if (this.config.onError) {
+                this.config.onError(new Error('AlphaTimingScraper not available'));
+            }
+            return;
+        }
+
+        console.log(`[LiveTimingManager] Starting Alpha Timing scraper with URL: ${url}`);
+
+        this.currentScraper = new AlphaTimingScraper({
+            raceUrl: url,
+            searchTerm: this.config.searchTerm,
+            searchType: this.config.searchType || 'team',
+            updateInterval: this.config.updateInterval,
+            debug: false,
+
+            onUpdate: (data) => {
+                const strategerData = this.convertToStrategerFormat(data, 'alpha');
+                if (this.config.onUpdate) {
+                    this.config.onUpdate(strategerData);
+                }
+            },
+
+            onComment: (entry) => {
+                if (this.config.onComment) {
+                    this.config.onComment(entry);
+                }
+            },
+
+            onError: (error, consecutiveErrors) => {
+                console.error(`[LiveTimingManager] Alpha error (${consecutiveErrors}):`, error);
+                if (this.config.onError) {
+                    this.config.onError(error, consecutiveErrors);
+                }
+                if (consecutiveErrors >= 5 && this.config.onFatalError) {
+                    this.config.onFatalError(error);
+                }
+            }
+        });
+
+        this.currentScraper.start();
+        console.log('[LiveTimingManager] Alpha Timing scraper started');
+    }
+
+    /**
      * התחל APEX scraper)
      */
     startApexScraper(url) {
@@ -181,13 +258,19 @@ class LiveTimingManager {
         searchTerm: this.config.searchTerm,
         searchType: this.config.searchType || 'team',
         updateInterval: this.config.updateInterval,
-        debug: true,
+        debug: false,
 
         onUpdate: (data) => {
             const strategerData = this.convertToStrategerFormat(data, 'apex');
             
             if (this.config.onUpdate) {
                 this.config.onUpdate(strategerData);
+            }
+        },
+
+        onComment: (entry) => {
+            if (this.config.onComment) {
+                this.config.onComment(entry);
             }
         },
 
@@ -230,6 +313,12 @@ class LiveTimingManager {
                 provider: this.provider
             };
         }
+        if (this.currentScraper) {
+            return {
+                provider: this.provider,
+                isRunning: !!this.currentScraper.isRunning
+            };
+        }
         return {
             provider: this.provider,
             isRunning: false
@@ -263,13 +352,16 @@ class LiveTimingManager {
                     kart: data.ourTeam.kart,
                     lastLap: data.ourTeam.lastLapMs,
                     bestLap: data.ourTeam.bestLapMs,
-                    avgLap: data.ourTeam.avgLapMs,
+                    avgLap: sanitizeAvgLapMs(data.ourTeam.avgLapMs, data.ourTeam.avgLap),
                     totalLaps: data.ourTeam.totalLaps,
                     gap: gapToMs(data.ourTeam.gap),
                     interval: gapToMs(data.ourTeam.interval),
                     inPit: data.ourTeam.inPit,
                     pitCount: data.ourTeam.pitCount,
-                    consistency: data.ourTeam.consistency
+                    consistency: data.ourTeam.consistency,
+                    penalty: data.ourTeam.penalty || 0,
+                    penaltyTime: data.ourTeam.penaltyTime || 0,
+                    penaltyReason: data.ourTeam.penaltyReason || ''
                 } : null,
 
                 // כל המתחרים
@@ -280,10 +372,12 @@ class LiveTimingManager {
                     kart: c.kart,
                     lastLap: c.lastLapMs,
                     bestLap: c.bestLapMs,
-                    avgLap: c.avgLapMs,
+                    avgLap: sanitizeAvgLapMs(c.avgLapMs, c.avgLap),
                     laps: c.totalLaps,
                     gap: gapToMs(c.gap),
+                    gapRaw: c.gap,
                     interval: gapToMs(c.interval),
+                    intervalRaw: c.interval,
                     inPit: c.inPit,
                     pitCount: c.pitCount,
                     consistency: c.consistency,
@@ -302,34 +396,115 @@ class LiveTimingManager {
             };
         }
 
-        // עבור ספקים אחרים - פשוט החזר את הדאטה כמו שהיא
-        if (provider === 'apex') {
+        // Alpha Timing
+        if (provider === 'alpha') {
+            const alphaComps = (data.competitors || []).slice().sort((a, b) => (a.position || 0) - (b.position || 0));
             return {
-                race: data.race || {},
+                race: {
+                    timeLeftSeconds: data.race?.timeLeftSeconds ?? null,
+                    status: data.race?.status || null,
+                    sessionName: data.race?.sessionName || '',
+                    sessionType: data.race?.sessionType || '',
+                    trackName: data.race?.trackName || '',
+                    isEndurance: data.race?.isEndurance || false
+                },
                 ourTeam: data.ourTeam ? {
-                    position: parseInt(data.ourTeam.position) || 0,
+                    position: data.ourTeam.position,
                     name: data.ourTeam.name || '',
                     team: data.ourTeam.team || '',
                     kart: data.ourTeam.kart || '',
                     lastLap: data.ourTeam.lastLapMs || null,
                     bestLap: data.ourTeam.bestLapMs || null,
-                    totalLaps: parseInt(data.ourTeam.laps) || 0,
-                    gap: gapToMs(data.ourTeam.gap),
+                    avgLap: data.ourTeam.avgLapMs || null,
+                    totalLaps: data.ourTeam.totalLaps || 0,
+                    gap: data.ourTeam.gapMs || 0,
+                    gapRaw: data.ourTeam.gap || '',
+                    interval: data.ourTeam.intervalMs || 0,
                     inPit: data.ourTeam.inPit || false,
-                    pitCount: data.ourTeam.pitCount || 0
+                    pitCount: data.ourTeam.pitCount || 0,
+                    category: data.ourTeam.category || '',
+                    penalty: data.ourTeam.penalty || 0,
+                    penaltyTime: data.ourTeam.penaltyTime || 0,
+                    penaltyReason: data.ourTeam.penaltyReason || ''
                 } : null,
-                competitors: (data.competitors || []).map(c => ({
-                    position: parseInt(c.position) || 0,
+                competitors: alphaComps.map((c, idx) => ({
+                    position: c.position,
                     name: c.name || '',
                     team: c.team || '',
                     kart: c.kart || '',
                     lastLap: c.lastLapMs || null,
                     bestLap: c.bestLapMs || null,
-                    laps: parseInt(c.laps) || 0,
-                    gap: gapToMs(c.gap),
+                    avgLap: c.avgLapMs || null,
+                    laps: c.totalLaps || 0,
+                    totalLaps: c.totalLaps || 0,
+                    gap: c.gapMs || 0,
+                    gapRaw: c.gap || '',
+                    interval: c.intervalMs || 0,
                     inPit: c.inPit || false,
-                    isOurTeam: data.ourTeam ? (c.name === data.ourTeam.name && c.kart === data.ourTeam.kart) : false
+                    pitCount: c.pitCount || 0,
+                    category: c.category || '',
+                    penalty: c.penalty || 0,
+                    penaltyTime: c.penaltyTime || 0,
+                    penaltyReason: c.penaltyReason || '',
+                    isOurTeam: c.isOurTeam || false
                 })),
+                comments: [],
+                found: data.found,
+                provider: 'alpha',
+                timestamp: Date.now()
+            };
+        }
+
+        // עבור ספקים אחרים - פשוט החזר את הדאטה כמו שהיא
+        if (provider === 'apex') {
+            // Sort by position for interval computation (gap[n] - gap[n-1])
+            const apexComps = (data.competitors || []).slice().sort((a, b) => (parseInt(a.position) || 0) - (parseInt(b.position) || 0));
+            const gapMsArr = apexComps.map(c => gapToMs(c.gap));
+            return {
+                race: {
+                    timeLeftSeconds: data.race?.timeLeftSeconds ?? null,
+                    status: data.race?.status || null
+                },
+                ourTeam: data.ourTeam ? {
+                    position: parseInt(data.ourTeam.position) || 0,
+                    name: data.ourTeam.name || '',
+                    team: data.ourTeam.team || '',
+                    kart: data.ourTeam.kart || data.ourTeam.kartNumber || '',
+                    lastLap: data.ourTeam.lastLapMs || null,
+                    bestLap: data.ourTeam.bestLapMs || null,
+                    avgLap: data.ourTeam.avgLapMs || null,
+                    totalLaps: parseInt(data.ourTeam.totalLaps || data.ourTeam.laps) || 0,
+                    gap: gapToMs(data.ourTeam.gap),
+                    gapRaw: data.ourTeam.gap || '',
+                    inPit: data.ourTeam.inPit || false,
+                    pitCount: data.ourTeam.pitCount || 0,
+                    category: data.ourTeam.category || '',
+                    penalty: data.ourTeam.penalty || 0,
+                    penaltyTime: data.ourTeam.penaltyTime || 0,
+                    penaltyReason: data.ourTeam.penaltyReason || ''
+                } : null,
+                competitors: apexComps.map((c, idx) => ({
+                    position: parseInt(c.position) || 0,
+                    name: c.name || '',
+                    team: c.team || '',
+                    kart: c.kart || c.kartNumber || '',
+                    lastLap: c.lastLapMs || null,
+                    bestLap: c.bestLapMs || null,
+                    avgLap: c.avgLapMs || null,
+                    laps: parseInt(c.laps || c.totalLaps) || 0,
+                    totalLaps: parseInt(c.laps || c.totalLaps) || 0,
+                    gap: gapMsArr[idx],
+                    gapRaw: c.gap || '',
+                    interval: idx === 0 ? 0 : Math.max(0, gapMsArr[idx] - gapMsArr[idx - 1]),
+                    inPit: c.inPit || false,
+                    pitCount: c.pitCount || 0,
+                    category: c.category || '',
+                    penalty: c.penalty || 0,
+                    penaltyTime: c.penaltyTime || 0,
+                    penaltyReason: c.penaltyReason || '',
+                    isOurTeam: c.isOurTeam || (data.ourTeam ? c.rowId === data.ourTeam.rowId : false)
+                })),
+                comments: data.comments || [],
                 found: data.found,
                 provider: 'apex',
                 timestamp: Date.now()

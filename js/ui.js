@@ -284,6 +284,14 @@ window.createDriverInput = function(val, checked, squad) {
     div.className = "driver-row cursor-default";
     div.onclick = (e) => e.stopPropagation();
 
+    // ── Drag handle ──
+    const dragHandle = document.createElement('div');
+    dragHandle.className = 'driver-drag-handle';
+    dragHandle.title = 'Drag to reorder';
+    dragHandle.innerHTML = '<svg viewBox="0 0 16 16" fill="currentColor" width="12" height="12"><path d="M2 4h12v1.5H2zm0 3h12v1.5H2zm0 3h12V12H2z"/></svg>';
+    dragHandle.addEventListener('mousedown',  (e) => window._driverDragStart(e, div), { passive: false });
+    dragHandle.addEventListener('touchstart',  (e) => window._driverDragStart(e, div), { passive: false });
+
     const radioId = 'starter_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
 
     // ── Color swatch (left edge accent bar + clickable swatch) ──
@@ -420,6 +428,7 @@ window.createDriverInput = function(val, checked, squad) {
     squadLabel.appendChild(squadHidden);
     squadLabel.appendChild(squadDisplay);
 
+    div.appendChild(dragHandle);
     div.appendChild(accentBar);
     div.appendChild(colorSwatch);
     div.appendChild(radio);
@@ -855,46 +864,31 @@ window.renderPreview = function() {
         const outOfBounds = durationMin < minStintMin || durationMin > maxStintMin;
         const borderWarning = outOfBounds ? 'ring-1 ring-red-500' : '';
 
+        const checkeredFlag = isLast ? `<svg width="11" height="8" viewBox="0 0 14 10" aria-hidden="true" style="flex-shrink:0;vertical-align:middle"><rect x="0.5" y="0.5" width="13" height="9" rx="1" fill="#111" stroke="#666"/><rect x="1" y="1" width="3" height="4" fill="#fff"/><rect x="4" y="1" width="3" height="4" fill="#111"/><rect x="7" y="1" width="3" height="4" fill="#fff"/><rect x="10" y="1" width="3" height="4" fill="#111"/><rect x="1" y="5" width="3" height="4" fill="#111"/><rect x="4" y="5" width="3" height="4" fill="#fff"/><rect x="7" y="5" width="3" height="4" fill="#111"/><rect x="10" y="5" width="3" height="4" fill="#fff"/></svg>` : '';
+        // Reorder arrows inline so row stays single-line height (~24px)
         return `
-            <div class="flex items-center gap-1 bg-navy-950 rounded border-l-4 mb-1 text-xs cursor-grab active:cursor-grabbing ${borderWarning}"
-                 style="border-left-color: ${stint.color}"
+            <div class="flex items-center gap-1 bg-navy-950 rounded border-l-4 cursor-grab active:cursor-grabbing ${borderWarning}" style="border-left-color:${stint.color};height:24px;padding:0 4px 0 0;overflow:hidden"
                  draggable="${window._isTouchDevice ? 'false' : 'true'}" data-index="${index}"
                  ondragstart="window.handleDragStart(event)"
                  ondragover="window.handleDragOver(event)"
                  ondragleave="window.handleDragLeave(event)"
                  ondrop="window.handleDrop(event)">
-                <div class="flex flex-col gap-0.5 shrink-0">
-                    <button onclick="window.moveStint(${index}, -1)" class="text-gray-500 hover:text-white text-[10px] leading-none px-1 ${isFirst ? 'invisible' : ''}" title="Move Up">▲</button>
-                    <span class="text-gray-500 text-center font-mono text-[10px]">#${index + 1}</span>
-                    <button onclick="window.moveStint(${index}, 1)" class="text-gray-500 hover:text-white text-[10px] leading-none px-1 ${isLast ? 'invisible' : ''}" title="Move Down">▼</button>
+                <div class="flex items-center shrink-0" style="gap:0;width:28px">
+                    <button onclick="window.moveStint(${index}, -1)" class="text-gray-600 hover:text-white ${isFirst ? 'invisible' : ''}" style="font-size:7px;padding:0 2px;line-height:1;background:none;border:none;cursor:pointer" title="Up">▲</button>
+                    <span class="text-gray-600 font-mono" style="font-size:8px;min-width:10px;text-align:center">${index+1}</span>
+                    <button onclick="window.moveStint(${index}, 1)" class="text-gray-600 hover:text-white ${isLast ? 'invisible' : ''}" style="font-size:7px;padding:0 2px;line-height:1;background:none;border:none;cursor:pointer" title="Down">▼</button>
                 </div>
-                <div class="flex-1 min-w-0 flex items-center gap-1.5 flex-wrap">
-                    <span class="font-bold text-white truncate max-w-[6rem]">${stint.driverName}</span>
-                    <span class="text-gray-600 text-[10px]">|</span>
-                    <span class="text-gray-400 text-[10px]">${startTimeStr}</span>
-                    <span class="text-ice text-[10px]">${arrow}</span>
-                    <span class="text-gray-400 text-[10px]">${endTimeStr}</span>
-                    ${isLast ? `<span class="inline-flex items-center ml-1" title="Final stint">
-                        <svg width="14" height="10" viewBox="0 0 14 10" aria-hidden="true">
-                            <rect x="0.5" y="0.5" width="13" height="9" rx="1" fill="#111" stroke="#666"/>
-                            <rect x="1" y="1" width="3" height="4" fill="#fff"/>
-                            <rect x="4" y="1" width="3" height="4" fill="#111"/>
-                            <rect x="7" y="1" width="3" height="4" fill="#fff"/>
-                            <rect x="10" y="1" width="3" height="4" fill="#111"/>
-                            <rect x="1" y="5" width="3" height="4" fill="#111"/>
-                            <rect x="4" y="5" width="3" height="4" fill="#fff"/>
-                            <rect x="7" y="5" width="3" height="4" fill="#111"/>
-                            <rect x="10" y="5" width="3" height="4" fill="#fff"/>
-                        </svg>
-                    </span>` : ''}
-                    ${pitIndicator}
-                    ${stintForecastTag}
+                <div class="flex-1 min-w-0 flex items-center gap-1" style="overflow:hidden;white-space:nowrap">
+                    <span class="font-bold text-white" style="font-size:11px;max-width:4.5rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0">${stint.driverName}</span>
+                    <span class="text-gray-500" style="font-size:9px;flex-shrink:0">${startTimeStr}${arrow}${endTimeStr}</span>
+                    ${checkeredFlag}${pitIndicator}${stintForecastTag}
                 </div>
                 <input type="number" value="${durationMin}" min="${minStintMin}" max="${maxStintMin}"
                        onchange="window.updateStintDuration(${index}, this.value)"
-                       class="w-14 bg-navy-800 border border-gray-600 text-white text-center text-xs rounded px-1 py-0.5 font-mono focus:border-ice focus:outline-none ${outOfBounds ? 'border-red-500 text-red-300' : ''}"
-                       title="Stint duration (min)">
-                <span class="text-gray-500 text-[10px]">m</span>
+                       class="bg-navy-800 border border-gray-700 text-white text-center rounded font-mono focus:border-ice focus:outline-none shrink-0 ${outOfBounds ? 'border-red-500 text-red-300' : ''}"
+                       style="width:36px;font-size:10px;padding:1px 2px;height:18px"
+                       title="min">
+                <span class="text-gray-600 shrink-0" style="font-size:8px">m</span>
             </div>
         `;
     }).join('');
@@ -906,7 +900,7 @@ window.renderPreview = function() {
     const diffMs = (totalDrive + totalPit) - raceTimeMs;
     const diffClass = Math.abs(diffMs) <= 60000 ? 'text-neon' : 'text-red-400';
     const totalBar = `
-        <div class="bg-navy-800 p-2 rounded border border-gray-700 text-[10px] text-gray-400 flex justify-between items-center mt-2">
+        <div class="bg-navy-800 p-2 rounded border border-gray-700 text-[10px] text-gray-400 flex justify-between items-center" style="margin-top:2px">
             <span>${window.t ? window.t('driveNoun') : 'Drive'}: <b class="text-white">${(totalDrive/60000).toFixed(0)}m</b> + ${window.t ? window.t('pitNoun') : 'Pit'}: <b class="text-gold">${(totalPit/60000).toFixed(0)}m</b></span>
             <span class="${diffClass} font-bold">= ${((totalDrive+totalPit)/60000).toFixed(0)}m ${diffMs !== 0 ? '(' + (diffMs > 0 ? '+' : '') + (diffMs/60000).toFixed(0) + 'm)' : '✅'}</span>
         </div>
@@ -930,17 +924,17 @@ window.renderPreview = function() {
     // Compact inline chip: color dot + name + time + stints count
     const summaryHtml = Object.entries(summary).map(([name, data]) => {
         const timeStr = window.formatTimeHMS(data.time);
-        return `<span class="inline-flex items-center gap-1 bg-navy-950 border rounded-full px-2 py-0.5 shrink-0 whitespace-nowrap text-[9px]" style="border-color:${data.color}40">
+        return `<span class="inline-flex items-center gap-1 bg-navy-950 border rounded-full px-2 py-0.5 text-[9px] min-w-0" style="border-color:${data.color}40">
             <span class="w-1.5 h-1.5 rounded-full shrink-0" style="background:${data.color}"></span>
-            <span class="font-bold text-gray-200 max-w-[5rem] truncate">${name}</span>
-            <span class="font-mono text-white">${timeStr}</span>
-            <span class="text-gray-600">${data.stints}×</span>
+            <span class="font-bold text-gray-200 truncate" style="max-width:4rem">${name}</span>
+            <span class="font-mono text-white shrink-0">${timeStr}</span>
+            <span class="text-gray-600 shrink-0">${data.stints}×</span>
         </span>`;
     }).join('');
 
     const summaryEl = document.getElementById('strategySummary');
     if (summaryEl) {
-        summaryEl.className = "flex items-center gap-1.5 flex-wrap";
+        summaryEl.className = "flex flex-wrap gap-1";
         summaryEl.innerHTML = summaryHtml;
     }
 };
@@ -3461,5 +3455,115 @@ if (_origRunSimForHero) {
         document.addEventListener('DOMContentLoaded', init);
     } else {
         init();
+    }
+})();
+
+// ==========================================
+// ↕ DRIVER LIST DRAG-TO-REORDER
+// ==========================================
+(function() {
+    let _dragging = null;   // the row being dragged
+    let _ghost    = null;   // floating clone
+    let _placeholder = null; // empty slot showing drop target
+    let _startY   = 0;
+    let _offsetY  = 0;      // cursor offset within the row at drag start
+
+    function _getClientY(e) {
+        return e.touches ? e.touches[0].clientY : e.clientY;
+    }
+
+    function _rowsInList() {
+        return Array.from(document.querySelectorAll('#driversList .driver-row'))
+                    .filter(r => !r.classList.contains('driver-drag-ghost') &&
+                                 !r.classList.contains('driver-drag-placeholder'));
+    }
+
+    function _createPlaceholder(height) {
+        const ph = document.createElement('div');
+        ph.className = 'driver-drag-placeholder';
+        ph.style.height = height + 'px';
+        return ph;
+    }
+
+    window._driverDragStart = function(e, row) {
+        if (e.button !== undefined && e.button !== 0) return; // left button only
+        e.preventDefault();
+        e.stopPropagation();
+
+        const rect = row.getBoundingClientRect();
+        _startY  = _getClientY(e);
+        _offsetY = _startY - rect.top;
+
+        // Ghost: visual clone that follows the cursor
+        _ghost = row.cloneNode(true);
+        _ghost.className = row.className + ' driver-drag-ghost';
+        _ghost.style.cssText = `
+            position:fixed; left:${rect.left}px; top:${rect.top}px;
+            width:${rect.width}px; height:${rect.height}px;
+            z-index:9999; pointer-events:none; opacity:0.85;
+            box-shadow:0 8px 24px rgba(0,0,0,0.5);
+            border-color: rgba(34,211,238,0.6) !important;
+        `;
+        document.body.appendChild(_ghost);
+
+        // Placeholder: keeps the space in the list
+        _placeholder = _createPlaceholder(rect.height);
+        row.parentNode.insertBefore(_placeholder, row);
+        row.style.display = 'none';
+
+        _dragging = row;
+        _dragging._dragHeight = rect.height;
+
+        document.addEventListener('mousemove', _driverDragMove, { passive: false });
+        document.addEventListener('touchmove', _driverDragMove, { passive: false });
+        document.addEventListener('mouseup',   _driverDragEnd);
+        document.addEventListener('touchend',  _driverDragEnd);
+    };
+
+    function _driverDragMove(e) {
+        if (!_dragging) return;
+        e.preventDefault();
+        const clientY = _getClientY(e);
+        // Move ghost
+        _ghost.style.top = (clientY - _offsetY) + 'px';
+
+        // Find which row the cursor is over to reposition placeholder
+        const rows = _rowsInList();
+        let inserted = false;
+        for (const r of rows) {
+            const rr = r.getBoundingClientRect();
+            if (clientY < rr.top + rr.height / 2) {
+                r.parentNode.insertBefore(_placeholder, r);
+                inserted = true;
+                break;
+            }
+        }
+        if (!inserted) {
+            const list = document.getElementById('driversList');
+            if (list) list.appendChild(_placeholder);
+        }
+    }
+
+    function _driverDragEnd() {
+        if (!_dragging) return;
+        document.removeEventListener('mousemove', _driverDragMove);
+        document.removeEventListener('touchmove', _driverDragMove);
+        document.removeEventListener('mouseup',   _driverDragEnd);
+        document.removeEventListener('touchend',  _driverDragEnd);
+
+        // Insert the real row where the placeholder is
+        _placeholder.parentNode.insertBefore(_dragging, _placeholder);
+        _dragging.style.display = '';
+        _placeholder.remove();
+        _ghost.remove();
+
+        _dragging = null;
+        _ghost    = null;
+        _placeholder = null;
+
+        // Re-check starter radio integrity: if the checked radio is still present nothing
+        // changes; the DOM reorder just changed visual position which is all we need.
+        window.updateStarterVisuals();
+        if (typeof window.runSim === 'function') window.runSim();
     }
 })();

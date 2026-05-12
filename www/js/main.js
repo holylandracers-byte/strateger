@@ -9,8 +9,12 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log("🚀 Strateger Initializing...");
     window._autoStartFired = false;
 
+    // Suppress intermediate runSim calls during the entire init sequence;
+    // a single deferred run fires at the end via checkForSavedRace → scheduleRunSim.
+    window._initRunSimSuppressed = true;
+
     // 🟢 Load viewer's own language preference if available
-    let savedLang = window.role === 'viewer' 
+    let savedLang = window.role === 'viewer'
         ? localStorage.getItem('strateger_viewer_lang') || localStorage.getItem('strateger_lang')
         : localStorage.getItem('strateger_lang');
     
@@ -27,15 +31,28 @@ document.addEventListener('DOMContentLoaded', () => {
         else document.body.style.background = savedBg || '';
     }
 
-    if (typeof window.addDriverField === 'function') {
-        window.addDriverField();
-        window.addDriverField();
+    // Apply hero collapse state
+    if (typeof window._applyHeroState === 'function') window._applyHeroState();
+
+    // Show/hide consecutive stints row based on allowDouble initial state
+    if (typeof window.toggleMaxConsecutive === 'function') window.toggleMaxConsecutive();
+
+    // Init driver group UI (loads saved pool, pre-selects all, populates driversList)
+    if (typeof window.initDriverGroupUI === 'function') {
+        window.initDriverGroupUI();
+    } else {
+        if (typeof window.ensureMinimumDrivers === 'function') {
+            window.ensureMinimumDrivers(2);
+        } else if (typeof window.addDriverField === 'function') {
+            window.addDriverField();
+            window.addDriverField();
+        }
     }
 
-    // Calculate initial strategy from default params
-    if (typeof window.runSim === 'function') {
-        window.runSim();
+    if (typeof window.initVenueLocationPicker === 'function') {
+        window.initVenueLocationPicker();
     }
+    // runSim is triggered once by checkForSavedRace (called below) — no separate call needed
     
     const urlParams = new URLSearchParams(window.location.search);
     const joinCode = urlParams.get('join');
@@ -76,6 +93,18 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
         window.role = 'host';
         if (typeof window.checkForSavedRace === 'function') window.checkForSavedRace();
+
+        // Restore qualifying session if one was running when the page was refreshed
+        const raceRunning = !!localStorage.getItem('strateger_race_interrupted');
+        if (!raceRunning && typeof window.restoreQualifyState === 'function' && window.restoreQualifyState()) {
+            const qDash = document.getElementById('qualifyingDashboard');
+            if (qDash) { qDash.classList.remove('hidden'); qDash.style.display = 'flex'; }
+            window._qualifyRenderStageResults && window._qualifyRenderStageResults();
+            window._qualifyRenderTick && window._qualifyRenderTick();
+            if (window._qualifyInterval) clearInterval(window._qualifyInterval);
+            window._qualifyInterval = setInterval(window._qualifyRenderTick, 500);
+            window.showToast && window.showToast('Qualifying session restored', 'info', 3000);
+        }
     }
     
     if(typeof updateModeUI === 'function') updateModeUI();
@@ -303,21 +332,55 @@ window.requestNotificationPermission = function() {
 window.showDemoConfig = function() {
     const modal = document.getElementById('demoConfigModal');
     if (modal) modal.classList.remove('hidden');
+    // Wire up custom fields visibility
+    const raceLengthSel = document.getElementById('demoRaceLength');
+    const customFields = document.getElementById('demoCustomLengthFields');
+    if (raceLengthSel && customFields) {
+        const updateCustom = () => {
+            if (raceLengthSel.value === 'custom') {
+                customFields.classList.remove('hidden');
+            } else {
+                customFields.classList.add('hidden');
+            }
+        };
+        raceLengthSel.removeEventListener('change', updateCustom);
+        raceLengthSel.addEventListener('change', updateCustom);
+        updateCustom();
+    }
 };
 
 window.confirmDemoStart = function() {
-    // Read user feature choices into demoConfig
+    const raceLength = document.getElementById('demoRaceLength')?.value || 'endurance';
+    let customDuration = null;
+    let customDurationMinutes = null;
+    if (raceLength === 'custom') {
+        const rawHrs = parseInt(document.getElementById('demoCustomHours')?.value || '0', 10);
+        const rawMins = parseInt(document.getElementById('demoCustomMinutes')?.value || '0', 10);
+        const hrs = Number.isFinite(rawHrs) ? Math.max(0, rawHrs) : 0;
+        const mins = Number.isFinite(rawMins) ? Math.max(0, Math.min(59, rawMins)) : 0;
+        customDurationMinutes = (hrs * 60) + mins;
+        if (customDurationMinutes <= 0) {
+            if (typeof window.showToast === 'function') window.showToast('Please set a custom demo duration (hours/minutes).', 'warning');
+            return;
+        }
+        customDuration = customDurationMinutes / 60;
+    }
     window.demoConfig = {
+        raceLength,
+        customDuration,
+        customDurationMinutes,
+        gridSize: parseInt(document.getElementById('demoGridSize')?.value || '20', 10),
+        chaosLevel: document.getElementById('demoChaosLevel')?.value || 'normal',
         rain: document.getElementById('demoFeatRain')?.checked ?? true,
         penalties: document.getElementById('demoFeatPenalties')?.checked ?? true,
         tires: document.getElementById('demoFeatTires')?.checked ?? true,
         squads: document.getElementById('demoFeatSquads')?.checked ?? false,
         fuel: document.getElementById('demoFeatFuel')?.checked ?? false,
+        safetyCar: document.getElementById('demoFeatSafetyCar')?.checked ?? true,
+        incidents: document.getElementById('demoFeatIncidents')?.checked ?? true,
     };
-    // Close the config modal
     const modal = document.getElementById('demoConfigModal');
     if (modal) modal.classList.add('hidden');
-    // Start the demo race
     window.startDemoRace();
 };
 
@@ -328,28 +391,50 @@ window.startDemoRace = function() {
     const wasPro = window._proUnlocked;
     window._proUnlocked = true;
 
-    // === 1. RACE PARAMETERS — 30 min kart endurance demo ===
     const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
     const setChecked = (id, val) => { const el = document.getElementById(id); if (el) el.checked = val; };
 
-    setVal('raceDuration', '0.5');       // 30 minutes
-    setVal('reqPitStops', '2');          // 2 mandatory pit stops
-    setVal('minStint', '5');             // min stint 5 min
-    setVal('maxStint', '15');            // max stint 15 min
-    setVal('minPitTime', '60');          // 1 minute pit time
-    setVal('pitClosedStart', '2');       // pit closed first 2 min
-    setVal('pitClosedEnd', '2');         // pit closed last 2 min
-    setVal('minDriverTime', '0');        // no min driver total
-    setVal('maxDriverTime', '15');       // max 15 min per driver
-    setVal('releaseBuffer', '5');        // 5 sec buffer alert
-    setChecked('allowDouble', false);    // no double stints
-    setChecked('trackFuel', window.demoConfig?.fuel ?? false);  // fuel based on demo config
+    // === 1. RACE PARAMETERS — profile-based ===
+    const profileMap = {
+        sprint:    { duration: 0.5, stops: 2, minStint: 5,  maxStint: 15 },
+        club:      { duration: 1,   stops: 3, minStint: 8,  maxStint: 22 },
+        endurance: { duration: 3,   stops: 6, minStint: 18, maxStint: 40 },
+        pro:       { duration: 6,   stops: 10, minStint: 25, maxStint: 55 }
+    };
+
+    let profile;
+    if (window.demoConfig?.raceLength === 'custom' && Number.isFinite(window.demoConfig?.customDuration) && window.demoConfig.customDuration > 0) {
+        const durationMin = Math.round(window.demoConfig.customDuration * 60);
+        const targetAvg = window.demoConfig.customDuration >= 8 ? 45 : (window.demoConfig.customDuration >= 3 ? 35 : 22);
+        const suggestedStints = Math.max(2, Math.round(durationMin / targetAvg));
+        const suggestedStops = Math.max(1, suggestedStints - 1);
+        const avgStint = durationMin / (suggestedStops + 1);
+        const minStint = Math.max(8, Math.round(avgStint * 0.75));
+        const maxStint = Math.max(minStint + 8, Math.round(avgStint * 1.35));
+        profile = { duration: window.demoConfig.customDuration, stops: suggestedStops, minStint, maxStint };
+    } else {
+        profile = profileMap[window.demoConfig?.raceLength] || profileMap.endurance;
+    }
+
+    setVal('raceDuration', String(profile.duration));
+    setVal('reqPitStops', String(profile.stops));
+    setVal('minStint', String(profile.minStint));
+    setVal('maxStint', String(profile.maxStint));
+    setVal('raceLocation', 'Spa, Belgium');
+    if (typeof window.syncRaceLocation === 'function') window.syncRaceLocation('Spa, Belgium');
+    setVal('minPitTime', '60');
+    setVal('pitClosedStart', '2');
+    setVal('pitClosedEnd', '2');
+    setVal('minDriverTime', '0');
+    setVal('maxDriverTime', String(Math.max(15, Math.round((profile.duration * 60) / 2))));
+    setVal('releaseBuffer', '5');
+    setChecked('allowDouble', false);
+    setChecked('trackFuel', window.demoConfig?.fuel ?? false);
     if (window.demoConfig?.fuel) {
-        setVal('fuelTime', '12');         // 12 min fuel tank for demo
+        setVal('fuelTime', '12');
         if (typeof window.toggleFuelInput === 'function') window.toggleFuelInput();
     }
 
-    // Squads based on demo config
     const squadsEl = document.getElementById('numSquads');
     if (squadsEl) {
         squadsEl.value = (window.demoConfig?.squads) ? '2' : '0';
@@ -361,39 +446,36 @@ window.startDemoRace = function() {
     setVal('raceStartTime', `${String(nowDate.getHours()).padStart(2,'0')}:${String(nowDate.getMinutes()).padStart(2,'0')}`);
     setVal('raceStartDate', nowDate.toISOString().split('T')[0]);
 
-    // === 3. DRIVERS — 3 demo drivers with colors ===
+    // === 3. DRIVERS — scale with gridSize ===
     const demoDrivers = [
-        { name: 'Alex', color: '#22d3ee' },   // ice blue
-        { name: 'Jordan', color: '#f59e0b' },  // amber
-        { name: 'Sam', color: '#10b981' }       // green
+        { name: 'Alex',   color: '#22d3ee' },
+        { name: 'Jordan', color: '#f59e0b' },
+        { name: 'Sam',    color: '#10b981' },
+        { name: 'Noa',    color: '#f472b6' },
+        { name: 'Lior',   color: '#a78bfa' },
+        { name: 'Mia',    color: '#38bdf8' }
     ];
+    const targetDrivers = Math.min(6, Math.max(3, Math.ceil((window.demoConfig?.gridSize || 20) / 6)));
 
-    // Ensure we have the right number of driver rows
-    const rows = document.querySelectorAll('.driver-row');
-    if (rows.length < demoDrivers.length) {
-        while (document.querySelectorAll('.driver-row').length < demoDrivers.length) {
-            if (typeof window.addDriverField === 'function') window.addDriverField();
-        }
+    while (document.querySelectorAll('.driver-row').length < targetDrivers) {
+        if (typeof window.addDriverField === 'function') window.addDriverField();
     }
-    // Remove excess rows
-    while (document.querySelectorAll('.driver-row').length > demoDrivers.length) {
+    while (document.querySelectorAll('.driver-row').length > targetDrivers) {
         if (typeof window.removeDriverField === 'function') window.removeDriverField();
     }
 
-    // Fill driver names and colors
     document.querySelectorAll('.driver-row').forEach((row, i) => {
-        const driver = demoDrivers[i];
+        const driver = demoDrivers[i % demoDrivers.length];
         if (!driver) return;
         const nameInput = row.querySelector('input[type="text"]');
         if (nameInput) nameInput.value = driver.name;
         const colorInput = row.querySelector('input[type="color"]');
         if (colorInput) colorInput.value = driver.color;
-        // Assign squads if enabled: Alex+Jordan=A, Sam=B
         if (window.demoConfig?.squads) {
             const squadVal = row.querySelector('.squad-value');
             const squadDisplay = row.querySelector('.squad-toggle-container > div:last-child');
             if (squadVal && squadDisplay) {
-                const sq = i < 2 ? 0 : 1; // A=0, B=1
+                const sq = i < 2 ? 0 : 1;
                 squadVal.value = String(sq);
                 squadDisplay.innerText = ['A','B','C','D'][sq];
                 squadDisplay.style.background = ['#3b82f6','#06b6d4','#a855f7','#f97316'][sq];
@@ -402,19 +484,12 @@ window.startDemoRace = function() {
     });
 
     // === 4. GENERATE & RUN ===
-    // Restore Pro state after demo setup
     window._proUnlocked = wasPro;
 
-    // Generate strategy with all the configured parameters
     if (typeof window.runSim === 'function') window.runSim();
-
-    // Activate demo live timing
     if (typeof window.startDemoMode === 'function') window.startDemoMode();
-
-    // Start the race
     if (typeof window.initRace === 'function') window.initRace();
 
-    // Show demo badge
     const badge = document.getElementById('demoBadge');
     if (badge) badge.classList.remove('hidden');
 };
@@ -541,9 +616,10 @@ window.recalculateTargetStint = function() {
             const raceMs = window.config.raceMs || (parseFloat(window.config.duration) * 3600000);
             const now = window.getSyncedNow();
             let raceRemaining = raceMs - (now - window.state.startTime);
-            // Use live timing race clock when available
+            // Use live timing race clock when available — interpolate between API updates
             if (window.liveData && window.liveData.raceTimeLeftMs != null) {
-                raceRemaining = window.liveData.raceTimeLeftMs;
+                const sinceReceived = window.liveData._raceTimeReceivedAt ? (Date.now() - window.liveData._raceTimeReceivedAt) : 0;
+                raceRemaining = Math.max(0, window.liveData.raceTimeLeftMs - sinceReceived);
             }
             const stintElapsed = (now - window.state.stintStart) + (window.state.stintOffset || 0);
             window.state.targetStintMs = stintElapsed + Math.max(0, raceRemaining);
@@ -553,6 +629,15 @@ window.recalculateTargetStint = function() {
                 window.state.targetStintMs = window.state.stintTargets[currentStintIdx];
             }
         }
+    }
+};
+
+window.syncRaceLocation = function(value) {
+    const raceLocation = String(value || '').trim();
+    // Keep race location as the single source of truth.
+    if (raceLocation && typeof window.refreshVenueWeather === 'function') {
+        const selectedPlace = (typeof window.resolveVenueLocation === 'function') ? window.resolveVenueLocation(raceLocation) : null;
+        window.refreshVenueWeather(raceLocation, selectedPlace);
     }
 };
 
@@ -728,6 +813,10 @@ window.tick = function() {
         window.showToast('🏁 ' + (window.t ? window.t('raceFinished') : 'RACE FINISHED!'), 'success', 6000);
         window.haptic('success');
 
+        // Show confirm finish button in the bottom dock
+        const finishBtn = document.getElementById('confirmRaceFinishBtn');
+        if (finishBtn) finishBtn.classList.remove('hidden');
+
         // Finalize the last driver's stint BEFORE saving history
         if (typeof window.finalizeLastStint === 'function') window.finalizeLastStint();
 
@@ -741,6 +830,18 @@ window.tick = function() {
         return;
     }
     window.renderFrame();
+};
+
+window.confirmRaceFinish = function() {
+    const btn = document.getElementById('confirmRaceFinishBtn');
+    if (btn) btn.classList.add('hidden');
+    // Show summary if available, otherwise go back to setup
+    if (typeof window.showRaceSummary === 'function') {
+        window.showRaceSummary();
+    } else {
+        document.getElementById('raceDashboard')?.classList.add('hidden');
+        document.getElementById('setupScreen')?.classList.remove('hidden');
+    }
 };
 
 // Stops all running intervals/timers when the race ends
@@ -834,8 +935,10 @@ window.renderFrame = function() {
         let raceRemainingRaw = raceMs - raceElapsedRaw;
         
         // Use live timing race clock when available (more accurate than local timer)
+        // Interpolate between API updates: subtract elapsed time since the last API response
         if (window.liveData && window.liveData.raceTimeLeftMs != null && window.liveData.raceTimeLeftMs >= 0) {
-            raceRemainingRaw = window.liveData.raceTimeLeftMs;
+            const sinceReceived = window.liveData._raceTimeReceivedAt ? (Date.now() - window.liveData._raceTimeReceivedAt) : 0;
+            raceRemainingRaw = Math.max(0, window.liveData.raceTimeLeftMs - sinceReceived);
         }
 
         // Floor elapsed to whole seconds — derive remaining from the SAME boundary
@@ -995,6 +1098,11 @@ window.renderFrame = function() {
         updateWeatherUI();
         updateModeUI();
 
+        // === Update live timing UI (needed for viewers who receive liveData via broadcast) ===
+        if (typeof window.updateLiveTimingUI === 'function' && window.liveTimingConfig && window.liveTimingConfig.enabled) {
+            window.updateLiveTimingUI();
+        }
+
         // === Update new dashboard overlays ===
         window.updatePitWindowBanner();
         window.updateNextDriverBanner();
@@ -1005,149 +1113,221 @@ window.renderFrame = function() {
     }
 };
 
+// On-the-go strategy recalc: if actual current stint diverges >6 min from plan,
+// redistribute remaining stint targets from the current stint onward.
+// This keeps future pills accurate after an unplanned long/short stint.
+const _STINT_DRIFT_THRESHOLD_MS = 6 * 60000;
+let _lastDriftCheck = 0;
+function _maybeRecalcAfterDrift() {
+    if (!window.state?.raceStarted || !window.state?.stintStart) return;
+    const now = Date.now();
+    if (now - _lastDriftCheck < 15000) return; // check at most every 15 s
+    _lastDriftCheck = now;
+
+    const currentStintIdx = Math.max(0, (window.state.globalStintNumber || 1) - 1);
+    const planned = Array.isArray(window.state.stintTargets) ? window.state.stintTargets[currentStintIdx] : null;
+    if (!planned) return;
+
+    const elapsed = (now - window.state.stintStart) + (window.state.stintOffset || 0);
+    const drift = Math.abs(elapsed - planned);
+    if (drift < _STINT_DRIFT_THRESHOLD_MS) return;
+
+    // Current stint already deviated — update its target to actual elapsed so far,
+    // then regenerate remaining stint targets using the available future time.
+    const raceMs = (window.config?.duration || 0) * 3600000;
+    const raceStartMs = window.state.startTime || Date.now();
+    const totalElapsedMs = now - raceStartMs;
+    const raceRemainingMs = Math.max(0, raceMs - totalElapsedMs);
+
+    const pitTimeSec = parseFloat(window.config?.minPitSec || window.config?.pitTime) || 0;
+    const pitTimeMs = pitTimeSec * 1000;
+    const stopsDone = window.state.pitCount || 0;
+    const totalStops = parseInt(window.config?.reqStops) || 0;
+    const futureStints = Math.max(0, totalStops - stopsDone);
+    if (futureStints === 0) return;
+
+    const futurePitTimeLoss = futureStints * pitTimeMs;
+    const futurePool = raceRemainingMs - futurePitTimeLoss;
+    if (futurePool <= 0) return;
+
+    // Redistribute future stints evenly (respecting min/max if set)
+    const minStintMs = (parseFloat(window.config?.minStint) || 0) * 60000;
+    const maxStintMs = (parseFloat(window.config?.maxStint) || Infinity) * 60000;
+    const safMin = Math.max(minStintMs, 60000);
+    const safMax = maxStintMs === Infinity ? futurePool : maxStintMs;
+    const avgMs = futurePool / futureStints;
+    const clampedAvg = Math.max(safMin, Math.min(safMax, avgMs));
+
+    const newTargets = [...(window.state.stintTargets || [])];
+    // Fix current stint to actual elapsed so far
+    newTargets[currentStintIdx] = elapsed;
+    // Spread remaining evenly
+    for (let i = currentStintIdx + 1; i < currentStintIdx + 1 + futureStints && i < newTargets.length; i++) {
+        newTargets[i] = clampedAvg;
+    }
+    window.state.stintTargets = newTargets;
+    console.log(`♻️ Stint drift ${(drift/60000).toFixed(1)}m — recalculated remaining targets`);
+}
+
 function updateRemainingStrategyLogic(raceRemainingMs) {
     const panel = document.getElementById('remainingStintsPanel');
-    const textField = document.getElementById('remStintsText');
+    const pillsEl = document.getElementById('remStintsText');
     const timeField = document.getElementById('remTimeText');
     const t = window.t || ((k) => k);
-    
+
     if (!panel || window.role !== 'host') return;
     panel.classList.remove('hidden');
 
-    // קריאת הגדרות - המרה למספרים למניעת שגיאות
-    const maxStintVal = parseFloat(window.config.maxStint) || 60;
-    const minStintVal = parseFloat(window.config.minStint) || 15; // הערך שהגדרת (למשל 30)
-    
-    const maxStintMs = maxStintVal * 60000;
-    const minStintMs = minStintVal * 60000;
-    const pitTimeMs = (parseFloat(window.config.minPitSec) || 60) * 1000;
-    
-    // חישוב סטינטים עתידיים
+    // Check if actual stint diverged from plan and update targets accordingly
+    _maybeRecalcAfterDrift();
+
+    // Support optional min/max — if not set, treat as unconstrained
+    const maxStintRaw = parseFloat(window.config.maxStint);
+    const minStintRaw = parseFloat(window.config.minStint);
+    const hasMaxStint = !isNaN(maxStintRaw) && maxStintRaw > 0;
+    const hasMinStint = !isNaN(minStintRaw) && minStintRaw > 0;
+
+    // 2-minute tolerance band around max and min
+    const TOLERANCE_MS = 2 * 60000;
+
+    const maxStintVal = hasMaxStint ? maxStintRaw : null;
+    const minStintVal = hasMinStint ? minStintRaw : null;
+    const maxStintMs = hasMaxStint ? maxStintRaw * 60000 : Infinity;
+    const minStintMs = hasMinStint ? minStintRaw * 60000 : 0;
+
+    // Pit time: optional — if not set, use 0
+    const pitTimeSec = parseFloat(window.config.minPitSec) || parseFloat(window.config.pitTime) || 0;
+    const pitTimeMs = pitTimeSec * 1000;
+
     const stopsDone = window.state.pitCount;
     const totalStopsRequired = parseInt(window.config.reqStops) || 0;
     const futureStints = Math.max(0, totalStopsRequired - stopsDone);
-    
-    // חישוב זמן נטו שנשאר לנהיגה בעתיד
+
     const now = window.getSyncedNow();
     const currentStintElapsed = (now - window.state.stintStart) + (window.state.stintOffset || 0);
-    const targetStintMs = window.state.targetStintMs || maxStintMs;
-    // הזמן שנשאר לנהוג בסטינט הנוכחי עד ליעד שלו
+    const targetStintMs = window.state.targetStintMs || (hasMaxStint ? maxStintMs : 60 * 60000);
     const timeToFinishCurrent = Math.max(0, targetStintMs - currentStintElapsed);
-    
     const futurePitTimeLoss = futureStints * pitTimeMs;
-    // ה"בריכה" של הזמן שנשאר לחלק בין הסטינטים העתידיים
     const futurePoolMs = raceRemainingMs - timeToFinishCurrent - futurePitTimeLoss;
 
+    timeField.innerText = window.formatTimeHMS(raceRemainingMs);
+
+    // Helper: build one stint pill
+    function pill(label, cls, title) {
+        return `<span class="stint-outlook-pill ${cls}" title="${title || ''}">${label}</span>`;
+    }
+
+    // Classify a stint duration in ms using 2-minute tolerance bands
+    function classifyStint(ms) {
+        if (hasMaxStint && ms >= maxStintMs - TOLERANCE_MS) return 'max';
+        if (hasMinStint && ms <= minStintMs + TOLERANCE_MS) return 'min';
+        return 'normal';
+    }
+
     if (raceRemainingMs <= 0) {
-        textField.innerText = t('finalLap');
+        pillsEl.innerHTML = pill(t('finalLap'), 'pill-final');
         return;
     }
 
-    // אם אין יותר עצירות (אנחנו בסטינט האחרון)
     if (futureStints === 0) {
-        textField.innerHTML = `<span class="text-ice font-bold">${t('finalLap')} / ${t('rest')}</span>`;
-        timeField.innerText = window.formatTimeHMS(raceRemainingMs);
+        pillsEl.innerHTML = pill(t('finalLap'), 'pill-final') + pill(t('rest'), 'pill-rest');
         return;
     }
 
-    // --- חישוב החלוקה ---
     const minTotalTime = futureStints * minStintMs;
     const maxTotalTime = futureStints * maxStintMs;
-    const bufferMs = futurePoolMs - minTotalTime;
-    const bufferMin = Math.floor(bufferMs / 60000);
+    const bufferMs = hasMinStint ? (futurePoolMs - minTotalTime) : 0;
 
-    let html = "";
-
-    // כותרת קטנה: כמה סטינטים נשארו
-    html += `<div class="text-[10px] text-gray-400 mb-1 border-b border-gray-700 pb-1">
-                ${t('future')}: <span class="text-white font-bold">${futureStints} ${t('stopsHeader')}</span>
-             </div>`;
-
-    if (bufferMs < 0) {
-        // המצב שתיארת: גם אם ניסע מינימום בכל הסטינטים, חסר זמן!
+    if (hasMinStint && bufferMs < 0) {
         const missingMin = Math.abs(Math.ceil(bufferMs / 60000));
-        html += `<span class="text-red-500 font-bold animate-pulse">${t('impossible')} (-${missingMin}m)</span>`;
-    } 
-    else if (futurePoolMs > maxTotalTime) {
-        // נשאר יותר מדי זמן -> חייבים להוסיף עצירה
-        const extraMin = Math.ceil((futurePoolMs - maxTotalTime) / 60000);
-        html += `<span class="text-red-500 font-bold">${t('addStop')} (+${extraMin}m)</span>`;
-    } 
-    else {
-        // === Balanced split strategy ===
-        // Calculate equal distribution across future stints
-        const avgMs = futurePoolMs / futureStints;
-        const avgMin = Math.floor(avgMs / 60000);
-        
-        // Check if equal distribution is valid (within min/max bounds)
-        const equalValid = avgMs >= minStintMs && avgMs <= maxStintMs;
-        
-        // Greedy approach: fill as many stints as possible at max, leave rest
-        const fullMaxStints = Math.floor(futurePoolMs / maxStintMs);
-        const greedyCount = Math.min(futureStints - 1, fullMaxStints);
-        const timeUsedByMax = greedyCount * maxStintMs;
-        const greedyRemainingTime = futurePoolMs - timeUsedByMax;
-        const greedyRestCount = futureStints - greedyCount;
-        const greedyRestAvgMs = greedyRemainingTime / greedyRestCount;
-        const greedyRestAvgMin = Math.floor(greedyRestAvgMs / 60000);
-        
-        // Use greedy only if the rest stints are >= min; otherwise fall back to balanced
-        const greedyValid = greedyRestAvgMs >= minStintMs;
-        
-        if (greedyValid && greedyCount > 0) {
-            // Greedy approach works — show MAX stints + rest
-            if (greedyCount > 0) {
-                html += `${greedyCount}x <span class="text-neon font-bold">${t('max')}</span> `;
-            }
-            
-            if (greedyRestCount > 0) {
-                let color = "text-white";
-                let note = `(${t('rest')})`;
-                
-                if (greedyRestAvgMin > (maxStintVal - 5)) {
-                    color = "text-neon"; 
-                } else {
-                    color = "text-yellow-400"; 
-                }
+        pillsEl.innerHTML = pill(`${t('impossible')} −${missingMin}m`, 'pill-impossible');
+        return;
+    }
 
-                html += `+ ${greedyRestCount}x <span class="${color} font-bold">${greedyRestAvgMin}m ${note}</span>`;
+    if (hasMaxStint && futurePoolMs > maxTotalTime) {
+        const extraMin = Math.ceil((futurePoolMs - maxTotalTime) / 60000);
+        pillsEl.innerHTML = pill(`${t('addStop')} +${extraMin}m`, 'pill-add-stop');
+        return;
+    }
+
+    // --- Build per-stint breakdown ---
+    // Prefer the real per-stint targets for this race when available.
+    const stintDescriptors = [];
+    const stintTargets = Array.isArray(window.state?.stintTargets) ? window.state.stintTargets : [];
+    const currentStintIdx = Math.max(0, (window.state?.globalStintNumber || 1) - 1);
+    const upcomingTargets = stintTargets.slice(currentStintIdx + 1, currentStintIdx + 1 + futureStints);
+
+    if (upcomingTargets.length === futureStints) {
+        upcomingTargets.forEach(ms => {
+            const safeMs = Math.max(0, Number(ms) || 0);
+            const type = classifyStint(safeMs);
+            stintDescriptors.push({ type, ms: safeMs, min: Math.round(safeMs / 60000) });
+        });
+    } else {
+        const avgMs = futurePoolMs / futureStints;
+        const avgMin = Math.round(avgMs / 60000);
+
+        // Fallback: derive a reasonable projection when explicit stint targets are not available.
+        if (hasMaxStint) {
+            const fullMaxStints = Math.floor(futurePoolMs / maxStintMs);
+            const greedyCount = Math.min(futureStints - 1, fullMaxStints);
+            const greedyRemainingMs = futurePoolMs - greedyCount * maxStintMs;
+            const greedyRestCount = futureStints - greedyCount;
+            const greedyRestAvgMs = greedyRemainingMs / greedyRestCount;
+            const greedyValid = !hasMinStint || greedyRestAvgMs >= minStintMs;
+
+            if (greedyValid && greedyCount > 0) {
+                for (let i = 0; i < greedyCount; i++) stintDescriptors.push({ type: 'max', ms: maxStintMs });
+                const restMin = Math.round(greedyRestAvgMs / 60000);
+                const restType = classifyStint(greedyRestAvgMs);
+                for (let i = 0; i < greedyRestCount; i++) stintDescriptors.push({ type: restType, ms: greedyRestAvgMs, min: restMin });
+            } else {
+                const type = classifyStint(avgMs);
+                for (let i = 0; i < futureStints; i++) stintDescriptors.push({ type, ms: avgMs, min: avgMin });
             }
         } else {
-            // Greedy would create invalid stints — use balanced distribution
-            let color = "text-white";
-            let note = `(${t('rest')})`;
-            
-            if (!equalValid && avgMs < minStintMs) {
-                color = "text-red-500 animate-pulse font-bold";
-                note = `(< ${minStintVal}m!)`;
-            } else if (!equalValid && avgMs > maxStintMs) {
-                color = "text-red-500 font-bold";
-                note = `(> ${maxStintVal}m!)`;
-            } else if (avgMin > (maxStintVal - 5)) {
-                color = "text-neon";
-            } else if (avgMin >= minStintVal) {
-                color = "text-yellow-400";
-            }
-            
-            html += `${futureStints}x <span class="${color} font-bold">~${avgMin}m ${note}</span>`;
-        }
-
-        // Buffer line: how much "spare" above minimum
-        html += `<div class="text-[9px] text-gray-500 mt-1">
-                    ${t('buffer')}: ${bufferMin}m
-                 </div>`;
-        // Margin: show how far each stint is from the min/max limits
-        const marginFromMax = Math.floor((maxStintMs - avgMs) / 60000);
-        const marginFromMin = Math.floor((avgMs - minStintMs) / 60000);
-        if (marginFromMax >= 0 && marginFromMin >= 0) {
-            html += `<div class="text-[9px] text-gray-500">
-                        ±${Math.min(marginFromMax, marginFromMin)}m ${t('buffer')}
-                     </div>`;
+            const type = (hasMinStint && avgMs < minStintMs) ? 'impossible' : 'normal';
+            for (let i = 0; i < futureStints; i++) stintDescriptors.push({ type, ms: avgMs, min: avgMin });
         }
     }
-    
-    textField.innerHTML = html;
-    timeField.innerText = window.formatTimeHMS(raceRemainingMs);
+
+    // Collapse consecutive identical pills into "Nx" groups, then render
+    const groups = [];
+    stintDescriptors.forEach(s => {
+        const last = groups[groups.length - 1];
+        const key = (s.type === 'normal' || s.type === 'min') ? `${s.type}-${s.min}` : s.type;
+        if (last && last.key === key) {
+            last.count++;
+        } else {
+            groups.push({ key, type: s.type, min: s.min, count: 1 });
+        }
+    });
+
+    let phtml = '';
+    groups.forEach(g => {
+        const prefix = g.count > 1 ? `${g.count}× ` : '';
+        if (g.type === 'max') {
+            const label = hasMaxStint ? ` (${maxStintVal}m)` : '';
+            phtml += pill(`${prefix}${t('max')}${label}`, 'pill-max');
+        } else if (g.type === 'min') {
+            const label = hasMinStint ? ` (${minStintVal}m)` : '';
+            phtml += pill(`${prefix}${t('min') || 'MIN'}${label}`, 'pill-min');
+        } else if (g.type === 'normal') {
+            phtml += pill(`${prefix}${t('norm') || 'NORM'} ${g.min}m`, 'pill-normal');
+        } else {
+            phtml += pill(`${prefix}${g.min}m ⚠`, 'pill-impossible');
+        }
+    });
+
+    // Buffer hint (only meaningful when min is constrained)
+    if (hasMinStint) {
+        const bufferMin = Math.floor(bufferMs / 60000);
+        if (bufferMin > 0) {
+            phtml += `<span class="text-[9px] text-gray-600 self-center ml-1">+${bufferMin}m</span>`;
+        }
+    }
+
+    pillsEl.innerHTML = phtml;
 }
 
 window.updatePitModalLogic = function() {
@@ -1274,6 +1454,9 @@ window.updatePitModalLogic = function() {
     }
 
     window.alertState.lastZone = pitZone;
+
+    // Run advanced pit-stop advice (both-timestamps vs pit-in-only scenarios)
+    if (typeof window._runPitAdvice === 'function') window._runPitAdvice();
 };
 
 // ==========================================
@@ -1317,6 +1500,18 @@ window.confirmPitEntry = function(autoDetected) {
     if (window.state.isFinished || (!window.state.isRunning && window.state.startTime)) return;
     // Guard: prevent re-entry if already in pit
     if (window.state.isInPit) return;
+
+    // Guard: when live timing is active, block manual pit entry — live timing is authoritative
+    if (!autoDetected && window.liveTimingConfig && window.liveTimingConfig.enabled && window.liveTimingManager) {
+        const stats = window.liveTimingManager.getStats();
+        if (stats && stats.isRunning) {
+            console.log('[PitEntry] Manual pit entry blocked — live timing is authoritative');
+            if (typeof window._fireStrategyNotification === 'function') {
+                window._fireStrategyNotification('🔒 Pit entry is auto-tracked from live timing', 'info');
+            }
+            return;
+        }
+    }
     
     // Guard: cooldown to prevent rapid pit cycling (min 10s between manual pit entries)
     // Skip cooldown if auto-detected from live timing — live timing is authoritative
@@ -1395,13 +1590,55 @@ window._executePitEntry = function(isShortStint) {
 
     if (window.pitInterval) clearInterval(window.pitInterval);
     window.pitInterval = setInterval(window.updatePitModalLogic, 100);
-    
+
+    // Show inline pit dock in the bottom dock
+    window._showInlinePitDock();
+
     if (typeof window.broadcast === 'function') window.broadcast();
     window.renderFrame();
 };
 
+window._inlinePitInterval = null;
+
+window._showInlinePitDock = function() {
+    const dock = document.getElementById('pitInlineDock');
+    const timerEl = document.getElementById('pitInlineTimer');
+    const banner = document.getElementById('pitInlineReadyBanner');
+    if (!dock) return;
+    dock.classList.remove('hidden');
+    if (banner) banner.classList.add('hidden');
+    clearInterval(window._inlinePitInterval);
+    window._inlinePitInterval = setInterval(() => {
+        const now = (window.getSyncedNow && typeof window.getSyncedNow === 'function') ? window.getSyncedNow() : Date.now();
+        const elapsed = (now - (window.state.pitStart || now)) / 1000;
+        const required = Math.max(0, parseInt(window.config.minPitTime || window.config.pitTime) || 0);
+        const remaining = Math.max(0, required - elapsed);
+        if (timerEl) {
+            timerEl.textContent = remaining > 0
+                ? `-${String(Math.floor(remaining / 60)).padStart(2,'0')}:${String(Math.floor(remaining % 60)).padStart(2,'0')}`
+                : `+${String(Math.floor(elapsed / 60)).padStart(2,'0')}:${String(Math.floor(elapsed % 60)).padStart(2,'0')}`;
+            timerEl.className = remaining > 0
+                ? 'text-2xl font-mono font-black text-yellow-400'
+                : 'text-2xl font-mono font-black text-green-400';
+        }
+        if (banner && remaining === 0) {
+            banner.textContent = (window.t ? window.t('go') : 'GO! GO! GO!');
+            banner.className = 'flex-1 py-2 rounded-lg text-center font-black text-base tracking-wider bg-green-600/30 text-green-300';
+            banner.classList.remove('hidden');
+        }
+    }, 250);
+};
+
+window._hideInlinePitDock = function() {
+    clearInterval(window._inlinePitInterval);
+    window._inlinePitInterval = null;
+    const dock = document.getElementById('pitInlineDock');
+    if (dock) dock.classList.add('hidden');
+};
+
 window.cancelPitStop = function() {
     if (window.pitInterval) clearInterval(window.pitInterval);
+    window._hideInlinePitDock();
     
     window.state.isInPit = false;
     window.state.pendingPitEntry = false;
@@ -1657,11 +1894,24 @@ window.getBoxMessage = function() {
     return t('boxNow');
 };
 
-window.confirmPitExit = function() {
+window.confirmPitExit = function(autoDetected) {
     // Guard: race is finished — no pit actions allowed
     if (window.state.isFinished || (!window.state.isRunning && window.state.startTime)) return;
     // Guard: only exit if actually in pit
     if (!window.state.isInPit) return;
+
+    // Guard: when live timing is active, block manual pit exit — live timing is authoritative
+    if (!autoDetected && window.liveTimingConfig && window.liveTimingConfig.enabled && window.liveTimingManager) {
+        const stats = window.liveTimingManager.getStats();
+        if (stats && stats.isRunning) {
+            console.log('[PitExit] Manual pit exit blocked — live timing is authoritative');
+            if (typeof window._fireStrategyNotification === 'function') {
+                window._fireStrategyNotification('🔒 Pit exit is auto-tracked from live timing', 'info');
+            }
+            return;
+        }
+    }
+
     window.haptic('success');
     
     // Hide undo toast — can't undo after exit
@@ -1677,7 +1927,8 @@ window.confirmPitExit = function() {
 
     if (window.pitInterval) clearInterval(window.pitInterval);
     document.getElementById('pitModal').classList.add('hidden');
-    
+    window._hideInlinePitDock();
+
     if (window.drivers[prevDriverIdx]) {
         const driver = window.drivers[prevDriverIdx];
         if (!driver.logs) driver.logs = [];
@@ -1692,6 +1943,40 @@ window.confirmPitExit = function() {
     window.state.isInPit = false;
     window.state.stintStart = now;
     window.state.stintOffset = 0;
+
+    // Clear advanced pit advice state for next stop
+    window._pitAdvice = null;
+    if (window.liveData) {
+        window.liveData._pitOutAt = null;
+        window.liveData._pitEntryForcedAt = null;
+    }
+    const advEl = document.getElementById('pitAdviceStatus');
+    if (advEl) advEl.classList.add('hidden');
+
+    // On-the-go strategy recalc: compare actual stint duration to plan, redistribute if drifted
+    (function _recalcOnPitExit() {
+        const completedIdx = Math.max(0, (window.state.globalStintNumber || 1) - 1);
+        const targets = window.state.stintTargets;
+        if (!Array.isArray(targets) || targets.length === 0) return;
+        const planned = targets[completedIdx];
+        if (!planned || planned <= 0) return;
+        const drift = Math.abs(driveDuration - planned);
+        if (drift < 3 * 60000) return; // <3 min drift — no recalc needed
+        // Remaining stints after the completed one
+        const remaining = targets.slice(completedIdx + 1);
+        if (remaining.length === 0) return;
+        const totalPlannedRemaining = remaining.reduce((a, b) => a + b, 0);
+        const timeSaved = planned - driveDuration; // positive = did shorter stint
+        const newTotal = totalPlannedRemaining + timeSaved;
+        if (newTotal <= 0) return;
+        const scale = newTotal / totalPlannedRemaining;
+        const newRemaining = remaining.map(t => Math.round(t * scale));
+        for (let i = 0; i < newRemaining.length; i++) {
+            targets[completedIdx + 1 + i] = newRemaining[i];
+        }
+        console.log(`♻️ Pit exit recalc: actual ${(driveDuration/60000).toFixed(1)}m vs planned ${(planned/60000).toFixed(1)}m — redistributed ${newRemaining.length} remaining stints`);
+    })();
+
     window.state.globalStintNumber++;
 
     // Reset stint lap tracking for new driver/stint
@@ -1738,7 +2023,233 @@ window.confirmPitExit = function() {
 };
 
 // ==========================================
-// � CONTACT US MODAL
+// 🏁 ADVANCED PIT-STOP LOGIC
+// ==========================================
+//
+// Per-circuit out-lap duration estimates (seconds) for common endurance karting venues.
+// Used when only a pit-in timestamp is known (no explicit pit-out recorded).
+// Falls back to config.outlap if set, otherwise 120 s.
+window.CIRCUIT_OUTLAP_SEC = {
+    // Format: "hostname_fragment_lowercase": outlapSeconds
+    // Italian circuits
+    'adria':         90,  'cremona':       95,  'franciacorta':  85,
+    'lonato':        80,  'sarno':         75,  'wsbk':          90,
+    'ottobiano':    100,  'jesolo':        85,  'maggiora':      90,
+    'parma':         80,  'viterbo':       95,
+    // Spanish circuits
+    'karting cerdanya': 95,  'zuera':       90,  'motorland':     95,
+    'castelloli':   100,  'galicia':       90,
+    // Belgian / French circuits
+    'karting de spa':  105,  'karting benelux': 95,  'kartland':  85,
+    'le mans':       130,  'angerville':    100,
+    // German circuits
+    'wackersdorf':   120,  'kerpen':         90,  'ampfing':       90,
+    // UK circuits
+    'shenington':    100,  'buckmore':       90,  'rissington':   105,
+    // Default fallback when no match
+    _default:        120
+};
+
+/**
+ * Return the estimated out-lap duration in seconds for the current track.
+ * Checks (in order): config.outlap → circuit name substring match → 120 s.
+ */
+window._getOutlapSec = function() {
+    const fromConfig = parseInt(window.config && window.config.outlap) || 0;
+    if (fromConfig > 0) return fromConfig;
+
+    // Try to match circuit name / URL from state / live timing
+    const trackName = (
+        (window.state && window.state.venueName) ||
+        (window.liveData && window.liveData.trackName) ||
+        (document.getElementById('raceLocation') && document.getElementById('raceLocation').value) ||
+        ''
+    ).toLowerCase();
+
+    for (const [key, sec] of Object.entries(window.CIRCUIT_OUTLAP_SEC)) {
+        if (key !== '_default' && trackName.includes(key)) return sec;
+    }
+    return window.CIRCUIT_OUTLAP_SEC._default;
+};
+
+/**
+ * Scenario A — both pit-in and pit-out timestamps are known (live timing reported both).
+ *
+ * Calculates the actual pit duration and advises the driver:
+ *  - If driver is still far from pit-out lane, prompt to leave `buffer` seconds early.
+ *  - Guarantees the driver will NOT cross pit-out before minPitTime elapses.
+ *
+ * Called from updatePitModalLogic when liveData shows pitOutAt is set.
+ */
+window._handlePitBothTimestamps = function() {
+    if (!window.state.isInPit) return;
+    const t = window.t || (k => k);
+    const now = (window.getSyncedNow && typeof window.getSyncedNow === 'function')
+        ? window.getSyncedNow() : Date.now();
+
+    const pitInAt   = window.state.pitStart;           // ms — set on pit entry
+    const pitOutAt  = window.liveData._pitOutAt || 0;  // ms — set when live timing reports pit-out
+    if (!pitOutAt || pitOutAt <= pitInAt) return;
+
+    const pitDurationMs   = pitOutAt - pitInAt;
+    const minPitMs        = Math.max(0, (parseInt(window.config.minPitTime || window.config.pitTime) || 0) * 1000);
+    const buffer          = parseInt(document.getElementById('releaseBuffer')?.value || '5') * 1000;
+    const outlap          = window._getOutlapSec() * 1000;
+
+    // How far the kart is from pit-out (approximated by using the out-lap time).
+    // We don't know the exact distance, so we use outlap ÷ 2 as an upper-bound
+    // travel time from a mid-lane pit box to the exit line.
+    const estTravelMs = Math.round(outlap / 2);
+
+    // Earliest safe exit: minPitTime must have elapsed since pit-in
+    const earliestExit  = pitInAt + minPitMs;
+    // Latest safe exit: so total = pitDuration + outlap ≥ minPitTime + outlap.
+    // If driver is still inside, they should leave by (earliestExit - travelMs)
+    const recommendedExit = Math.max(now, earliestExit - estTravelMs - buffer);
+
+    const secsUntilExit = Math.max(0, Math.round((recommendedExit - now) / 1000));
+    const pitDurationSec = Math.round(pitDurationMs / 1000);
+
+    // Store for use by updatePitModalLogic
+    window._pitAdvice = {
+        scenario: 'both',
+        pitDurationSec,
+        recommendedExitAt: recommendedExit,
+        secsUntilExit,
+        minPitMs
+    };
+
+    const statusEl = document.getElementById('pitAdviceStatus');
+    if (statusEl) {
+        if (secsUntilExit > 0) {
+            statusEl.textContent = `${t('goOutIn')} ${secsUntilExit}s`;
+            statusEl.className   = 'pit-advice-status text-yellow-300 font-bold';
+        } else {
+            statusEl.textContent = t('go');
+            statusEl.className   = 'pit-advice-status text-green-300 font-black text-xl animate-pulse';
+        }
+        statusEl.classList.remove('hidden');
+    }
+
+    // Toast prompt once when recommended exit window opens
+    if (!window._pitAdvice._goPromptFired && secsUntilExit <= 5) {
+        window._pitAdvice._goPromptFired = true;
+        if (typeof window.showToast === 'function') {
+            window.showToast(t('pitLeaveNow') || '🟢 Leave pit now!', 'success', 4000);
+        }
+        if (typeof window.playReleaseSound === 'function') window.playReleaseSound();
+    }
+};
+
+/**
+ * Scenario B — only a pit-in timestamp exists; no explicit pit-out recorded.
+ *
+ * Calculates the latest safe time to exit the pits so that:
+ *   pitDuration + outLapDuration ≥ minPitTime
+ * i.e. latestExit = pitInAt + minPitTime - outLapDuration
+ *
+ * Shows a countdown telling the driver "Latest exit in Xs" and fires a push
+ * notification when the latest-exit deadline arrives.
+ */
+window._handlePitInOnly = function() {
+    if (!window.state.isInPit) return;
+    const t = window.t || (k => k);
+    const now = (window.getSyncedNow && typeof window.getSyncedNow === 'function')
+        ? window.getSyncedNow() : Date.now();
+
+    const pitInAt    = window.state.pitStart;
+    const minPitMs   = Math.max(0, (parseInt(window.config.minPitTime || window.config.pitTime) || 0) * 1000);
+    const outlap     = window._getOutlapSec() * 1000;
+    const buffer     = parseInt(document.getElementById('releaseBuffer')?.value || '5') * 1000;
+
+    // latestExit so that pitDuration + outlap = minPitTime exactly
+    const latestExitAt  = pitInAt + minPitMs - outlap;
+    // recommendedExit = latestExit - buffer (early warning)
+    const recommendedExit = latestExitAt - buffer;
+
+    const secsSinceIn  = Math.round((now - pitInAt) / 1000);
+    const secsToLatest = Math.max(0, Math.round((latestExitAt - now) / 1000));
+    const secsToRec    = Math.max(0, Math.round((recommendedExit - now) / 1000));
+
+    window._pitAdvice = {
+        scenario: 'inOnly',
+        latestExitAt,
+        recommendedExitAt: recommendedExit,
+        secsToLatest,
+        secsToRec,
+        minPitMs,
+        outlap
+    };
+
+    const statusEl = document.getElementById('pitAdviceStatus');
+    if (statusEl) {
+        if (secsToRec > 0) {
+            statusEl.textContent = `${t('pitLatestExitIn') || 'Latest exit in'} ${secsToRec}s`;
+            statusEl.className   = 'pit-advice-status text-yellow-300 font-bold';
+        } else if (secsToLatest > 0) {
+            statusEl.textContent = `${t('pitLeaveNow') || '⚠️ Leave now!'} (${secsToLatest}s)`;
+            statusEl.className   = 'pit-advice-status text-orange-400 font-black animate-pulse';
+        } else {
+            statusEl.textContent = t('pitLatestExitPassed') || '🚨 EXIT OVERDUE';
+            statusEl.className   = 'pit-advice-status text-red-500 font-black animate-pulse';
+        }
+        statusEl.classList.remove('hidden');
+    }
+
+    // One-shot alert when recommended window arrives
+    if (!window._pitAdvice._warnFired && secsToRec <= 0 && secsToLatest > 0) {
+        window._pitAdvice._warnFired = true;
+        if (typeof window.showToast === 'function') {
+            window.showToast(t('pitLeaveNow') || '⚠️ Leave pit now!', 'warning', 5000);
+        }
+        if (typeof window.playAlertBeep === 'function') window.playAlertBeep('warning');
+    }
+    // One-shot critical alert when latest exit is passed
+    if (!window._pitAdvice._critFired && secsToLatest <= 0) {
+        window._pitAdvice._critFired = true;
+        if (typeof window.showToast === 'function') {
+            window.showToast(t('pitLatestExitPassed') || '🚨 EXIT OVERDUE! Risk of penalty!', 'error', 8000);
+        }
+        if (typeof window.playAlertBeep === 'function') window.playAlertBeep('error');
+        if (typeof window._fireStrategyNotification === 'function') {
+            window._fireStrategyNotification(t('pitLatestExitPassed') || '🚨 EXIT OVERDUE', 'error');
+        }
+    }
+};
+
+/**
+ * Hook into the pit modal tick loop: pick the right scenario and run it.
+ * Called by updatePitModalLogic every 100 ms.
+ */
+window._runPitAdvice = function() {
+    if (!window.state || !window.state.isInPit) {
+        window._pitAdvice = null;
+        return;
+    }
+    const hasPitOut = window.liveData && window.liveData._pitOutAt &&
+                      window.liveData._pitOutAt > (window.state.pitStart || 0);
+    if (hasPitOut) {
+        window._handlePitBothTimestamps();
+    } else {
+        window._handlePitInOnly();
+    }
+};
+
+// Capture pit-out timestamp from live timing updates (called from live-timing.js onUpdate)
+window._capturePitOutFromLive = function(data) {
+    if (!window.state || !window.state.isInPit) return;
+    if (!data || !data.ourTeam) return;
+    // Live timing transitioned from inPit=true → inPit=false for our team
+    const wasInPit = window.liveData && window.liveData.ourTeamInPit;
+    const nowInPit = !!data.ourTeam.inPit;
+    if (wasInPit && !nowInPit) {
+        window.liveData._pitOutAt = Date.now();
+        console.log('[PitAdvice] Recorded pit-out timestamp from live data');
+    }
+};
+
+// ==========================================
+// 📞 CONTACT US MODAL
 // ==========================================
 
 window.openContactUsModal = function() {
@@ -2446,9 +2957,10 @@ window.updateDriverMode = function() {
     const t = window.t || (k => k);
     const raceMs = window.config.raceMs || (parseFloat(window.config.duration) * 3600000);
     let raceRemaining = raceMs - (now - window.state.startTime);
-    // Use live timing race clock when available
+    // Use live timing race clock when available — interpolate between API updates
     if (window.liveData && window.liveData.raceTimeLeftMs != null) {
-        raceRemaining = window.liveData.raceTimeLeftMs;
+        const sinceReceived = window.liveData._raceTimeReceivedAt ? (Date.now() - window.liveData._raceTimeReceivedAt) : 0;
+        raceRemaining = Math.max(0, window.liveData.raceTimeLeftMs - sinceReceived);
     }
     const maxStintMs = (window.config.maxStint * 60000) || (60 * 60000);
     const minStintMs = (window.config.minStint * 60000) || 0;
@@ -2859,19 +3371,30 @@ window.updateProUI = function() {
     const proBtn = document.getElementById('proStatusBtn');
     const lockLT = document.getElementById('proLockLiveTiming');
     const modal = document.getElementById('proUpgradeModal');
-    
-    if (window._proUnlocked) {
-        // Pro active — hide all upgrade prompts
+    const isPro = window._proUnlocked;
+    const isTrial = !isPro && window._trialActive;
+
+    if (isPro) {
         if (banner) banner.classList.add('hidden');
-        if (proBtn) { proBtn.classList.remove('hidden'); proBtn.innerHTML = '⭐ <span>PRO</span>'; }
+        if (proBtn) { proBtn.classList.remove('hidden'); proBtn.innerHTML = '<i class="fas fa-star text-[10px]"></i> <span>PRO</span>'; }
         if (lockLT) lockLT.classList.add('hidden');
-        if (modal) modal.classList.add('hidden'); // close modal if it was open during activation
+        if (modal) modal.classList.add('hidden');
+    } else if (isTrial) {
+        if (banner) banner.classList.add('hidden');
+        const hoursLeft = typeof window.trialHoursLeft === 'function' ? window.trialHoursLeft() : 0;
+        if (proBtn) {
+            proBtn.classList.remove('hidden');
+            proBtn.innerHTML = `<i class="fas fa-clock text-[10px]"></i> <span>TRIAL ${hoursLeft}h</span>`;
+            proBtn.className = proBtn.className.replace(/from-gold[^\s]*/g, '').replace(/to-amber[^\s]*/g, '').trim();
+            proBtn.style.cssText = 'background:linear-gradient(to right,rgba(34,211,238,0.2),rgba(16,185,129,0.2));border-color:rgba(34,211,238,0.4);color:#22d3ee';
+        }
+        if (lockLT) lockLT.classList.add('hidden');
     } else {
-        // Free tier
         if (banner) banner.classList.remove('hidden');
-        if (proBtn) proBtn.classList.add('hidden');
+        if (proBtn) { proBtn.classList.add('hidden'); proBtn.style.cssText = ''; }
         if (lockLT) lockLT.classList.remove('hidden');
     }
+    if (typeof window._refreshTeamLogoBtn === 'function') window._refreshTeamLogoBtn();
 };
 
 // ==========================================
@@ -2879,51 +3402,11 @@ window.updateProUI = function() {
 // ==========================================
 
 window._onboardStep = 0;
-const ONBOARD_STEPS = [
-    { emoji: '🏁', title: 'onboardTitle1', text: 'onboardDesc1' },
-    { emoji: '👥', title: 'onboardTitle2', text: 'onboardDesc2' },
-    { emoji: '📊', title: 'onboardTitle3', text: 'onboardDesc3' },
-    { emoji: '🚀', title: 'onboardTitle4', text: 'onboardDesc4' }
-];
-
 window.startOnboarding = function() {
     if (localStorage.getItem('strateger_onboarded') === 'true') return;
-    window._onboardStep = 0;
-    window._renderOnboardStep();
+    const savedRaceModal = document.getElementById('savedRaceModal');
+    if (savedRaceModal && !savedRaceModal.classList.contains('hidden')) return;
     document.getElementById('onboardingOverlay').classList.remove('hidden');
-};
-
-window._renderOnboardStep = function() {
-    const step = ONBOARD_STEPS[window._onboardStep];
-    const t = window.t || ((k) => k);
-    
-    document.getElementById('onboardEmoji').innerText = step.emoji;
-    document.getElementById('onboardTitle').innerText = t(step.title);
-    document.getElementById('onboardText').innerText = t(step.text);
-    
-    // Update dots
-    const dots = document.getElementById('onboardDots');
-    if (dots) {
-        dots.innerHTML = ONBOARD_STEPS.map((_, i) => 
-            `<span class="w-2 h-2 rounded-full ${i === window._onboardStep ? 'bg-ice' : 'bg-gray-600'}"></span>`
-        ).join('');
-    }
-    
-    // Update button text
-    const nextBtn = document.getElementById('onboardNextBtn');
-    if (nextBtn) {
-        const isLast = window._onboardStep === ONBOARD_STEPS.length - 1;
-        nextBtn.innerText = isLast ? t('onboardDone') : t('onboardNext');
-    }
-};
-
-window.nextOnboardStep = function() {
-    window._onboardStep++;
-    if (window._onboardStep >= ONBOARD_STEPS.length) {
-        window.skipOnboarding();
-        return;
-    }
-    window._renderOnboardStep();
 };
 
 window.skipOnboarding = function() {
@@ -2935,27 +3418,65 @@ window.skipOnboarding = function() {
 // 📄 PDF / IMAGE EXPORT
 // ==========================================
 
+// Expand scroll-clipped elements so html2canvas captures the full content,
+// then restore after capture.
+function _prepareFullCapture() {
+    const els = [];
+    const targets = ['#driverScheduleList', '#previewScreen', '#previewInner', '#previewMainCol'];
+    targets.forEach(sel => {
+        const el = document.querySelector(sel);
+        if (!el) return;
+        const saved = {
+            el,
+            overflow: el.style.overflow,
+            overflowY: el.style.overflowY,
+            height: el.style.height,
+            maxHeight: el.style.maxHeight,
+            flex: el.style.flex
+        };
+        els.push(saved);
+        el.style.overflow = 'visible';
+        el.style.overflowY = 'visible';
+        el.style.height = 'auto';
+        el.style.maxHeight = 'none';
+        if (sel === '#driverScheduleList') el.style.flex = 'none';
+    });
+    return els;
+}
+
+function _restoreAfterCapture(saved) {
+    saved.forEach(s => {
+        s.el.style.overflow = s.overflow;
+        s.el.style.overflowY = s.overflowY;
+        s.el.style.height = s.height;
+        s.el.style.maxHeight = s.maxHeight;
+        s.el.style.flex = s.flex;
+    });
+}
+
 window.exportStrategyImage = async function() {
     if (!window.checkProFeature('pdfExport')) {
         window.showProGate('Image Export');
         return;
     }
-    
-    const target = document.querySelector('#previewScreen > div');
+
+    const target = document.querySelector('#previewScreen');
     if (!target || typeof html2canvas === 'undefined') {
         window.showToast('Export not available. Please try again.', 'error');
         return;
     }
-    
+
+    const saved = _prepareFullCapture();
     try {
         const canvas = await html2canvas(target, {
             backgroundColor: '#020617',
             scale: 2,
             useCORS: true,
-            logging: false
+            allowTaint: false,
+            logging: false,
+            width: target.scrollWidth,
+            height: target.scrollHeight
         });
-        
-        // Download as PNG
         const link = document.createElement('a');
         link.download = `strateger-strategy-${Date.now()}.png`;
         link.href = canvas.toDataURL('image/png');
@@ -2963,6 +3484,8 @@ window.exportStrategyImage = async function() {
     } catch (e) {
         console.error('Image export failed:', e);
         window.showToast('Export failed: ' + e.message, 'error');
+    } finally {
+        _restoreAfterCapture(saved);
     }
 };
 
@@ -2971,40 +3494,44 @@ window.exportStrategyPdf = async function() {
         window.showProGate('PDF Export');
         return;
     }
-    
-    const target = document.querySelector('#previewScreen > div');
+
+    const target = document.querySelector('#previewScreen');
     if (!target || typeof html2canvas === 'undefined' || typeof jspdf === 'undefined') {
         window.showToast('PDF export not available. Please try again.', 'error');
         return;
     }
-    
+
     const t = window.t || ((k) => k);
     const btn = event?.target?.closest?.('button');
     if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ' + t('exportingPdf'); }
-    
+
+    const saved = _prepareFullCapture();
     try {
         const canvas = await html2canvas(target, {
             backgroundColor: '#020617',
             scale: 2,
             useCORS: true,
-            logging: false
+            allowTaint: false,
+            logging: false,
+            width: target.scrollWidth,
+            height: target.scrollHeight
         });
-        
+
         const imgData = canvas.toDataURL('image/png');
         const { jsPDF } = jspdf;
         const pdf = new jsPDF({
             orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
             unit: 'px',
-            format: [canvas.width, canvas.height]
+            format: [canvas.width / 2, canvas.height / 2]
         });
-        
-        pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+        pdf.addImage(imgData, 'PNG', 0, 0, canvas.width / 2, canvas.height / 2);
         pdf.save(`strateger-strategy-${Date.now()}.pdf`);
     } catch (e) {
         console.error('PDF export failed:', e);
         window.showToast('PDF export failed: ' + e.message, 'error');
     } finally {
-        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-file-pdf"></i> <span class="hidden sm:inline">PDF</span>'; }
+        _restoreAfterCapture(saved);
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-file-pdf"></i>'; }
     }
 };
 
@@ -3718,6 +4245,66 @@ window.toggleTimerMode = function() {
 };
 
 // ==========================================
+// 📺 LIVE STRATEGY PREVIEW (mid-race)
+// ==========================================
+
+window.openLivePreview = function() {
+    const previewScreen = document.getElementById('previewScreen');
+    const raceDashboard = document.getElementById('raceDashboard');
+    if (!previewScreen || !window.previewData) return;
+
+    // Mark which stints are done/current based on globalStintNumber
+    const currentStintNum = (window.state.globalStintNumber || 1);
+    const stints = window.previewData.timeline.filter(s => s.type === 'stint');
+    stints.forEach((s, i) => {
+        s._done = (i + 1) < currentStintNum;
+        s._current = (i + 1) === currentStintNum;
+    });
+
+    raceDashboard.classList.add('hidden');
+    previewScreen.classList.remove('hidden');
+
+    // Inject back-to-race button if not already present
+    if (!document.getElementById('livePreviewBackBtn')) {
+        const backBtn = document.createElement('button');
+        backBtn.id = 'livePreviewBackBtn';
+        backBtn.className = 'fixed top-4 right-4 z-50 bg-navy-800 hover:bg-navy-700 border border-gray-600 text-white text-sm font-bold py-2 px-4 rounded-xl shadow-lg transition';
+        backBtn.innerHTML = (window.t ? window.t('backToRace') || '← Back to Race' : '← Back to Race');
+        backBtn.onclick = window.closeLivePreview;
+        document.body.appendChild(backBtn);
+    } else {
+        document.getElementById('livePreviewBackBtn').classList.remove('hidden');
+    }
+
+    if (typeof window.renderPreview === 'function') window.renderPreview();
+    // Disable editing while in live-preview mode
+    document.querySelectorAll('#previewScreen input, #previewScreen button:not(#livePreviewBackBtn)').forEach(el => {
+        el._wasDisabled = el.disabled;
+        el.disabled = true;
+        el.style.pointerEvents = 'none';
+        el.style.opacity = '0.5';
+    });
+};
+
+window.closeLivePreview = function() {
+    const previewScreen = document.getElementById('previewScreen');
+    const raceDashboard = document.getElementById('raceDashboard');
+    if (!previewScreen || !raceDashboard) return;
+    document.querySelectorAll('#previewScreen input, #previewScreen button:not(#livePreviewBackBtn)').forEach(el => {
+        el.disabled = !!el._wasDisabled;
+        el.style.pointerEvents = '';
+        el.style.opacity = '';
+    });
+    previewScreen.classList.add('hidden');
+    raceDashboard.classList.remove('hidden');
+    const backBtn = document.getElementById('livePreviewBackBtn');
+    if (backBtn) backBtn.classList.add('hidden');
+    if (window.previewData && window.previewData.timeline) {
+        window.previewData.timeline.forEach(s => { delete s._done; delete s._current; });
+    }
+};
+
+// ==========================================
 // 🚫 PIT WINDOW OVERLAY
 // ==========================================
 
@@ -4041,6 +4628,170 @@ Optimize for:
     .catch(err => {
         console.error('AI Strategy error:', err);
         window.showToast('Could not reach AI service. Using standard strategy.', 'error');
+    });
+};
+
+// ==========================================
+// 📄 RACE RULES PDF — upload, parse, AI strategy
+// ==========================================
+
+window._rulesPdfText = null;
+window._rulesPdfFileName = null;
+
+window.openRulesPdfModalGated = function() {
+    if (!window.checkProFeature('rulesPdf')) {
+        window.showProGate('Race Rules PDF');
+        return;
+    }
+    window.openRulesPdfModal();
+};
+
+window.openRulesPdfModal = function() {
+    const modal = document.getElementById('rulesPdfModal');
+    if (modal) modal.classList.remove('hidden');
+};
+
+window.closeRulesPdfModal = function() {
+    const modal = document.getElementById('rulesPdfModal');
+    if (modal) modal.classList.add('hidden');
+};
+
+window.clearRulesPdf = function() {
+    window._rulesPdfText = null;
+    window._rulesPdfFileName = null;
+    const preview = document.getElementById('rulesPdfPreview');
+    const badge = document.getElementById('rulesPdfBadge');
+    const analyzeBtn = document.getElementById('rulesPdfAnalyzeBtn');
+    const input = document.getElementById('rulesPdfInput');
+    if (preview) preview.classList.add('hidden');
+    if (badge) badge.classList.add('hidden');
+    if (analyzeBtn) analyzeBtn.disabled = true;
+    if (input) input.value = '';
+};
+
+window.handleRulesPdfUpload = async function(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const statusEl = document.getElementById('rulesPdfStatus');
+    const previewEl = document.getElementById('rulesPdfPreview');
+    const nameEl = document.getElementById('rulesPdfName');
+    const pagesEl = document.getElementById('rulesPdfPages');
+    const analyzeBtn = document.getElementById('rulesPdfAnalyzeBtn');
+
+    if (statusEl) { statusEl.textContent = (window.t && window.t('rulesPdfReading')) || 'Reading PDF…'; statusEl.classList.remove('hidden'); }
+
+    try {
+        if (!window.pdfjsLib) throw new Error('PDF.js not loaded');
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        const numPages = pdf.numPages;
+        let fullText = '';
+        for (let p = 1; p <= Math.min(numPages, 60); p++) {
+            const page = await pdf.getPage(p);
+            const content = await page.getTextContent();
+            fullText += content.items.map(i => i.str).join(' ') + '\n';
+        }
+        window._rulesPdfText = fullText.slice(0, 12000); // cap to avoid token overflow
+        window._rulesPdfFileName = file.name;
+
+        if (nameEl) nameEl.textContent = file.name;
+        if (pagesEl) pagesEl.textContent = `${numPages} ${(window.t && window.t('pages')) || 'pages'}`;
+        if (previewEl) previewEl.classList.remove('hidden');
+        if (statusEl) statusEl.classList.add('hidden');
+        if (analyzeBtn) analyzeBtn.disabled = false;
+        const badge = document.getElementById('rulesPdfBadge');
+        if (badge) badge.classList.remove('hidden');
+    } catch (err) {
+        console.error('PDF read error:', err);
+        if (statusEl) { statusEl.textContent = (window.t && window.t('rulesPdfError')) || 'Could not read PDF.'; }
+    }
+};
+
+window.analyzeRulesPdf = function() {
+    if (!window._rulesPdfText) return;
+    if (!window.checkProFeature('aiStrategy')) { window.showProGate('AI Strategy'); return; }
+
+    window.closeRulesPdfModal();
+    if (typeof window.runSim === 'function') window.runSim();
+
+    const lang = window.currentLang || 'en';
+    const config = window.config || {};
+    const drivers = (window.drivers || []).map(d => d.name);
+    const t = window.t || (k => k);
+
+    const prompt = `You are a motorsport race strategy expert. A user has uploaded their race regulations PDF. Read the rules carefully and suggest the best race strategy.
+
+RACE RULES DOCUMENT:
+---
+${window._rulesPdfText}
+---
+
+CURRENT RACE SETUP:
+- Duration: ${config.duration || '?'} hours
+- Required pit stops: ${config.reqStops || '?'}
+- Min stint: ${config.minStint || '?'} min, Max stint: ${config.maxStint || '?'} min
+- Pit stop time: ${config.pitTime || '?'} seconds
+- Drivers: ${drivers.join(', ') || 'Not set'}
+${(window.previewData?.timeline || []).filter(t => t.type === 'stint').length > 0
+    ? 'Current strategy: ' + (window.previewData.timeline || []).filter(t => t.type === 'stint').map((s,i) => `Stint ${i+1}: ${s.driverName} ${Math.round(s.duration/60000)}min`).join(', ')
+    : ''}
+
+IMPORTANT: Respond in language "${lang}". Give:
+1. Key rules that affect strategy (mandatory stops, min/max driver times, pit window restrictions, etc.)
+2. Your strategic recommendation based on the rules
+3. Optional: a JSON block for stint adjustments in this exact format:
+{"stints": [{"driverIdx": 0, "durationMin": 45}, ...]}
+
+Be concise and practical.`;
+
+    window.showToast('📄 Analyzing race rules…', 'info', 8000);
+
+    fetch(window.APP_CONFIG.API_BASE + '/.netlify/functions/ai-strategy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (!data.success || !data.content?.[0]?.text) {
+            window.showToast(t('rulesPdfAiError') || 'AI returned no result.', 'warning');
+            return;
+        }
+        const text = data.content[0].text.trim();
+
+        // Try to extract and apply JSON stint block
+        const jsonMatch = text.match(/\{[\s\S]*"stints"[\s\S]*\}/);
+        if (jsonMatch && window.previewData?.timeline) {
+            try {
+                const aiResult = JSON.parse(jsonMatch[0]);
+                if (aiResult.stints && Array.isArray(aiResult.stints)) {
+                    const stints = window.previewData.timeline.filter(t => t.type === 'stint');
+                    aiResult.stints.forEach((s, i) => {
+                        if (stints[i]) {
+                            if (s.driverIdx != null && window.drivers[s.driverIdx]) {
+                                const d = window.drivers[s.driverIdx];
+                                stints[i].driverIdx = s.driverIdx;
+                                stints[i].driverName = d.name;
+                                stints[i].color = d.color;
+                            }
+                            if (s.durationMin > 0) stints[i].duration = s.durationMin * 60000;
+                        }
+                    });
+                    window.renderPreview && window.renderPreview();
+                }
+            } catch (e) { /* no valid stint JSON — fine */ }
+        }
+
+        // Show full analysis in a toast + console
+        const shortAdvice = text.replace(/\{[\s\S]*\}/g, '').trim().slice(0, 300);
+        window.showToast(`📄 ${shortAdvice}`, 'success', 12000);
+        console.log('[Rules PDF AI]', text);
+    })
+    .catch(err => {
+        console.error('Rules PDF AI error:', err);
+        window.showToast(t('rulesPdfAiError') || 'Could not reach AI service.', 'error');
     });
 };
 

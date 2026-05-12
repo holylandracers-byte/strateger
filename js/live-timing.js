@@ -2,6 +2,31 @@
 // ⏱️ LIVE TIMING CONTROLLER
 // ==========================================
 
+// Auto-pit: when true, live timing automatically confirms pit entry/exit.
+// When false, the user handles pit manually and live timing is display-only for pits.
+window._autoPitEnabled = (function() {
+    return localStorage.getItem('strateger_auto_pit') !== 'false'; // on by default
+})();
+
+window.toggleAutoPit = function() {
+    window._autoPitEnabled = !window._autoPitEnabled;
+    localStorage.setItem('strateger_auto_pit', window._autoPitEnabled ? 'true' : 'false');
+    window._updateAutoPitUI();
+};
+
+window._updateAutoPitUI = function() {
+    const btn = document.getElementById('autoPitToggleBtn');
+    const lbl = document.getElementById('autoPitLabel');
+    if (!btn) return;
+    if (window._autoPitEnabled) {
+        btn.className = 'flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded border transition bg-green-900/40 border-green-500/50 text-green-400';
+        if (lbl) lbl.textContent = window.t ? window.t('autoPitOn') || 'Auto' : 'Auto';
+    } else {
+        btn.className = 'flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded border transition bg-navy-700/60 border-gray-600/50 text-gray-400';
+        if (lbl) lbl.textContent = window.t ? window.t('autoPitOff') || 'Manual' : 'Manual';
+    }
+};
+
 function getLapWord(count) {
     // Use translation system so all 12 languages are supported automatically
     return count === 1
@@ -214,7 +239,12 @@ window.fetchLiveTimingFromProxy = async function() {
 
             window.liveData.heartbeatCount = (window.liveData.heartbeatCount || 0) + 1;
             window.liveData.heartbeatAt = Date.now();
-            
+
+            // Capture pit-out timestamp for advanced pit-stop advice (before ourTeamInPit is overwritten)
+            if (typeof window._capturePitOutFromLive === 'function') {
+                window._capturePitOutFromLive(data);
+            }
+
             if (data.ourTeam) {
                 window.liveData.previousPosition = window.liveData.position;
                 window.liveData.position = data.ourTeam.position;
@@ -243,7 +273,7 @@ window.fetchLiveTimingFromProxy = async function() {
                 // Auto-detect pit entry from live timing — AUTHORITATIVE: live timing always wins
                 const now = Date.now();
 
-                if (window.state && window.state.isRunning && !window.state.isInPit && data.ourTeam.inPit) {
+                if (window._autoPitEnabled && window.state && window.state.isRunning && !window.state.isInPit && data.ourTeam.inPit) {
                     // Live timing says we are in pit — override everything
                     console.log('[LiveTiming] 🛑 AUTHORITATIVE PIT ENTRY from live data (inPit=true)');
                     if (typeof window.confirmPitEntry === 'function') {
@@ -252,7 +282,7 @@ window.fetchLiveTimingFromProxy = async function() {
                     }
                 }
                 // Fallback: detect pit entry from pitCount increase (catches cases where inPit flag was missed between polls)
-                else if (window.state && window.state.isRunning && !window.state.isInPit
+                else if (window._autoPitEnabled && window.state && window.state.isRunning && !window.state.isInPit
                     && prevPitCount != null && data.ourTeam.pitCount != null
                     && data.ourTeam.pitCount > prevPitCount) {
                     console.log(`[LiveTiming] 🛑 PIT ENTRY detected via pitCount increase (${prevPitCount} → ${data.ourTeam.pitCount})`);
@@ -264,11 +294,17 @@ window.fetchLiveTimingFromProxy = async function() {
                     }
                 }
                 // Auto-detect pit exit from live timing — AUTHORITATIVE
-                if (window.state && window.state.isRunning && window.state.isInPit && !data.ourTeam.inPit && wasInPit === true) {
-                    // Guard: don't auto-exit if pit time is too short (< 20s) — prevents false exits from pitCount fallback
+                // Fire when: (a) we were genuinely in pit and feed says out, OR
+                //            (b) entry was forced via pitCount increase (wasInPit=false case)
+                const entryWasForced = !!window.liveData._pitEntryForcedAt;
+                const exitCondition  = window._autoPitEnabled && window.state && window.state.isInPit && !data.ourTeam.inPit &&
+                                       (wasInPit === true || entryWasForced);
+                if (exitCondition) {
+                    // Guard: don't auto-exit if pit time is too short (< 20s) — prevents false exits
                     const pitElapsed = window.state.pitStart ? (now - window.state.pitStart) : Infinity;
                     if (pitElapsed >= 20000) {
                         console.log('[LiveTiming] ✅ AUTHORITATIVE PIT EXIT from live data');
+                        window.liveData._pitEntryForcedAt = null; // clear forced-entry flag
                         // Reset stint lap tracking for new stint
                         window.liveData.stintLapHistory = [];
                         window.liveData.stintBestLap = null;
@@ -399,8 +435,12 @@ window.updateProxyStatus = function(msg) {
 window.startProxyLiveTiming = function() {
     if (window.proxyFetchInterval) clearInterval(window.proxyFetchInterval);
     window.fetchLiveTimingFromProxy();
-    // עדכון כל 5 שניות במקרה של HTTP Fallback, ה-Manager הפנימי מנהל את ה-Websocket מהר יותר
+    // HTTP-fallback poll (every 5 s); the internal manager handles the WS at higher cadence
     window.proxyFetchInterval = setInterval(window.fetchLiveTimingFromProxy, 5000);
+    // Start stale-feed watchdog
+    if (typeof window._startHbWatchdog === 'function') window._startHbWatchdog();
+    // Sync auto-pit toggle UI
+    if (typeof window._updateAutoPitUI === 'function') window._updateAutoPitUI();
 };
 
 window.stopProxyLiveTiming = function() {
@@ -408,10 +448,62 @@ window.stopProxyLiveTiming = function() {
         clearInterval(window.proxyFetchInterval);
         window.proxyFetchInterval = null;
     }
+    if (window._hbWatchdogInterval) {
+        clearInterval(window._hbWatchdogInterval);
+        window._hbWatchdogInterval = null;
+    }
     if (window.liveTimingManager) {
         window.liveTimingManager.stop();
     }
 };
+
+// ── Heartbeat watchdog ──────────────────────────────────────────────────────
+// The heartbeat counter/timestamp is purely passive — nothing acts on a stale
+// value.  This watchdog runs every 10 s and auto-restarts the scraper when no
+// update has arrived for HB_STALE_MS (15 s) and the user has live timing enabled.
+(function _installHbWatchdog() {
+    const HB_STALE_MS   = 15000;  // treat feed as dead after 15 s silence
+    const HB_RESTART_COOLDOWN = 30000; // min time between watchdog restarts
+    let   _lastRestartAt = 0;
+
+    window._hbWatchdogInterval = null;
+
+    window._startHbWatchdog = function() {
+        if (window._hbWatchdogInterval) clearInterval(window._hbWatchdogInterval);
+        window._hbWatchdogInterval = setInterval(function() {
+            if (!window.liveTimingConfig || !window.liveTimingConfig.enabled) return;
+            const hbAt = window.liveData && window.liveData.heartbeatAt;
+            if (!hbAt) return; // never received any data yet — scraper may still be starting up
+
+            const age = Date.now() - hbAt;
+            const heartbeatEl = document.getElementById('liveHeartbeat');
+
+            if (age > HB_STALE_MS) {
+                // Feed is stale
+                if (heartbeatEl) {
+                    heartbeatEl.className = 'text-[10px] text-red-500 font-bold animate-pulse';
+                }
+                window.updateProxyStatus('⚠️ Feed stale — reconnecting…');
+                console.warn(`[HB Watchdog] Feed stale (${Math.round(age/1000)}s) — attempting restart`);
+
+                const now = Date.now();
+                if ((now - _lastRestartAt) >= HB_RESTART_COOLDOWN) {
+                    _lastRestartAt = now;
+                    // Full scraper restart via fetchLiveTimingFromProxy (handles idempotency)
+                    if (window.liveTimingManager) {
+                        window.liveTimingManager.stop();
+                        window.liveTimingManager = null;
+                    }
+                    setTimeout(function() {
+                        if (window.liveTimingConfig && window.liveTimingConfig.enabled) {
+                            window.fetchLiveTimingFromProxy();
+                        }
+                    }, 500);
+                }
+            }
+        }, 10000);
+    };
+})();
 
 // ==================== LIVE TIMING UI ====================
 

@@ -16,10 +16,21 @@ class ApexTimingScraper {
         this.debug = config.debug || false;
         this._activeController = null;
         this._errorLogThrottle = {};
+        this.columnMap = null;
+        this._reverseColMap = null;
+        this._comments = [];       // recent race-control comments
+        this._maxComments = 50;
+        this._emitTimer = null;
+        this._lastGridAt = 0;
 
         // Callbacks from LiveTimingManager
         this.onUpdate = config.onUpdate || null;
         this.onError = config.onError || null;
+        this.onComment = config.onComment || null;
+
+        // Race time remaining (parsed from Apex countdown WS messages)
+        this.raceTimeLeftSec = null;
+        this._raceTimeReceivedAt = null;
     }
 
     log(level, msg) {
@@ -52,21 +63,134 @@ class ApexTimingScraper {
         this.isRunning = true;
         this.consecutiveErrors = 0;
 
-        // Build WSS URL from the race page URL
+        let urlObj;
         try {
-            const urlObj = new URL(this.raceUrl);
-            this.wsUrl = `wss://${urlObj.hostname}:8523/`;
+            urlObj = new URL(this.raceUrl);
         } catch (e) {
             this.log('ERROR', `Invalid race URL: ${this.raceUrl}`);
             return;
         }
 
         this.log('INFO', `🔌 Race URL: ${this.raceUrl}`);
-        this.log('INFO', `🔌 WS URL: ${this.wsUrl}`);
         this.log('INFO', `🔍 Search term: "${this.searchTerm}"`);
+
+        // Resolve the Apex socket endpoint from the race config instead of guessing.
+        // Apex uses configPort+3 for WSS (HTTPS page) and configPort+2 for WS (HTTP page).
+        let socketConfig;
+        try {
+            socketConfig = await this.resolveSocketConfig(this.raceUrl, urlObj);
+        } catch (e) {
+            this.isRunning = false;
+            this.log('ERROR', `Could not resolve Apex socket URL: ${e.message}`);
+            if (this.onError) this.onError(e, this.consecutiveErrors);
+            return;
+        }
+
+        this.wsUrl = socketConfig.wsUrl;
+        this.log('INFO', `🔌 WS URL: ${this.wsUrl} (${socketConfig.source}, base ${socketConfig.configPort} → wsPort ${socketConfig.wsPort})`);
 
         this.connectWebSocket();
         this.scrapeInitialGrid();
+    }
+
+    getRaceBaseUrl(raceUrl) {
+        const u = new URL(raceUrl);
+        const path = u.pathname || '/';
+        const basePath = path.endsWith('/') ? path : path.substring(0, path.lastIndexOf('/') + 1);
+        return `${u.origin}${basePath}`;
+    }
+
+    extractConfigPort(text) {
+        if (!text) return null;
+        const m = text.match(/var\s+configPort\s*=\s*(\d+)/i);
+        if (!m) return null;
+        const p = parseInt(m[1], 10);
+        return Number.isFinite(p) && p > 0 ? p : null;
+    }
+
+    extractConfigScriptUrl(html, raceUrl) {
+        if (!html) return null;
+        const scriptMatch = html.match(/<script[^>]+src=["']([^"']*config\.js(?:\?[^"']*)?)["']/i);
+        if (!scriptMatch || !scriptMatch[1]) return null;
+        try {
+            return new URL(scriptMatch[1], raceUrl).toString();
+        } catch (e) {
+            return null;
+        }
+    }
+
+    async resolveSocketConfig(raceUrl, urlObj) {
+        const raceProtocol = (urlObj.protocol || '').toLowerCase();
+        const isSecureRace = raceProtocol === 'https:';
+        const wsScheme = isSecureRace ? 'wss' : 'ws';
+        const wsOffset = isSecureRace ? 3 : 2;
+
+        const configPort = await this.fetchConfigPort(raceUrl);
+        const wsPort = configPort + wsOffset;
+        return {
+            configPort,
+            wsPort,
+            wsUrl: `${wsScheme}://${urlObj.hostname}:${wsPort}/`,
+            source: isSecureRace ? 'config.js + HTTPS(+3)' : 'config.js + HTTP(+2)'
+        };
+    }
+
+    /**
+     * Fetch circuit-specific WebSocket port from javascript/config.js.
+     * Each Apex Timing circuit has a unique port stored in configPort.
+     */
+    async fetchConfigPort(raceUrl) {
+        const tried = [];
+        const logTry = (label, cfgUrl) => {
+            tried.push(cfgUrl);
+            this.log('INFO', `🔍 Fetching Apex config (${label}): ${cfgUrl}`);
+        };
+
+        const base = this.getRaceBaseUrl(raceUrl);
+        const defaultConfigUrl = `${base}javascript/config.js`;
+
+        // 1) Preferred direct config path under the race folder.
+        try {
+            logTry('default', defaultConfigUrl);
+            const text = await this.fetchWithProxy(defaultConfigUrl);
+            const p = this.extractConfigPort(text);
+            if (p) {
+                this.log('INFO', `✅ Detected configPort: ${p}`);
+                return p;
+            }
+            this.log('WARN', 'configPort not found in default config.js');
+        } catch (e) {
+            this.log('WARN', `Default config fetch failed: ${e.message}`);
+        }
+
+        // 2) Parse race page HTML and discover the exact config.js script URL (often has cache_version query).
+        try {
+            this.log('INFO', `🔍 Fetching Apex page HTML to locate config script: ${raceUrl}`);
+            const html = await this.fetchWithProxy(raceUrl);
+
+            // Some deployments inline configPort directly.
+            const inlinePort = this.extractConfigPort(html);
+            if (inlinePort) {
+                this.log('INFO', `✅ Detected configPort inline in page HTML: ${inlinePort}`);
+                return inlinePort;
+            }
+
+            const scriptUrl = this.extractConfigScriptUrl(html, raceUrl);
+            if (scriptUrl && !tried.includes(scriptUrl)) {
+                logTry('discovered-from-html', scriptUrl);
+                const scriptText = await this.fetchWithProxy(scriptUrl);
+                const p = this.extractConfigPort(scriptText);
+                if (p) {
+                    this.log('INFO', `✅ Detected configPort: ${p}`);
+                    return p;
+                }
+                this.log('WARN', 'configPort not found in discovered config.js');
+            }
+        } catch (e) {
+            this.log('WARN', `HTML config discovery failed: ${e.message}`);
+        }
+
+        throw new Error(`Unable to resolve Apex configPort for ${raceUrl}`);
     }
 
     extractHost(url) {
@@ -137,6 +261,7 @@ class ApexTimingScraper {
 
     handleMessage(data) {
         const lines = data.split('\n');
+        let hasRowDelta = false;
         
         this.log('INFO', `📨 WS Message (${data.length} chars)`);
         this.log('INFO', `📨 Message has ${lines.length} lines. First 3:`);
@@ -166,17 +291,26 @@ class ApexTimingScraper {
                 }
                 this.log('INFO', `📋 Received grid message (${gridHtml.length} chars HTML), sessionId="${this.sessionId}"`);
                 if (gridHtml.length > 0) {
+                    const now = Date.now();
+                    if (this._lastGridAt && (now - this._lastGridAt) < 350) {
+                        this.log('INFO', '📋 Grid message throttled (arrived too soon after previous grid)');
+                        continue;
+                    }
+                    this._lastGridAt = now;
                     this.gridHtml = gridHtml;
                     this.parseGridHTML(gridHtml);
                 } else {
                     this.log('WARN', '📋 Grid HTML was empty in WS message — waiting for HTTP fallback');
                 }
             } else if (key === 'r' || key.startsWith('r')) {
-                this.handleRowUpdate(line);
+                if (this.handleRowUpdate(line, true)) {
+                    hasRowDelta = true;
+                }
             } else if (key === 'title') {
                 this.log('INFO', `🏁 Race title: ${rest}`);
             } else if (key === 'comment') {
                 this.log('INFO', `💬 Comment: ${rest}`);
+                this._addComment(rest);
             } else if (key === 'init') {
                 this.log('INFO', `🔧 Init: ${rest}`);
             } else if (key === 'best') {
@@ -184,12 +318,48 @@ class ApexTimingScraper {
             } else if (key === 'css') {
                 // Style info, skip
             } else if (key === 'ti') {
-                this.log('INFO', `⏱️ Timer: ${rest}`);
+                this._parsePotentialTimer('ti', rest);
+            } else {
+                // Generic Apex element update: <data-id>|<type>|<value>|...
+                // Catches countdown timer regardless of which data-id key is used
+                this._parsePotentialTimer(key, rest);
             }
+        }
+
+        if (hasRowDelta) {
+            this.scheduleEmitUpdate();
         }
     }
 
-    handleRowUpdate(line) {
+    scheduleEmitUpdate(delayMs = 90) {
+        if (this._emitTimer) return;
+        this._emitTimer = setTimeout(() => {
+            this._emitTimer = null;
+            this.emitUpdate();
+        }, delayMs);
+    }
+
+    handleRowUpdate(line, deferEmit = false) {
+        // Pit in/out via Apex *in/*out/*i1/*i2 markers: r<rowId>|*in| or r<rowId>|*out|
+        const starPitMatch = line.match(/^(r\d+)\|\*(in|i1|i2|out)\|?/i);
+        if (starPitMatch) {
+            const rowId = starPitMatch[1];
+            const dir = starPitMatch[2].toLowerCase();
+            const isEntering = dir !== 'out';
+            const comp = this.competitors.get(rowId);
+            if (comp) {
+                if (isEntering && !comp.inPit) comp.pitCount = (comp.pitCount || 0) + 1;
+                comp.inPit = isEntering;
+                comp._pitStateAt = Date.now();
+                this.log('INFO', `🏎️ Pit ${isEntering ? 'entry' : 'exit'} (*${dir}) for ${comp.driverName || rowId}`);
+                // Pit events are time-critical — emit immediately (no debounce) so the
+                // live-timing controller can react to *out without waiting 90 ms
+                this.emitUpdate();
+                return true;
+            }
+            return false;
+        }
+
         // Cell update: r<rowId>c<colIdx>|<value>|
         const cellMatch = line.match(/^(r\d+)c(\d+)\|([^|]*)\|?$/);
         if (cellMatch) {
@@ -200,9 +370,10 @@ class ApexTimingScraper {
             const comp = this.competitors.get(rowId);
             if (comp) {
                 this.updateCompetitorCell(comp, colIdx, value);
-                this.emitUpdate();
+                if (!deferEmit) this.emitUpdate();
+                return true;
             }
-            return;
+            return false;
         }
 
         // Lap update: r<rowId>|*|<laptime>|<totaltime>
@@ -219,9 +390,10 @@ class ApexTimingScraper {
                     comp.bestLapMs = lapMs;
                 }
                 comp.totalLaps = (comp.totalLaps || 0) + 1;
-                this.emitUpdate();
+                if (!deferEmit) this.emitUpdate();
+                return true;
             }
-            return;
+            return false;
         }
 
         // Position update: r<rowId>|#|<position>
@@ -231,11 +403,19 @@ class ApexTimingScraper {
             const newPos = parseInt(posMatch[2]);
             const comp = this.competitors.get(rowId);
             if (comp) {
-                comp.previousPosition = comp.position;
-                comp.position = newPos;
-                this.emitUpdate();
+                // Guard against out-of-order packets: only accept a position update that
+                // arrived within 5 seconds of a newer full-row update (_updatedAt).
+                // This prevents a stale |#| packet from overwriting a freshly-parsed grid row.
+                const isStale = comp._updatedAt && (Date.now() - comp._updatedAt) < 200 &&
+                                comp.position !== 0 && Math.abs(newPos - comp.position) > 5;
+                if (!isStale) {
+                    comp.previousPosition = comp.position;
+                    comp.position = newPos;
+                }
+                if (!deferEmit) this.emitUpdate();
+                return true;
             }
-            return;
+            return false;
         }
 
         // Pit status: r<rowId>|p|<0or1>
@@ -245,10 +425,18 @@ class ApexTimingScraper {
             const inPit = pitMatch[2] === '1';
             const comp = this.competitors.get(rowId);
             if (comp) {
+                // Track pitCount: increment when transitioning into pit
+                if (inPit && !comp.inPit) {
+                    comp.pitCount = (comp.pitCount || 0) + 1;
+                    this.log('INFO', `🛑 Pit entry detected for ${comp.driverName || rowId} (pit #${comp.pitCount})`);
+                } else if (!inPit && comp.inPit) {
+                    this.log('INFO', `✅ Pit exit detected for ${comp.driverName || rowId}`);
+                }
                 comp.inPit = inPit;
-                this.emitUpdate();
+                if (!deferEmit) this.emitUpdate();
+                return true;
             }
-            return;
+            return false;
         }
 
         // Penalty message: r<rowId>|pen|<seconds> or penalty|r<rowId>|<seconds>
@@ -260,51 +448,366 @@ class ApexTimingScraper {
             if (comp) {
                 comp.penalty = (comp.penalty || 0) + 1;
                 comp.penaltyTime = (comp.penaltyTime || 0) + penSec;
-                comp.penaltyReason = `+${penSec}s penalty`;
-                this.log('INFO', `⚠️ Penalty: ${comp.driverName || rowId} +${penSec}s`);
-                this.emitUpdate();
+                comp.penaltyReason = `${penSec} Lap`;
+                this.log('INFO', `⚠️ Penalty: ${comp.driverName || rowId} ${penSec} Lap`);
+                if (!deferEmit) this.emitUpdate();
+                return true;
             }
-            return;
+            return false;
+        }
+
+        return false;
+    }
+
+    mergeCompetitor(prev, next) {
+        if (!prev) return { ...next, _updatedAt: Date.now() };
+
+        const merged = { ...prev, ...next };
+
+        // Preserve any non-empty/non-dash field from previous state when the new packet omits it.
+        // This handles missing-sector packets that arrive without S1/S2/S3 data.
+        const textFields = ['kartNumber', 'driverName', 'firstName', 'lastName',
+                            'sector1', 'sector2', 'sector3', 'lastLap', 'bestLap', 'gap', 'category'];
+        for (const field of textFields) {
+            const newVal = next[field];
+            const isEmpty = newVal == null || newVal === '' || newVal === '-' || newVal === '--';
+            if (isEmpty && prev[field] && prev[field] !== '-' && prev[field] !== '--') {
+                merged[field] = prev[field];
+            }
+        }
+
+        if (!next.position && prev.position) merged.position = prev.position;
+        if (!next.totalLaps && prev.totalLaps) merged.totalLaps = prev.totalLaps;
+        if (!next.lastLapMs && prev.lastLapMs) merged.lastLapMs = prev.lastLapMs;
+        if (!next.bestLapMs && prev.bestLapMs) merged.bestLapMs = prev.bestLapMs;
+        if ((!next.pitCount || next.pitCount < 0) && prev.pitCount) merged.pitCount = prev.pitCount;
+        if (next.inPit == null && prev.inPit != null) merged.inPit = prev.inPit;
+
+        // Track when this competitor's record was last updated (for out-of-order packet detection)
+        merged._updatedAt = Date.now();
+
+        return merged;
+    }
+
+    /**
+     * Auto-detect column roles from header cells.
+     * Supports: Italian, German, English, French, Spanish, Dutch, Portuguese.
+     */
+    /**
+     * Store a race-control comment and notify listeners.
+     */
+    _addComment(text) {
+        if (!text || !text.trim()) return;
+        const entry = { text: text.trim(), ts: Date.now() };
+        this._comments.push(entry);
+        if (this._comments.length > this._maxComments) this._comments.shift();
+        if (this.onComment) {
+            this.onComment(entry);
         }
     }
 
+    /** Convert time string (H:MM:SS, MM:SS, or decimal seconds) to seconds */
+    _timerStringToSeconds(str) {
+        if (!str) return null;
+        const s = str.trim().split('_')[0]; // strip "_Running" suffix
+        const hms = s.match(/^(\d{1,2}):(\d{2}):(\d{2})$/);
+        if (hms) return parseInt(hms[1]) * 3600 + parseInt(hms[2]) * 60 + parseInt(hms[3]);
+        const ms = s.match(/^(\d{1,3}):(\d{2})$/);
+        if (ms) return parseInt(ms[1]) * 60 + parseInt(ms[2]);
+        const f = parseFloat(s);
+        return (!isNaN(f) && f > 0 && f < 90000) ? f : null;
+    }
+
+    /**
+     * Parse race time from Apex WS message.
+     * Handles: ti|HH:MM:SS  and  <data-id>|countdown|<seconds>  and  <data-id>|countdown_text|MM:SS_status
+     */
+    _parsePotentialTimer(key, rest) {
+        if (key === 'ti') {
+            // ti messages carry the time value directly in rest
+            const sec = this._timerStringToSeconds(rest.split('|')[0]);
+            if (sec !== null && sec > 0) {
+                this.raceTimeLeftSec = sec;
+                this._raceTimeReceivedAt = Date.now();
+                this.log('INFO', `⏱️ Race time from ti: ${Math.round(sec)}s`);
+            }
+            return;
+        }
+        // Generic element update: rest = "<type>|<value>|..."
+        const p = rest.indexOf('|');
+        if (p === -1) return;
+        const type = rest.substring(0, p);
+        if (type !== 'countdown' && type !== 'countdown_text' && type !== 'count') return;
+        const value = rest.substring(p + 1).split('|')[0];
+        const timePart = value.split('_')[0];
+        let sec;
+        if (type === 'countdown' && /^\d+\.\d+$/.test(timePart)) {
+            sec = parseFloat(timePart); // Apex sends decimal seconds for countdown type
+        } else {
+            sec = this._timerStringToSeconds(timePart);
+        }
+        if (sec !== null && sec > 0 && sec < 86400) {
+            this.raceTimeLeftSec = sec;
+            this._raceTimeReceivedAt = Date.now();
+            this.log('INFO', `⏱️ Race time from ${key}|${type}: ${Math.round(sec)}s`);
+        }
+    }
+
+    /**
+     * Normalize a raw header cell text to a canonical ASCII-like token for matching.
+     * Strips diacritics, emoji, punctuation, collapses whitespace, lowercases.
+     * Also maps RTL / non-Latin header words to their English equivalents so the
+     * downstream regex patterns can match regardless of page locale.
+     */
+    _normalizeHeader(raw) {
+        // 1) Strip emoji and control chars
+        let s = raw.replace(/[\u{1F000}-\u{1FFFF}]/gu, '')
+                   .replace(/[\u{2600}-\u{27BF}]/gu, '')
+                   .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+                   .trim();
+
+        // 2) Decompose diacritics then drop combining marks (è→e, ü→u, etc.)
+        try {
+            s = s.normalize('NFD').replace(/[̀-ͯ]/g, '');
+        } catch(e) { /* NFD unavailable on very old engines */ }
+
+        // 3) Collapse whitespace
+        s = s.replace(/\s+/g, ' ').trim().toLowerCase();
+
+        // 4) RTL / non-Latin → English token table
+        // Hebrew, Arabic, Japanese, Korean, Chinese common timing column words
+        const rtlMap = {
+            // Hebrew
+            'מיקום': 'pos', 'מספר': 'no', 'קארט': 'kart', 'שם': 'name',
+            'נהג': 'driver', 'קבוצה': 'team', 'קפות': 'laps', 'קפה': 'laps',
+            'פער': 'gap', 'אחרון': 'last', 'הטוב': 'best', 'טוב': 'best',
+            'פיטים': 'pit', 'עונש': 'pen', 'קטגוריה': 'cat',
+            'זמן': 'time', 'סה"כ': 'total', 'ממוצע': 'avg',
+            // Arabic
+            'موقف': 'pos', 'رقم': 'no', 'اسم': 'name', 'سائق': 'driver',
+            'لفات': 'laps', 'فجوة': 'gap', 'اخير': 'last', 'افضل': 'best',
+            // Japanese
+            '順位': 'pos', 'ドライバー': 'driver', 'チーム': 'team',
+            '周回': 'laps', 'ギャップ': 'gap', 'ラップ': 'last', 'ベスト': 'best',
+            // Korean
+            '순위': 'pos', '드라이버': 'driver', '팀': 'team',
+            '랩': 'laps', '갭': 'gap', '최고': 'best',
+            // Chinese
+            '名次': 'pos', '车手': 'driver', '车队': 'team',
+            '圈数': 'laps', '差距': 'gap', '最佳': 'best',
+        };
+        if (rtlMap[s]) return rtlMap[s];
+
+        return s;
+    }
+
+    detectColumnMapping(headerCells) {
+        // Extended patterns: each field has a broad regex tested against the _normalised_ token
+        const patterns = [
+            { field: 'position',   re: /^(cla(ssifica)?|pos(ition)?|rnk|rank|platz|p|#|nr\.?)$/i },
+            { field: 'kartNumber', re: /^(kart|no|n|num(ber)?|nr|startnr|cart|vehicle)$/i },
+            { field: 'driverName', re: /^(team|name|nom|nome|fahrer|driver|pilota|pilote|concurrent|concorrente|conductor|competitor|equipe|squadra|mannschaft|piloto)$/i },
+            { field: 'totalLaps',  re: /^(giri|laps?|nbgiri|nbtrs?|tours?|rdn|runden|vueltas?|tr|rondes?|lap)$/i },
+            { field: 'gap',        re: /^(distacco|gap|diff(erence)?|dist|abst(and)?|ecart|dif)$/i },
+            { field: 'lastLap',    re: /^(ultimo\s*t?|last(lap)?|dern(ier)?|dernier|letzte|ultimo|latest|ult|ltime|last\s*time)$/i },
+            { field: 'bestLap',    re: /^(giro\s*mig(liore)?|best(lap)?|meilleur|migliore|beste|mejor|melhor|btime|best\s*time|avg)$/i },
+            { field: 'sector1',    re: /^s1(ector)?$/i },
+            { field: 'sector2',    re: /^s2(ector)?$/i },
+            { field: 'sector3',    re: /^s3(ector)?$/i },
+            { field: 'pitCount',   re: /^(pit\s*stop|pits?|pitstops?|box|arrets?|parada)$/i },
+            { field: 'penalty',    re: /^(pena(lty)?|pen|penal|penalite|strafe)$/i },
+            { field: 'category',   re: /^(categoria|category|cat|classe|klasse|class)$/i },
+            { field: 'country',    re: /^(paese|country|land|pays|pais|nation|nat)$/i },
+            { field: 'totalTime',  re: /^(tempo|time|temps|zeit|tiempo|total|elapsed)$/i },
+            { field: 'onTrack',    re: /^(in\s*pista|on\s*track|auf\s*strecke|en\s*piste|status|state)$/i },
+        ];
+
+        const mapping = {};
+        const headerTexts = [];
+        const normTexts   = [];
+
+        for (let i = 0; i < headerCells.length; i++) {
+            const raw  = (headerCells[i].textContent || headerCells[i]).toString().trim();
+            const norm = this._normalizeHeader(raw);
+            headerTexts.push(raw);
+            normTexts.push(norm);
+            if (!norm) continue;
+            for (const p of patterns) {
+                if (p.re.test(norm) && mapping[p.field] == null) {
+                    mapping[p.field] = i;
+                    break;
+                }
+            }
+        }
+
+        this.log('INFO', `🔍 Header texts:  [${headerTexts.join(' | ')}]`);
+        this.log('INFO', `🔍 Header norms:  [${normTexts.join(' | ')}]`);
+
+        const hasEnough = mapping.driverName != null || mapping.kartNumber != null || mapping.position != null;
+        if (hasEnough) {
+            this.log('INFO', `🔍 Detected column mapping: ${JSON.stringify(mapping)}`);
+            return mapping;
+        }
+
+        // ── Structural fallback for completely unknown layouts ─────────────────
+        // When the header is empty or in an unsupported script, infer columns by
+        // heuristics: scan first 3 data rows, detect which columns look like
+        // positions (small integer), kart numbers (1-3 digit), time strings, etc.
+        this.log('WARN', '🔍 Header matching failed — attempting structural heuristic mapping');
+        return this._structuralColumnMapping(headerCells) || null;
+    }
+
+    /**
+     * Structural heuristic: when header text gives no clues, sample the first
+     * few data rows from the parent table to infer field positions by value shape.
+     * Returns a partial mapping or null.
+     */
+    _structuralColumnMapping(headerCells) {
+        // Walk up from a header cell to find the parent table, then sample data rows
+        let tableEl = null;
+        for (const cell of headerCells) {
+            if (cell && cell.closest) { tableEl = cell.closest('table'); break; }
+        }
+        if (!tableEl) return null;
+
+        const dataRows = Array.from(tableEl.querySelectorAll('tr[id^="r"]'));
+        if (dataRows.length === 0) return null;
+
+        const sampleSize = Math.min(5, dataRows.length);
+        const colCount   = headerCells.length;
+        // For each column collect values from sample rows
+        const colValues = Array.from({ length: colCount }, () => []);
+        for (let r = 0; r < sampleSize; r++) {
+            const cells = dataRows[r].querySelectorAll('td');
+            for (let c = 0; c < colCount && c < cells.length; c++) {
+                colValues[c].push(cells[c].textContent.trim());
+            }
+        }
+
+        const isSmallInt  = v => /^\d{1,3}$/.test(v) && parseInt(v) > 0 && parseInt(v) <= 200;
+        const isTimeStr   = v => /\d+:\d{2}\.\d{2,3}/.test(v) || /^\d+\.\d{3}$/.test(v);
+        const isShortText = v => /^[A-Za-z0-9À-ÿ-׿]{2,20}$/.test(v);
+
+        const mapping = {};
+
+        colValues.forEach((vals, idx) => {
+            if (vals.length === 0) return;
+            const allSmallInt  = vals.every(isSmallInt);
+            const anyTimeStr   = vals.some(isTimeStr);
+            const anyShortText = vals.some(isShortText);
+
+            // First column of small integers → position
+            if (allSmallInt && mapping.position == null && idx <= 2) {
+                mapping.position = idx;
+            }
+            // 1-3 digit numbers in early columns → kart
+            else if (allSmallInt && mapping.kartNumber == null && mapping.position != null && idx <= 4) {
+                mapping.kartNumber = idx;
+            }
+            // Short text in early columns → driver name
+            else if (anyShortText && !anyTimeStr && mapping.driverName == null && idx >= 2 && idx <= 6) {
+                mapping.driverName = idx;
+            }
+            // Time string columns: first = lastLap, second = bestLap
+            else if (anyTimeStr) {
+                if (mapping.lastLap == null) mapping.lastLap = idx;
+                else if (mapping.bestLap == null) mapping.bestLap = idx;
+            }
+        });
+
+        if (mapping.position != null || mapping.driverName != null || mapping.kartNumber != null) {
+            this.log('INFO', `🔍 Structural mapping: ${JSON.stringify(mapping)}`);
+            return mapping;
+        }
+        return null;
+    }
+
     updateCompetitorCell(comp, colIdx, value) {
-        // Apex column mapping (standard layout):
-        // 0,1 = hidden status cells
-        // 2 = position (Rnk)
-        // 3 = kart number
-        // 4 = driver name/alias
-        // 5 = first name
-        // 6 = last name
-        // 7 = S1
-        // 8 = S2
-        // 9 = S3
-        // 10 = last lap
-        // 11 = best lap
-        // 12 = gap
-        // 13 = laps
+        const cm = this.columnMap;
+
+        if (cm) {
+            // Build reverse map once: colIndex → fieldName
+            if (!this._reverseColMap) {
+                this._reverseColMap = {};
+                for (const [field, idx] of Object.entries(cm)) {
+                    this._reverseColMap[idx] = field;
+                }
+            }
+            const field = this._reverseColMap[colIdx];
+            if (field) {
+                switch (field) {
+                    case 'position':   comp.position = parseInt(value) || comp.position; break;
+                    case 'kartNumber': comp.kartNumber = value; break;
+                    case 'driverName': comp.driverName = value; break;
+                    case 'totalLaps':  comp.totalLaps = parseInt(value) || 0; break;
+                    case 'gap':        comp.gap = value; break;
+                    case 'category':   comp.category = value; break;
+                    case 'lastLap': {
+                        comp.lastLap = value;
+                        const ms = this.parseTimeToMs(value);
+                        if (ms > 0) {
+                            comp.lastLapMs = ms;
+                            if (!comp.bestLapMs || ms < comp.bestLapMs) {
+                                comp.bestLapMs = ms;
+                                comp.bestLap = value;
+                            }
+                        }
+                        break;
+                    }
+                    case 'bestLap':
+                        comp.bestLap = value;
+                        comp.bestLapMs = this.parseTimeToMs(value);
+                        break;
+                    case 'onTrack': {
+                        // 'in'/'si' = in pit, 'out'/'so' = on track
+                        const v = value.toLowerCase().trim();
+                        if (v === 'in' || v === 'si') comp.inPit = true;
+                        else if (v === 'out' || v === 'so') comp.inPit = false;
+                        break;
+                    }
+                    case 'sector1':    if (value && value !== '-' && value !== '--') comp.sector1 = value; break;
+                    case 'sector2':    if (value && value !== '-' && value !== '--') comp.sector2 = value; break;
+                    case 'sector3':    if (value && value !== '-' && value !== '--') comp.sector3 = value; break;
+                    case 'pitCount':   comp.pitCount = parseInt(value) || 0; break;
+                    case 'penalty': {
+                        const penSec = parseInt(value);
+                        if (!isNaN(penSec) && penSec > 0) {
+                            comp.penalty = 1;
+                            comp.penaltyTime = penSec;
+                            comp.penaltyReason = `${penSec} Lap`;
+                        }
+                        break;
+                    }
+                    // category, country, totalTime, onTrack — stored but no special handling
+                }
+            }
+            return;
+        }
+
+        // Fallback: original hardcoded mapping (14-column English layout)
         switch (colIdx) {
             case 2: comp.position = parseInt(value) || comp.position; break;
             case 3: comp.kartNumber = value; break;
             case 4: comp.driverName = value; break;
             case 5: comp.firstName = value; break;
             case 6: comp.lastName = value; break;
-            case 7: comp.sector1 = value; break;
-            case 8: comp.sector2 = value; break;
-            case 9: comp.sector3 = value; break;
-            case 10: 
-                comp.lastLap = value; 
-                const ms = this.parseTimeToMs(value);
-                if (ms > 0) {
-                    comp.lastLapMs = ms;
-                    if (!comp.bestLapMs || ms < comp.bestLapMs) {
-                        comp.bestLapMs = ms;
+            case 7: if (value && value !== '-' && value !== '--') comp.sector1 = value; break;
+            case 8: if (value && value !== '-' && value !== '--') comp.sector2 = value; break;
+            case 9: if (value && value !== '-' && value !== '--') comp.sector3 = value; break;
+            case 10: {
+                comp.lastLap = value;
+                const ms2 = this.parseTimeToMs(value);
+                if (ms2 > 0) {
+                    comp.lastLapMs = ms2;
+                    if (!comp.bestLapMs || ms2 < comp.bestLapMs) {
+                        comp.bestLapMs = ms2;
                         comp.bestLap = value;
                     }
                 }
                 break;
-            case 11: 
-                comp.bestLap = value; 
+            }
+            case 11:
+                comp.bestLap = value;
                 comp.bestLapMs = this.parseTimeToMs(value);
                 break;
             case 12: comp.gap = value; break;
@@ -314,111 +817,181 @@ class ApexTimingScraper {
 
     parseGridHTML(html) {
         const parser = new DOMParser();
-        // Wrap in a basic HTML structure to ensure proper parsing
         const doc = parser.parseFromString(`<html><body><table>${html}</table></body></html>`, 'text/html');
-        
-        // Try multiple selectors to find rows — Apex uses various structures
+
+        // ── Detect column mapping from header row ──
+        if (!this.columnMap) {
+            // 1) Explicit header row by class
+            let headerRow = doc.querySelector('tr.titles') || doc.querySelector('thead tr');
+            // 2) Scan all rows to find one whose cells match known header patterns
+            if (!headerRow) {
+                const candidates = doc.querySelectorAll('tr');
+                for (const tr of candidates) {
+                    const cells = tr.querySelectorAll('th, td');
+                    if (cells.length < 5) continue;
+                    // Check if ≥3 cells match header keywords
+                    let hits = 0;
+                    const headerTest = /^(cla(ssifica)?|pos(ition)?|rnk|rank|platz|kart|no|n|num|nr|team|name|nom|nome|fahrer|driver|pilota|pilote|giri|laps?|nbgiri|tours?|rdn|runden|vueltas?|gap|diff|distacco|dist|ecart|abstand|ultimo|last|best|giro\s*mig|migliore|meilleur|s1|s2|s3|pit|pits?|pitstops?|pen|penalty|penalite|strafe|categoria|category|cat|classe|klasse|paese|country|land|pays|pais|tempo|time|temps|zeit|in\s*pista|on\s*track|auf\s*strecke|status|מיקום|קארט|שם|נהג|קבוצה|קפות|פער|אחרון|הטוב|פיטים)$/i;
+                    for (const c of cells) {
+                        if (headerTest.test(c.textContent.trim())) hits++;
+                    }
+                    if (hits >= 3) { headerRow = tr; break; }
+                }
+            }
+            if (headerRow) {
+                const headerCells = headerRow.querySelectorAll('th, td');
+                if (headerCells.length >= 5) {
+                    const detected = this.detectColumnMapping(headerCells);
+                    if (detected) {
+                        this.columnMap = detected;
+                        this._reverseColMap = null;
+                    }
+                }
+            }
+        }
+
+        // ── Collect the header row's id so we can skip it later ──
+        const headerRowId = (() => {
+            const hr = doc.querySelector('tr.titles') || doc.querySelector('thead tr');
+            return hr ? hr.id : null;
+        })();
+
+        // ── Find data rows ──
         let rows = doc.querySelectorAll('tr[id^="r"]');
-        
         if (rows.length === 0) {
-            // Try just all TRs with cells
-            rows = doc.querySelectorAll('tr');
-            // Filter out header rows (rows without enough cells or without numeric position)
-            rows = Array.from(rows).filter(tr => {
+            rows = Array.from(doc.querySelectorAll('tr')).filter(tr => {
                 const cells = tr.querySelectorAll('td');
-                return cells.length >= 10; // Apex rows have 14 cells (2 hidden + 12 visible)
+                return cells.length >= 5;
             });
         }
 
-        this.log('INFO', `📋 Parsing grid HTML, found ${rows.length} rows`);
+        const cm = this.columnMap;
+        this.log('INFO', `📋 Parsing grid HTML, found ${rows.length} rows, columnMap: ${cm ? 'detected' : 'fallback'}`);
 
         if (rows.length === 0 && html.length > 100) {
-            // Debug: show what tags exist
             const allTags = doc.querySelectorAll('*');
             const tagNames = new Set();
             allTags.forEach(el => tagNames.add(el.tagName.toLowerCase()));
             this.log('WARN', `📋 HTML tags found: ${[...tagNames].join(', ')}`);
-            
-            // Try to find any element with an id starting with 'r' followed by digits
             const rElements = doc.querySelectorAll('[id^="r"]');
             this.log('WARN', `📋 Elements with id^="r": ${rElements.length}`);
             if (rElements.length > 0) {
                 this.log('WARN', `📋 First r-element: tag=${rElements[0].tagName}, id=${rElements[0].id}, children=${rElements[0].children.length}`);
             }
-            
-            // Last resort: try parsing as raw HTML with regex
             this.parseGridHTMLRegex(html);
             return;
         }
 
-        this.competitors.clear();
+        // Preserve current state and merge grid snapshots on top (Apex stream is stateful).
+        const prevComps = new Map(this.competitors);
+        const prevPitStates = new Map([...prevComps].map(([k, v]) => [k, v.inPit]));
+        const nextComps = new Map(prevComps);
+        const getCell = (cells, field, fallbackIdx) => {
+            const idx = cm ? cm[field] : fallbackIdx;
+            return (idx != null && idx < cells.length) ? cells[idx].textContent.trim() : '';
+        };
 
+        let skippedRows = 0;
         for (const row of rows) {
-            const cells = row.querySelectorAll('td');
-            if (cells.length < 10) continue;
+            // Skip header / titles rows explicitly
+            if (row.classList && (row.classList.contains('titles') || row.classList.contains('header'))) {
+                skippedRows++;
+                continue;
+            }
+            if (headerRowId && row.id === headerRowId) { skippedRows++; continue; }
 
-            const rowId = row.id || `r${this.competitors.size}`;
-            
+            const cells = row.querySelectorAll('td');
+            if (cells.length < 5) continue;
+
+            const rowId = row.id || `r${nextComps.size}`;
+
             const comp = {
                 rowId: rowId,
-                position: parseInt(cells[2]?.textContent?.trim()) || 0,
-                kartNumber: cells[3]?.textContent?.trim() || '',
-                driverName: cells[4]?.textContent?.trim() || '',
-                firstName: cells[5]?.textContent?.trim() || '',
-                lastName: cells[6]?.textContent?.trim() || '',
-                sector1: cells[7]?.textContent?.trim() || '',
-                sector2: cells[8]?.textContent?.trim() || '',
-                sector3: cells[9]?.textContent?.trim() || '',
-                lastLap: cells[10]?.textContent?.trim() || '',
-                bestLap: cells[11]?.textContent?.trim() || '',
-                gap: cells[12]?.textContent?.trim() || '',
-                totalLaps: parseInt(cells[13]?.textContent?.trim()) || 0,
+                position:   parseInt(getCell(cells, 'position', 2)) || 0,
+                kartNumber: getCell(cells, 'kartNumber', 3),
+                driverName: getCell(cells, 'driverName', 4),
+                firstName:  cm ? '' : (cells[5]?.textContent?.trim() || ''),
+                lastName:   cm ? '' : (cells[6]?.textContent?.trim() || ''),
+                sector1:    getCell(cells, 'sector1', 7),
+                sector2:    getCell(cells, 'sector2', 8),
+                sector3:    getCell(cells, 'sector3', 9),
+                lastLap:    getCell(cells, 'lastLap', 10),
+                bestLap:    getCell(cells, 'bestLap', 11),
+                gap:        getCell(cells, 'gap', 12),
+                totalLaps:  parseInt(getCell(cells, 'totalLaps', 13)) || 0,
+                category:   cm?.category != null ? getCell(cells, 'category', null) : '',
                 lastLapMs: 0,
                 bestLapMs: 0,
-                inPit: false,
-                previousPosition: 0
+                inPit: prevPitStates.get(rowId) || false,
+                pitCount: cm?.pitCount != null ? (parseInt(getCell(cells, 'pitCount', null)) || 0) : 0,
+                previousPosition: 0,
+                penalty: 0,
+                penaltyTime: 0,
+                penaltyReason: ''
             };
 
             comp.lastLapMs = this.parseTimeToMs(comp.lastLap);
             comp.bestLapMs = this.parseTimeToMs(comp.bestLap);
             comp.previousPosition = comp.position;
 
-            // Penalty column (some Apex configs have it at column 14+)
-            const penaltyCell = cells[14]?.textContent?.trim() || '';
+            // Penalty — from detected column or fallback col 14
+            const penIdx = cm?.penalty ?? 14;
+            const penaltyCell = (penIdx < cells.length) ? cells[penIdx].textContent.trim() : '';
             if (penaltyCell) {
                 const penSec = parseInt(penaltyCell);
                 if (!isNaN(penSec) && penSec > 0) {
                     comp.penalty = 1;
                     comp.penaltyTime = penSec;
-                    comp.penaltyReason = `+${penSec}s`;
+                    comp.penaltyReason = `${penSec} Lap`;
                 }
             }
 
-            // Skip invalid/header rows (position 0 or no data)
-            if (comp.position <= 0 && !comp.driverName && !comp.kartNumber) continue;
-
-            // Check pit status from hidden cells (cells 0 and 1)
-            const statusCell = cells[0]?.textContent?.trim() || cells[1]?.textContent?.trim() || '';
-            if (statusCell.includes('P') || statusCell.includes('pit')) {
-                comp.inPit = true;
+            // Strict validation: must have position > 0 OR a numeric kart number OR timing data
+            const posValid = comp.position > 0;
+            const kartNumeric = /^\d+$/.test(comp.kartNumber);
+            const hasTimingData = comp.lastLapMs > 0 || comp.bestLapMs > 0 || comp.totalLaps > 0;
+            if (!posValid && !kartNumeric && !hasTimingData) {
+                skippedRows++;
+                continue;
             }
 
-            this.competitors.set(rowId, comp);
+            // Pit status: row class > onTrack column > hidden status cells
+            // Preserves prev inPit state when no definitive indicator is present.
+            const rowCls = (row.className || '').toLowerCase();
+            if (/\bpit\b/.test(rowCls) || rowCls.includes('in_pit')) {
+                comp.inPit = true;
+            } else if (rowCls.includes('on_track') || rowCls.includes('ontrack')) {
+                comp.inPit = false; // Explicit CSS class confirms out of pit
+            } else if (cm?.onTrack != null && cm.onTrack < cells.length) {
+                const stVal = cells[cm.onTrack].textContent.trim().toLowerCase();
+                if (stVal === 'in' || stVal === 'si') comp.inPit = true;
+                else if (stVal === 'out' || stVal === 'so') comp.inPit = false;
+                // else: preserve existing comp.inPit (from prevPitStates)
+            } else {
+                const sc = (cells[0]?.textContent?.trim() || '') + (cells[1]?.textContent?.trim() || '');
+                if (/^[Pp]$/.test(sc) || sc.toLowerCase().includes('pit')) comp.inPit = true;
+                // else: preserve existing comp.inPit (from prevPitStates)
+            }
+
+            nextComps.set(rowId, this.mergeCompetitor(prevComps.get(rowId), comp));
         }
 
-        this.log('INFO', `Grid initialized with ${this.competitors.size} competitors`);
+        this.competitors = nextComps;
+        this.log('INFO', `Grid merged with ${this.competitors.size} competitors (skipped ${skippedRows} non-data rows)`);
         if (this.competitors.size > 0) {
             this.emitUpdate();
         }
     }
 
     parseGridHTMLRegex(html) {
-        // Fallback regex parser for when DOMParser doesn't find rows
-        // Look for <tr id="rXXXXX"> patterns and extract cell content
         const rowRegex = /<tr[^>]*\bid=["']?(r\d+)["']?[^>]*>([\s\S]*?)<\/tr>/gi;
         const cellRegex = /<td[^>]*>([\s\S]*?)<\/td>/gi;
-        
-        this.competitors.clear();
+
+        // Preserve current state and merge regex-parsed snapshots on top.
+        const prevComps = new Map(this.competitors);
+        const prevPitStates = new Map([...prevComps].map(([k, v]) => [k, v.inPit]));
+        const nextComps = new Map(prevComps);
+        const cm = this.columnMap;
         let match;
 
         while ((match = rowRegex.exec(html)) !== null) {
@@ -429,44 +1002,78 @@ class ApexTimingScraper {
 
             cellRegex.lastIndex = 0;
             while ((cellMatch = cellRegex.exec(rowHtml)) !== null) {
-                // Strip inner HTML tags to get text content
                 const text = cellMatch[1].replace(/<[^>]*>/g, '').trim();
                 cells.push(text);
             }
 
-            if (cells.length < 10) continue;
+            if (cells.length < 5) continue;
+
+            // Skip rows whose HTML class suggests header
+            if (/titles|header/i.test(match[0])) continue;
+
+            const getCell = (field, fallbackIdx) => {
+                const idx = cm ? cm[field] : fallbackIdx;
+                return (idx != null && idx < cells.length) ? cells[idx] : '';
+            };
 
             const comp = {
                 rowId: rowId,
-                position: parseInt(cells[2]) || 0,
-                kartNumber: cells[3] || '',
-                driverName: cells[4] || '',
-                firstName: cells[5] || '',
-                lastName: cells[6] || '',
-                sector1: cells[7] || '',
-                sector2: cells[8] || '',
-                sector3: cells[9] || '',
-                lastLap: cells[10] || '',
-                bestLap: cells[11] || '',
-                gap: cells[12] || '',
-                totalLaps: parseInt(cells[13]) || 0,
+                position:   parseInt(getCell('position', 2)) || 0,
+                kartNumber: getCell('kartNumber', 3),
+                driverName: getCell('driverName', 4),
+                firstName:  cm ? '' : (cells[5] || ''),
+                lastName:   cm ? '' : (cells[6] || ''),
+                sector1:    getCell('sector1', 7),
+                sector2:    getCell('sector2', 8),
+                sector3:    getCell('sector3', 9),
+                lastLap:    getCell('lastLap', 10),
+                bestLap:    getCell('bestLap', 11),
+                gap:        getCell('gap', 12),
+                totalLaps:  parseInt(getCell('totalLaps', 13)) || 0,
+                category:   cm?.category != null ? getCell('category', null) : '',
                 lastLapMs: 0,
                 bestLapMs: 0,
-                inPit: false,
-                previousPosition: 0
+                inPit: prevPitStates.get(rowId) || false,
+                pitCount: cm?.pitCount != null ? (parseInt(getCell('pitCount', null)) || 0) : 0,
+                previousPosition: 0,
+                penalty: 0,
+                penaltyTime: 0,
+                penaltyReason: ''
             };
 
             comp.lastLapMs = this.parseTimeToMs(comp.lastLap);
             comp.bestLapMs = this.parseTimeToMs(comp.bestLap);
             comp.previousPosition = comp.position;
 
-            // Skip invalid/header rows
-            if (comp.position <= 0 && !comp.driverName && !comp.kartNumber) continue;
+            // Strict validation: must have position > 0 OR numeric kart OR timing data
+            const posValid = comp.position > 0;
+            const kartNumeric = /^\d+$/.test(comp.kartNumber);
+            const hasTimingData = comp.lastLapMs > 0 || comp.bestLapMs > 0 || comp.totalLaps > 0;
+            if (!posValid && !kartNumeric && !hasTimingData) continue;
 
-            this.competitors.set(rowId, comp);
+            // Pit status: check row's opening tag class attribute
+            // Preserves prev inPit state when no definitive indicator is present.
+            const trTag = match[0].substring(0, match[0].indexOf('>') + 1).toLowerCase();
+            if (/\bpit\b/.test(trTag) || trTag.includes('in_pit')) {
+                comp.inPit = true;
+            } else if (trTag.includes('on_track') || trTag.includes('ontrack')) {
+                comp.inPit = false; // Explicit CSS class confirms out of pit
+            } else if (cm?.onTrack != null && cm.onTrack < cells.length) {
+                const stVal = (cells[cm.onTrack] || '').toLowerCase().trim();
+                if (stVal === 'in' || stVal === 'si') comp.inPit = true;
+                else if (stVal === 'out' || stVal === 'so') comp.inPit = false;
+                // else: preserve comp.inPit (from prevPitStates)
+            } else {
+                const sc = (cells[0] || '') + (cells[1] || '');
+                if (/^[Pp]$/.test(sc) || sc.toLowerCase().includes('pit')) comp.inPit = true;
+                // else: preserve comp.inPit (from prevPitStates)
+            }
+
+            nextComps.set(rowId, this.mergeCompetitor(prevComps.get(rowId), comp));
         }
 
-        this.log('INFO', `Regex parser found ${this.competitors.size} competitors`);
+        this.competitors = nextComps;
+        this.log('INFO', `Regex parser merged ${this.competitors.size} competitors`);
         if (this.competitors.size > 0) {
             this.emitUpdate();
         }
@@ -526,6 +1133,7 @@ class ApexTimingScraper {
 
         // Map to field names LiveTimingManager expects: kart, laps, found
         const mapComp = c => ({
+            rowId: c.rowId,
             position: c.position,
             name: c.driverName || `${c.firstName} ${c.lastName}`.trim(),
             team: c.lastName || '',
@@ -534,17 +1142,21 @@ class ApexTimingScraper {
             lastLapMs: c.lastLapMs || 0,
             bestLap: c.bestLap || '',
             bestLapMs: c.bestLapMs || 0,
-            gap: c.gap || '-',
+            gap: c.gap || '',
             laps: c.totalLaps || 0,
             totalLaps: c.totalLaps || 0,
             inPit: c.inPit || false,
+            pitCount: c.pitCount || 0,
             previousPosition: c.previousPosition || c.position,
             penalty: c.penalty || 0,
             penaltyTime: c.penaltyTime || 0,
-            penaltyReason: c.penaltyReason || ''
+            penaltyReason: c.penaltyReason || '',
+            category: c.category || '',
+            isOurTeam: c.rowId === ourTeam?.rowId
         });
 
         const result = {
+            race: { timeLeftSeconds: this.raceTimeLeftSec },
             competitors: allCompetitors.map(mapComp),
             ourTeam: ourTeam ? {
                 ...mapComp(ourTeam),
@@ -554,7 +1166,8 @@ class ApexTimingScraper {
             } : null,
             found: !!ourTeam,
             totalCompetitors: allCompetitors.length,
-            provider: 'apex-ws'
+            provider: 'apex-ws',
+            comments: this._comments.slice(-10)
         };
 
         this.log('INFO', `📊 Update: ${allCompetitors.length} competitors, ourTeam: ${ourTeam ? ourTeam.driverName : 'not found'}`);
@@ -596,11 +1209,9 @@ class ApexTimingScraper {
         // Cancel any previous in-flight request
         if (this._activeController) {
             try { this._activeController.abort(); } catch(e) {}
+            this._activeController = null;
         }
-        
-        const controller = new AbortController();
-        this._activeController = controller;
-        
+
         const proxies = [
             { prefix: '/.netlify/functions/cors-proxy?url=', label: 'netlify-proxy', timeoutMs: 20000 },
             { prefix: 'https://corsproxy.io/?', label: 'corsproxy', timeoutMs: 12000 },
@@ -608,10 +1219,14 @@ class ApexTimingScraper {
         ];
 
         for (const proxy of proxies) {
-            if (!this.isRunning || controller.signal.aborted) return '';
+            if (!this.isRunning) return '';
+
+            const controller = new AbortController();
+            this._activeController = controller;
+            let timeout = null;
             
             try {
-                const timeout = setTimeout(() => {
+                timeout = setTimeout(() => {
                     if (!controller.signal.aborted) controller.abort();
                 }, proxy.timeoutMs);
                 
@@ -625,6 +1240,11 @@ class ApexTimingScraper {
             } catch (e) {
                 if (e.name === 'AbortError' && !this.isRunning) return '';
                 this.log('WARN', `${proxy.label} failed: ${e.message}`);
+            } finally {
+                if (timeout) clearTimeout(timeout);
+                if (this._activeController === controller) {
+                    this._activeController = null;
+                }
             }
         }
 
@@ -633,6 +1253,11 @@ class ApexTimingScraper {
 
     stop() {
         this.isRunning = false;
+
+        if (this._emitTimer) {
+            clearTimeout(this._emitTimer);
+            this._emitTimer = null;
+        }
         
         // Abort any in-flight HTTP request
         if (this._activeController) {
@@ -650,6 +1275,17 @@ class ApexTimingScraper {
         }
         
         this._errorLogThrottle = {};
+    }
+
+    getStats() {
+        return {
+            isRunning: this.isRunning,
+            consecutiveErrors: this.consecutiveErrors,
+            competitorsCount: this.competitors.size,
+            sessionId: this.sessionId || null,
+            wsUrl: this.wsUrl || null,
+            raceTimeLeftSec: this.raceTimeLeftSec
+        };
     }
 }
 

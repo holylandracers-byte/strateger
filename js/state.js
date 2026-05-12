@@ -38,7 +38,64 @@ window.FREE_LIMITS = {
     fuelTracking: false,
     googleCalendar: false,
     googleEmail: false,
-    teamLogo: false
+    teamLogo: false,
+    rulesPdf: false
+};
+
+// ==========================================
+// 🎁 3-DAY FREE TRIAL (once per device)
+// ==========================================
+
+window._TRIAL_KEY   = 'strateger_trial_start';
+window._TRIAL_DAYS  = 3;
+
+window._trialActive = (function() {
+    const start = localStorage.getItem(window._TRIAL_KEY);
+    if (!start) return false;
+    const elapsed = Date.now() - parseInt(start, 10);
+    return elapsed < window._TRIAL_DAYS * 24 * 60 * 60 * 1000;
+})();
+
+window._trialUsed = !!localStorage.getItem(window._TRIAL_KEY);
+
+/** Start trial — only once per device. Returns true if trial was started, false if already used. */
+window.startFreeTrial = function() {
+    if (window._trialUsed) return false;
+    localStorage.setItem(window._TRIAL_KEY, String(Date.now()));
+    window._trialActive = true;
+    window._trialUsed = true;
+    if (typeof window.updateProUI === 'function') window.updateProUI();
+    return true;
+};
+
+window._startTrialFromModal = function() {
+    if (!window.startFreeTrial()) return;
+    document.getElementById('proUpgradeModal')?.classList.add('hidden');
+    if (typeof window.showToast === 'function') {
+        window.showToast('🎁 3-day Pro trial started! Enjoy all features.', 'success');
+    }
+    if (typeof window.updateProUI === 'function') window.updateProUI();
+};
+
+// Populate the payment reference ID whenever the modal opens
+(function() {
+    const _origShowProGate = window.showProGate;
+    // Patch after DOM is ready
+    document.addEventListener('DOMContentLoaded', function() {
+        const refEl = document.getElementById('proPayRefId');
+        if (refEl) {
+            const deviceId = (window.getDeviceId ? window.getDeviceId() : '').slice(-6).toUpperCase() || Math.random().toString(36).slice(-6).toUpperCase();
+            refEl.textContent = deviceId;
+        }
+    });
+})();
+
+/** Hours remaining in active trial (0 if not active). */
+window.trialHoursLeft = function() {
+    const start = localStorage.getItem(window._TRIAL_KEY);
+    if (!start) return 0;
+    const remaining = window._TRIAL_DAYS * 24 * 60 * 60 * 1000 - (Date.now() - parseInt(start, 10));
+    return Math.max(0, Math.ceil(remaining / 3600000));
 };
 
 // Restore Pro license from localStorage on load
@@ -74,6 +131,7 @@ window.FREE_LIMITS = {
  */
 window.checkProFeature = function(featureName) {
     if (window._proUnlocked) return true;
+    if (window._trialActive) return true;
     // Free features are things NOT in the limits or explicitly allowed
     if (featureName === 'liveTiming') return window.FREE_LIMITS.liveTiming;
     if (featureName === 'aiStrategy') return window.FREE_LIMITS.aiStrategy;
@@ -84,6 +142,7 @@ window.checkProFeature = function(featureName) {
     if (featureName === 'googleCalendar') return window.FREE_LIMITS.googleCalendar;
     if (featureName === 'googleEmail') return window.FREE_LIMITS.googleEmail;
     if (featureName === 'teamLogo') return window.FREE_LIMITS.teamLogo;
+    if (featureName === 'rulesPdf') return window.FREE_LIMITS.rulesPdf;
     return true; // default: free
 };
 
@@ -91,13 +150,18 @@ window.checkProFeature = function(featureName) {
  * Show Pro upgrade prompt when user tries to access a locked feature.
  */
 window.showProGate = function(featureName) {
-    // If already Pro, never show the upgrade modal
     if (window._proUnlocked) return;
+    if (window._trialActive) return; // still in trial
     const t = window.t || ((k) => k);
     const modal = document.getElementById('proUpgradeModal');
     if (modal) {
         const featureLabel = document.getElementById('proGateFeature');
         if (featureLabel) featureLabel.innerText = featureName || t('proFeature');
+        // Show or hide the trial CTA based on whether trial is available
+        const trialSection = document.getElementById('proTrialSection');
+        if (trialSection) trialSection.classList.toggle('hidden', window._trialUsed);
+        const trialUsedNote = document.getElementById('proTrialUsedNote');
+        if (trialUsedNote) trialUsedNote.classList.toggle('hidden', !window._trialUsed);
         modal.classList.remove('hidden');
     }
 };
@@ -256,7 +320,7 @@ window.currentLang = 'en';
 window.translations = {
     en: {
         ltSearchType: "Filter By:", ltTeam: "Team", ltDriver: "Driver", ltKart: "Kart #", ltPlaceholder: "Enter search value...",
-        previewTitle: "Strategy Preview", addToCalendar: "Add to Google Calendar", timeline: "Timeline", driverSchedule: "Driver Schedule", totalTime: "Total Time", close: "Close",
+        previewTitle: "Strategy Preview", addToCalendar: "Add to Google Calendar", timeline: "Timeline", driverSchedule: "Stint Summary", totalTime: "Total Time", close: "Close",
         googleLogin: "Login with Google", eventCreated: "Event created successfully!", eventError: "Failed to create event", raceEventTitle: "Endurance Race (Strateger)",
         errImpossible: "Impossible Strategy!", errAvgHigh: "Avg stint > Max Stint. Increase Stops or Max Stint.", errAvgLow: "Avg stint < Min Stint. Decrease Stops or Min Stint.",
         appTitle: "STRATEGER", appSubtitle: "Endurance Race Strategy Manager", generalInfo: "General Info", advancedConstraints: "Advanced Constraints", driverConfig: "Drivers", aiTitle: "AI Strategy",
@@ -328,7 +392,7 @@ window.translations = {
         modeRace: "Race Only", modeQualify: "Qualifying + Race",
         qualifyTitle: "Qualifying", qualifyFormat: "Format", qualifyFmtSimple: "Simple", qualifyFmtSegments: "Q1/Q2/Q3",
         qualifySegments: "Segments", qualifyDuration: "Qualifying Duration (min)", qualifyParticipation: "Driver Participation",
-        qualifyPartOne: "One", qualifyPartMulti: "Multiple", qualifyPartAll: "All",
+        qualifyPartOne: "One", qualifyPartMulti: "Multiple", qualifyPartAll: "All", qualifyPartOneDriver: "Driver",
         qualifyPartMultiCount: "Number of drivers", qualifyRuns: "Runs per driver",
         qualifyPitRule: "Pit Stop Rule", qualifyPitNone: "None", qualifyPitAny: "Any stop", qualifyPitMin: "Min time",
         qualifyPitMinSec: "Minimum seconds in pit", qualifyStop: "Stop Qualifying", qualifySession: "Session",
@@ -418,10 +482,12 @@ window.translations = {
         teamLogoInvalidType: "Only JPG, PNG or SVG allowed",
         stintAvg: "Stint Avg",
         norm: "NORM",
+        pitLatestExitIn: "Latest exit in", pitLeaveNow: "⚠️ Leave now!", pitLatestExitPassed: "🚨 EXIT OVERDUE",
+        autoPit: "Auto", autoPitOn: "Auto", autoPitOff: "Manual",
     },
     he: {
         ltSearchType: "סנן לפי:", ltTeam: "קבוצה", ltDriver: "נהג", ltKart: "מספר קארט", ltPlaceholder: "הכנס ערך לחיפוש...",
-        previewTitle: "תצוגה מקדימה", addToCalendar: "הוסף ליומן גוגל", timeline: "ציר זמן", driverSchedule: "לוח זמנים לנהגים", totalTime: "זמן כולל", close: "סגור",
+        previewTitle: "תצוגה מקדימה", addToCalendar: "הוסף ליומן גוגל", timeline: "ציר זמן", driverSchedule: "סיכום סטינטים", totalTime: "זמן כולל", close: "סגור",
         googleLogin: "התחבר עם Google", eventCreated: "האירוע נוצר בהצלחה!", eventError: "שגיאה ביצירת האירוע", raceEventTitle: "מירוץ סיבולת (Strateger)",
         errImpossible: "אסטרטגיה לא אפשרית!", errAvgHigh: "ממוצע סטינט גבוה מהמקסימום. הוסף עצירות או הגדל מקסימום.", errAvgLow: "ממוצע סטינט נמוך מהמינימום. הפחת עצירות או הקטן מינימום.",
         appTitle: "STRATEGER", appSubtitle: "ניהול אסטרטגיה למירוצי סיבולת", generalInfo: "הגדרות כלליות", advancedConstraints: "אילוצים מתקדמים", driverConfig: "נהגים", aiTitle: "אסטרטגיה חכמה (AI)",
@@ -491,7 +557,7 @@ window.translations = {
         modeRace: "מירוץ בלבד", modeQualify: "מקצה דירוג + מירוץ",
         qualifyTitle: "מקצה דירוג", qualifyFormat: "פורמט", qualifyFmtSimple: "פשוט", qualifyFmtSegments: "Q1/Q2/Q3",
         qualifySegments: "שלבים", qualifyDuration: "משך מקצה (דק')", qualifyParticipation: "השתתפות נהגים",
-        qualifyPartOne: "נהג אחד", qualifyPartMulti: "כמה נהגים", qualifyPartAll: "כולם",
+        qualifyPartOne: "נהג אחד", qualifyPartMulti: "כמה נהגים", qualifyPartAll: "כולם", qualifyPartOneDriver: "נהג",
         qualifyPartMultiCount: "מספר נהגים", qualifyRuns: "ריצות לנהג",
         qualifyPitRule: "כלל פיטסטופ", qualifyPitNone: "ללא", qualifyPitAny: "כל עצירה", qualifyPitMin: "זמן מינימום",
         qualifyPitMinSec: "שניות מינימום בפיטס", qualifyStop: "עצור מקצה", qualifySession: "סשן",
@@ -554,7 +620,7 @@ window.translations = {
         addDriverToGroup: "הוסף נהג לקבוצה…", driverGroupHint: "לחץ על נהג כדי להוסיף/להסיר מהמירוץ", clickToAddToRace: "הוסף למירוץ", clickToRemoveFromRace: "הסר מהמירוץ", removeFromGroup: "הסר מהקבוצה", minTwoDrivers: "נדרשים לפחות 2 נהגים",
         lblTeamName: "שם הקבוצה",
         heroTitle: "אסטרטגיית מירוץ", heroSub: "תכנן סטינטים · נהל נהגים · נצח",
-        qpSprint: "⚡ ספרינט", qpEndurance: "🏁 סיבולת", qpQualify: "⏱️ + כשירות", qpDemo: "🎬 דמו", qpLibrary: "📚 ספרייה",
+        qpSprint: "⚡ ספרינט", qpEndurance: "🏁 סיבולת", qpQualify: "⏱️ + מקצה דירוג", qpDemo: "🎬 דמו", qpLibrary: "📚 ספרייה",
         heroCollapse: "הסתר", heroExpand: "הגדרות",
         rulesPdfBtn: "העלה תקנון מירוץ (PDF)", rulesPdfLoaded: "תקנון נטען",
         rulesPdfModalTitle: "תקנון מירוץ PDF", rulesPdfModalSub: "הבינה המלאכותית תקרא את התקנון ותציע אסטרטגיה מיטבית בשפתך",
@@ -573,10 +639,12 @@ window.translations = {
         teamLogoInvalidType: "רק JPG, PNG או SVG",
         stintAvg: "ממוצע סטינט",
         norm: "רגיל",
+        pitLatestExitIn: "יציאה אחרונה בעוד", pitLeaveNow: "⚠️ צא עכשיו!", pitLatestExitPassed: "🚨 יציאה באיחור",
+        autoPit: "אוטו", autoPitOn: "אוטו", autoPitOff: "ידני",
     },
     fr: {
         ltSearchType: "Filtrer par:", ltTeam: "Équipe", ltDriver: "Pilote", ltKart: "Kart n°", ltPlaceholder: "Rechercher...",
-        previewTitle: "Aperçu de la Stratégie", addToCalendar: "Ajouter au Calendrier", timeline: "Chronologie", driverSchedule: "Planning Pilotes", totalTime: "Temps Total", close: "Fermer",
+        previewTitle: "Aperçu de la Stratégie", addToCalendar: "Ajouter au Calendrier", timeline: "Chronologie", driverSchedule: "Résumé des Relais", totalTime: "Temps Total", close: "Fermer",
         googleLogin: "Connexion Google", eventCreated: "Événement créé !", eventError: "Erreur création", raceEventTitle: "Course d'Endurance",
         errImpossible: "Stratégie Impossible!", errAvgHigh: "Moyenne > Max. Ajoutez des arrêts.", errAvgLow: "Moyenne < Min. Réduisez les arrêts.",
         appSubtitle: "Gestionnaire de Stratégie", generalInfo: "Info Générale", advancedConstraints: "Contraintes Avancées", driverConfig: "Pilotes", aiTitle: "Stratégie IA",
@@ -645,7 +713,7 @@ window.translations = {
         modeRace: "Course seule", modeQualify: "Qualifications + Course",
         qualifyTitle: "Qualifications", qualifyFormat: "Format", qualifyFmtSimple: "Simple", qualifyFmtSegments: "Q1/Q2/Q3",
         qualifySegments: "Segments", qualifyDuration: "Durée qualif. (min)", qualifyParticipation: "Participation",
-        qualifyPartOne: "Un pilote", qualifyPartMulti: "Plusieurs", qualifyPartAll: "Tous",
+        qualifyPartOne: "Un pilote", qualifyPartMulti: "Plusieurs", qualifyPartAll: "Tous", qualifyPartOneDriver: "Pilote",
         qualifyPartMultiCount: "Nombre de pilotes", qualifyRuns: "Tours par pilote",
         qualifyPitRule: "Règle stand", qualifyPitNone: "Aucun", qualifyPitAny: "Tout arrêt", qualifyPitMin: "Temps min",
         qualifyPitMinSec: "Secondes min au stand", qualifyStop: "Arrêter qualif.", qualifySession: "Session",
@@ -723,10 +791,11 @@ window.translations = {
         teamLogoInvalidType: "Seulement JPG, PNG ou SVG",
         stintAvg: "Moy. Relais",
         norm: "NORM",
+        pitLatestExitIn: "Sortie max dans", pitLeaveNow: "⚠️ Sortez maintenant!", pitLatestExitPassed: "🚨 SORTIE EN RETARD",
     },
     pt: {
         ltSearchType: "Filtrar por:", ltTeam: "Equipe", ltDriver: "Piloto", ltKart: "Kart nº", ltPlaceholder: "Pesquisar...",
-        previewTitle: "Visualização da Estratégia", addToCalendar: "Adicionar ao Calendário", timeline: "Linha do Tempo", driverSchedule: "Escala de Pilotos", totalTime: "Tempo Total", close: "Fechar",
+        previewTitle: "Visualização da Estratégia", addToCalendar: "Adicionar ao Calendário", timeline: "Linha do Tempo", driverSchedule: "Resumo dos Stints", totalTime: "Tempo Total", close: "Fechar",
         googleLogin: "Login Google", eventCreated: "Evento criado!", eventError: "Erro ao criar", raceEventTitle: "Corrida de Resistência",
         errImpossible: "Estratégia Impossível!", errAvgHigh: "Média > Máx. Aumente paradas.", errAvgLow: "Média < Mín. Reduza paradas.",
         appSubtitle: "Gestor de Estratégia", generalInfo: "Info Geral", advancedConstraints: "Restrições Avançadas", driverConfig: "Pilotos", aiTitle: "Estratégia IA",
@@ -790,7 +859,7 @@ window.translations = {
         modeRace: "Apenas Corrida", modeQualify: "Classificação + Corrida",
         qualifyTitle: "Classificação", qualifyFormat: "Formato", qualifyFmtSimple: "Simples", qualifyFmtSegments: "Q1/Q2/Q3",
         qualifySegments: "Segmentos", qualifyDuration: "Duração classif. (min)", qualifyParticipation: "Participação",
-        qualifyPartOne: "Um piloto", qualifyPartMulti: "Vários", qualifyPartAll: "Todos",
+        qualifyPartOne: "Um piloto", qualifyPartMulti: "Vários", qualifyPartAll: "Todos", qualifyPartOneDriver: "Piloto",
         qualifyPitRule: "Regra de box", qualifyPitNone: "Sem regra", qualifyPitMustChange: "Deve trocar",
         qualifyRun: "Volta", qualifyStageResults: "Resultados", qualifyUpNext: "A seguir",
         qualifyAdvance: "Avançar para a próxima fase", qualifySegmentTime: "Duração (min)",
@@ -874,10 +943,11 @@ window.translations = {
         teamLogoInvalidType: "Apenas JPG, PNG ou SVG",
         stintAvg: "Méd. Stint",
         norm: "NORM",
+        pitLatestExitIn: "Saída máx. em", pitLeaveNow: "⚠️ Saia agora!", pitLatestExitPassed: "🚨 SAÍDA ATRASADA",
     },
     ru: {
         ltSearchType: "Фильтр по:", ltTeam: "Команда", ltDriver: "Пилот", ltKart: "Карт №", ltPlaceholder: "Поиск...",
-        previewTitle: "Предпросмотр стратегии", addToCalendar: "Добавить в календарь", timeline: "Хронология", driverSchedule: "Расписание", totalTime: "Общее время", close: "Закрыть",
+        previewTitle: "Предпросмотр стратегии", addToCalendar: "Добавить в календарь", timeline: "Хронология", driverSchedule: "Сводка стинтов", totalTime: "Общее время", close: "Закрыть",
         googleLogin: "Вход через Google", eventCreated: "Событие создано!", eventError: "Ошибка создания", raceEventTitle: "Гонка на выносливость",
         errImpossible: "Невозможная стратегия!", errAvgHigh: "Средн. > Макс. Добавьте остановок.", errAvgLow: "Средн. < Мин. Уменьшите остановок.",
         appSubtitle: "Менеджер стратегии", generalInfo: "Основная информация", advancedConstraints: "Продвинутые ограничения", driverConfig: "Пилоты", aiTitle: "ИИ стратегия",
@@ -945,7 +1015,7 @@ window.translations = {
         modeRace: "Только гонка", modeQualify: "Квалификация + Гонка",
         qualifyTitle: "Квалификация", qualifyFormat: "Формат", qualifyFmtSimple: "Простой", qualifyFmtSegments: "Q1/Q2/Q3",
         qualifySegments: "Сегменты", qualifyDuration: "Длит. квал. (мин)", qualifyParticipation: "Участие гонщиков",
-        qualifyPartOne: "Один", qualifyPartMulti: "Несколько", qualifyPartAll: "Все",
+        qualifyPartOne: "Один", qualifyPartMulti: "Несколько", qualifyPartAll: "Все", qualifyPartOneDriver: "Гонщик",
         qualifyPitRule: "Правило пит-стопа", qualifyPitNone: "Без правила", qualifyPitMustChange: "Обязательная смена",
         qualifyRun: "Заезд", qualifyStageResults: "Результаты", qualifyUpNext: "Следующий",
         qualifyAdvance: "Перейти к следующему этапу", qualifySegmentTime: "Длит. (мин)",
@@ -1026,10 +1096,11 @@ window.translations = {
         teamLogoInvalidType: "Только JPG, PNG или SVG",
         stintAvg: "Ср. Стинт",
         norm: "НОРМ",
+        pitLatestExitIn: "Выезд не позднее", pitLeaveNow: "⚠️ Выезжай!", pitLatestExitPassed: "🚨 ВЫЕЗД ПРОСРОЧЕН",
     },
     ar: {
         ltSearchType: "تصفية حسب:", ltTeam: "الفريق", ltDriver: "السائق", ltKart: "رقم الكارت", ltPlaceholder: "البحث...",
-        previewTitle: "معاينة الإستراتيجية", addToCalendar: "إضافة للتقويم", timeline: "الجدول الزمني", driverSchedule: "جدول السائقين", totalTime: "الوقت الإجمالي", close: "إغلاق",
+        previewTitle: "معاينة الإستراتيجية", addToCalendar: "إضافة للتقويم", timeline: "الجدول الزمني", driverSchedule: "ملخص الجولات", totalTime: "الوقت الإجمالي", close: "إغلاق",
         googleLogin: "تسجيل الدخول عبر Google", eventCreated: "تم إنشاء الحدث!", eventError: "خطأ في الإنشاء", raceEventTitle: "سباق التحمل",
         errImpossible: "إستراتيجية غير ممكنة!", errAvgHigh: "المتوسط > الحد الأقصى. أضف محطات.", errAvgLow: "المتوسط < الحد الأدنى. اقلل المحطات.",
         appSubtitle: "مدير الإستراتيجية", generalInfo: "معلومات عامة", advancedConstraints: "القيود المتقدمة", driverConfig: "السائقون", aiTitle: "إستراتيجية AI",
@@ -1097,7 +1168,7 @@ window.translations = {
         modeRace: "سباق فقط", modeQualify: "التأهل + السباق",
         qualifyTitle: "التأهل", qualifyFormat: "الصيغة", qualifyFmtSimple: "بسيط", qualifyFmtSegments: "Q1/Q2/Q3",
         qualifySegments: "المراحل", qualifyDuration: "مدة التأهل (دقائق)", qualifyParticipation: "مشاركة السائقين",
-        qualifyPartOne: "واحد", qualifyPartMulti: "متعددون", qualifyPartAll: "الكل",
+        qualifyPartOne: "واحد", qualifyPartMulti: "متعددون", qualifyPartAll: "الكل", qualifyPartOneDriver: "سائق",
         qualifyPitRule: "قاعدة الحفرة", qualifyPitNone: "بلا قاعدة", qualifyPitMustChange: "يجب التغيير",
         qualifyRun: "جولة", qualifyStageResults: "النتائج", qualifyUpNext: "التالي",
         qualifyAdvance: "الانتقال للمرحلة التالية", qualifySegmentTime: "المدة (دق)",
@@ -1180,10 +1251,11 @@ window.translations = {
         teamLogoInvalidType: "JPG أو PNG أو SVG فقط",
         stintAvg: "متوسط الشوط",
         norm: "عادي",
+        pitLatestExitIn: "أقصى وقت للخروج", pitLeaveNow: "⚠️ اخرج الآن!", pitLatestExitPassed: "🚨 تأخر الخروج",
     },
     es: {
         ltSearchType: "Filtrar por:", ltTeam: "Equipo", ltDriver: "Piloto", ltKart: "Kart nº", ltPlaceholder: "Buscar...",
-        previewTitle: "Vista previa de la estrategia", addToCalendar: "Añadir al calendario", timeline: "Cronología", driverSchedule: "Horario de pilotos", totalTime: "Tiempo total", close: "Cerrar",
+        previewTitle: "Vista previa de la estrategia", addToCalendar: "Añadir al calendario", timeline: "Cronología", driverSchedule: "Resumen de Stints", totalTime: "Tiempo total", close: "Cerrar",
         googleLogin: "Iniciar sesión con Google", eventCreated: "¡Evento creado!", eventError: "Error al crear", raceEventTitle: "Carrera de resistencia",
         errImpossible: "¡Estrategia imposible!", errAvgHigh: "Promedio > Máx. Añada paradas.", errAvgLow: "Promedio < Mín. Reduzca paradas.",
         appSubtitle: "Gestor de estrategia", generalInfo: "Información general", advancedConstraints: "Restricciones avanzadas", driverConfig: "Pilotos", aiTitle: "Estrategia IA",
@@ -1251,7 +1323,7 @@ window.translations = {
         modeRace: "Solo carrera", modeQualify: "Clasificación + Carrera",
         qualifyTitle: "Clasificación", qualifyFormat: "Formato", qualifyFmtSimple: "Simple", qualifyFmtSegments: "Q1/Q2/Q3",
         qualifySegments: "Segmentos", qualifyDuration: "Duración clasif. (min)", qualifyParticipation: "Participación",
-        qualifyPartOne: "Uno", qualifyPartMulti: "Varios", qualifyPartAll: "Todos",
+        qualifyPartOne: "Uno", qualifyPartMulti: "Varios", qualifyPartAll: "Todos", qualifyPartOneDriver: "Piloto",
         qualifyPitRule: "Regla de boxes", qualifyPitNone: "Sin regla", qualifyPitMustChange: "Cambio obligatorio",
         qualifyRun: "Vuelta", qualifyStageResults: "Resultados", qualifyUpNext: "Siguiente",
         qualifyAdvance: "Avanzar a la siguiente etapa", qualifySegmentTime: "Duración (min)",
@@ -1334,9 +1406,10 @@ window.translations = {
         teamLogoInvalidType: "Solo JPG, PNG o SVG",
         stintAvg: "Prom. Stint",
         norm: "NORM",
+        pitLatestExitIn: "Salida máx. en", pitLeaveNow: "⚠️ ¡Sal ahora!", pitLatestExitPassed: "🚨 SALIDA TARDÍA",
     },
     it: {
-        ltSearchType: "Filtra per:", ltTeam: "Squadra", ltDriver: "Pilota", ltKart: "Kart n°", ltPlaceholder: "Ricerca...", previewTitle: "Anteprima strategia", addToCalendar: "Aggiungi al calendario", timeline: "Cronologia", driverSchedule: "Orario piloti", totalTime: "Tempo totale", close: "Chiudi",
+        ltSearchType: "Filtra per:", ltTeam: "Squadra", ltDriver: "Pilota", ltKart: "Kart n°", ltPlaceholder: "Ricerca...", previewTitle: "Anteprima strategia", addToCalendar: "Aggiungi al calendario", timeline: "Cronologia", driverSchedule: "Riepilogo Stint", totalTime: "Tempo totale", close: "Chiudi",
         googleLogin: "Accedi con Google", eventCreated: "Evento creato!", eventError: "Errore creazione", raceEventTitle: "Gara di resistenza", errImpossible: "Strategia impossibile!", errAvgHigh: "Media > Max. Aggiungi soste.", errAvgLow: "Media < Min. Riduci soste.",
         appSubtitle: "Gestore strategia", generalInfo: "Info generale", advancedConstraints: "Vincoli avanzati", driverConfig: "Piloti", aiTitle: "Strategia IA", lblDuration: "Durata (H)", lblStops: "Soste richieste", lblMinStint: "Min stint", lblMaxStint: "Max stint", lblPitTime: "Tempo pit", lblPitClosedStart: "🚫 Chiuso inizio", lblPitClosedEnd: "🚫 Chiuso fine",
         lblMinDrive: "Min totale (min)", lblMaxDrive: "Max totale (min)", lblBuffer: "Avviso (s)", lblDoubles: "Consenti doppi", lblSquads: "Usa squadre", lblFuel: "Carburante", lblFuelTank: "Serbatoio (min)", addDriver: "+ Aggiungi", generateStrategy: "Genera (IA)", previewStrategy: "Anteprima", startRace: "Inizia", loadSaved: "Carica",
@@ -1353,7 +1426,7 @@ window.translations = {
         modeRace: "Solo gara", modeQualify: "Qualifiche + Gara",
         qualifyTitle: "Qualifiche", qualifyFormat: "Formato", qualifyFmtSimple: "Semplice", qualifyFmtSegments: "Q1/Q2/Q3",
         qualifySegments: "Segmenti", qualifyDuration: "Durata qualifiche (min)", qualifyParticipation: "Partecipazione",
-        qualifyPartOne: "Uno", qualifyPartMulti: "Più piloti", qualifyPartAll: "Tutti",
+        qualifyPartOne: "Uno", qualifyPartMulti: "Più piloti", qualifyPartAll: "Tutti", qualifyPartOneDriver: "Pilota",
         qualifyPitRule: "Regola box", qualifyPitNone: "Nessuna regola", qualifyPitMustChange: "Cambio obbligatorio",
         qualifyRun: "Giro", qualifyStageResults: "Risultati", qualifyUpNext: "Prossimo",
         qualifyAdvance: "Avanza alla fase successiva", qualifySegmentTime: "Durata (min)",
@@ -1436,10 +1509,11 @@ window.translations = {
         teamLogoInvalidType: "Solo JPG, PNG o SVG",
         stintAvg: "Media Stint",
         norm: "NORM",
+        pitLatestExitIn: "Uscita max tra", pitLeaveNow: "⚠️ Esci ora!", pitLatestExitPassed: "🚨 USCITA IN RITARDO",
     },
     ka: {
         ltSearchType: "ფილტრი:", ltTeam: "გუნდი", ltDriver: "მძღოლი", ltKart: "კარტი #", ltPlaceholder: "ძებნა...",
-        previewTitle: "სტრატეგიის წინასწარი ნახვა", addToCalendar: "დაამატე კალენდარში", timeline: "ქრონოლოგია", driverSchedule: "მძღოლების განრიგი", totalTime: "მোცემი დრო", close: "დახურვა",
+        previewTitle: "სტრატეგიის წინასწარი ნახვა", addToCalendar: "დაამატე კალენდარში", timeline: "ქრონოლოგია", driverSchedule: "სტინტების შეჯამება", totalTime: "მোცემი დრო", close: "დახურვა",
         googleLogin: "შეიყვანე Google-ით", eventCreated: "ღვაბი შეიქმნა!", eventError: "შეცდომა", raceEventTitle: "გამძლეობის რბოლა",
         errImpossible: "შეუძლებელი სტრატეგია!", errAvgHigh: "საშუალო > მაქსიმუმი. დაამატე გაჩერება.", errAvgLow: "საშუალო < მინიმუმი. კლებითი გაჩერება.",
         appSubtitle: "სტრატეგიის მენეჯერი", generalInfo: "ზოგადი ინფორმაცია", advancedConstraints: "დამატებითი შეზღუდვები", driverConfig: "მძღოლები", aiTitle: "AI სტრატეგია",
@@ -1505,7 +1579,7 @@ window.translations = {
         modeRace: "მხოლოდ რბოლა", modeQualify: "კვალიფიკაცია + რბოლა",
         qualifyTitle: "კვალიფიკაცია", qualifyFormat: "ფორმატი", qualifyFmtSimple: "მარტივი", qualifyFmtSegments: "Q1/Q2/Q3",
         qualifySegments: "სეგმენტები", qualifyDuration: "კვალ. ხანგრძლ. (წთ)", qualifyParticipation: "მონაწილეობა",
-        qualifyPartOne: "ერთი", qualifyPartMulti: "რამდენიმე", qualifyPartAll: "ყველა",
+        qualifyPartOne: "ერთი", qualifyPartMulti: "რამდენიმე", qualifyPartAll: "ყველა", qualifyPartOneDriver: "მძღოლი",
         qualifyPitRule: "პიტ-სტოპის წესი", qualifyPitNone: "წესის გარეშე", qualifyPitMustChange: "სავალდებულო ცვლა",
         qualifyRun: "გარბენი", qualifyStageResults: "შედეგები", qualifyUpNext: "შემდეგი",
         qualifyAdvance: "გადასვლა შემდეგ ეტაპზე", qualifySegmentTime: "ხანგრძლ. (წთ)",
@@ -1589,9 +1663,10 @@ window.translations = {
         teamLogoInvalidType: "მხოლოდ JPG, PNG ან SVG",
         stintAvg: "სტინტის საშ.",
         norm: "NORM",
+        pitLatestExitIn: "გასვლა მაქს.", pitLeaveNow: "⚠️ გადი ახლავე!", pitLatestExitPassed: "🚨 გასვლა ვადაგასული",
     },
     de: {
-        ltSearchType: "Filter nach:", ltTeam: "Team", ltDriver: "Fahrer", ltKart: "Kart Nr.", ltPlaceholder: "Suchen...", previewTitle: "Strategievorschau", addToCalendar: "Zum Kalender hinzufügen", timeline: "Zeitleiste", driverSchedule: "Fahrerplan", totalTime: "Gesamtzeit", close: "Schließen",
+        ltSearchType: "Filter nach:", ltTeam: "Team", ltDriver: "Fahrer", ltKart: "Kart Nr.", ltPlaceholder: "Suchen...", previewTitle: "Strategievorschau", addToCalendar: "Zum Kalender hinzufügen", timeline: "Zeitleiste", driverSchedule: "Stint-Übersicht", totalTime: "Gesamtzeit", close: "Schließen",
         googleLogin: "Mit Google anmelden", eventCreated: "Ereignis erstellt!", eventError: "Erstellungsfehler", raceEventTitle: "Ausdauerrennen", errImpossible: "Unmögliche Strategie!", errAvgHigh: "Durchschn. > Max. Stopps hinzufügen.", errAvgLow: "Durchschn. < Min. Stopps reduzieren.",
         appSubtitle: "Strategie-Manager", generalInfo: "Allgemeine Informationen", advancedConstraints: "Erweiterte Einschränkungen", driverConfig: "Fahrer", aiTitle: "KI-Strategie", lblDuration: "Dauer (Std.)", lblStops: "Erforderliche Stops", lblMinStint: "Min. Stint", lblMaxStint: "Max. Stint", lblPitTime: "Boxenzeit", lblPitClosedStart: "🚫 Start geschlossen", lblPitClosedEnd: "🚫 Ende geschlossen",
         lblMinDrive: "Min. Gesamt (min)", lblMaxDrive: "Max. Gesamt (min)", lblBuffer: "Warnung (s)", lblDoubles: "Doppel erlauben", lblSquads: "Staffeln verwenden", lblFuel: "Kraftstoff", lblFuelTank: "Tank (min)", addDriver: "+ Hinzufügen", generateStrategy: "Generieren (KI)", previewStrategy: "Vorschau", startRace: "Starten", loadSaved: "Laden",
@@ -1608,7 +1683,7 @@ window.translations = {
         modeRace: "Nur Rennen", modeQualify: "Qualifying + Rennen",
         qualifyTitle: "Qualifying", qualifyFormat: "Format", qualifyFmtSimple: "Einfach", qualifyFmtSegments: "Q1/Q2/Q3",
         qualifySegments: "Segmente", qualifyDuration: "Qualifying-Dauer (Min)", qualifyParticipation: "Fahrerbeteiligung",
-        qualifyPartOne: "Einer", qualifyPartMulti: "Mehrere", qualifyPartAll: "Alle",
+        qualifyPartOne: "Einer", qualifyPartMulti: "Mehrere", qualifyPartAll: "Alle", qualifyPartOneDriver: "Fahrer",
         qualifyPitRule: "Box-Regel", qualifyPitNone: "Keine Regel", qualifyPitMustChange: "Pflicht-Wechsel",
         qualifyRun: "Runde", qualifyStageResults: "Ergebnisse", qualifyUpNext: "Nächster",
         qualifyAdvance: "Zur nächsten Stufe", qualifySegmentTime: "Dauer (Min)",
@@ -1692,9 +1767,10 @@ window.translations = {
         teamLogoInvalidType: "Nur JPG, PNG oder SVG",
         stintAvg: "Stint Ø",
         norm: "NORM",
+        pitLatestExitIn: "Spätestausfahrt in", pitLeaveNow: "⚠️ Jetzt ausfahren!", pitLatestExitPassed: "🚨 AUSFAHRT ÜBERFÄLLIG",
     },
     ja: {
-        ltSearchType: "フィルタリング:", ltTeam: "チーム", ltDriver: "ドライバー", ltKart: "カート番号", ltPlaceholder: "検索...", previewTitle: "戦略プレビュー", addToCalendar: "カレンダーに追加", timeline: "タイムライン", driverSchedule: "ドライバースケジュール", totalTime: "総時間", close: "閉じる",
+        ltSearchType: "フィルタリング:", ltTeam: "チーム", ltDriver: "ドライバー", ltKart: "カート番号", ltPlaceholder: "検索...", previewTitle: "戦略プレビュー", addToCalendar: "カレンダーに追加", timeline: "タイムライン", driverSchedule: "スティント概要", totalTime: "総時間", close: "閉じる",
         googleLogin: "Googleでログイン", eventCreated: "イベントが作成されました!", eventError: "作成エラー", raceEventTitle: "耐久レース", errImpossible: "不可能な戦略!", errAvgHigh: "平均 > 最大。ピットストップを追加してください。", errAvgLow: "平均 < 最小。ピットストップを減らしてください。",
         appSubtitle: "戦略マネージャー", generalInfo: "一般情報", advancedConstraints: "高度な制約", driverConfig: "ドライバー", aiTitle: "AI戦略", lblDuration: "期間 (時間)", lblStops: "必要なピットストップ", lblMinStint: "最小スティント", lblMaxStint: "最大スティント", lblPitTime: "ピットタイム", lblPitClosedStart: "🚫 開始時に閉鎖", lblPitClosedEnd: "🚫 終了時に閉鎖",
         lblMinDrive: "最小合計 (分)", lblMaxDrive: "最大合計 (分)", lblBuffer: "警告 (秒)", lblDoubles: "ダブルを許可", lblSquads: "スクワッドを使用", lblFuel: "燃料", lblFuelTank: "燃料タンク (分)", addDriver: "+ 追加", generateStrategy: "生成 (AI)", previewStrategy: "プレビュー", startRace: "スタート", loadSaved: "読み込み",
@@ -1711,7 +1787,7 @@ window.translations = {
         modeRace: "レースのみ", modeQualify: "予選 + レース",
         qualifyTitle: "予選", qualifyFormat: "フォーマット", qualifyFmtSimple: "シンプル", qualifyFmtSegments: "Q1/Q2/Q3",
         qualifySegments: "セグメント", qualifyDuration: "予選時間 (分)", qualifyParticipation: "ドライバー参加",
-        qualifyPartOne: "一人", qualifyPartMulti: "複数", qualifyPartAll: "全員",
+        qualifyPartOne: "一人", qualifyPartMulti: "複数", qualifyPartAll: "全員", qualifyPartOneDriver: "ドライバー",
         qualifyPitRule: "ピットルール", qualifyPitNone: "ルールなし", qualifyPitMustChange: "交代必須",
         qualifyRun: "ラン", qualifyStageResults: "結果", qualifyUpNext: "次",
         qualifyAdvance: "次のステージへ", qualifySegmentTime: "時間 (分)",
@@ -1795,10 +1871,11 @@ window.translations = {
         teamLogoInvalidType: "JPG、PNG、または SVG のみ",
         stintAvg: "スティント平均",
         norm: "NORM",
+        pitLatestExitIn: "最遅出発まで", pitLeaveNow: "⚠️ 今すぐ出発!", pitLatestExitPassed: "🚨 出発超過",
     },
     el: {
         ltSearchType: "Φιλτράρισμα:", ltTeam: "Ομάδα", ltDriver: "Οδηγός", ltKart: "Καρτ αρ.", ltPlaceholder: "Αναζήτηση...",
-        previewTitle: "Προεπισκόπηση Στρατηγικής", addToCalendar: "Προσθήκη στο ημερολόγιο", timeline: "Χρονοδιάγραμμα", driverSchedule: "Πρόγραμμα Οδηγών", totalTime: "Συνολικός Χρόνος", close: "Κλείσιμο",
+        previewTitle: "Προεπισκόπηση Στρατηγικής", addToCalendar: "Προσθήκη στο ημερολόγιο", timeline: "Χρονοδιάγραμμα", driverSchedule: "Σύνοψη Γύρων", totalTime: "Συνολικός Χρόνος", close: "Κλείσιμο",
         googleLogin: "Σύνδεση με Google", eventCreated: "Το γεγονός δημιουργήθηκε!", eventError: "Σφάλμα δημιουργίας", raceEventTitle: "Αγώνας αντοχής",
         errImpossible: "Αδύνατη στρατηγική!", errAvgHigh: "Μέσος > Μέγιστος. Προσθέστε στάσεις.", errAvgLow: "Μέσος < Ελάχιστος. Μειώστε στάσεις.",
         appSubtitle: "Διαχειριστής Στρατηγικής", generalInfo: "Γενικές Πληροφορίες", advancedConstraints: "Προχωρημένοι Περιορισμοί", driverConfig: "Οδηγοί", aiTitle: "Στρατηγική AI",
@@ -1866,7 +1943,7 @@ window.translations = {
         modeRace: "Μόνο αγώνας", modeQualify: "Κατατακτήρια + Αγώνας",
         qualifyTitle: "Κατατακτήρια", qualifyFormat: "Μορφή", qualifyFmtSimple: "Απλή", qualifyFmtSegments: "Q1/Q2/Q3",
         qualifySegments: "Τμήματα", qualifyDuration: "Διάρκεια κατατακτ. (λεπτ)", qualifyParticipation: "Συμμετοχή",
-        qualifyPartOne: "Ένας", qualifyPartMulti: "Πολλοί", qualifyPartAll: "Όλοι",
+        qualifyPartOne: "Ένας", qualifyPartMulti: "Πολλοί", qualifyPartAll: "Όλοι", qualifyPartOneDriver: "Οδηγός",
         qualifyPitRule: "Κανόνας πιτ", qualifyPitNone: "Χωρίς κανόνα", qualifyPitMustChange: "Υποχρεωτική αλλαγή",
         qualifyRun: "Γύρος", qualifyStageResults: "Αποτελέσματα", qualifyUpNext: "Επόμενος",
         qualifyAdvance: "Προχώρα στο επόμενο στάδιο", qualifySegmentTime: "Διάρκεια (λεπτ)",
@@ -1948,6 +2025,7 @@ window.translations = {
         teamLogoInvalidType: "Μόνο JPG, PNG ή SVG",
         stintAvg: "Μέσος Stint",
         norm: "ΚΑΝΟΝ",
+        pitLatestExitIn: "Ύστατη έξοδος σε", pitLeaveNow: "⚠️ Βγες τώρα!", pitLatestExitPassed: "🚨 ΕΞΟΔΟΣ ΕΚΠΡΌΘΕΣΜΗ",
     }
 };
 
@@ -1999,7 +2077,7 @@ window.translations = {
     Object.keys(window.translations || {}).forEach(lang => {
         const dict = window.translations[lang];
         if (!dict) return;
-        dict.qualifyTitle = 'מקצה דירוג';
+        // qualifyTitle is already set per-language above — do not override
         dict.lblTeamName = teamNameByLang[lang] || teamNameByLang.en;
         dict.lblDoubles = lblDoublesByLang[lang] || lblDoublesByLang.en;
         dict.settingsSaved = settingsSavedByLang[lang] || settingsSavedByLang.en;

@@ -1454,6 +1454,9 @@ window.updatePitModalLogic = function() {
     }
 
     window.alertState.lastZone = pitZone;
+
+    // Run advanced pit-stop advice (both-timestamps vs pit-in-only scenarios)
+    if (typeof window._runPitAdvice === 'function') window._runPitAdvice();
 };
 
 // ==========================================
@@ -1941,6 +1944,15 @@ window.confirmPitExit = function(autoDetected) {
     window.state.stintStart = now;
     window.state.stintOffset = 0;
 
+    // Clear advanced pit advice state for next stop
+    window._pitAdvice = null;
+    if (window.liveData) {
+        window.liveData._pitOutAt = null;
+        window.liveData._pitEntryForcedAt = null;
+    }
+    const advEl = document.getElementById('pitAdviceStatus');
+    if (advEl) advEl.classList.add('hidden');
+
     // On-the-go strategy recalc: compare actual stint duration to plan, redistribute if drifted
     (function _recalcOnPitExit() {
         const completedIdx = Math.max(0, (window.state.globalStintNumber || 1) - 1);
@@ -2011,7 +2023,233 @@ window.confirmPitExit = function(autoDetected) {
 };
 
 // ==========================================
-// � CONTACT US MODAL
+// 🏁 ADVANCED PIT-STOP LOGIC
+// ==========================================
+//
+// Per-circuit out-lap duration estimates (seconds) for common endurance karting venues.
+// Used when only a pit-in timestamp is known (no explicit pit-out recorded).
+// Falls back to config.outlap if set, otherwise 120 s.
+window.CIRCUIT_OUTLAP_SEC = {
+    // Format: "hostname_fragment_lowercase": outlapSeconds
+    // Italian circuits
+    'adria':         90,  'cremona':       95,  'franciacorta':  85,
+    'lonato':        80,  'sarno':         75,  'wsbk':          90,
+    'ottobiano':    100,  'jesolo':        85,  'maggiora':      90,
+    'parma':         80,  'viterbo':       95,
+    // Spanish circuits
+    'karting cerdanya': 95,  'zuera':       90,  'motorland':     95,
+    'castelloli':   100,  'galicia':       90,
+    // Belgian / French circuits
+    'karting de spa':  105,  'karting benelux': 95,  'kartland':  85,
+    'le mans':       130,  'angerville':    100,
+    // German circuits
+    'wackersdorf':   120,  'kerpen':         90,  'ampfing':       90,
+    // UK circuits
+    'shenington':    100,  'buckmore':       90,  'rissington':   105,
+    // Default fallback when no match
+    _default:        120
+};
+
+/**
+ * Return the estimated out-lap duration in seconds for the current track.
+ * Checks (in order): config.outlap → circuit name substring match → 120 s.
+ */
+window._getOutlapSec = function() {
+    const fromConfig = parseInt(window.config && window.config.outlap) || 0;
+    if (fromConfig > 0) return fromConfig;
+
+    // Try to match circuit name / URL from state / live timing
+    const trackName = (
+        (window.state && window.state.venueName) ||
+        (window.liveData && window.liveData.trackName) ||
+        (document.getElementById('raceLocation') && document.getElementById('raceLocation').value) ||
+        ''
+    ).toLowerCase();
+
+    for (const [key, sec] of Object.entries(window.CIRCUIT_OUTLAP_SEC)) {
+        if (key !== '_default' && trackName.includes(key)) return sec;
+    }
+    return window.CIRCUIT_OUTLAP_SEC._default;
+};
+
+/**
+ * Scenario A — both pit-in and pit-out timestamps are known (live timing reported both).
+ *
+ * Calculates the actual pit duration and advises the driver:
+ *  - If driver is still far from pit-out lane, prompt to leave `buffer` seconds early.
+ *  - Guarantees the driver will NOT cross pit-out before minPitTime elapses.
+ *
+ * Called from updatePitModalLogic when liveData shows pitOutAt is set.
+ */
+window._handlePitBothTimestamps = function() {
+    if (!window.state.isInPit) return;
+    const t = window.t || (k => k);
+    const now = (window.getSyncedNow && typeof window.getSyncedNow === 'function')
+        ? window.getSyncedNow() : Date.now();
+
+    const pitInAt   = window.state.pitStart;           // ms — set on pit entry
+    const pitOutAt  = window.liveData._pitOutAt || 0;  // ms — set when live timing reports pit-out
+    if (!pitOutAt || pitOutAt <= pitInAt) return;
+
+    const pitDurationMs   = pitOutAt - pitInAt;
+    const minPitMs        = Math.max(0, (parseInt(window.config.minPitTime || window.config.pitTime) || 0) * 1000);
+    const buffer          = parseInt(document.getElementById('releaseBuffer')?.value || '5') * 1000;
+    const outlap          = window._getOutlapSec() * 1000;
+
+    // How far the kart is from pit-out (approximated by using the out-lap time).
+    // We don't know the exact distance, so we use outlap ÷ 2 as an upper-bound
+    // travel time from a mid-lane pit box to the exit line.
+    const estTravelMs = Math.round(outlap / 2);
+
+    // Earliest safe exit: minPitTime must have elapsed since pit-in
+    const earliestExit  = pitInAt + minPitMs;
+    // Latest safe exit: so total = pitDuration + outlap ≥ minPitTime + outlap.
+    // If driver is still inside, they should leave by (earliestExit - travelMs)
+    const recommendedExit = Math.max(now, earliestExit - estTravelMs - buffer);
+
+    const secsUntilExit = Math.max(0, Math.round((recommendedExit - now) / 1000));
+    const pitDurationSec = Math.round(pitDurationMs / 1000);
+
+    // Store for use by updatePitModalLogic
+    window._pitAdvice = {
+        scenario: 'both',
+        pitDurationSec,
+        recommendedExitAt: recommendedExit,
+        secsUntilExit,
+        minPitMs
+    };
+
+    const statusEl = document.getElementById('pitAdviceStatus');
+    if (statusEl) {
+        if (secsUntilExit > 0) {
+            statusEl.textContent = `${t('goOutIn')} ${secsUntilExit}s`;
+            statusEl.className   = 'pit-advice-status text-yellow-300 font-bold';
+        } else {
+            statusEl.textContent = t('go');
+            statusEl.className   = 'pit-advice-status text-green-300 font-black text-xl animate-pulse';
+        }
+        statusEl.classList.remove('hidden');
+    }
+
+    // Toast prompt once when recommended exit window opens
+    if (!window._pitAdvice._goPromptFired && secsUntilExit <= 5) {
+        window._pitAdvice._goPromptFired = true;
+        if (typeof window.showToast === 'function') {
+            window.showToast(t('pitLeaveNow') || '🟢 Leave pit now!', 'success', 4000);
+        }
+        if (typeof window.playReleaseSound === 'function') window.playReleaseSound();
+    }
+};
+
+/**
+ * Scenario B — only a pit-in timestamp exists; no explicit pit-out recorded.
+ *
+ * Calculates the latest safe time to exit the pits so that:
+ *   pitDuration + outLapDuration ≥ minPitTime
+ * i.e. latestExit = pitInAt + minPitTime - outLapDuration
+ *
+ * Shows a countdown telling the driver "Latest exit in Xs" and fires a push
+ * notification when the latest-exit deadline arrives.
+ */
+window._handlePitInOnly = function() {
+    if (!window.state.isInPit) return;
+    const t = window.t || (k => k);
+    const now = (window.getSyncedNow && typeof window.getSyncedNow === 'function')
+        ? window.getSyncedNow() : Date.now();
+
+    const pitInAt    = window.state.pitStart;
+    const minPitMs   = Math.max(0, (parseInt(window.config.minPitTime || window.config.pitTime) || 0) * 1000);
+    const outlap     = window._getOutlapSec() * 1000;
+    const buffer     = parseInt(document.getElementById('releaseBuffer')?.value || '5') * 1000;
+
+    // latestExit so that pitDuration + outlap = minPitTime exactly
+    const latestExitAt  = pitInAt + minPitMs - outlap;
+    // recommendedExit = latestExit - buffer (early warning)
+    const recommendedExit = latestExitAt - buffer;
+
+    const secsSinceIn  = Math.round((now - pitInAt) / 1000);
+    const secsToLatest = Math.max(0, Math.round((latestExitAt - now) / 1000));
+    const secsToRec    = Math.max(0, Math.round((recommendedExit - now) / 1000));
+
+    window._pitAdvice = {
+        scenario: 'inOnly',
+        latestExitAt,
+        recommendedExitAt: recommendedExit,
+        secsToLatest,
+        secsToRec,
+        minPitMs,
+        outlap
+    };
+
+    const statusEl = document.getElementById('pitAdviceStatus');
+    if (statusEl) {
+        if (secsToRec > 0) {
+            statusEl.textContent = `${t('pitLatestExitIn') || 'Latest exit in'} ${secsToRec}s`;
+            statusEl.className   = 'pit-advice-status text-yellow-300 font-bold';
+        } else if (secsToLatest > 0) {
+            statusEl.textContent = `${t('pitLeaveNow') || '⚠️ Leave now!'} (${secsToLatest}s)`;
+            statusEl.className   = 'pit-advice-status text-orange-400 font-black animate-pulse';
+        } else {
+            statusEl.textContent = t('pitLatestExitPassed') || '🚨 EXIT OVERDUE';
+            statusEl.className   = 'pit-advice-status text-red-500 font-black animate-pulse';
+        }
+        statusEl.classList.remove('hidden');
+    }
+
+    // One-shot alert when recommended window arrives
+    if (!window._pitAdvice._warnFired && secsToRec <= 0 && secsToLatest > 0) {
+        window._pitAdvice._warnFired = true;
+        if (typeof window.showToast === 'function') {
+            window.showToast(t('pitLeaveNow') || '⚠️ Leave pit now!', 'warning', 5000);
+        }
+        if (typeof window.playAlertBeep === 'function') window.playAlertBeep('warning');
+    }
+    // One-shot critical alert when latest exit is passed
+    if (!window._pitAdvice._critFired && secsToLatest <= 0) {
+        window._pitAdvice._critFired = true;
+        if (typeof window.showToast === 'function') {
+            window.showToast(t('pitLatestExitPassed') || '🚨 EXIT OVERDUE! Risk of penalty!', 'error', 8000);
+        }
+        if (typeof window.playAlertBeep === 'function') window.playAlertBeep('error');
+        if (typeof window._fireStrategyNotification === 'function') {
+            window._fireStrategyNotification(t('pitLatestExitPassed') || '🚨 EXIT OVERDUE', 'error');
+        }
+    }
+};
+
+/**
+ * Hook into the pit modal tick loop: pick the right scenario and run it.
+ * Called by updatePitModalLogic every 100 ms.
+ */
+window._runPitAdvice = function() {
+    if (!window.state || !window.state.isInPit) {
+        window._pitAdvice = null;
+        return;
+    }
+    const hasPitOut = window.liveData && window.liveData._pitOutAt &&
+                      window.liveData._pitOutAt > (window.state.pitStart || 0);
+    if (hasPitOut) {
+        window._handlePitBothTimestamps();
+    } else {
+        window._handlePitInOnly();
+    }
+};
+
+// Capture pit-out timestamp from live timing updates (called from live-timing.js onUpdate)
+window._capturePitOutFromLive = function(data) {
+    if (!window.state || !window.state.isInPit) return;
+    if (!data || !data.ourTeam) return;
+    // Live timing transitioned from inPit=true → inPit=false for our team
+    const wasInPit = window.liveData && window.liveData.ourTeamInPit;
+    const nowInPit = !!data.ourTeam.inPit;
+    if (wasInPit && !nowInPit) {
+        window.liveData._pitOutAt = Date.now();
+        console.log('[PitAdvice] Recorded pit-out timestamp from live data');
+    }
+};
+
+// ==========================================
+// 📞 CONTACT US MODAL
 // ==========================================
 
 window.openContactUsModal = function() {
@@ -3133,20 +3371,29 @@ window.updateProUI = function() {
     const proBtn = document.getElementById('proStatusBtn');
     const lockLT = document.getElementById('proLockLiveTiming');
     const modal = document.getElementById('proUpgradeModal');
+    const isPro = window._proUnlocked;
+    const isTrial = !isPro && window._trialActive;
 
-    if (window._proUnlocked) {
-        // Pro active — hide all upgrade prompts
+    if (isPro) {
         if (banner) banner.classList.add('hidden');
-        if (proBtn) { proBtn.classList.remove('hidden'); proBtn.innerHTML = '⭐ <span>PRO</span>'; }
+        if (proBtn) { proBtn.classList.remove('hidden'); proBtn.innerHTML = '<i class="fas fa-star text-[10px]"></i> <span>PRO</span>'; }
         if (lockLT) lockLT.classList.add('hidden');
-        if (modal) modal.classList.add('hidden'); // close modal if it was open during activation
+        if (modal) modal.classList.add('hidden');
+    } else if (isTrial) {
+        if (banner) banner.classList.add('hidden');
+        const hoursLeft = typeof window.trialHoursLeft === 'function' ? window.trialHoursLeft() : 0;
+        if (proBtn) {
+            proBtn.classList.remove('hidden');
+            proBtn.innerHTML = `<i class="fas fa-clock text-[10px]"></i> <span>TRIAL ${hoursLeft}h</span>`;
+            proBtn.className = proBtn.className.replace(/from-gold[^\s]*/g, '').replace(/to-amber[^\s]*/g, '').trim();
+            proBtn.style.cssText = 'background:linear-gradient(to right,rgba(34,211,238,0.2),rgba(16,185,129,0.2));border-color:rgba(34,211,238,0.4);color:#22d3ee';
+        }
+        if (lockLT) lockLT.classList.add('hidden');
     } else {
-        // Free tier
         if (banner) banner.classList.remove('hidden');
-        if (proBtn) proBtn.classList.add('hidden');
+        if (proBtn) { proBtn.classList.add('hidden'); proBtn.style.cssText = ''; }
         if (lockLT) lockLT.classList.remove('hidden');
     }
-    // Refresh logo button visibility (Pro feature)
     if (typeof window._refreshTeamLogoBtn === 'function') window._refreshTeamLogoBtn();
 };
 
@@ -3171,27 +3418,65 @@ window.skipOnboarding = function() {
 // 📄 PDF / IMAGE EXPORT
 // ==========================================
 
+// Expand scroll-clipped elements so html2canvas captures the full content,
+// then restore after capture.
+function _prepareFullCapture() {
+    const els = [];
+    const targets = ['#driverScheduleList', '#previewScreen', '#previewInner', '#previewMainCol'];
+    targets.forEach(sel => {
+        const el = document.querySelector(sel);
+        if (!el) return;
+        const saved = {
+            el,
+            overflow: el.style.overflow,
+            overflowY: el.style.overflowY,
+            height: el.style.height,
+            maxHeight: el.style.maxHeight,
+            flex: el.style.flex
+        };
+        els.push(saved);
+        el.style.overflow = 'visible';
+        el.style.overflowY = 'visible';
+        el.style.height = 'auto';
+        el.style.maxHeight = 'none';
+        if (sel === '#driverScheduleList') el.style.flex = 'none';
+    });
+    return els;
+}
+
+function _restoreAfterCapture(saved) {
+    saved.forEach(s => {
+        s.el.style.overflow = s.overflow;
+        s.el.style.overflowY = s.overflowY;
+        s.el.style.height = s.height;
+        s.el.style.maxHeight = s.maxHeight;
+        s.el.style.flex = s.flex;
+    });
+}
+
 window.exportStrategyImage = async function() {
     if (!window.checkProFeature('pdfExport')) {
         window.showProGate('Image Export');
         return;
     }
-    
-    const target = document.querySelector('#previewScreen > div');
+
+    const target = document.querySelector('#previewScreen');
     if (!target || typeof html2canvas === 'undefined') {
         window.showToast('Export not available. Please try again.', 'error');
         return;
     }
-    
+
+    const saved = _prepareFullCapture();
     try {
         const canvas = await html2canvas(target, {
             backgroundColor: '#020617',
             scale: 2,
             useCORS: true,
-            logging: false
+            allowTaint: false,
+            logging: false,
+            width: target.scrollWidth,
+            height: target.scrollHeight
         });
-        
-        // Download as PNG
         const link = document.createElement('a');
         link.download = `strateger-strategy-${Date.now()}.png`;
         link.href = canvas.toDataURL('image/png');
@@ -3199,6 +3484,8 @@ window.exportStrategyImage = async function() {
     } catch (e) {
         console.error('Image export failed:', e);
         window.showToast('Export failed: ' + e.message, 'error');
+    } finally {
+        _restoreAfterCapture(saved);
     }
 };
 
@@ -3207,40 +3494,44 @@ window.exportStrategyPdf = async function() {
         window.showProGate('PDF Export');
         return;
     }
-    
-    const target = document.querySelector('#previewScreen > div');
+
+    const target = document.querySelector('#previewScreen');
     if (!target || typeof html2canvas === 'undefined' || typeof jspdf === 'undefined') {
         window.showToast('PDF export not available. Please try again.', 'error');
         return;
     }
-    
+
     const t = window.t || ((k) => k);
     const btn = event?.target?.closest?.('button');
     if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ' + t('exportingPdf'); }
-    
+
+    const saved = _prepareFullCapture();
     try {
         const canvas = await html2canvas(target, {
             backgroundColor: '#020617',
             scale: 2,
             useCORS: true,
-            logging: false
+            allowTaint: false,
+            logging: false,
+            width: target.scrollWidth,
+            height: target.scrollHeight
         });
-        
+
         const imgData = canvas.toDataURL('image/png');
         const { jsPDF } = jspdf;
         const pdf = new jsPDF({
             orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
             unit: 'px',
-            format: [canvas.width, canvas.height]
+            format: [canvas.width / 2, canvas.height / 2]
         });
-        
-        pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+        pdf.addImage(imgData, 'PNG', 0, 0, canvas.width / 2, canvas.height / 2);
         pdf.save(`strateger-strategy-${Date.now()}.pdf`);
     } catch (e) {
         console.error('PDF export failed:', e);
         window.showToast('PDF export failed: ' + e.message, 'error');
     } finally {
-        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-file-pdf"></i> <span class="hidden sm:inline">PDF</span>'; }
+        _restoreAfterCapture(saved);
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-file-pdf"></i>'; }
     }
 };
 
@@ -4346,6 +4637,14 @@ Optimize for:
 
 window._rulesPdfText = null;
 window._rulesPdfFileName = null;
+
+window.openRulesPdfModalGated = function() {
+    if (!window.checkProFeature('rulesPdf')) {
+        window.showProGate('Race Rules PDF');
+        return;
+    }
+    window.openRulesPdfModal();
+};
 
 window.openRulesPdfModal = function() {
     const modal = document.getElementById('rulesPdfModal');

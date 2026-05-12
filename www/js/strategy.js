@@ -3,17 +3,19 @@
 // ==========================================
 
 window.updateDriversFromUI = function() {
-    const inputs = document.querySelectorAll('.driver-input');
-    const radios = document.querySelectorAll('.starter-radio');
+    // Exclude placeholder rows injected by the minimum-driver framework
+    const realRows = Array.from(document.querySelectorAll('#driversList .driver-row')).filter(row => !row.classList.contains('opacity-50'));
+    const inputs = realRows.map(row => row.querySelector('.driver-input')).filter(Boolean);
+    const radios = realRows.map(row => row.querySelector('.starter-radio')).filter(Boolean);
     if (!inputs.length) return;
 
     let starterIdx = 0;
     radios.forEach((r, i) => { if (r.checked) starterIdx = i; });
 
     const SQUAD_LABELS = ['A','B','C','D'];
-    const squadValues = document.querySelectorAll('.squad-value');
-    const colorPickers = document.querySelectorAll('.driver-color-picker');
-    window.drivers = Array.from(inputs).map((input, i) => {
+    const squadValues = realRows.map(row => row.querySelector('.squad-value')).filter(Boolean);
+    const colorPickers = realRows.map(row => row.querySelector('.driver-color-picker')).filter(Boolean);
+    window.drivers = inputs.map((input, i) => {
         const existingColor = colorPickers[i]?.value ||
             ((window.drivers && window.drivers[i]) ? window.drivers[i].color : `hsl(${(i * 360 / inputs.length)}, 70%, 50%)`);
         const sqIdx = parseInt(squadValues[i]?.value) || 0;
@@ -68,7 +70,8 @@ window.getSquadLabelsInUse = function() {
     return Array.from(labels);
 };
 
-window.selectMostRestedDriver = function(currentTime, driverStats, currentDriverIdx, config) {
+window.selectMostRestedDriver = function(currentTime, driverStats, currentDriverIdx, config, consecutiveCount) {
+    const maxConsec = config.maxConsecutive || 1; // 0 = unlimited
     const candidates = window.drivers
         .map((d, i) => ({
             ...d, idx: i,
@@ -76,16 +79,20 @@ window.selectMostRestedDriver = function(currentTime, driverStats, currentDriver
             driven: driverStats[i].driven
         }))
         .filter(d => {
-            if (!config.allowDouble && d.idx === currentDriverIdx && window.drivers.length > 1) return false;
+            if (window.drivers.length > 1 && d.idx === currentDriverIdx) {
+                if (!config.allowDouble) return false;
+                if (maxConsec > 0 && (consecutiveCount || 0) >= maxConsec) return false;
+            }
             if (config.maxDriverTotalMs > 0 && d.driven >= config.maxDriverTotalMs) return false;
             return true;
         })
         .sort((a, b) => b.restTime - a.restTime);
-    
+
     return candidates.length > 0 ? candidates[0].idx : null;
 };
 
-window.selectDriverFromSquad = function(squadLetter, currentTime, driverStats, currentDriverIdx, config) {
+window.selectDriverFromSquad = function(squadLetter, currentTime, driverStats, currentDriverIdx, config, consecutiveCount) {
+    const maxConsec = config.maxConsecutive || 1;
     const candidates = window.drivers
         .map((d, i) => ({
             ...d, idx: i,
@@ -94,17 +101,21 @@ window.selectDriverFromSquad = function(squadLetter, currentTime, driverStats, c
         }))
         .filter(d => {
             if (d.squad !== squadLetter) return false;
-            if (!config.allowDouble && d.idx === currentDriverIdx && window.drivers.length > 1) return false;
+            if (window.drivers.length > 1 && d.idx === currentDriverIdx) {
+                if (!config.allowDouble) return false;
+                if (maxConsec > 0 && (consecutiveCount || 0) >= maxConsec) return false;
+            }
             if (config.maxDriverTotalMs > 0 && d.driven >= config.maxDriverTotalMs) return false;
             return true;
         })
         .sort((a, b) => b.restTime - a.restTime);
-    
+
     return candidates.length > 0 ? candidates[0].idx : null;
 };
 
 window.calculateStintDurations = function(config) {
     const raceMs = config.raceMs;
+    // Pit cycle duration is treated as entry + outlap together.
     const pitTimeMs = config.pitTime * 1000;
     const totalStints = config.stops + 1;
     const totalPitTime = config.stops * pitTimeMs;
@@ -244,50 +255,98 @@ window.calculateStintDurations = function(config) {
         }
     }
 
-    // Normalize durations to whole seconds to avoid sub-second drift.
-    const rounded = stintDurations.map(d => Math.round(d / 1000) * 1000);
-    const sumRounded = rounded.reduce((a, b) => a + b, 0);
-    let diff = totalNetDriveTime - sumRounded;
+    const normalizeDurations = (durations) => {
+        const rounded = durations.map(d => Math.round(d / 1000) * 1000);
+        const sumRounded = rounded.reduce((a, b) => a + b, 0);
+        let diff = totalNetDriveTime - sumRounded;
 
-    // Ensure we preserve constraints when applying the diff.
-    const canAdd = (idx) => rounded[idx] + 1000 <= effectiveMaxStint;
-    const canSub = (idx) => rounded[idx] - 1000 >= safeMinStintMs;
+        const canAdd = (idx) => rounded[idx] + 1000 <= effectiveMaxStint;
+        const canSub = (idx) => rounded[idx] - 1000 >= safeMinStintMs;
 
-    // Apply diff in 1s steps.
-    const steps = Math.round(Math.abs(diff) / 1000);
-    if (steps > 0) {
-        for (let step = 0; step < steps; step++) {
-            if (diff > 0) {
-                let applied = false;
-                for (let i = totalStints - 1; i >= 0; i--) {
-                    if (canAdd(i)) {
-                        rounded[i] += 1000;
-                        applied = true;
-                        break;
+        const steps = Math.round(Math.abs(diff) / 1000);
+        if (steps > 0) {
+            for (let step = 0; step < steps; step++) {
+                if (diff > 0) {
+                    let applied = false;
+                    for (let i = totalStints - 1; i >= 0; i--) {
+                        if (canAdd(i)) {
+                            rounded[i] += 1000;
+                            diff -= 1000;
+                            applied = true;
+                            break;
+                        }
                     }
-                }
-                if (!applied) break;
-            } else {
-                let applied = false;
-                for (let i = totalStints - 1; i >= 0; i--) {
-                    if (canSub(i)) {
-                        rounded[i] -= 1000;
-                        applied = true;
-                        break;
+                    if (!applied) break;
+                } else {
+                    let applied = false;
+                    for (let i = totalStints - 1; i >= 0; i--) {
+                        if (canSub(i)) {
+                            rounded[i] -= 1000;
+                            diff += 1000;
+                            applied = true;
+                            break;
+                        }
                     }
+                    if (!applied) break;
                 }
-                if (!applied) break;
             }
         }
+
+        const finalSum = rounded.reduce((a, b) => a + b, 0);
+        if (finalSum !== totalNetDriveTime) {
+            const tail = rounded.length - 1;
+            rounded[tail] = Math.max(safeMinStintMs, Math.min(effectiveMaxStint, rounded[tail] + (totalNetDriveTime - finalSum)));
+        }
+        return rounded;
+    };
+
+    let rounded = normalizeDurations(stintDurations);
+
+    // Weather-aware stint sizing:
+    // heavy rain → shorter stints, light rain → slightly shorter, dry → slightly longer.
+    // Also exposes weather per-stint for driver swap frequency hints.
+    const weatherPerStint = new Array(totalStints).fill('dry');
+    const trackCond = window.state?.trackCondition;
+    const liveRain = (trackCond === 'wet');
+    const liveLight = (trackCond === 'drying');
+
+    if (typeof window.getVenueForecastAt === 'function' && rounded.length > 0) {
+        const raceStartMs = Number.isFinite(Date.parse(window.raceStartTime)) ? Date.parse(window.raceStartTime) : Date.now();
+        let cursor = raceStartMs;
+        const adapted = rounded.map((dur, idx) => {
+            const midMs = cursor + Math.floor(dur / 2);
+            const fc = window.getVenueForecastAt(midMs);
+            const code = Number(fc?.weatherCode);
+            const precip = Number(fc?.precipitation || 0);
+            const heavyRain = ([65, 67, 82, 95, 96, 99].includes(code)) || precip >= 2.5;
+            const lightRain = ([51, 53, 55, 61, 63, 80, 81].includes(code)) || (precip >= 0.5 && precip < 2.5);
+            const dry = ((code >= 0 && code <= 2) || code === 3) && precip < 0.2;
+
+            weatherPerStint[idx] = heavyRain ? 'heavy' : lightRain ? 'light' : 'dry';
+
+            let next = dur;
+            if (heavyRain) next = Math.round(dur * 0.82);        // shorten significantly
+            else if (lightRain) next = Math.round(dur * 0.92);   // shorten moderately
+            else if (dry) next = Math.round(dur * 1.06);
+            next = Math.max(safeMinStintMs, Math.min(effectiveMaxStint, next));
+
+            cursor += dur;
+            if (idx < totalStints - 1) cursor += pitTimeMs;
+            return next;
+        });
+        rounded = normalizeDurations(adapted);
+    } else if (liveRain || liveLight) {
+        // No forecast provider but live track condition is rain — shorten all stints
+        const factor = liveRain ? 0.82 : 0.92;
+        const adapted = rounded.map(dur => {
+            const next = Math.max(safeMinStintMs, Math.min(effectiveMaxStint, Math.round(dur * factor)));
+            return next;
+        });
+        rounded = normalizeDurations(adapted);
+        weatherPerStint.fill(liveRain ? 'heavy' : 'light');
     }
 
-    // Final safeguard: guarantee the sum equals totalNetDriveTime exactly.
-    const finalSum = rounded.reduce((a, b) => a + b, 0);
-    if (finalSum !== totalNetDriveTime) {
-        rounded[totalStints - 1] += (totalNetDriveTime - finalSum);
-    }
-
-    return { durations: rounded };
+    return { durations: rounded, weatherPerStint };
 };
 
 // Determine if a given time falls inside the squad window.
@@ -319,7 +378,8 @@ window.calculateStrategyLogic = function(config) {
     }
     
     const stintDurations = durationResult.durations;
-    
+    const weatherPerStint = durationResult.weatherPerStint || new Array(stintDurations.length).fill('dry');
+
     console.log(`📋 Planned stint durations: ${stintDurations.map(d => (d/60000).toFixed(1) + 'm').join(', ')}`);
     
     // Build race start time from config
@@ -348,56 +408,68 @@ window.calculateStrategyLogic = function(config) {
         squadWindow = { startMs: winStart.getTime(), endMs: winEnd.getTime() };
     }
     
-    let currentDriverIdx = window.drivers.findIndex(d => d.isStarter);
-    if (currentDriverIdx === -1) currentDriverIdx = 0;
-    currentDriverIdx = (currentDriverIdx - 1 + window.drivers.length) % window.drivers.length;
-    
+    const starterIdx = (() => {
+        const idx = window.drivers.findIndex(d => d.isStarter);
+        return idx === -1 ? 0 : idx;
+    })();
+    // Pre-set to the driver *before* the starter so the first selectMostRestedDriver
+    // call returns the starter.  BUT: when all rest-times are equal (race start) the
+    // sort is unstable, so we track the intended starter separately and override stint 0.
+    let currentDriverIdx = (starterIdx - 1 + window.drivers.length) % window.drivers.length;
+
+    let consecutiveCount = 0; // How many stints in a row the current driver has done
+
     let driverStats = window.drivers.map(d => ({
         ...d,
         driven: 0,
         lastStintEnd: null,
         stintCount: 0
     }));
-    
+
     let timeline = [];
     let accumulatedRaceTime = 0;
-    
+
     for (let i = 0; i < totalStints; i++) {
         const duration = stintDurations[i];
         const isLast = (i === totalStints - 1);
         const stintStartTime = new Date(currentTime);
         const isNight = window.isNightPhase(stintStartTime);
-        
+
         let selectedIdx = -1;
         let activeSquad = null;
-        
+
         if (config.useSquads && allSquadLabels.length > 1 && squadWindow) {
             // Determine which squad should be driving at this stint's start time
             activeSquad = window.getScheduledSquad(stintStartTime, squadWindow, allSquadLabels);
-            
+
             if (activeSquad) {
                 // Inside squad window — pick from the scheduled squad
-                selectedIdx = window.selectDriverFromSquad(activeSquad, stintStartTime, driverStats, currentDriverIdx, extendedConfig);
+                selectedIdx = window.selectDriverFromSquad(activeSquad, stintStartTime, driverStats, currentDriverIdx, extendedConfig, consecutiveCount);
                 if (selectedIdx === null) {
                     // Fallback: try other squads in order
                     for (let s = 1; s < allSquadLabels.length; s++) {
                         const fallback = allSquadLabels[(allSquadLabels.indexOf(activeSquad) + s) % allSquadLabels.length];
-                        selectedIdx = window.selectDriverFromSquad(fallback, stintStartTime, driverStats, currentDriverIdx, extendedConfig);
+                        selectedIdx = window.selectDriverFromSquad(fallback, stintStartTime, driverStats, currentDriverIdx, extendedConfig, consecutiveCount);
                         if (selectedIdx !== null) break;
                     }
                 }
             } else {
                 // Outside squad window — all drivers share equally
-                selectedIdx = window.selectMostRestedDriver(stintStartTime, driverStats, currentDriverIdx, extendedConfig);
+                selectedIdx = window.selectMostRestedDriver(stintStartTime, driverStats, currentDriverIdx, extendedConfig, consecutiveCount);
             }
         } else {
-            selectedIdx = window.selectMostRestedDriver(stintStartTime, driverStats, currentDriverIdx, extendedConfig);
+            selectedIdx = window.selectMostRestedDriver(stintStartTime, driverStats, currentDriverIdx, extendedConfig, consecutiveCount);
         }
-        
+
         if (selectedIdx === null || selectedIdx === -1) {
             selectedIdx = (currentDriverIdx + 1) % window.drivers.length;
         }
-        
+
+        // Stint 0: always honour the selected starter regardless of sort order
+        if (i === 0) selectedIdx = starterIdx;
+
+        // Update consecutive count
+        consecutiveCount = (selectedIdx === currentDriverIdx) ? consecutiveCount + 1 : 1;
         currentDriverIdx = selectedIdx;
         driverStats[selectedIdx].driven += duration;
         driverStats[selectedIdx].stintCount++;
@@ -406,6 +478,7 @@ window.calculateStrategyLogic = function(config) {
         const end = new Date(start.getTime() + duration);
         driverStats[selectedIdx].lastStintEnd = new Date(end);
         
+        const stintWeather = weatherPerStint[i] || 'dry';
         timeline.push({
             type: 'stint',
             stintNumber: i + 1,
@@ -416,6 +489,7 @@ window.calculateStrategyLogic = function(config) {
             isNightPhase: isNight,
             squadModeActive: activeSquad !== null,
             activeSquad: activeSquad,
+            weather: stintWeather,
             start, end, startTime: start, endTime: end, duration
         });
         
@@ -452,11 +526,19 @@ window._setStartBtnState = function(valid) {
     btn.title = valid ? '' : '⚠️ Fix strategy params before starting';
 };
 
+// Debounce guard: prevents parallel/rapid re-runs
+let _runSimTimer = null;
+window.scheduleRunSim = function(delayMs) {
+    clearTimeout(_runSimTimer);
+    _runSimTimer = setTimeout(() => { window.runSim(); }, delayMs || 0);
+};
+
 window.runSim = function() {
     const durationHours = parseFloat(document.getElementById('raceDuration').value) || 12;
     const reqStops = parseInt(document.getElementById('reqPitStops').value) || 15;
     const minStintMin = parseFloat(document.getElementById('minStint').value) || 10;
     const maxStintMin = parseFloat(document.getElementById('maxStint').value) || 45;
+    // Input value is full pit cycle (entry + outlap).
     const pitTimeSec = parseInt(document.getElementById('minPitTime').value) || 120;
     const fuelMin = parseFloat(document.getElementById('fuelTime').value) || 0;
     const closedStartMin = parseFloat(document.getElementById('pitClosedStart').value) || 0;
@@ -464,6 +546,8 @@ window.runSim = function() {
     const numSquads = parseInt(document.getElementById('numSquads')?.value) || 0;
     const useSquads = numSquads > 0;
     const allowDouble = document.getElementById('allowDouble')?.checked || false;
+    const maxConsecutiveRaw = parseInt(document.getElementById('maxConsecutive')?.value);
+    const maxConsecutive = allowDouble ? (isNaN(maxConsecutiveRaw) ? 2 : maxConsecutiveRaw) : 1;
     const minDriverMin = parseFloat(document.getElementById('minDriverTime').value) || 0;
     const maxDriverMin = parseFloat(document.getElementById('maxDriverTime').value) || 0;
 
@@ -525,6 +609,7 @@ window.runSim = function() {
         squadWindowStart: squadWindowStart,
         squadWindowEnd: squadWindowEnd,
         allowDouble: allowDouble,
+        maxConsecutive: maxConsecutive,
         minDriverTotal: minDriverMin,
         maxDriverTotal: maxDriverMin,
         totalNetDriveTime: totalNetDriveTime,
@@ -537,7 +622,7 @@ window.runSim = function() {
 
     if (durationResult.error) {
         const resEl = document.getElementById('simResult');
-        if (resEl) {
+        if (resEl && window._sessionMode !== 'qualify') {
             resEl.innerText = "⚠️ " + durationResult.error;
             resEl.classList.remove('hidden');
             resEl.style.borderColor = 'red';
@@ -560,7 +645,7 @@ window.runSim = function() {
 
     if (result.error) {
         const resEl = document.getElementById('simResult');
-        if (resEl) {
+        if (resEl && window._sessionMode !== 'qualify') {
             resEl.innerText = "⚠️ " + result.error;
             resEl.classList.remove('hidden');
             resEl.style.borderColor = 'red';
@@ -637,7 +722,7 @@ window.runSim = function() {
         const isRTL = document.documentElement.dir === 'rtl';
         const um = t('unitMin') || 'm';
         const uh = t('unitHour') || 'h';
-        resEl.classList.remove('hidden');
+        if (window._sessionMode !== 'qualify') resEl.classList.remove('hidden');
         resEl.style.borderColor = '#22d3ee';
         resEl.style.color = '#22d3ee';
         resEl.style.direction = isRTL ? 'rtl' : 'ltr';
@@ -764,9 +849,18 @@ window.initRace = function() {
     window.state.targetStintMs = window.state.stintTargets[0] || (window.config.maxStint * 60000);
 
     document.getElementById('setupScreen').classList.add('hidden');
-    document.getElementById('previewScreen').classList.add('hidden'); 
+    document.getElementById('previewScreen').classList.add('hidden');
     document.getElementById('raceDashboard').classList.remove('hidden');
-    
+
+    // Init draggable panels and resizer after dashboard is visible
+    if (typeof window.initDashboardDrag === 'function') window.initDashboardDrag();
+    if (typeof window.initDashPanelResizer === 'function') window.initDashPanelResizer();
+    // Init horizontal panel pinning (only active in landscape/wide layout)
+    if (typeof window.initHorizontalPanels === 'function') {
+        // Small delay to let layout settle after transition
+        setTimeout(window.initHorizontalPanels, 150);
+    }
+
     // === Show chat button only in race dashboard ===
     const chatBtn = document.getElementById('chatToggleBtn');
     if (chatBtn) chatBtn.style.display = 'block';

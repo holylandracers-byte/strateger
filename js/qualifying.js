@@ -147,12 +147,35 @@ window.setQParticipation = function(mode) {
     });
     const multiRow = document.getElementById('qMultiCountRow');
     if (multiRow) multiRow.classList.toggle('hidden', mode !== 'multi');
+    const oneRow = document.getElementById('qOneDriverRow');
+    if (oneRow) oneRow.classList.toggle('hidden', mode !== 'one');
     if (mode === 'multi') {
-        // Reset selection to all drivers when opening picker
         if (typeof window.updateDriversFromUI === 'function') window.updateDriversFromUI();
         window._qualifyConfig.selectedDrivers = new Set((window.drivers || []).map(d => d.name));
         window._rebuildQDriverPicker();
     }
+    if (mode === 'one') {
+        window._rebuildQOneDriverSelect();
+    }
+    window.updateQualifyPreview && window.updateQualifyPreview();
+    window.saveHostState && window.saveHostState();
+};
+
+window._rebuildQOneDriverSelect = function() {
+    const sel = document.getElementById('qOneDriverSelect');
+    if (!sel) return;
+    const drivers = window.drivers || [];
+    const current = window._qualifyConfig.oneDriverName;
+    sel.innerHTML = drivers.map(d =>
+        `<option value="${d.name}"${d.name === current ? ' selected' : ''}>${d.name}</option>`
+    ).join('');
+    if (!current && drivers.length) {
+        window._qualifyConfig.oneDriverName = drivers[0].name;
+    }
+};
+
+window.setQOneDriver = function(name) {
+    window._qualifyConfig.oneDriverName = name;
     window.updateQualifyPreview && window.updateQualifyPreview();
     window.saveHostState && window.saveHostState();
 };
@@ -218,16 +241,21 @@ window.updateQualifyPreview = function() {
     const preview = document.getElementById('qualifyStrategyPreview');
     if (!preview) return;
 
-    // Keep driver picker in sync when in multi mode
+    // Keep driver pickers in sync
     if (cfg.participation === 'multi') {
         window._rebuildQDriverPicker();
+    }
+    if (cfg.participation === 'one') {
+        window._rebuildQOneDriverSelect();
     }
 
     if (!drivers.length) { preview.innerHTML = '<span class="text-gray-500">Add drivers to see qualifying strategy</span>'; return; }
 
     let activeDrivers;
     if (cfg.participation === 'one') {
-        activeDrivers = [drivers[0]];
+        const oneName = cfg.oneDriverName;
+        const found = oneName && drivers.find(d => d.name === oneName);
+        activeDrivers = found ? [found] : [drivers[0]];
     } else if (cfg.participation === 'multi') {
         const sel = cfg.selectedDrivers;
         activeDrivers = sel ? drivers.filter(d => sel.has(d.name)) : drivers;
@@ -270,7 +298,9 @@ window.startQualifyingDirect = function() {
 
     let activeDrivers;
     if (cfg.participation === 'one') {
-        activeDrivers = [drivers[0]];
+        const oneName = cfg.oneDriverName;
+        const found = oneName && drivers.find(d => d.name === oneName);
+        activeDrivers = found ? [found] : [drivers[0]];
     } else if (cfg.participation === 'multi') {
         const sel = cfg.selectedDrivers;
         activeDrivers = sel ? drivers.filter(d => sel.has(d.name)) : drivers;

@@ -408,9 +408,14 @@ window.calculateStrategyLogic = function(config) {
         squadWindow = { startMs: winStart.getTime(), endMs: winEnd.getTime() };
     }
     
-    let currentDriverIdx = window.drivers.findIndex(d => d.isStarter);
-    if (currentDriverIdx === -1) currentDriverIdx = 0;
-    currentDriverIdx = (currentDriverIdx - 1 + window.drivers.length) % window.drivers.length;
+    const starterIdx = (() => {
+        const idx = window.drivers.findIndex(d => d.isStarter);
+        return idx === -1 ? 0 : idx;
+    })();
+    // Pre-set to the driver *before* the starter so the first selectMostRestedDriver
+    // call returns the starter.  BUT: when all rest-times are equal (race start) the
+    // sort is unstable, so we track the intended starter separately and override stint 0.
+    let currentDriverIdx = (starterIdx - 1 + window.drivers.length) % window.drivers.length;
 
     let consecutiveCount = 0; // How many stints in a row the current driver has done
 
@@ -459,6 +464,9 @@ window.calculateStrategyLogic = function(config) {
         if (selectedIdx === null || selectedIdx === -1) {
             selectedIdx = (currentDriverIdx + 1) % window.drivers.length;
         }
+
+        // Stint 0: always honour the selected starter regardless of sort order
+        if (i === 0) selectedIdx = starterIdx;
 
         // Update consecutive count
         consecutiveCount = (selectedIdx === currentDriverIdx) ? consecutiveCount + 1 : 1;

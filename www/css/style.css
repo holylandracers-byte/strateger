@@ -10,6 +10,50 @@
     --safe-bottom: env(safe-area-inset-bottom, 0px);
     --safe-left: env(safe-area-inset-left, 0px);
     --safe-right: env(safe-area-inset-right, 0px);
+
+    /* ---- Extended live-timing palette ---- */
+    /* Sector colors — distinct hues, WCAG AA on dark bg */
+    --s1: #38bdf8;      /* sky blue  — Sector 1 */
+    --s2: #fb923c;      /* warm amber — Sector 2 */
+    --s3: #4ade80;      /* green — Sector 3 */
+    --s1-bg: rgba(56,189,248,0.12);
+    --s2-bg: rgba(251,146,60,0.12);
+    --s3-bg: rgba(74,222,128,0.12);
+
+    /* Tire compounds */
+    --tire-soft:   #f43f5e;   /* rose */
+    --tire-medium: #facc15;   /* yellow */
+    --tire-hard:   #e2e8f0;   /* near-white */
+    --tire-wet:    #60a5fa;   /* blue */
+    --tire-inter:  #34d399;   /* emerald */
+
+    /* Gap indicators */
+    --gap-close:    #f87171;   /* threat within 2 s */
+    --gap-mid:      #fbbf24;   /* in striking range */
+    --gap-safe:     #4ade80;   /* comfortable margin */
+    --gap-lapped:   #6b7280;   /* lapped traffic */
+
+    /* Flag / weather conditions */
+    --flag-green:   #22c55e;
+    --flag-yellow:  #eab308;
+    --flag-red:     #ef4444;
+    --flag-safety:  #fb923c;
+    --flag-vsc:     #facc15;
+    --flag-chequered: #f1f5f9;
+    --weather-dry:  #fde68a;
+    --weather-wet:  #93c5fd;
+    --weather-mist: #cbd5e1;
+
+    /* Strategy alerts */
+    --alert-pit-now:    #f43f5e;
+    --alert-box-box:    #fb923c;
+    --alert-push:       #a3e635;
+    --alert-conserve:   #38bdf8;
+    --alert-caution:    #eab308;
+
+    /* Layout two-zone widths (desktop) */
+    --lt-zone-w: 58%;
+    --ctrl-zone-w: 42%;
 }
 
 html {
@@ -73,6 +117,64 @@ body {
     direction: ltr;
 }
 
+/* Team identity in header: more distinctive branding look */
+.team-identity-label {
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+}
+.team-identity-input {
+    color: #e6fbff;
+    font-family: "Segoe UI Semibold", "Trebuchet MS", "Arial Rounded MT Bold", sans-serif;
+    letter-spacing: 0.04em;
+    text-shadow: 0 0 8px rgba(34, 211, 238, 0.25);
+}
+/* RTL text alignment for setup / content areas */
+[dir="rtl"] #setupScreen label,
+[dir="rtl"] #setupScreen h2,
+[dir="rtl"] #setupScreen p,
+[dir="rtl"] #setupScreen span:not([class*="font-mono"]) {
+    text-align: right;
+}
+/* Collapsible section headers: flip chevron to right side */
+[dir="rtl"] .collapsible-section h2 .collapse-icon,
+[dir="rtl"] .collapsible-section h2 .fa-chevron-down {
+    margin-left: 0;
+    margin-right: auto;
+    order: -1;
+}
+/* Flip flex rows that use icon+text layouts */
+[dir="rtl"] .collapsible-section h2 {
+    flex-direction: row-reverse;
+}
+[dir="rtl"] .collapsible-section h2 > i:first-child {
+    margin-right: 0;
+    margin-left: 0.5rem;
+}
+/* Setup grid labels */
+[dir="rtl"] #setupScreen .grid label {
+    display: block;
+    text-align: right;
+}
+/* Input-field placeholder alignment for RTL */
+[dir="rtl"] .input-field:not([type="number"]):not([type="time"]):not([type="date"]) {
+    text-align: right;
+}
+/* Driver row RTL — remove duplicate; handled in driver section below */
+/* Stint pills in strategy outlook - keep LTR */
+[dir="rtl"] #remStintsText,
+[dir="rtl"] .stint-outlook-pill {
+    direction: ltr;
+}
+/* Preview screen: keep stint timeline LTR */
+[dir="rtl"] #previewScreen .stint-block,
+[dir="rtl"] #previewScreen .driver-block {
+    direction: ltr;
+}
+/* Dashboard info bar: keep LTR */
+[dir="rtl"] #dashboardInfoBar {
+    direction: ltr;
+}
+
 /* ==================== THEME TINTING ==================== */
 /* When a color theme is active, tint ALL app elements */
 :root[style*="--theme-panel"] #raceDashboard .bg-navy-900,
@@ -126,6 +228,101 @@ body {
     }
 }
 
+/* ==================== DASHBOARD FULL-HEIGHT LOCK ==================== */
+/* When race or qualifying dashboard is active, body must not scroll —
+   all scrolling happens inside the top panel. */
+body:has(#raceDashboard:not(.hidden)),
+body:has(#qualifyingDashboard:not(.hidden)) {
+    overflow: hidden !important;
+    padding-bottom: 0 !important;
+}
+
+/* raceDashboard fills the space below the sticky header.
+   Use a CSS var so it's easy to tune per device. */
+:root { --header-h: 46px; --dash-info-pct: 60%; --dash-ctrl-pct: 40%; }
+
+#raceDashboard:not(.hidden) {
+    height: calc(100dvh - var(--header-h));
+    min-height: 0;
+}
+
+/* Portrait: raceInfoPanel height driven by CSS var (set by resizer JS) */
+#racePanelsWrapper { display: flex !important; flex-direction: column !important; }
+#raceInfoPanel {
+    flex: 0 0 var(--dash-info-pct, 60%) !important;
+    min-height: 80px !important;
+    overflow-y: auto !important;
+}
+#raceControlDock {
+    flex: 1 1 0 !important;
+    min-height: 80px !important;
+    overflow-y: auto !important;
+}
+
+/* ==================== TABLET LANDSCAPE: 2-COLUMN RACE DASHBOARD ==================== */
+/* On landscape tablets (≥768px wide) split race dashboard into left info + right controls */
+@media (min-width: 768px) and (orientation: landscape) {
+    /* Two-panel wrapper becomes side-by-side */
+    #racePanelsWrapper {
+        flex-direction: row !important;
+        align-items: stretch;
+    }
+    /* Left: info panel — flex-based width (default 60%), scrollable */
+    #raceInfoPanel {
+        flex: 0 0 var(--dash-info-pct, 60%) !important;
+        min-width: 200px !important;
+        max-width: calc(100% - 240px) !important;
+        border-right: none !important;
+        padding: 12px !important;
+        gap: 10px !important;
+    }
+    /* Right: control dock — takes remaining width, never scrolls */
+    #raceControlDock {
+        flex: 1 1 0 !important;
+        min-width: 200px !important;
+        border-top: none !important;
+        border-left: 1px solid rgba(55,65,81,0.6) !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: flex-end !important;
+        padding: 12px !important;
+        gap: 10px !important;
+        overflow-y: auto;
+    }
+}
+
+/* ==================== TABLET LANDSCAPE: SETUP SCREEN ==================== */
+@media (min-width: 768px) and (orientation: landscape) {
+    /* Shrink hero so it doesn't eat half the screen height */
+    .setup-hero { padding: 6px 12px !important; margin-bottom: 6px !important; }
+    .setup-hero-title { font-size: 1.1rem !important; }
+    .setup-hero-sub { font-size: 0.6rem !important; }
+    .quick-actions-strip { margin-top: 4px !important; gap: 3px !important; }
+    .quick-pill { padding: 3px 8px !important; font-size: 0.6rem !important; }
+
+    /* Ensure setup 2-col grid is active and well-spaced */
+    #setupColumnsGrid {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 16px !important;
+        align-items: start;
+    }
+
+    /* Tighten collapsible section padding */
+    #setupScreen .collapsible-section { padding: 8px 10px !important; }
+    #setupScreen .collapsible-section h2 { margin-bottom: 4px !important; }
+
+    /* Compact input fields */
+    #setupScreen .input-field { padding: 4px 8px !important; font-size: 0.75rem !important; }
+
+    /* Session mode toggle compact */
+    #modeRaceBtn, #modeQualifyBtn { padding-top: 6px !important; padding-bottom: 6px !important; font-size: 0.7rem !important; }
+
+    /* Action buttons compact */
+    #setupScreen button[class*="py-4"] { padding-top: 10px !important; padding-bottom: 10px !important; }
+    #setupScreen button[class*="py-3"] { padding-top: 8px !important; padding-bottom: 8px !important; }
+}
+
 /* ==================== THEME PANEL ANIMATION ==================== */
 @keyframes slideUp {
     from { transform: translateY(100%); opacity: 0; }
@@ -148,10 +345,110 @@ body {
 .animate-scale-in {
     animation: scaleIn 0.2s ease-out;
 }
+/* ==================== THEME PANEL — REDESIGNED ==================== */
 #themePanel {
-    background: rgba(0,0,0,0.5);
-    backdrop-filter: blur(4px);
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(8px);
 }
+
+.theme-panel-modal {
+    background: #0d1424;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 20px;
+    padding: 24px;
+    width: 100%;
+    max-width: 640px;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 32px 64px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04);
+}
+
+.theme-panel-scroll {
+    overflow-y: auto;
+    overflow-x: hidden;
+    flex: 1;
+    padding-right: 4px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.1) transparent;
+}
+.theme-panel-scroll::-webkit-scrollbar { width: 4px; }
+.theme-panel-scroll::-webkit-scrollbar-track { background: transparent; }
+.theme-panel-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+
+.theme-category-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #6b7280;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.theme-category-icon { font-size: 13px; }
+
+.theme-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+    margin-bottom: 4px;
+}
+@media (max-width: 480px) {
+    .theme-grid { grid-template-columns: repeat(4, 1fr); gap: 8px; }
+}
+
+.theme-swatch {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    background: transparent;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    border-radius: 10px;
+    transition: transform 0.15s;
+}
+.theme-swatch:hover { transform: translateY(-2px); }
+.theme-swatch:hover .theme-preview { border-color: rgba(255,255,255,0.5); }
+.theme-swatch.active .theme-preview {
+    border-color: var(--ice) !important;
+    box-shadow: 0 0 0 2px rgba(34,211,238,0.4), 0 0 12px rgba(34,211,238,0.25);
+}
+.theme-swatch.active .theme-label { color: #22d3ee; }
+
+.theme-preview {
+    width: 100%;
+    aspect-ratio: 4/3;
+    border-radius: 8px;
+    border: 2px solid rgba(255,255,255,0.08);
+    overflow: hidden;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+.theme-preview img { display: block; width: 100%; height: 100%; object-fit: cover; }
+
+.theme-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: #9ca3af;
+    text-align: center;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: color 0.15s;
+}
+
+/* Override old bg-swatch active ring — theme-swatch.active now handles it */
+.bg-swatch.active { border-color: unset; box-shadow: unset; }
+
+@keyframes fade-in-scale {
+    from { opacity: 0; transform: scale(0.95); }
+    to   { opacity: 1; transform: scale(1); }
+}
+.animate-fade-in-scale { animation: fade-in-scale 0.2s ease-out; }
 
 /* ==================== SCREEN TRANSITIONS ==================== */
 #setupScreen, #raceDashboard, #previewScreen {
@@ -174,6 +471,19 @@ body {
 }
 
 /* ==================== COLLAPSIBLE SECTIONS ==================== */
+.collapsible-section {
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.collapsible-section:hover {
+    border-color: rgba(255,255,255,0.1) !important;
+}
+.collapsible-section h2 {
+    user-select: none;
+    transition: opacity 0.15s;
+}
+.collapsible-section h2:hover {
+    opacity: 0.85;
+}
 .collapsible-section .collapse-body {
     max-height: 2000px;
     overflow: hidden;
@@ -217,7 +527,7 @@ header {
     }
 
     #setupScreen, #raceDashboard {
-        max-width: 600px;
+        /* max-width: 600px; */
         margin: 0 auto;
         background-color: var(--navy-950);
         box-shadow: 0 0 50px rgba(0, 0, 0, 0.8);
@@ -229,7 +539,7 @@ header {
     }
 
     header {
-        max-width: 600px;
+        /* max-width: 600px; */
         margin: 0 auto;
     }
 }
@@ -304,6 +614,94 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .draggable-source { opacity: 0.4; }
 .drag-over { outline: 2px dashed var(--ice); outline-offset: -2px; border-radius: 4px; }
 
+/* ==================== DASHBOARD PANEL RESIZER ==================== */
+/* Portrait (default): horizontal bar between top and bottom panels */
+.dash-resizer {
+    width: 100%;
+    height: 10px;
+    cursor: row-resize;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    z-index: 30;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
+    flex-shrink: 0;
+}
+.dash-resizer-handle {
+    width: 40px;
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(255,255,255,0.15);
+    transition: background 0.2s;
+}
+.dash-resizer:hover .dash-resizer-handle,
+.dash-resizer.active .dash-resizer-handle {
+    background: rgba(34,211,238,0.6);
+}
+/* Landscape: becomes a vertical divider */
+@media (min-width: 768px) and (orientation: landscape) {
+    .dash-resizer {
+        width: 10px;
+        height: 100%;
+        cursor: col-resize;
+        flex-direction: column;
+    }
+    .dash-resizer-handle {
+        width: 4px;
+        height: 40px;
+    }
+}
+
+/* ==================== HORIZONTAL PANEL MOVE BUTTON ==================== */
+.dash-panel-move-btn {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 18px;
+    height: 18px;
+    display: none; /* only shown in horizontal layout */
+    align-items: center;
+    justify-content: center;
+    background: rgba(34,211,238,0.08);
+    border: 1px solid rgba(34,211,238,0.25);
+    border-radius: 4px;
+    color: rgba(34,211,238,0.6);
+    font-size: 11px;
+    cursor: pointer;
+    z-index: 5;
+    transition: background 0.15s, color 0.15s;
+    line-height: 1;
+}
+.dash-panel-move-btn:hover {
+    background: rgba(34,211,238,0.2);
+    color: #22d3ee;
+}
+@media (min-width: 768px) and (orientation: landscape) {
+    .dash-panel-move-btn { display: flex; }
+}
+
+/* ==================== STRATEGY OUTLOOK PILLS ==================== */
+.stint-outlook-pill {
+    display: inline-flex;
+    align-items: center;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 999px;
+    white-space: nowrap;
+    line-height: 1.4;
+}
+.pill-max      { background: rgba(163,230,53,0.15); color: #a3e635; border: 1px solid rgba(163,230,53,0.4); }
+.pill-min      { background: rgba(249,115,22,0.15); color: #fb923c; border: 1px solid rgba(249,115,22,0.4); }
+.pill-normal   { background: rgba(255,255,255,0.06); color: #e5e7eb; border: 1px solid rgba(255,255,255,0.15); }
+.pill-final    { background: rgba(34,211,238,0.12); color: #22d3ee; border: 1px solid rgba(34,211,238,0.3); }
+.pill-rest     { background: rgba(107,114,128,0.15); color: #9ca3af; border: 1px solid rgba(107,114,128,0.3); }
+.pill-impossible { background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.4); animation: pulse 1.5s infinite; }
+.pill-add-stop   { background: rgba(239,68,68,0.12); color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
+
 /* ==================== DRIVER COLOR PICKER ==================== */
 .driver-color-picker {
     width: 36px;
@@ -346,16 +744,219 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
     50% { opacity: 0.5; }
 }
 
-/* Background swatch active ring */
-.bg-swatch.active { border-color: var(--ice) !important; box-shadow: 0 0 8px rgba(34, 211, 238, 0.5); }
+/* Legacy — now handled by .theme-swatch.active */
 .bg-swatch { position: relative; }
 
-/* ==================== DRIVER ROW PROTECTION ==================== */
-/* וידוא שהשורות לא נמעכות */
+/* ==================== DRIVER ROW — DRAG HANDLE ==================== */
+.driver-drag-handle {
+    width: 20px;
+    min-width: 20px;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: grab;
+    color: #4b5563;
+    flex-shrink: 0;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    transition: color 0.15s;
+    padding: 0 2px;
+}
+.driver-drag-handle:hover  { color: #9ca3af; }
+.driver-drag-handle:active { cursor: grabbing; color: var(--ice); }
+[dir="rtl"] .driver-drag-handle { order: 10; }
+
+/* Ghost (floating clone while dragging) */
+.driver-drag-ghost {
+    border-radius: 10px;
+    border: 1px solid rgba(34,211,238,0.5) !important;
+    background: #111a2e !important;
+    transition: none !important;
+}
+
+/* Placeholder (empty slot in list) */
+.driver-drag-placeholder {
+    border-radius: 10px;
+    border: 2px dashed rgba(34,211,238,0.35);
+    background: rgba(34,211,238,0.04);
+    margin-bottom: 6px;
+    box-sizing: border-box;
+}
+
+/* ==================== DRIVER ROW — PRO DESIGN ==================== */
 .driver-row {
     display: flex;
     align-items: center;
-    min-height: 44px; /* גובה מינימלי ללחיצה נוחה במובייל */
+    gap: 0;
+    min-height: 46px;
+    background: #0d1424;
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 10px;
+    margin-bottom: 6px;
+    overflow: hidden;
+    transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+    position: relative;
+}
+.driver-row:hover {
+    background: #111a2e;
+    border-color: rgba(255,255,255,0.12);
+}
+.driver-row.is-starter-row {
+    background: #0a1a2e;
+    border-color: rgba(34,211,238,0.35);
+    box-shadow: 0 0 0 1px rgba(34,211,238,0.15), inset 0 0 20px rgba(34,211,238,0.04);
+}
+
+/* Left accent bar */
+.driver-accent-bar {
+    width: 4px;
+    align-self: stretch;
+    flex-shrink: 0;
+    border-radius: 10px 0 0 10px;
+    transition: background 0.2s;
+}
+
+/* Color swatch circle */
+.driver-color-swatch {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin: 0 8px 0 10px;
+    cursor: pointer;
+    border: 2px solid rgba(255,255,255,0.15);
+    transition: border-color 0.15s, transform 0.15s;
+    position: relative;
+    overflow: hidden;
+}
+.driver-color-swatch:hover {
+    border-color: rgba(255,255,255,0.5);
+    transform: scale(1.1);
+}
+.driver-color-swatch input[type=color] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+    padding: 0;
+    border: none;
+}
+
+/* Starter flag button */
+.driver-starter-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: transparent;
+    color: #4b5563;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+    flex-shrink: 0;
+    margin-right: 6px;
+}
+.driver-starter-btn:hover {
+    background: rgba(34,211,238,0.1);
+    border-color: rgba(34,211,238,0.3);
+    color: #22d3ee;
+}
+.driver-starter-btn.is-starter {
+    background: rgba(34,211,238,0.15);
+    border-color: rgba(34,211,238,0.6);
+    color: #22d3ee;
+    box-shadow: 0 0 8px rgba(34,211,238,0.3);
+}
+
+/* Name area */
+.driver-name-wrap {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+.driver-input {
+    background: transparent;
+    border: none;
+    outline: none;
+    color: #f1f5f9;
+    font-weight: 600;
+    font-size: 14px;
+    width: 100%;
+    padding: 2px 0;
+    caret-color: #22d3ee;
+    transition: color 0.1s;
+}
+.driver-input::placeholder { color: #374151; font-weight: 400; }
+.driver-input:focus { color: #fff; }
+
+.driver-starter-label {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: #22d3ee;
+    text-transform: uppercase;
+    line-height: 1;
+    opacity: 0.8;
+}
+
+/* Squad badge */
+.squad-badge {
+    min-width: 22px;
+    height: 20px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: opacity 0.15s;
+    padding: 0 4px;
+}
+.squad-badge:hover { opacity: 0.8; }
+.squad-toggle-container { margin-right: 8px; }
+
+/* ── RTL driver row ──
+   row-reverse mirrors the LTR order, so:
+   LTR: [handle][accent][swatch][starter-btn][name][squad]
+   RTL: [squad][name][starter-btn][swatch][accent][handle]
+   The accent-bar radius also flips. Name/input need explicit RTL direction.
+*/
+[dir="rtl"] .driver-row {
+    flex-direction: row-reverse;
+}
+[dir="rtl"] .driver-accent-bar {
+    border-radius: 0 10px 10px 0;
+}
+[dir="rtl"] .driver-color-swatch {
+    margin: 0 10px 0 8px;
+}
+[dir="rtl"] .driver-starter-btn {
+    margin-right: 0;
+    margin-left: 6px;
+}
+[dir="rtl"] .driver-name-wrap {
+    text-align: right;
+}
+[dir="rtl"] .driver-input {
+    direction: rtl;
+    text-align: right;
+}
+[dir="rtl"] .driver-starter-label {
+    text-align: right;
+}
+[dir="rtl"] .squad-toggle-container {
+    margin-right: 0;
+    margin-left: 8px;
 }
 
 /* ==================== LIVE TIMING ==================== */
@@ -380,14 +981,24 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .cr-pos  { width: 20px; text-align: right; font-weight: 700; font-size: 11px; color: #9ca3af; flex-shrink: 0; }
 .cr-kart { font-size: 10px; color: #6b7280; flex-shrink: 0; min-width: 22px; }
 .cr-kart.fast-kart { color: var(--neon); font-weight: 700; text-shadow: 0 0 4px rgba(163,230,53,0.4); }
+.cr-cat  { font-size: 8px; font-weight: 700; flex-shrink: 0; min-width: 0; padding: 0 3px; border-radius: 2px; text-transform: uppercase; letter-spacing: 0.5px; }
+.cr-cat:empty { display: none; }
+.cat-gold   { color: #fbbf24; background: rgba(251,191,36,0.15); }
+.cat-silver { color: #94a3b8; background: rgba(148,163,184,0.15); }
+.cat-bronze { color: #d97706; background: rgba(217,119,6,0.15); }
+.cat-other  { color: #a78bfa; background: rgba(167,139,250,0.12); }
 .cr-name { font-size: 12px; color: #e5e7eb; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
 .cr-badges { font-size: 10px; display: flex; gap: 2px; flex-shrink: 0; }
 .cr-gap  { font-size: 11px; text-align: right; width: 58px; font-family: monospace; flex-shrink: 0; }
+.cr-int  { font-size: 10px; text-align: right; width: 46px; font-family: monospace; color: #6b7280; flex-shrink: 0; }
 .cr-lap  { font-size: 11px; text-align: right; width: 58px; font-family: monospace; color: #9ca3af; flex-shrink: 0; }
+.cr-avg  { font-size: 10px; text-align: right; width: 52px; font-family: monospace; color: #6b7280; flex-shrink: 0; }
+.cr-laps { font-size: 9px; text-align: right; width: 24px; color: #6b7280; flex-shrink: 0; }
+.cr-pits { font-size: 9px; text-align: center; width: 22px; color: var(--fuel); font-weight: 600; flex-shrink: 0; }
 
-/* Hide last-lap column on very small phones */
+/* Hide extra columns on very small phones */
 @media (max-width: 380px) {
-    .cr-lap { display: none; }
+    .cr-lap, .cr-avg, .cr-int, .cr-laps { display: none; }
     .cr-name { max-width: none; }
 }
 
@@ -628,6 +1239,30 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
     }
 }
 
+/* Tablet landscape: force 2-column full-width setup layout */
+@media (min-width: 600px) and (max-width: 1199px) and (orientation: landscape) {
+    #setupScreen > div.max-w-6xl {
+        max-width: 100% !important;
+        padding-left: 12px !important;
+        padding-right: 12px !important;
+    }
+    #setupScreen > div.max-w-6xl > div.md\:grid {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 12px !important;
+    }
+    /* Tighter vertical spacing to fit in landscape viewport */
+    #setupScreen .collapsible-section {
+        padding: 8px 10px !important;
+    }
+    #setupScreen .collapse-body {
+        margin-top: 6px !important;
+    }
+    body {
+        padding-bottom: calc(40px + var(--safe-bottom));
+    }
+}
+
 /* Offline indicator */
 .offline-banner {
     position: fixed;
@@ -683,6 +1318,607 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     backdrop-filter: blur(8px);
 }
 
+/* ==================== REDESIGNED UX/UI — STRATEGER v2 ==================== */
+
+/* ---- Hero banner on setup screen ---- */
+.setup-hero {
+    background: linear-gradient(135deg, rgba(34,211,238,0.08) 0%, rgba(163,230,53,0.06) 50%, rgba(139,92,246,0.08) 100%);
+    border: 1px solid rgba(34,211,238,0.18);
+    border-radius: 1rem;
+    padding: 1rem 1.25rem 0.75rem;
+    position: relative;
+    overflow: hidden;
+}
+.setup-hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 80% 50%, rgba(34,211,238,0.07) 0%, transparent 60%);
+    pointer-events: none;
+}
+.setup-hero-title {
+    font-size: 1.1rem;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    color: white;
+    line-height: 1.2;
+}
+.setup-hero-sub {
+    font-size: 0.65rem;
+    color: rgba(156,163,175,0.9);
+    margin-top: 2px;
+    letter-spacing: 0.04em;
+}
+
+/* ---- Quick-action pill strip ---- */
+.quick-actions-strip {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+}
+.quick-actions-strip::-webkit-scrollbar { display: none; }
+.quick-pill {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+    background: rgba(15,23,42,0.8);
+    border: 1px solid rgba(75,85,99,0.6);
+    border-radius: 9999px;
+    padding: 5px 10px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: #9ca3af;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
+    user-select: none;
+    flex-shrink: 0;
+}
+.quick-pill:hover {
+    border-color: var(--ice);
+    color: var(--ice);
+    background: rgba(34,211,238,0.08);
+}
+.quick-pill.active {
+    border-color: var(--ice);
+    color: var(--navy-950);
+    background: var(--ice);
+}
+
+/* ---- Glassy panel card ---- */
+.glass-card {
+    background: rgba(15,23,42,0.7);
+    border: 1px solid rgba(55,65,81,0.7);
+    border-radius: 0.875rem;
+    backdrop-filter: blur(6px);
+    padding: 0.875rem;
+    transition: border-color 0.2s;
+}
+.glass-card:hover {
+    border-color: rgba(34,211,238,0.25);
+}
+
+/* ---- Contextual demo modal ---- */
+#demoModal {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    background: rgba(2,6,23,0.88);
+    backdrop-filter: blur(10px);
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+}
+#demoModal.hidden { display: none !important; }
+#demoModal > .demo-sheet {
+    width: 100%;
+    max-width: 520px;
+    background: linear-gradient(160deg, #0a1525 0%, #050c1a 100%);
+    border: 1px solid rgba(34,211,238,0.25);
+    border-bottom: none;
+    border-radius: 1.25rem 1.25rem 0 0;
+    padding: 1.5rem 1.25rem 2rem;
+    animation: slideUp 0.3s cubic-bezier(0.16,1,0.3,1);
+    max-height: 88vh;
+    overflow-y: auto;
+}
+
+/* ---- Live-adjust overlay (mid-race/preview) ---- */
+#liveAdjustModal {
+    position: fixed;
+    inset: 0;
+    z-index: 190;
+    background: rgba(2,6,23,0.82);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+}
+#liveAdjustModal.hidden { display: none !important; }
+#liveAdjustModal > .adjust-sheet {
+    width: 100%;
+    max-width: 520px;
+    background: linear-gradient(160deg, #0c1a2e 0%, #060e1a 100%);
+    border: 1px solid rgba(163,230,53,0.3);
+    border-radius: 1.25rem;
+    padding: 1.25rem;
+    animation: scaleIn 0.25s ease-out;
+    max-height: 85vh;
+    overflow-y: auto;
+}
+
+/* ---- Scenario pill tabs ---- */
+.scenario-tab {
+    flex: 1;
+    padding: 7px 6px;
+    border-radius: 8px;
+    font-size: 0.625rem;
+    font-weight: 800;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.15s;
+    border: 1px solid transparent;
+    color: #6b7280;
+    background: transparent;
+    line-height: 1.2;
+}
+.scenario-tab:hover { color: #d1d5db; border-color: #374151; }
+.scenario-tab.active-race {
+    background: rgba(239,68,68,0.18);
+    border-color: rgba(239,68,68,0.5);
+    color: #fca5a5;
+}
+.scenario-tab.active-qualify {
+    background: rgba(99,102,241,0.18);
+    border-color: rgba(99,102,241,0.5);
+    color: #a5b4fc;
+}
+.scenario-tab.active-safety {
+    background: rgba(251,191,36,0.18);
+    border-color: rgba(251,191,36,0.5);
+    color: #fde68a;
+}
+.scenario-tab.active-weather {
+    background: rgba(59,130,246,0.18);
+    border-color: rgba(59,130,246,0.5);
+    color: #93c5fd;
+}
+
+/* ---- Outcome delta badge ---- */
+.delta-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 2px 8px;
+    border-radius: 9999px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    font-family: monospace;
+}
+.delta-positive { background: rgba(163,230,53,0.15); color: var(--neon); border: 1px solid rgba(163,230,53,0.3); }
+.delta-negative { background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
+.delta-neutral  { background: rgba(107,114,128,0.15); color: #9ca3af; border: 1px solid rgba(107,114,128,0.3); }
+
+/* ---- Live outcome visualiser bars ---- */
+.outcome-bar-track {
+    height: 6px;
+    background: rgba(255,255,255,0.07);
+    border-radius: 9999px;
+    overflow: hidden;
+    position: relative;
+}
+.outcome-bar-fill {
+    height: 100%;
+    border-radius: 9999px;
+    transition: width 0.4s cubic-bezier(0.4,0,0.2,1), background-color 0.3s;
+}
+.outcome-bar-fill.safe  { background: linear-gradient(90deg, #22c55e, var(--neon)); }
+.outcome-bar-fill.warn  { background: linear-gradient(90deg, #f59e0b, #f97316); }
+.outcome-bar-fill.risk  { background: linear-gradient(90deg, #ef4444, #dc2626); }
+
+/* ---- Driver tag chips (redesigned) ---- */
+.driver-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px 4px 6px;
+    border-radius: 9999px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+    border: 1.5px solid;
+    user-select: none;
+    position: relative;
+    overflow: hidden;
+}
+.driver-chip::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: currentColor;
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+.driver-chip:hover::before { opacity: 0.08; }
+.driver-chip.selected::before { opacity: 0.12; }
+.driver-chip-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+/* ---- Stint duration badge (preview list) ---- */
+.stint-badge {
+    font-family: monospace;
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 6px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: white;
+    transition: border-color 0.15s, background 0.15s;
+}
+.stint-badge:hover { border-color: var(--ice); background: rgba(34,211,238,0.1); }
+.stint-badge.out-of-bounds {
+    background: rgba(239,68,68,0.15);
+    border-color: rgba(239,68,68,0.5);
+    color: #fca5a5;
+}
+
+/* ---- Preview action toolbar ---- */
+.preview-action-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 10px;
+    background: rgba(15,23,42,0.9);
+    border-top: 1px solid rgba(55,65,81,0.6);
+    border-radius: 0 0 12px 12px;
+}
+.preview-action-btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 7px 12px;
+    border-radius: 8px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+    border: 1px solid transparent;
+    background: rgba(255,255,255,0.05);
+    color: #9ca3af;
+}
+.preview-action-btn:hover { background: rgba(255,255,255,0.1); color: white; }
+.preview-action-btn.primary {
+    background: linear-gradient(135deg, rgba(34,211,238,0.2), rgba(99,102,241,0.2));
+    border-color: rgba(34,211,238,0.35);
+    color: var(--ice);
+}
+.preview-action-btn.primary:hover {
+    background: linear-gradient(135deg, rgba(34,211,238,0.3), rgba(99,102,241,0.3));
+}
+
+/* ---- Section divider with label ---- */
+.section-divider {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.6rem;
+    font-weight: 800;
+    color: #4b5563;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin: 12px 0 8px;
+}
+.section-divider::before,
+.section-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: rgba(75,85,99,0.4);
+}
+
+/* ---- Animated shimmer loading state ---- */
+@keyframes shimmer {
+    0%   { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}
+.shimmer {
+    background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.04) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 6px;
+}
+
+/* ---- Strategy-card in demo modal ---- */
+.demo-strategy-card {
+    background: rgba(15,23,42,0.6);
+    border: 1px solid rgba(55,65,81,0.5);
+    border-radius: 10px;
+    padding: 10px 12px;
+    transition: border-color 0.2s, transform 0.15s;
+    cursor: pointer;
+}
+.demo-strategy-card:hover {
+    border-color: rgba(34,211,238,0.4);
+    transform: translateY(-1px);
+}
+.demo-strategy-card.selected {
+    border-color: var(--ice);
+    background: rgba(34,211,238,0.08);
+}
+
+/* ---- Stint progress mini chart ---- */
+.mini-stint-chart {
+    display: flex;
+    gap: 2px;
+    align-items: flex-end;
+    height: 24px;
+}
+.mini-stint-bar {
+    border-radius: 2px 2px 0 0;
+    min-width: 6px;
+    flex: 1;
+    opacity: 0.8;
+    transition: opacity 0.2s, height 0.3s ease;
+}
+.mini-stint-bar:hover { opacity: 1; }
+
+/* ---- Step indicators (numbered steps redesign) ---- */
+.step-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+.step-num {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.6rem; font-weight: 900;
+    flex-shrink: 0;
+    transition: all 0.2s;
+}
+.step-num.done {
+    background: rgba(163,230,53,0.2);
+    border: 1.5px solid var(--neon);
+    color: var(--neon);
+}
+.step-num.active {
+    background: rgba(34,211,238,0.2);
+    border: 1.5px solid var(--ice);
+    color: var(--ice);
+    box-shadow: 0 0 10px rgba(34,211,238,0.3);
+}
+.step-num.pending {
+    background: rgba(75,85,99,0.2);
+    border: 1.5px solid #4b5563;
+    color: #6b7280;
+}
+.step-label {
+    font-size: 0.65rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #6b7280;
+    transition: color 0.2s;
+}
+.step-label.active { color: var(--ice); }
+.step-label.done { color: var(--neon); }
+
+/* ---- Floating adjustments panel (in preview) ---- */
+#previewAdjustPanel {
+    background: rgba(8,14,26,0.95);
+    border: 1px solid rgba(163,230,53,0.25);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: max-height 0.3s ease, opacity 0.2s;
+}
+#previewAdjustPanel.collapsed {
+    max-height: 44px !important;
+    overflow: hidden;
+}
+#previewAdjustPanel .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    cursor: pointer;
+    user-select: none;
+    background: rgba(163,230,53,0.08);
+    border-bottom: 1px solid rgba(163,230,53,0.15);
+}
+#previewAdjustPanel .panel-body {
+    padding: 10px 12px;
+}
+
+/* ---- Strategy outcome heatmap row ---- */
+.outcome-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(55,65,81,0.3);
+}
+.outcome-row:last-child { border-bottom: none; }
+.outcome-label {
+    font-size: 0.6rem;
+    font-weight: 700;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    width: 72px;
+    flex-shrink: 0;
+}
+.outcome-val {
+    font-size: 0.75rem;
+    font-weight: 800;
+    font-family: monospace;
+    color: white;
+    min-width: 48px;
+}
+
+/* ---- Animated gradient text ---- */
+@keyframes gradientShift {
+    0%   { background-position: 0% 50%; }
+    50%  { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+.gradient-text {
+    background: linear-gradient(90deg, var(--ice), var(--neon), var(--ice));
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: gradientShift 3s ease infinite;
+}
+
+/* ---- Qualifying strategy preview strip ---- */
+.qualify-preview-strip {
+    display: flex;
+    gap: 2px;
+    height: 32px;
+    border-radius: 6px;
+    overflow: hidden;
+    background: rgba(15,23,42,0.5);
+    border: 1px solid rgba(99,102,241,0.3);
+}
+.qualify-segment-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.55rem;
+    font-weight: 800;
+    color: white;
+    position: relative;
+    transition: flex 0.4s ease;
+    overflow: hidden;
+}
+.qualify-segment-bar::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to bottom, rgba(255,255,255,0.15) 0%, transparent 100%);
+}
+
+/* ---- Notification badge pulse ---- */
+@keyframes badgePop {
+    0%   { transform: scale(1); }
+    50%  { transform: scale(1.3); }
+    100% { transform: scale(1); }
+}
+.badge-pop { animation: badgePop 0.4s ease-out; }
+
+/* ---- Button small (global fix for btn-small) ---- */
+.btn-small {
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    transition: all 0.15s;
+    cursor: pointer;
+    border: none;
+    color: white;
+    min-height: 36px;
+}
+.btn-small:hover { filter: brightness(1.15); }
+.btn-small:active { transform: scale(0.96); }
+
+/* ---- Tooltip ---- */
+[data-tip] { position: relative; }
+[data-tip]::after {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.9);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: white;
+    font-size: 0.6rem;
+    font-weight: 600;
+    padding: 4px 8px;
+    border-radius: 6px;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+    z-index: 100;
+}
+[data-tip]:hover::after { opacity: 1; }
+
+/* ---- Focus state: modern ring ---- */
+.focus-ring:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--ice), 0 0 0 4px rgba(34,211,238,0.25);
+}
+
+/* ---- Responsive: preview screen on wide screen ---- */
+@media (min-width: 640px) and (orientation: portrait) {
+    #previewInner {
+        max-width: 560px;
+        margin: 0 auto;
+    }
+    #liveAdjustModal > .adjust-sheet {
+        max-width: 500px;
+    }
+    #demoModal > .demo-sheet {
+        max-width: 520px;
+        border-radius: 1.25rem;
+        border-bottom: 1px solid rgba(34,211,238,0.25);
+        margin-bottom: 32px;
+    }
+}
+
+/* ── Preview screen: landscape adaptive layout ── */
+/* Portrait / narrow: stack vertically (default, no action bar change needed) */
+
+/* Landscape (width > height): spread horizontally */
+@media (orientation: landscape) {
+    #previewScreen {
+        overflow: hidden !important;
+    }
+    #previewInner {
+        flex-direction: row !important;
+        max-width: 100% !important;
+        gap: 8px;
+    }
+    #previewMainCol {
+        flex: 1 1 0;
+        min-width: 0;
+    }
+    /* Action bar becomes a narrow right column */
+    #previewActionBar {
+        flex-direction: column !important;
+        width: 120px !important;
+        flex-shrink: 0;
+    }
+    #previewActionBar button {
+        width: 100%;
+        justify-content: center;
+    }
+    /* Driver strip stays horizontal */
+    #previewDriverStrip {
+        flex-wrap: nowrap;
+    }
+}
+
+/* ── Driver % bar in stats table: slightly taller ── */
+#statsTable .h-1 {
+    height: 4px !important;
+}
+
+/* ── Stint progress bar in race dashboard: taller current indicator ── */
+#raceInfoPanel .driver-data .h-1 {
+    height: 4px !important;
+}
+
 /* Onboarding overlay */
 #onboardingOverlay {
     backdrop-filter: blur(4px);
@@ -700,4 +1936,959 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 #muteToggleBtn.muted {
     color: #ef4444 !important;
     border-color: #ef4444 !important;
+}
+
+/* ===== RESPONSIVE UI IMPROVEMENTS ===== */
+
+/* Mid-range phones (381px–600px): increase touch targets and slightly loosen text */
+@media (max-width: 600px) {
+    /* Minimum touch target for header buttons */
+    header button {
+        min-height: 40px;
+        min-width: 40px;
+    }
+
+    /* Qualifying dashboard: stack panels cleanly */
+    #qualifyingDashboard .flex-col.md\:flex-row {
+        flex-direction: column !important;
+        overflow-y: auto !important;
+    }
+
+    /* Current driver strip: give name more room */
+    #qualifyCurrentDriver {
+        font-size: 1.35rem !important;
+    }
+
+    /* Qualifying quick-stats grid: 2-col is fine, just bump label size */
+    #qualifyingDashboard .grid-cols-2 .text-\[9px\] {
+        font-size: 10px !important;
+    }
+
+    /* Stint outlook pills: allow wrap on narrow screens */
+    #remStintsText {
+        flex-wrap: wrap;
+        row-gap: 4px;
+    }
+
+    /* Strategy overview: prevent pill overflow */
+    .stint-outlook-pill {
+        font-size: 10px !important;
+        padding: 2px 6px !important;
+    }
+
+    /* Preview footer buttons: always full-width on phones */
+    #previewScreen > div > .mt-4 {
+        flex-direction: column !important;
+    }
+    #previewScreen > div > .mt-4 > button {
+        width: 100% !important;
+        min-height: 44px;
+    }
+
+    /* Input fields: minimum touch height */
+    .input-field {
+        min-height: 38px;
+    }
+
+    /* Qualifying result table: keep it readable */
+    #qualifyStageResults .text-xs {
+        font-size: 11px !important;
+    }
+}
+
+/* Medium phones and small tablets (601px–767px): enable 2-panel qualifying layout
+   earlier than Tailwind's md: breakpoint (768px) */
+@media (min-width: 601px) and (max-width: 767px) {
+    #qualifyingDashboard .flex-col.md\:flex-row {
+        flex-direction: row !important;
+        gap: 12px !important;
+        padding: 12px !important;
+    }
+    #qualifyingDashboard .md\:w-\[40\%\] {
+        width: 42% !important;
+        overflow-y: auto !important;
+    }
+    #qualifyingDashboard .md\:rounded-xl {
+        border-radius: 0.75rem !important;
+    }
+    #qualifyingDashboard .md\:border {
+        border-width: 1px !important;
+    }
+    #qualifyingDashboard .md\:overflow-hidden {
+        overflow: hidden !important;
+    }
+    #qualifyingDashboard .md\:gap-3 {
+        gap: 12px !important;
+    }
+    #qualifyingDashboard .md\:p-3 {
+        padding: 12px !important;
+    }
+    #qualifyingDashboard .md\:mt-3 {
+        margin-top: 12px !important;
+    }
+}
+
+/* Very small phones (≤380px): hide secondary live timing columns already handled,
+   plus shrink qualifying timer to fit */
+@media (max-width: 380px) {
+    #qualifyTimerDisplay {
+        font-size: 2rem !important;
+    }
+    #qualifyingDashboard .grid-cols-2 {
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+    }
+}
+
+/* Landscape phones (short height): compress qualifying header */
+@media (max-height: 500px) and (orientation: landscape) {
+    #qualifyingDashboard {
+        top: 44px !important;
+    }
+    #qualifyingDashboard > div:first-child {
+        padding-top: 4px !important;
+        padding-bottom: 4px !important;
+    }
+    #qualifyTimerDisplay {
+        font-size: 1.5rem !important;
+    }
+    /* Side-by-side in landscape even on small phones */
+    #qualifyingDashboard .flex-col {
+        flex-direction: row !important;
+    }
+    #qualifyingDashboard .flex-col > div:first-child {
+        width: 45% !important;
+        overflow-y: auto;
+    }
+    #qualifyingDashboard .flex-col > div:last-child {
+        flex: 1;
+        overflow-y: auto;
+    }
+}
+
+/* Driver picker chips in qualifying multi mode */
+#qDriverPickerList button {
+    min-height: 30px;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+/* ==================== LIVE-TIMING WIDGET: DRAGGABLE + RESIZABLE ==================== */
+
+/*
+ * The widget wrapper is positioned fixed by default (overlapping mode) once the
+ * user starts dragging.  Before any drag the wrapper sits inline in the normal
+ * document flow and the inner panel keeps its current appearance.
+ *
+ * Maximised/minimised window support: we clamp the widget to the viewport so it
+ * never goes off-screen.  CSS min-width/min-height stop it from collapsing to
+ * zero during resize.  overflow:hidden on the wrapper clips anything that would
+ * otherwise scroll outside the visible area.
+ */
+
+.lt-widget-wrapper {
+    /* Inline by default — takes part in normal page flow */
+    position: relative;
+    z-index: 100;
+    min-width: 220px;
+    min-height: 80px;
+    /* Visible overflow guard: the resize handle protrudes slightly */
+    overflow: visible;
+}
+
+/* Once the user has dragged the widget it becomes fixed */
+.lt-widget-wrapper.lt-fixed {
+    position: fixed;
+    overflow: hidden;
+    border-radius: 8px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 0 0 1px rgba(239,68,68,0.25);
+    /* Clamp inside the viewport so it never leaves the screen */
+    max-width: calc(100vw - 16px);
+    max-height: calc(100vh - 16px);
+}
+
+.lt-widget-inner {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    border-radius: inherit;
+}
+
+/* Table area fills remaining vertical space when the widget is resized */
+.lt-table-scroll {
+    flex: 1 1 0;
+    overflow-y: auto;
+    min-height: 60px;
+    max-height: none; /* override the old inline max-height once we're in fixed mode */
+}
+.lt-widget-wrapper:not(.lt-fixed) .lt-table-scroll {
+    max-height: 180px; /* keep original behaviour in inline mode */
+}
+
+/* ---- Drag handle ---- */
+.lt-drag-handle {
+    touch-action: none; /* prevent scroll interference on touch devices */
+    -webkit-touch-callout: none;
+}
+.lt-widget-wrapper.lt-fixed .lt-drag-handle {
+    cursor: grab;
+}
+.lt-widget-wrapper.lt-fixed .lt-drag-handle:active {
+    cursor: grabbing;
+}
+
+/* ---- Resize handle ---- */
+.lt-resize-handle {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 18px;
+    height: 18px;
+    cursor: se-resize;
+    touch-action: none;
+    background: linear-gradient(135deg, transparent 50%, rgba(239,68,68,0.35) 50%);
+    border-bottom-right-radius: 8px;
+    z-index: 10;
+}
+/* Only show the resize handle when in fixed (floating) mode */
+.lt-widget-wrapper:not(.lt-fixed) .lt-resize-handle {
+    display: none;
+}
+
+/* ---- RTL: flip resize handle to bottom-left ---- */
+[dir="rtl"] .lt-resize-handle {
+    right: auto;
+    left: 0;
+    cursor: sw-resize;
+    transform: scaleX(-1);
+    border-bottom-right-radius: 0;
+    border-bottom-left-radius: 8px;
+}
+
+/* ---- During active drag: disable pointer events on inner content ---- */
+.lt-widget-wrapper.lt-dragging .lt-widget-inner * {
+    pointer-events: none;
+}
+/* ---- During active resize: same ---- */
+.lt-widget-wrapper.lt-resizing .lt-widget-inner * {
+    pointer-events: none;
+}
+
+/* Resize hint icon only visible in floating mode */
+.lt-resize-hint {
+    display: none;
+}
+.lt-widget-wrapper.lt-fixed .lt-resize-hint {
+    display: inline;
+}
+
+/* ==================== TEAM LOGO (PRO) ==================== */
+
+.team-logo-cell {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    height: 20px;
+    overflow: hidden;
+}
+.team-logo-cell img {
+    max-height: 18px;
+    max-width: 56px;
+    object-fit: contain;
+    border-radius: 2px;
+}
+/* Logo upload button */
+.team-logo-upload-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.6rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: rgba(34,211,238,0.12);
+    border: 1px solid rgba(34,211,238,0.3);
+    color: #22d3ee;
+    cursor: pointer;
+    transition: background 0.15s;
+    white-space: nowrap;
+}
+.team-logo-upload-btn:hover {
+    background: rgba(34,211,238,0.22);
+}
+.team-logo-upload-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* ==================== LIVE TIMING FULL OVERHAUL ==================== */
+
+/* ---- Two-zone dashboard layout (wide screens ≥ 1024px) ---- */
+@media (min-width: 1024px) {
+    #racePanelsWrapper {
+        flex-direction: row !important;
+        align-items: stretch;
+    }
+    /* Left zone: full live timing panel */
+    #raceInfoPanel {
+        flex: 0 0 var(--lt-zone-w, 58%) !important;
+        min-width: 320px !important;
+        max-width: 820px !important;
+        border-right: 1px solid rgba(55,65,81,0.5) !important;
+        overflow-y: auto !important;
+        padding: 10px 12px !important;
+    }
+    /* Right zone: pit entry + control widgets */
+    #raceControlDock {
+        flex: 1 1 0 !important;
+        min-width: 280px !important;
+        border-top: none !important;
+        border-left: none !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: flex-start !important;
+        padding: 10px 12px !important;
+        gap: 8px !important;
+        overflow-y: auto !important;
+    }
+    /* Resizer becomes a vertical divider */
+    #dashPanelResizer {
+        width: 8px !important;
+        height: 100% !important;
+        cursor: col-resize !important;
+        flex-direction: column !important;
+    }
+    /* Live timing widget fills the left zone, no floating by default */
+    #raceInfoPanel #liveTimingWidgetWrapper:not(.lt-fixed) {
+        min-height: 300px;
+    }
+}
+
+/* ---- Competitor row — richer layout ---- */
+.competitor-row {
+    height: 34px;
+    min-height: 34px;
+    padding: 2px 6px 2px 4px;
+    border-radius: 5px;
+    border: 1px solid transparent;
+    transition: background-color 0.25s ease, border-color 0.25s ease;
+}
+.competitor-row:hover {
+    background: rgba(255,255,255,0.04) !important;
+    border-color: rgba(255,255,255,0.08) !important;
+}
+.competitor-row.our-team {
+    background: rgba(34,211,238,0.12) !important;
+    border-color: rgba(34,211,238,0.4) !important;
+    box-shadow: inset 2px 0 0 var(--ice);
+}
+.competitor-row.danger-zone {
+    background: rgba(239,68,68,0.10) !important;
+    border-color: rgba(239,68,68,0.3) !important;
+    box-shadow: inset 2px 0 0 var(--danger);
+}
+
+/* ---- Position badge ---- */
+.cr-pos {
+    width: 22px;
+    min-width: 22px;
+    height: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 3px;
+    font-weight: 800;
+    font-size: 11px;
+}
+.cr-pos.p1 { background: rgba(251,191,36,0.2); color: #fbbf24; }
+.cr-pos.p2 { background: rgba(209,213,219,0.15); color: #d1d5db; }
+.cr-pos.p3 { background: rgba(217,119,6,0.18); color: #d97706; }
+
+/* ---- Name cell: truncate + marquee on our-team ---- */
+.cr-name {
+    font-size: 11.5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 120px;
+    flex: 1;
+    min-width: 0;
+}
+.competitor-row.our-team .cr-name {
+    color: var(--ice);
+    font-weight: 700;
+}
+
+/* ---- Sector chips (shown when sector data available) ---- */
+.cr-sectors {
+    display: flex;
+    gap: 2px;
+    align-items: center;
+    flex-shrink: 0;
+}
+.cr-s1, .cr-s2, .cr-s3 {
+    font-size: 8.5px;
+    font-family: monospace;
+    font-weight: 700;
+    padding: 1px 3px;
+    border-radius: 2px;
+    min-width: 28px;
+    text-align: center;
+}
+.cr-s1 { background: var(--s1-bg); color: var(--s1); border: 1px solid rgba(56,189,248,0.25); }
+.cr-s2 { background: var(--s2-bg); color: var(--s2); border: 1px solid rgba(251,146,60,0.25); }
+.cr-s3 { background: var(--s3-bg); color: var(--s3); border: 1px solid rgba(74,222,128,0.25); }
+/* Personal best on sector */
+.cr-s1.pb, .cr-s2.pb, .cr-s3.pb {
+    border-color: #c084fc !important;
+    color: #c084fc !important;
+    background: rgba(192,132,252,0.12) !important;
+    text-shadow: 0 0 4px rgba(192,132,252,0.6);
+}
+
+/* ---- Gap/interval with dynamic hue ---- */
+.cr-gap  { width: 58px; font-size: 11px; }
+.cr-gap.gap-close   { color: var(--gap-close) !important; }
+.cr-gap.gap-mid     { color: var(--gap-mid) !important; }
+.cr-gap.gap-safe    { color: var(--gap-safe) !important; }
+.cr-gap.gap-lapped  { color: var(--gap-lapped) !important; }
+.cr-gap.gap-ahead   { color: var(--gap-close) !important; }
+.cr-gap.gap-behind  { color: var(--gap-safe) !important; }
+
+/* ---- Avg lap cell (per-stint) ---- */
+.cr-avg {
+    font-size: 10px;
+    width: 52px;
+    text-align: right;
+    font-family: monospace;
+    color: #6b7280;
+}
+.cr-avg.avg-improving { color: var(--s3); }
+.cr-avg.avg-degrading { color: var(--gap-close); }
+
+/* ---- PIT badge ---- */
+.badge-pit {
+    background: rgba(249,115,22,0.18);
+    border: 1px solid rgba(249,115,22,0.4);
+    color: var(--fuel);
+    padding: 0 4px;
+    border-radius: 3px;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.3px;
+}
+
+/* ---- Tire compound badge ---- */
+.cr-tire {
+    font-size: 8px;
+    font-weight: 900;
+    width: 14px;
+    height: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.tire-soft   { background: rgba(244,63,94,0.2); color: var(--tire-soft); border: 1px solid var(--tire-soft); }
+.tire-medium { background: rgba(250,204,21,0.2); color: var(--tire-medium); border: 1px solid var(--tire-medium); }
+.tire-hard   { background: rgba(226,232,240,0.15); color: var(--tire-hard); border: 1px solid rgba(226,232,240,0.4); }
+.tire-wet    { background: rgba(96,165,250,0.2); color: var(--tire-wet); border: 1px solid var(--tire-wet); }
+.tire-inter  { background: rgba(52,211,153,0.2); color: var(--tire-inter); border: 1px solid var(--tire-inter); }
+
+/* ---- Flag status bar ---- */
+#flagStatusBar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    transition: background 0.3s, color 0.3s;
+}
+#flagStatusBar.flag-green   { background: rgba(34,197,94,0.12); color: var(--flag-green); border: 1px solid rgba(34,197,94,0.3); }
+#flagStatusBar.flag-yellow  { background: rgba(234,179,8,0.12); color: var(--flag-yellow); border: 1px solid rgba(234,179,8,0.3); animation: pulse 1.5s infinite; }
+#flagStatusBar.flag-red     { background: rgba(239,68,68,0.15); color: var(--flag-red); border: 1px solid rgba(239,68,68,0.4); animation: pulse 0.8s infinite; }
+#flagStatusBar.flag-safety  { background: rgba(251,146,60,0.12); color: var(--flag-safety); border: 1px solid rgba(251,146,60,0.3); }
+#flagStatusBar.flag-vsc     { background: rgba(250,204,21,0.12); color: var(--flag-vsc); border: 1px solid rgba(250,204,21,0.3); }
+
+/* ---- Strategy alert banner ---- */
+.strategy-alert {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border: 1px solid;
+}
+.strategy-alert.pit-now    { background: rgba(244,63,94,0.15); color: var(--alert-pit-now); border-color: rgba(244,63,94,0.4); animation: pulse 1s infinite; }
+.strategy-alert.box-box    { background: rgba(251,146,60,0.15); color: var(--alert-box-box); border-color: rgba(251,146,60,0.4); animation: pulse 1.5s infinite; }
+.strategy-alert.push       { background: rgba(163,230,53,0.12); color: var(--alert-push); border-color: rgba(163,230,53,0.3); }
+.strategy-alert.conserve   { background: rgba(56,189,248,0.12); color: var(--alert-conserve); border-color: rgba(56,189,248,0.3); }
+.strategy-alert.caution    { background: rgba(234,179,8,0.12); color: var(--alert-caution); border-color: rgba(234,179,8,0.3); }
+
+/* ---- Live timing panel header ---- */
+#liveTimingDragHandle {
+    background: linear-gradient(90deg, rgba(239,68,68,0.08) 0%, transparent 70%);
+    border-bottom: 1px solid rgba(239,68,68,0.2);
+    padding-bottom: 4px;
+    margin-bottom: 4px;
+}
+
+/* ---- Stats grid cells in widget header ---- */
+#liveTimingPanel .bg-navy-950 {
+    background: rgba(2,6,23,0.7) !important;
+}
+
+/* ---- Kart ranking table ---- */
+#kartRankingPanel {
+    font-size: 10px;
+}
+#kartRankingPanel .kart-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 0;
+    border-bottom: 1px solid rgba(55,65,81,0.3);
+}
+#kartRankingPanel .kart-row:last-child { border-bottom: none; }
+#kartRankingPanel .kart-rank { width: 16px; color: #6b7280; font-weight: 700; }
+#kartRankingPanel .kart-num  { width: 26px; font-weight: 800; color: var(--neon); }
+#kartRankingPanel .kart-best { flex: 1; font-family: monospace; color: #e5e7eb; }
+#kartRankingPanel .kart-delta { font-family: monospace; color: var(--s3); font-size: 9px; }
+
+/* ---- Weather indicator ---- */
+.weather-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 3px;
+}
+.weather-dry  { background: rgba(253,230,138,0.12); color: var(--weather-dry); border: 1px solid rgba(253,230,138,0.25); }
+.weather-wet  { background: rgba(147,197,253,0.12); color: var(--weather-wet); border: 1px solid rgba(147,197,253,0.25); }
+.weather-mist { background: rgba(203,213,225,0.10); color: var(--weather-mist); border: 1px solid rgba(203,213,225,0.2); }
+
+/* ---- Modular right-zone widgets ---- */
+.right-zone-widget {
+    background: rgba(15,23,42,0.8);
+    border: 1px solid rgba(55,65,81,0.6);
+    border-radius: 10px;
+    padding: 8px 10px;
+    position: relative;
+    transition: border-color 0.2s;
+}
+.right-zone-widget:hover {
+    border-color: rgba(55,65,81,0.9);
+}
+.right-zone-widget .widget-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+    cursor: grab;
+    user-select: none;
+}
+.right-zone-widget .widget-header:active { cursor: grabbing; }
+.widget-title {
+    font-size: 9px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #6b7280;
+}
+.widget-collapse-btn {
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 3px;
+    background: transparent;
+    color: #4b5563;
+    font-size: 9px;
+    cursor: pointer;
+    transition: color 0.15s, background 0.15s;
+    border: none;
+    padding: 0;
+    line-height: 1;
+}
+.widget-collapse-btn:hover { color: #9ca3af; background: rgba(255,255,255,0.06); }
+.right-zone-widget.collapsed .widget-body { display: none; }
+.right-zone-widget.collapsed { padding-bottom: 6px; }
+
+/* Drag handle for right-zone widgets */
+.widget-drag-handle {
+    width: 12px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    cursor: grab;
+    padding: 0 2px;
+    opacity: 0.35;
+    transition: opacity 0.15s;
+}
+.widget-drag-handle:hover { opacity: 0.7; }
+.widget-drag-handle span {
+    display: block;
+    width: 8px;
+    height: 1.5px;
+    background: #9ca3af;
+    border-radius: 1px;
+}
+
+/* ---- Widget drop zone / drag placeholder ---- */
+.widget-drop-zone {
+    border: 2px dashed rgba(34,211,238,0.35);
+    border-radius: 10px;
+    height: 40px;
+    margin: 4px 0;
+    transition: border-color 0.15s, background 0.15s;
+    pointer-events: none;
+}
+.widget-drop-zone.active {
+    border-color: var(--ice);
+    background: rgba(34,211,238,0.05);
+}
+
+/* ---- Snap grid overlay (appended to body by JS during lt drag) ---- */
+#ltSnapGridOverlay {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+        linear-gradient(rgba(34,211,238,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(34,211,238,0.03) 1px, transparent 1px);
+    background-size: 20px 20px;
+    z-index: 98;
+    animation: fadeIn 0.1s ease-out;
+}
+
+/* ---- Layout template switcher ---- */
+#layoutTemplatePicker {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+.layout-tpl-btn {
+    flex: 1;
+    min-width: 0;
+    padding: 4px 6px;
+    border-radius: 6px;
+    font-size: 9px;
+    font-weight: 800;
+    text-align: center;
+    cursor: pointer;
+    border: 1px solid rgba(55,65,81,0.6);
+    background: rgba(15,23,42,0.6);
+    color: #6b7280;
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+.layout-tpl-btn:hover {
+    border-color: rgba(34,211,238,0.4);
+    color: var(--ice);
+    background: rgba(34,211,238,0.06);
+}
+.layout-tpl-btn.active {
+    border-color: var(--ice);
+    color: var(--navy-950);
+    background: var(--ice);
+}
+
+/* ---- Per-stint avg indicator ---- */
+.stint-avg-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-family: monospace;
+    font-size: 9.5px;
+    font-weight: 700;
+    background: rgba(56,189,248,0.10);
+    color: var(--s1);
+    border: 1px solid rgba(56,189,248,0.2);
+}
+.stint-avg-badge.improving { background: rgba(74,222,128,0.10); color: var(--s3); border-color: rgba(74,222,128,0.2); }
+.stint-avg-badge.degrading { background: rgba(244,63,94,0.10); color: var(--tire-soft); border-color: rgba(244,63,94,0.2); }
+
+/* ---- Name overflow helpers ---- */
+.name-marquee-wrap {
+    overflow: hidden;
+    max-width: 120px;
+    flex: 1;
+    min-width: 0;
+}
+.name-marquee-wrap .name-inner {
+    display: inline-block;
+    white-space: nowrap;
+}
+.name-marquee-wrap.overflowing .name-inner {
+    animation: marquee-slide 8s linear infinite;
+    padding-right: 24px;
+}
+@keyframes marquee-slide {
+    0%   { transform: translateX(0); }
+    40%  { transform: translateX(0); }
+    90%  { transform: translateX(var(--marquee-dist, -60px)); }
+    100% { transform: translateX(var(--marquee-dist, -60px)); }
+}
+
+/* Adaptive font scaling for very long names */
+.cr-name.name-long   { font-size: 10px; }
+.cr-name.name-xlong  { font-size: 9px; letter-spacing: -0.3px; }
+
+/* ---- Sector column header chips ---- */
+.lt-col-s1 { color: var(--s1); }
+.lt-col-s2 { color: var(--s2); }
+.lt-col-s3 { color: var(--s3); }
+
+/* ==================== RESPONSIVE LIVE-TIMING ==================== */
+
+/* ---- 1920×1080 / wide desktop ---- */
+@media (min-width: 1400px) {
+    :root {
+        --lt-zone-w: 60%;
+        --ctrl-zone-w: 40%;
+    }
+    #raceInfoPanel { max-width: 960px !important; }
+    .cr-name { max-width: 160px; }
+    .competitor-row { height: 36px; min-height: 36px; }
+    .cr-sectors { display: flex; }
+}
+
+/* ---- 1366×768 / 1280×800 — tighter ---- */
+@media (min-width: 1024px) and (max-width: 1366px) {
+    :root {
+        --lt-zone-w: 56%;
+    }
+    .cr-avg, .cr-int { display: none; }
+    .cr-name { max-width: 100px; }
+}
+
+/* ---- Tablet portrait (600–1023px) ---- */
+@media (min-width: 600px) and (max-width: 1023px) and (orientation: portrait) {
+    .cr-sectors { display: none; }
+    .cr-avg, .cr-int { display: none; }
+    #kartRankingPanel { display: none; }
+}
+
+/* ---- Keep competitor table scrollable but always visible ---- */
+@media (min-width: 1024px) {
+    .lt-table-scroll {
+        max-height: calc(100vh - 320px) !important;
+        overflow-y: auto;
+    }
+    .lt-widget-wrapper:not(.lt-fixed) {
+        display: flex;
+        flex-direction: column;
+        min-height: 300px;
+    }
+    .lt-widget-wrapper:not(.lt-fixed) .lt-widget-inner {
+        flex: 1;
+    }
+}
+
+/* ---- Hide resizer in two-zone wide layout (JS handles col resize) ---- */
+@media (min-width: 1024px) {
+    #dashPanelResizer .dash-resizer-handle {
+        width: 4px;
+        height: 40px;
+    }
+}
+
+/* ---- Right zone control layout on wide screens ---- */
+@media (min-width: 1024px) {
+    #raceControlDock {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 8px !important;
+    }
+    #raceControlDock .right-widgets-area {
+        flex: 1 1 0;
+        overflow-y: auto;
+        min-height: 0;
+    }
+    /* Pit button stays at bottom */
+    #pitEntryBtn {
+        margin-top: auto !important;
+        flex-shrink: 0;
+    }
+    #confirmRaceFinishBtn {
+        flex-shrink: 0;
+    }
+    #pitInlineDock {
+        flex-shrink: 0;
+    }
+}
+
+/* ==================== ADVANCED PIT ADVICE BANNER ==================== */
+
+/* Base: hidden until JS makes it visible */
+.pit-advice-status {
+    transition: color 0.3s, background 0.3s, border-color 0.3s;
+    letter-spacing: 0.04em;
+    font-size: 13px;
+    padding: 6px 12px;
+    border-radius: 8px;
+    text-align: center;
+}
+
+/* ==================== MOBILE UX IMPROVEMENTS ==================== */
+
+/* ── Global touch-target floor for all action buttons on mobile ── */
+@media (max-width: 767px) {
+    /* Any tappable button in the race dashboard gets min 44 px height */
+    #raceControlDock button,
+    #pitModal button,
+    #pitInlineDock button,
+    header button {
+        min-height: 44px;
+        min-width: 44px;
+    }
+
+    /* Pit entry / exit CTAs: larger touch area, clear visual hierarchy */
+    #pitEntryBtn {
+        min-height: 56px !important;
+        font-size: 1.1rem !important;
+        letter-spacing: 0.06em;
+    }
+
+    /* Exit Pits CTA: larger on small screens */
+    #confirmExitBtn {
+        min-height: 60px !important;
+        font-size: 1.6rem !important;
+        padding-top: 14px !important;
+        padding-bottom: 14px !important;
+    }
+
+    /* Cancel pit entry link: at least 44 px tall so it's easily tappable */
+    #pitModal > button[onclick*="cancelPitStop"] {
+        display: block;
+        padding: 12px 24px;
+        min-height: 44px;
+    }
+
+    /* Pit timer: slightly smaller on very small phones so it doesn't overflow */
+    @media (max-width: 360px) {
+        #pitTimerDisplay {
+            font-size: 3rem !important;
+        }
+    }
+
+    /* Inline pit dock: bigger timer text */
+    #pitInlineTimer {
+        font-size: 2rem !important;
+    }
+
+    /* Header buttons: ensure consistent size */
+    header button,
+    #headerOverflowMenu button {
+        min-height: 40px;
+        min-width: 40px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* Bottom-dock control row: give each action button breathing room */
+    #raceControlDock .flex.justify-between button {
+        min-height: 48px;
+        flex: 1 1 0;
+    }
+
+    /* Active-press feedback on all touch buttons */
+    #raceControlDock button:active,
+    #pitModal button:active,
+    header button:active {
+        transform: scale(0.96);
+        transition: transform 0.08s;
+    }
+
+    /* Pit advice banner on mobile: full width, higher contrast */
+    #pitAdviceStatus {
+        font-size: 15px !important;
+        padding: 10px 14px !important;
+        border-width: 2px !important;
+    }
+
+    /* Live-timing HB indicator: slightly larger on mobile for readability */
+    #liveHeartbeat {
+        font-size: 11px !important;
+    }
+
+    /* Competitor row: slightly taller on mobile for easier reading */
+    .competitor-row {
+        min-height: 32px;
+    }
+
+    /* Position badges: slightly larger */
+    .cr-pos {
+        width: 24px;
+        min-width: 24px;
+        height: 22px;
+        font-size: 12px;
+    }
+}
+
+/* ── Very small phone (≤360px) tweaks ── */
+@media (max-width: 360px) {
+    #pitModal h2 { font-size: 1.5rem; }
+    #pitReadyBanner { font-size: 1.5rem !important; }
+    #pitAdviceStatus { font-size: 12px !important; }
+    .cr-gap, .cr-int { display: none; }
+}
+
+/* ── Landscape mobile: compact pit modal ── */
+@media (max-height: 500px) and (orientation: landscape) {
+    #pitModal {
+        flex-direction: row !important;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-around;
+        gap: 8px;
+        padding: 8px 16px !important;
+    }
+    #pitModal h2 { font-size: 1.2rem; margin-bottom: 0; }
+    #pitTimerDisplay { font-size: 2.5rem !important; margin-bottom: 0; }
+    #pitReadyBanner { font-size: 1.2rem !important; }
+    #pitAdviceStatus { font-size: 12px !important; }
+    #confirmExitBtn { min-height: 48px !important; font-size: 1.2rem !important; }
+}
+
+/* ── Sharpen HB stale indicator animation ── */
+@keyframes hb-stale-blink {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.3; }
+}
+.hb-stale {
+    animation: hb-stale-blink 0.8s ease-in-out infinite;
+    color: #ef4444 !important;
+    font-weight: 800 !important;
+}
+
+/* ── Pit advice: colour variants ── */
+.pit-advice-status.text-yellow-300 { color: #fde047; }
+.pit-advice-status.text-orange-400 { color: #fb923c; }
+.pit-advice-status.text-green-300  { color: #86efac; }
+.pit-advice-status.text-red-500    { color: #ef4444; }
+
+/* ── Inline pit dock: consistent border on all states ── */
+#pitInlineDock {
+    border: 1px solid rgba(34,211,238,0.3);
+    border-radius: 12px;
+    background: rgba(2,6,23,0.85);
 }

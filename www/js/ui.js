@@ -2,6 +2,237 @@
 // 🎨 UI MANAGER (Updated Visuals)
 // ==========================================
 
+// ==========================================
+// 👥 DRIVER GROUP SYSTEM (per DeviceID)
+// ==========================================
+
+const _DRIVER_POOL_KEY = 'strateger_driver_pool';
+
+window.getDriverPool = function() {
+    const deviceId = window.getDeviceId();
+    try {
+        const all = JSON.parse(localStorage.getItem(_DRIVER_POOL_KEY) || '{}');
+        return all[deviceId] || [];
+    } catch(e) { return []; }
+};
+
+window.saveDriverPool = function(pool) {
+    const deviceId = window.getDeviceId();
+    try {
+        const all = JSON.parse(localStorage.getItem(_DRIVER_POOL_KEY) || '{}');
+        all[deviceId] = pool;
+        localStorage.setItem(_DRIVER_POOL_KEY, JSON.stringify(all));
+    } catch(e) {}
+};
+
+// ── minimum-2 guarantee ──────────────────────────────────────────────────────
+// The race always has at least 2 active driver slots.
+// Slot 0 = Driver 1 placeholder, Slot 1 = Driver 2 placeholder.
+// As real drivers are added to the pool they replace placeholders in order.
+// A slot is only removed when the pool contains ≥ 3 real (non-placeholder) drivers.
+
+window._PLACEHOLDER_NAMES = function() {
+    const t = window.t || (k => k);
+    return [`${t('ltDriver')} 1`, `${t('ltDriver')} 2`];
+};
+
+// Return the effective active driver list: pool drivers + placeholder fill to min 2
+window._effectiveDriverSlots = function() {
+    const pool = window.getDriverPool();
+    const selected = pool.filter(d => window._driverGroupParticipants.has(d.name));
+    const ph = window._PLACEHOLDER_NAMES();
+    const slots = [...selected];
+    // Pad with placeholders until we have at least 2 slots
+    let phIdx = 0;
+    while (slots.length < 2) {
+        slots.push({ name: ph[phIdx], color: '#4b5563', _placeholder: true });
+        phIdx++;
+    }
+    return slots;
+};
+
+window.addDriverToPool = function(name) {
+    if (!name || !name.trim()) return;
+    const pool = window.getDriverPool();
+    const trimmed = name.trim();
+    if (!pool.find(d => d.name.toLowerCase() === trimmed.toLowerCase())) {
+        pool.push({ name: trimmed, color: window._nextDriverColor() });
+        window.saveDriverPool(pool);
+    }
+    // Auto-select newly added driver
+    window._driverGroupParticipants.add(trimmed);
+    window.renderDriverGroupUI();
+};
+
+window.removeDriverFromPool = function(name) {
+    const newPool = window.getDriverPool().filter(d => d.name !== name);
+    window.saveDriverPool(newPool);
+    window._driverGroupParticipants.delete(name);
+    window.renderDriverGroupUI();
+    window.applyDriverGroupToRace(true);
+};
+
+window._nextDriverColor = function() {
+    const PALETTE = ['#22d3ee','#a3e635','#f97316','#ef4444','#8b5cf6','#ec4899','#facc15','#34d399',
+                     '#f472b6','#38bdf8','#4ade80','#fb923c','#a78bfa','#fbbf24','#34d399','#e879f9'];
+    const pool = window.getDriverPool();
+    const used = new Set(pool.map(d => d.color));
+    const unused = PALETTE.filter(c => !used.has(c));
+    const pick = unused.length > 0 ? unused : PALETTE;
+    return pick[Math.floor(Math.random() * pick.length)];
+};
+
+window._driverGroupParticipants = new Set();
+
+window.toggleDriverParticipant = function(name) {
+    if (window._driverGroupParticipants.has(name)) {
+        // Block deselect if it would leave fewer than 2 active slots
+        const currentSelected = window.getDriverPool().filter(d => window._driverGroupParticipants.has(d.name));
+        if (currentSelected.length <= 2) return; // already at minimum — do nothing
+        window._driverGroupParticipants.delete(name);
+    } else {
+        window._driverGroupParticipants.add(name);
+    }
+    window.renderDriverGroupUI();
+    window.applyDriverGroupToRace();
+};
+
+window.applyDriverGroupToRace = function(triggerSim = true) {
+    const list = document.getElementById('driversList');
+    if (!list) return;
+
+    const slots = window._effectiveDriverSlots();
+    const numSquads = parseInt(document.getElementById('numSquads')?.value) || 0;
+
+    list.innerHTML = '';
+    slots.forEach((d, i) => {
+        const squadIdx = numSquads > 0 ? i % numSquads : 0;
+        window.createDriverInput(d.name, i === 0, squadIdx);
+        const rows = list.querySelectorAll('.driver-row');
+        const lastRow = rows[rows.length - 1];
+        if (lastRow) {
+            const colorPicker = lastRow.querySelector('.driver-color-picker');
+            if (colorPicker && d.color) {
+                colorPicker.value = d.color;
+                const swatch = lastRow.querySelector('.driver-color-swatch');
+                const accent = lastRow.querySelector('.driver-accent-bar');
+                if (swatch) swatch.style.background = d.color;
+                if (accent) accent.style.background = d.color;
+            }
+            if (d._placeholder) {
+                lastRow.classList.add('opacity-50');
+                const inp = lastRow.querySelector('.driver-input');
+                if (inp) inp.dataset.placeholder = 'true';
+            }
+        }
+    });
+
+    if (triggerSim && !window._initRunSimSuppressed && typeof window.runSim === 'function') window.runSim();
+};
+
+window.renderDriverGroupUI = function() {
+    const container = document.getElementById('driverGroupContainer');
+    if (!container) return;
+    const pool = window.getDriverPool();
+    const t = window.t || (k => k);
+
+    container.innerHTML = '';
+
+    // Pool tags
+    const tagsDiv = document.createElement('div');
+    tagsDiv.className = 'flex flex-wrap gap-1.5 mb-2';
+
+    const selectedCount = pool.filter(d => window._driverGroupParticipants.has(d.name)).length;
+
+    pool.forEach(d => {
+        const active = window._driverGroupParticipants.has(d.name);
+        // A selected driver is locked (cannot deselect) when doing so would drop below 2
+        const locked = active && selectedCount <= 2;
+
+        const tag = document.createElement('button');
+        tag.type = 'button';
+        tag.className = `driver-group-tag flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold border transition select-none ${
+            active
+                ? 'text-navy-950 border-transparent shadow-md'
+                : 'bg-navy-950 text-gray-400 border-gray-600 hover:border-gray-400'
+        }${locked ? ' cursor-default' : ''}`;
+        if (active) {
+            tag.style.background = d.color;
+            tag.style.borderColor = d.color;
+        }
+        tag.title = locked
+            ? (t('minTwoDrivers') || 'Minimum 2 drivers required')
+            : active ? t('clickToRemoveFromRace') : t('clickToAddToRace');
+        tag.onclick = () => locked ? null : window.toggleDriverParticipant(d.name);
+
+        const nameSpan = document.createElement('span');
+        nameSpan.textContent = d.name;
+
+        const removeBtn = document.createElement('span');
+        removeBtn.innerHTML = '&times;';
+        removeBtn.className = 'ml-0.5 opacity-60 hover:opacity-100 cursor-pointer text-[10px]';
+        removeBtn.title = t('removeFromGroup');
+        removeBtn.onclick = (e) => { e.stopPropagation(); window.removeDriverFromPool(d.name); };
+
+        tag.appendChild(nameSpan);
+        tag.appendChild(removeBtn);
+        tagsDiv.appendChild(tag);
+    });
+
+    container.appendChild(tagsDiv);
+
+    // Add driver input
+    const addRow = document.createElement('div');
+    addRow.className = 'flex gap-1.5';
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.id = 'driverGroupInput';
+    input.placeholder = t('addDriverToGroup') || 'Add driver…';
+    input.className = 'driver-input flex-1 bg-navy-950 border border-gray-600 focus:border-ice text-white text-xs rounded px-2 py-1.5 outline-none';
+    input.onkeydown = (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); window._commitDriverGroupInput(); }
+    };
+
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.textContent = '+';
+    addBtn.className = 'bg-blue-600 hover:bg-blue-500 text-white font-bold px-3 py-1.5 rounded text-sm transition';
+    addBtn.onclick = () => window._commitDriverGroupInput();
+
+    addRow.appendChild(input);
+    addRow.appendChild(addBtn);
+    container.appendChild(addRow);
+
+    if (pool.length > 0) {
+        const hint = document.createElement('p');
+        hint.className = 'text-[10px] text-gray-500 mt-1.5';
+        hint.textContent = t('driverGroupHint') || 'Tap a driver to include/exclude from this race';
+        container.appendChild(hint);
+    }
+};
+
+window._commitDriverGroupInput = function() {
+    const input = document.getElementById('driverGroupInput');
+    if (!input || !input.value.trim()) return;
+    const name = input.value.trim();
+    window.addDriverToPool(name);
+    window._driverGroupParticipants.add(name);
+    input.value = '';
+    window.applyDriverGroupToRace(true);
+};
+
+window.initDriverGroupUI = function() {
+    const pool = window.getDriverPool();
+    // Pre-select all pool members if no selection yet
+    if (window._driverGroupParticipants.size === 0 && pool.length > 0) {
+        pool.forEach(d => window._driverGroupParticipants.add(d.name));
+    }
+    window.renderDriverGroupUI();
+    // Always apply — even empty pool produces 2 placeholder slots
+    window.applyDriverGroupToRace(false);
+};
+
 window.toggleConfigPanel = function(event) {
     if (event && event.target.closest('.starter-indicator, .starter-radio, .driver-input')) return;
     const panel = document.getElementById('configPanel');
@@ -10,6 +241,27 @@ window.toggleConfigPanel = function(event) {
         panel.classList.toggle('hidden');
         if (arrow) arrow.innerText = panel.classList.contains('hidden') ? '▼' : '▲';
     }
+};
+
+// Smart "Add Driver" button: routes through the pool when one exists,
+// falls back to bare addDriverField when the pool is empty (first-time use).
+window._addDriverSmartBtn = function() {
+    const pool = window.getDriverPool();
+    if (pool.length > 0) {
+        // Pool exists — focus the pool name input so user adds via the group system
+        const input = document.getElementById('driverGroupInput');
+        if (input) { input.focus(); input.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
+    } else {
+        // No pool yet — create a bare driver row as before
+        window.addDriverField();
+        window.runSim();
+    }
+};
+
+window.ensureMinimumDrivers = function(n) {
+    const list = document.getElementById('driversList');
+    if (!list) return;
+    while (list.children.length < n) window.addDriverField();
 };
 
 window.addDriverField = function() {
@@ -29,23 +281,53 @@ window.removeDriverField = function() {
 
 window.createDriverInput = function(val, checked, squad) {
     const div = document.createElement('div');
-    div.className = "driver-row flex items-center gap-2 bg-navy-950 rounded border border-gray-700 mb-2 cursor-default";
+    div.className = "driver-row cursor-default";
     div.onclick = (e) => e.stopPropagation();
 
-    const radioId = 'starter_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
-    
-    const label = document.createElement('label');
-    label.className = "flex items-center cursor-pointer p-1 rounded hover:bg-white/5 shrink-0";
-    label.addEventListener('click', (e) => {
-        e.preventDefault(); 
-        e.stopPropagation();
-        const allRadios = document.querySelectorAll('.starter-radio');
-        allRadios.forEach(r => r.checked = false);
-        document.getElementById(radioId).checked = true;
-        window.updateStarterVisuals();
-        window.runSim();
-    });
+    // ── Drag handle ──
+    const dragHandle = document.createElement('div');
+    dragHandle.className = 'driver-drag-handle';
+    dragHandle.title = 'Drag to reorder';
+    dragHandle.innerHTML = '<svg viewBox="0 0 16 16" fill="currentColor" width="12" height="12"><path d="M2 4h12v1.5H2zm0 3h12v1.5H2zm0 3h12V12H2z"/></svg>';
+    dragHandle.addEventListener('mousedown',  (e) => window._driverDragStart(e, div), { passive: false });
+    dragHandle.addEventListener('touchstart',  (e) => window._driverDragStart(e, div), { passive: false });
 
+    const radioId = 'starter_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+
+    // ── Color swatch (left edge accent bar + clickable swatch) ──
+    const DRIVER_PALETTE = ['#22d3ee','#a3e635','#f97316','#ef4444','#8b5cf6','#ec4899','#facc15','#34d399',
+                            '#f472b6','#38bdf8','#4ade80','#fb923c','#a78bfa','#fbbf24','#e879f9'];
+    const usedColors = new Set([...document.querySelectorAll('#driversList .driver-color-picker')].map(el => el.value));
+    const unusedPalette = DRIVER_PALETTE.filter(c => !usedColors.has(c));
+    const pickFrom = unusedPalette.length > 0 ? unusedPalette : DRIVER_PALETTE;
+    const chosenColor = pickFrom[Math.floor(Math.random() * pickFrom.length)];
+
+    const colorPicker = document.createElement('input');
+    colorPicker.type = 'color';
+    colorPicker.className = 'driver-color-picker';
+    colorPicker.value = chosenColor;
+    colorPicker.title = 'Driver color';
+    colorPicker.addEventListener('click', (e) => e.stopPropagation());
+    colorPicker.onchange = () => {
+        accentBar.style.background = colorPicker.value;
+        colorSwatch.style.background = colorPicker.value;
+        window.runSim();
+    };
+
+    // Left accent bar
+    const accentBar = document.createElement('div');
+    accentBar.className = 'driver-accent-bar';
+    accentBar.style.background = chosenColor;
+
+    // Color swatch circle (wraps hidden <input type=color>)
+    const colorSwatch = document.createElement('div');
+    colorSwatch.className = 'driver-color-swatch';
+    colorSwatch.style.background = chosenColor;
+    colorSwatch.title = 'Change color';
+    colorSwatch.addEventListener('click', (e) => { e.stopPropagation(); colorPicker.click(); });
+    colorSwatch.appendChild(colorPicker);
+
+    // ── Starter toggle ──
     const radio = document.createElement('input');
     radio.type = 'radio';
     radio.name = 'starter';
@@ -53,38 +335,74 @@ window.createDriverInput = function(val, checked, squad) {
     radio.className = 'starter-radio sr-only';
     radio.checked = checked;
 
-    const indicator = document.createElement('div');
-    indicator.className = 'starter-indicator w-8 h-8 rounded-full border-2 flex items-center justify-center text-sm transition ' + 
-        (checked ? 'border-ice bg-ice/30 text-white shadow-[0_0_8px_rgba(34,211,238,0.5)]' : 'border-gray-600 text-gray-500 hover:border-gray-400');
-    indicator.textContent = '🏁';
+    const starterBtn = document.createElement('button');
+    starterBtn.type = 'button';
+    starterBtn.className = 'driver-starter-btn' + (checked ? ' is-starter' : '');
+    starterBtn.title = 'Set as race starter';
+    starterBtn.innerHTML = '<svg viewBox="0 0 16 16" fill="currentColor" width="12" height="12"><path d="M2 2h12v2L8 9l6 5H2V2z"/></svg>';
+    starterBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        document.querySelectorAll('.starter-radio').forEach(r => r.checked = false);
+        radio.checked = true;
+        window.updateStarterVisuals();
+        window.runSim();
+    });
 
-    label.appendChild(radio);
-    label.appendChild(indicator);
+    const indicator = document.createElement('div');
+    indicator.className = 'starter-indicator hidden';
+
+    // ── Name input ──
+    const nameWrap = document.createElement('div');
+    nameWrap.className = 'driver-name-wrap';
 
     const driverInput = document.createElement('input');
     driverInput.type = 'text';
     driverInput.value = val;
-    driverInput.className = 'driver-input bg-transparent text-white w-full outline-none font-bold text-sm px-2 focus:bg-navy-900 rounded';
+    driverInput.className = 'driver-input';
+    driverInput.placeholder = 'Driver name';
     driverInput.addEventListener('click', (e) => e.stopPropagation());
-    driverInput.onchange = () => window.runSim();
 
-    // Color picker
-    const DRIVER_PALETTE = ['#22d3ee','#a3e635','#f97316','#ef4444','#8b5cf6','#ec4899','#facc15','#34d399'];
-    const colorIdx = document.getElementById('driversList')?.children.length || 0;
-    const colorPicker = document.createElement('input');
-    colorPicker.type = 'color';
-    colorPicker.className = 'driver-color-picker';
-    colorPicker.value = DRIVER_PALETTE[colorIdx % DRIVER_PALETTE.length];
-    colorPicker.title = 'Driver color';
-    colorPicker.addEventListener('click', (e) => e.stopPropagation());
-    colorPicker.onchange = () => window.runSim();
+    let _prevName = val;
+    driverInput.oninput = () => {
+        if (typeof window.scheduleRunSim === 'function') window.scheduleRunSim(400);
+        else if (typeof window.runSim === 'function') window.runSim();
+    };
+    driverInput.onchange = () => {
+        const newName = driverInput.value.trim();
+        if (newName && newName !== _prevName && typeof window.getDriverPool === 'function') {
+            // Rename in pool: update entry, re-sync participants set, re-render group tags
+            const pool = window.getDriverPool();
+            const entry = pool.find(d => d.name === _prevName);
+            if (entry) {
+                const wasParticipant = window._driverGroupParticipants?.has(_prevName);
+                entry.name = newName;
+                if (typeof window.saveDriverPool === 'function') window.saveDriverPool(pool);
+                if (wasParticipant) {
+                    window._driverGroupParticipants.delete(_prevName);
+                    window._driverGroupParticipants.add(newName);
+                }
+                if (typeof window.renderDriverGroupUI === 'function') window.renderDriverGroupUI();
+            }
+            _prevName = newName;
+        }
+        if (typeof window.runSim === 'function') window.runSim();
+    };
 
+    const starterLabel = document.createElement('span');
+    starterLabel.className = 'driver-starter-label' + (checked ? '' : ' hidden');
+    starterLabel.textContent = 'STARTER';
+
+    nameWrap.appendChild(driverInput);
+    nameWrap.appendChild(starterLabel);
+
+    // ── Squad toggle ──
     const SQUAD_COLORS = ['#3b82f6','#06b6d4','#a855f7','#f97316'];
     const SQUAD_LABELS = ['A','B','C','D'];
     const squadIdx = typeof squad === 'number' ? squad : (squad === 'B' ? 1 : squad === 'C' ? 2 : squad === 'D' ? 3 : 0);
 
     const squadLabel = document.createElement('div');
-    squadLabel.className = 'squad-toggle-container flex items-center cursor-pointer ml-auto bg-navy-800 rounded px-2 py-1 border border-gray-600 hidden select-none shrink-0';
+    squadLabel.className = 'squad-toggle-container hidden select-none';
     squadLabel.addEventListener('click', (e) => e.stopPropagation());
 
     const squadHidden = document.createElement('input');
@@ -95,7 +413,7 @@ window.createDriverInput = function(val, checked, squad) {
     const squadDisplay = document.createElement('div');
     squadDisplay.innerText = SQUAD_LABELS[squadIdx];
     squadDisplay.style.background = SQUAD_COLORS[squadIdx];
-    squadDisplay.className = 'w-6 h-5 rounded text-[10px] flex items-center justify-center font-bold text-white cursor-pointer select-none';
+    squadDisplay.className = 'squad-badge';
     squadDisplay.onclick = function(e) {
         e.stopPropagation();
         const numSquads = parseInt(document.getElementById('numSquads')?.value) || 2;
@@ -110,25 +428,42 @@ window.createDriverInput = function(val, checked, squad) {
     squadLabel.appendChild(squadHidden);
     squadLabel.appendChild(squadDisplay);
 
-    div.appendChild(label);
-    div.appendChild(driverInput);
-    div.appendChild(colorPicker);
+    div.appendChild(dragHandle);
+    div.appendChild(accentBar);
+    div.appendChild(colorSwatch);
+    div.appendChild(radio);
+    div.appendChild(indicator);
+    div.appendChild(starterBtn);
+    div.appendChild(nameWrap);
     div.appendChild(squadLabel);
-    
+
     document.getElementById('driversList').appendChild(div);
 };
 
 window.updateStarterVisuals = function() {
     const scrollY = window.scrollY;
-    document.querySelectorAll('.starter-indicator').forEach(ind => {
-        const radio = ind.previousElementSibling;
-        if (radio && radio.checked) {
-            ind.className = 'starter-indicator w-8 h-8 rounded-full border-2 border-ice bg-ice/30 shadow-[0_0_8px_rgba(34,211,238,0.5)] flex items-center justify-center text-sm';
+    document.querySelectorAll('.driver-row').forEach(row => {
+        const radio = row.querySelector('.starter-radio');
+        const btn = row.querySelector('.driver-starter-btn');
+        const lbl = row.querySelector('.driver-starter-label');
+        if (!radio) return;
+        if (radio.checked) {
+            btn && btn.classList.add('is-starter');
+            lbl && lbl.classList.remove('hidden');
+            row.classList.add('is-starter-row');
         } else {
-            ind.className = 'starter-indicator w-8 h-8 rounded-full border-2 border-gray-500 flex items-center justify-center text-sm hover:border-ice transition';
+            btn && btn.classList.remove('is-starter');
+            lbl && lbl.classList.add('hidden');
+            row.classList.remove('is-starter-row');
         }
     });
     window.scrollTo(0, scrollY);
+};
+
+window.toggleMaxConsecutive = function() {
+    const allowed = document.getElementById('allowDouble')?.checked;
+    const row = document.getElementById('maxConsecutiveRow');
+    if (row) row.classList.toggle('hidden', !allowed);
 };
 
 window.toggleSquadsInput = function() {
@@ -243,6 +578,7 @@ window.toggleFuelInput = function() {
 const _PHOTO_OVERLAY = 'linear-gradient(rgba(0,0,0,0.62), rgba(0,0,0,0.62))';
 const _photo = (id) =>
     `background-image: ${_PHOTO_OVERLAY}, url(https://images.unsplash.com/${id}?auto=format&fit=crop&w=1920&q=70); background-size: cover; background-position: center; background-repeat: no-repeat;`;
+const _PHOTO_THEME_IDS = new Set(['kart-race', 'kart-night', 'kart-pit', 'kart-onboard', 'kart-wet', 'kart-grid', 'kart-blaze', 'kart-helmet']);
 
 const _BG_THEMES = {
     '': '', // Default — CSS handles it
@@ -311,6 +647,16 @@ const _THEME_TINTS = {
 };
 
 window.setPageBackground = function(bg) {
+    if (_PHOTO_THEME_IDS.has(bg) && !window._proUnlocked) {
+        if (typeof window.showProGate === 'function') {
+            window.showProGate('Photo Themes');
+        }
+        if (typeof window.showToast === 'function') {
+            window.showToast('Photo themes are available for Pro users', 'warning', 2500);
+        }
+        return;
+    }
+
     // Clear all inline background styles first
     document.body.style.cssText = document.body.style.cssText.replace(/background[^;]*;?/gi, '');
     
@@ -378,6 +724,11 @@ window.toggleThemePanel = function() {
         const current = localStorage.getItem('strateger_bg') || '';
         panel.querySelectorAll('.bg-swatch').forEach(s => {
             s.classList.toggle('active', s.dataset.bg === current);
+            const isPhoto = _PHOTO_THEME_IDS.has(s.dataset.bg || '');
+            const locked = isPhoto && !window._proUnlocked;
+            s.classList.toggle('opacity-50', locked);
+            s.classList.toggle('cursor-not-allowed', locked);
+            s.title = locked ? `${s.title || 'Photo'} (Pro)` : (s.title || '');
         });
     }
 };
@@ -398,15 +749,48 @@ window.renderPreview = function() {
     // === 1. קביעת זמן התחלה ===
     let startRef;
     const timeInput = document.getElementById('raceStartTime');
+    const dateInput = document.getElementById('raceStartDate');
     const previewTimeDisplay = document.getElementById('previewStartTimeDisplay');
-    
+
     if (timeInput && timeInput.value) {
         if (previewTimeDisplay) previewTimeDisplay.innerText = timeInput.value;
-        startRef = new Date();
-        const [h, m] = timeInput.value.split(':');
-        startRef.setHours(parseInt(h), parseInt(m), 0, 0);
+        startRef = dateInput && dateInput.value ? new Date(dateInput.value + 'T' + timeInput.value + ':00') : new Date();
+        if (isNaN(startRef.getTime())) {
+            startRef = new Date();
+            const [h, m] = timeInput.value.split(':');
+            startRef.setHours(parseInt(h), parseInt(m), 0, 0);
+        }
     } else {
         startRef = new Date();
+    }
+
+    // === 1b. Weather banner (location weather) ===
+    const weatherBanner = document.getElementById('previewLocationWeather');
+    const raceDateMs = startRef.getTime();
+    const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+    const dateIsFarOut = (raceDateMs - Date.now()) > sevenDaysMs;
+    if (weatherBanner) {
+        if (window._venueWeather && window._venueWeather.locationName) {
+            if (dateIsFarOut) {
+                weatherBanner.textContent = `📍 ${window._venueWeather.locationName} — ${t('weatherTooFarOut') || 'Date too far — forecast unavailable'}`;
+            } else {
+                const forecast = typeof window.getVenueForecastAt === 'function' ? window.getVenueForecastAt(raceDateMs) : null;
+                const fmtStr = forecast && typeof window.formatVenueForecastShort === 'function' ? window.formatVenueForecastShort(forecast) : '';
+                weatherBanner.textContent = `📍 ${window._venueWeather.locationName}${fmtStr ? ' · ' + fmtStr : ''}`;
+            }
+            weatherBanner.classList.remove('hidden');
+        } else {
+            weatherBanner.classList.add('hidden');
+        }
+    }
+
+    // Refresh weather data for selected location
+    if (typeof window.refreshVenueWeather === 'function') {
+        const locInput = document.getElementById('raceLocation');
+        if (locInput && locInput.value) {
+            const selectedPlace = typeof window.resolveVenueLocation === 'function' ? window.resolveVenueLocation(locInput.value) : null;
+            window.refreshVenueWeather(locInput.value, selectedPlace);
+        }
     }
 
     // === 2. בדיקת כיוון שפה ===
@@ -442,57 +826,69 @@ window.renderPreview = function() {
     const maxStintMin = window.config ? (window.config.maxStint || 999) : 999;
 
     const listHtml = stints.map((stint, index) => {
+        const stintStartMs = currentTimeMs;
         const startTime = new Date(currentTimeMs);
         const endTime = new Date(currentTimeMs + stint.duration);
         const durationMin = Math.round(stint.duration / 60000);
-        
+
         const startTimeStr = startTime.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
         const endTimeStr = endTime.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-        
+
         currentTimeMs += stint.duration;
-        
+
         const pit = pits[index];
         const isLast = index === stints.length - 1;
         const isFirst = index === 0;
-        
+
         let pitIndicator = '';
         if (pit && !isLast) {
             const pitSec = Math.round(pit.duration / 1000);
             pitIndicator = `<span class="text-gold text-[10px] ml-1">🔧+${pitSec}s</span>`;
             currentTimeMs += pit.duration;
         }
-        
+
+        // Weather tag for this stint's start time
+        const showWeatherChecked = document.getElementById('showWeatherInStints')?.checked !== false;
+        let stintForecastTag = '';
+        if (showWeatherChecked && window._venueWeather && typeof window.getVenueForecastAt === 'function') {
+            if (dateIsFarOut) {
+                stintForecastTag = `<span class="text-[9px] text-gray-600 ml-1">${t('weatherTooFarOut') || '—'}</span>`;
+            } else {
+                const fc = window.getVenueForecastAt(stintStartMs);
+                if (fc && typeof window.formatVenueForecastShort === 'function') {
+                    stintForecastTag = `<span class="text-[9px] text-blue-400 ml-1">${window.formatVenueForecastShort(fc)}</span>`;
+                }
+            }
+        }
+
         const outOfBounds = durationMin < minStintMin || durationMin > maxStintMin;
         const borderWarning = outOfBounds ? 'ring-1 ring-red-500' : '';
 
+        const checkeredFlag = isLast ? `<svg width="11" height="8" viewBox="0 0 14 10" aria-hidden="true" style="flex-shrink:0;vertical-align:middle"><rect x="0.5" y="0.5" width="13" height="9" rx="1" fill="#111" stroke="#666"/><rect x="1" y="1" width="3" height="4" fill="#fff"/><rect x="4" y="1" width="3" height="4" fill="#111"/><rect x="7" y="1" width="3" height="4" fill="#fff"/><rect x="10" y="1" width="3" height="4" fill="#111"/><rect x="1" y="5" width="3" height="4" fill="#111"/><rect x="4" y="5" width="3" height="4" fill="#fff"/><rect x="7" y="5" width="3" height="4" fill="#111"/><rect x="10" y="5" width="3" height="4" fill="#fff"/></svg>` : '';
+        // Reorder arrows inline so row stays single-line height (~24px)
         return `
-            <div class="flex items-center gap-1 bg-navy-950 p-2 rounded border-l-4 mb-1 text-xs cursor-grab active:cursor-grabbing ${borderWarning}" 
-                 style="border-left-color: ${stint.color}" 
+            <div class="flex items-center gap-1 bg-navy-950 rounded border-l-4 cursor-grab active:cursor-grabbing ${borderWarning}" style="border-left-color:${stint.color};height:24px;padding:0 4px 0 0;overflow:hidden"
                  draggable="${window._isTouchDevice ? 'false' : 'true'}" data-index="${index}"
-                 ondragstart="window.handleDragStart(event)" 
-                 ondragover="window.handleDragOver(event)" 
-                 ondragleave="window.handleDragLeave(event)" 
+                 ondragstart="window.handleDragStart(event)"
+                 ondragover="window.handleDragOver(event)"
+                 ondragleave="window.handleDragLeave(event)"
                  ondrop="window.handleDrop(event)">
-                <div class="flex flex-col gap-0.5 shrink-0">
-                    <button onclick="window.moveStint(${index}, -1)" class="text-gray-500 hover:text-white text-[10px] leading-none px-1 ${isFirst ? 'invisible' : ''}" title="Move Up">▲</button>
-                    <span class="text-gray-500 text-center font-mono text-[10px]">#${index + 1}</span>
-                    <button onclick="window.moveStint(${index}, 1)" class="text-gray-500 hover:text-white text-[10px] leading-none px-1 ${isLast ? 'invisible' : ''}" title="Move Down">▼</button>
+                <div class="flex items-center shrink-0" style="gap:0;width:28px">
+                    <button onclick="window.moveStint(${index}, -1)" class="text-gray-600 hover:text-white ${isFirst ? 'invisible' : ''}" style="font-size:7px;padding:0 2px;line-height:1;background:none;border:none;cursor:pointer" title="Up">▲</button>
+                    <span class="text-gray-600 font-mono" style="font-size:8px;min-width:10px;text-align:center">${index+1}</span>
+                    <button onclick="window.moveStint(${index}, 1)" class="text-gray-600 hover:text-white ${isLast ? 'invisible' : ''}" style="font-size:7px;padding:0 2px;line-height:1;background:none;border:none;cursor:pointer" title="Down">▼</button>
                 </div>
-                <div class="flex-1 min-w-0">
-                    <div class="font-bold text-white truncate">${stint.driverName}</div>
-                    <div class="flex items-center gap-1 text-gray-400 text-[10px]">
-                        <span>${startTimeStr}</span>
-                        <span class="text-ice">${arrow}</span>
-                        <span>${endTimeStr}</span>
-                        ${pitIndicator}
-                    </div>
+                <div class="flex-1 min-w-0 flex items-center gap-1" style="overflow:hidden;white-space:nowrap">
+                    <span class="font-bold text-white" style="font-size:11px;max-width:4.5rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0">${stint.driverName}</span>
+                    <span class="text-gray-500" style="font-size:9px;flex-shrink:0">${startTimeStr}${arrow}${endTimeStr}</span>
+                    ${checkeredFlag}${pitIndicator}${stintForecastTag}
                 </div>
-                <input type="number" value="${durationMin}" min="${minStintMin}" max="${maxStintMin}" 
-                       onchange="window.updateStintDuration(${index}, this.value)" 
-                       class="w-14 bg-navy-800 border border-gray-600 text-white text-center text-xs rounded px-1 py-0.5 font-mono focus:border-ice focus:outline-none ${outOfBounds ? 'border-red-500 text-red-300' : ''}" 
-                       title="Stint duration (min)">
-                <span class="text-gray-500 text-[10px]">m</span>
-                ${isLast ? '🏁' : ''}
+                <input type="number" value="${durationMin}" min="${minStintMin}" max="${maxStintMin}"
+                       onchange="window.updateStintDuration(${index}, this.value)"
+                       class="bg-navy-800 border border-gray-700 text-white text-center rounded font-mono focus:border-ice focus:outline-none shrink-0 ${outOfBounds ? 'border-red-500 text-red-300' : ''}"
+                       style="width:36px;font-size:10px;padding:1px 2px;height:18px"
+                       title="min">
+                <span class="text-gray-600 shrink-0" style="font-size:8px">m</span>
             </div>
         `;
     }).join('');
@@ -504,7 +900,7 @@ window.renderPreview = function() {
     const diffMs = (totalDrive + totalPit) - raceTimeMs;
     const diffClass = Math.abs(diffMs) <= 60000 ? 'text-neon' : 'text-red-400';
     const totalBar = `
-        <div class="bg-navy-800 p-2 rounded border border-gray-700 text-[10px] text-gray-400 flex justify-between items-center mt-2">
+        <div class="bg-navy-800 p-2 rounded border border-gray-700 text-[10px] text-gray-400 flex justify-between items-center" style="margin-top:2px">
             <span>${window.t ? window.t('driveNoun') : 'Drive'}: <b class="text-white">${(totalDrive/60000).toFixed(0)}m</b> + ${window.t ? window.t('pitNoun') : 'Pit'}: <b class="text-gold">${(totalPit/60000).toFixed(0)}m</b></span>
             <span class="${diffClass} font-bold">= ${((totalDrive+totalPit)/60000).toFixed(0)}m ${diffMs !== 0 ? '(' + (diffMs > 0 ? '+' : '') + (diffMs/60000).toFixed(0) + 'm)' : '✅'}</span>
         </div>
@@ -525,19 +921,20 @@ window.renderPreview = function() {
         summary[s.driverName].stints += 1;
     });
 
+    // Compact inline chip: color dot + name + time + stints count
     const summaryHtml = Object.entries(summary).map(([name, data]) => {
-        return `
-            <div class="bg-navy-950 p-1.5 sm:p-2 rounded border-t-2 flex flex-col items-center justify-center text-center shadow-md h-14 sm:h-20" style="border-color: ${data.color}">
-                <div class="text-[9px] sm:text-[10px] font-bold text-gray-300 truncate w-full">${name}</div>
-                <div class="text-xs sm:text-sm text-white font-mono font-bold my-0.5 sm:my-1">${window.formatTimeHMS(data.time)}</div>
-                <div class="text-[8px] sm:text-[9px] text-gray-500 bg-navy-900 px-1.5 sm:px-2 rounded-full">${data.stints} ${window.t ? window.t('stints') : 'stints'}</div>
-            </div>
-        `;
+        const timeStr = window.formatTimeHMS(data.time);
+        return `<span class="inline-flex items-center gap-1 bg-navy-950 border rounded-full px-2 py-0.5 text-[9px] min-w-0" style="border-color:${data.color}40">
+            <span class="w-1.5 h-1.5 rounded-full shrink-0" style="background:${data.color}"></span>
+            <span class="font-bold text-gray-200 truncate" style="max-width:4rem">${name}</span>
+            <span class="font-mono text-white shrink-0">${timeStr}</span>
+            <span class="text-gray-600 shrink-0">${data.stints}×</span>
+        </span>`;
     }).join('');
-    
+
     const summaryEl = document.getElementById('strategySummary');
     if (summaryEl) {
-        summaryEl.className = "grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-1.5 sm:gap-2 p-2";
+        summaryEl.className = "flex flex-wrap gap-1";
         summaryEl.innerHTML = summaryHtml;
     }
 };
@@ -585,7 +982,7 @@ window.updateStats = function(currentStintMs) {
         
         // Driver % share
         const pct = grandTotal > 0 ? Math.round((displayTotalTime / grandTotal) * 100) : 0;
-        const pctBar = `<div class="w-full bg-gray-800 rounded-full h-1 mt-0.5"><div class="h-1 rounded-full" style="width:${pct}%;background:${d.color || '#3b82f6'}"></div></div>`;
+        const pctBar = `<div class="w-full bg-gray-800 rounded-full h-1.5 mt-0.5"><div class="h-1.5 rounded-full" style="width:${pct}%;background:${d.color || '#3b82f6'}"></div></div>`;
         
         mainRow.innerHTML = `
             <td class="text-center cursor-pointer p-2 hover:text-ice" onclick="window.toggleLog(${i})">${d.isExpanded ? '▲' : '▼'}</td>
@@ -682,7 +1079,7 @@ window.initTouchDrag = function(container) {
         if (!item) return;
         // Don't start drag on input elements or buttons
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') return;
-        
+
         touchItem = item;
         longPressTimer = setTimeout(() => {
             // Long press activated — start drag
@@ -693,17 +1090,18 @@ window.initTouchDrag = function(container) {
             item.style.outline = '2px solid #22d3ee';
             window.showToast('🔀 Drag to reorder, or use ▲▼', 'info', 2000);
         }, 500); // 500ms long press
-    }, { passive: true });
-    
+    }, { passive: false });
+
     container.addEventListener('touchmove', function(e) {
-        // Cancel long-press if finger moves (user is scrolling)
+        // Cancel long-press if finger moves before drag is activated (user is scrolling)
         if (longPressTimer && !window._touchDragState) {
             clearTimeout(longPressTimer);
             longPressTimer = null;
+            return; // Let the scroll happen normally
         }
-        
+
         if (!window._touchDragState) return;
-        e.preventDefault(); // Prevent scroll while dragging
+        e.preventDefault(); // Safe: only called after drag is confirmed active
         
         // Find which item we're over
         const touch = e.touches[0];
@@ -1699,3 +2097,1473 @@ window.renderChatMessage = function(msg) {
         badge.classList.remove('hidden');
     }
 };
+
+// ==========================================
+// 📍 VENUE LOCATION + WEATHER
+// ==========================================
+
+const _VENUE_ALIASES = {
+    'buckmore park': 'Buckmore Park, Sittingbourne, UK',
+    'buckmore': 'Buckmore Park, Sittingbourne, UK',
+    'silverstone': 'Silverstone Circuit, UK',
+    'brands hatch': 'Brands Hatch, Sevenoaks, UK',
+    'donington': 'Donington Park, Leicestershire, UK',
+    'knockhill': 'Knockhill Racing Circuit, Scotland, UK',
+    'snetterton': 'Snetterton Circuit, Norfolk, UK',
+    'oulton park': 'Oulton Park, Cheshire, UK',
+    'spa': 'Spa-Francorchamps, Belgium',
+    'spa francorchamps': 'Spa-Francorchamps, Belgium',
+    'le mans': 'Le Mans, France',
+    'circuit de la sarthe': 'Le Mans, France',
+    'paul ricard': 'Circuit Paul Ricard, Le Castellet, France',
+    'nurburgring': 'Nürburg, Germany',
+    'nordschleife': 'Nürburg, Germany',
+    'hockenheim': 'Hockenheimring, Germany',
+    'lausitzring': 'Lausitzring, Germany',
+    'monza': 'Monza, Italy',
+    'mugello': 'Scarperia, Italy',
+    'imola': 'Imola, Italy',
+    'misano': 'Misano Adriatico, Italy',
+    'vallelunga': 'Campagnano di Roma, Italy',
+    'lignano circuit': 'Lignano Sabbiadoro, Italy',
+    'lignano': 'Lignano Sabbiadoro, Italy',
+    'barcelona': 'Circuit de Barcelona-Catalunya, Montmeló, Spain',
+    'montmelo': 'Montmeló, Spain',
+    'valencia': 'Valencia, Spain',
+    'jerez': 'Jerez de la Frontera, Spain',
+    'portimao': 'Portimão, Portugal',
+    'estoril': 'Estoril, Portugal',
+    'dubai autodrome': 'Dubai Autodrome, Dubai, UAE',
+    'dubai': 'Dubai, UAE',
+    'yas marina': 'Yas Marina Circuit, Abu Dhabi, UAE',
+    'abu dhabi': 'Abu Dhabi, UAE',
+    'bahrain': 'Bahrain International Circuit, Sakhir, Bahrain',
+    'daytona': 'Daytona International Speedway, Florida, USA',
+    'sebring': 'Sebring International Raceway, Florida, USA',
+    'laguna seca': 'Weathertech Raceway Laguna Seca, California, USA',
+    'road atlanta': 'Road Atlanta, Braselton, Georgia, USA',
+    'watkins glen': 'Watkins Glen International, New York, USA',
+    'cota': 'Circuit of the Americas, Austin, Texas, USA',
+    'interlagos': 'Autódromo José Carlos Pace, São Paulo, Brazil',
+    'suzuka': 'Suzuka Circuit, Japan',
+    'fuji': 'Fuji Speedway, Japan',
+    'sepang': 'Sepang International Circuit, Malaysia',
+    'bathurst': 'Mount Panorama Circuit, Bathurst, Australia',
+    'tivoli': 'Tivoli Racing Park, Israel',
+    'tivoli racing': 'Tivoli Racing Park, Israel',
+};
+
+function findBestVenueAlias(input) {
+    const normalized = input.toLowerCase();
+    if (_VENUE_ALIASES[normalized]) return _VENUE_ALIASES[normalized];
+    const inputTokens = normalized.split(/\s+/).filter(t => t.length > 2);
+    let bestMatch = null;
+    let bestScore = 0;
+    for (const [key, fullName] of Object.entries(_VENUE_ALIASES)) {
+        const keyTokens = key.split(/\s+/);
+        const matchedTokens = inputTokens.filter(t => keyTokens.some(k => k.startsWith(t) || t.startsWith(k)));
+        const score = matchedTokens.length / Math.max(keyTokens.length, inputTokens.length);
+        if (score > bestScore) { bestScore = score; bestMatch = { alias: fullName, score }; }
+    }
+    return bestScore > 0.5 ? bestMatch.alias : null;
+}
+
+window._venueWeather = { key: '', status: 'idle', fetchedAt: 0, data: null, resolvedName: '' };
+window._venueWeatherInFlight = false;
+window._locationSearchTimer = null;
+window._locationAutocompleteResults = [];
+window._selectedVenueLocation = null;
+window._showWeatherInStints = window._showWeatherInStints !== false;
+window._weatherCodeMap = {
+    0: 'Clear', 1: 'Mostly clear', 2: 'Partly cloudy', 3: 'Overcast',
+    45: 'Fog', 48: 'Rime fog', 51: 'Light drizzle', 53: 'Drizzle', 55: 'Dense drizzle',
+    61: 'Light rain', 63: 'Rain', 65: 'Heavy rain', 66: 'Freezing rain', 67: 'Heavy freezing rain',
+    71: 'Light snow', 73: 'Snow', 75: 'Heavy snow', 77: 'Snow grains',
+    80: 'Rain showers', 81: 'Showers', 82: 'Violent showers',
+    95: 'Thunderstorm', 96: 'Storm + hail', 99: 'Severe storm + hail'
+};
+
+window.formatVenueShortName = function(place) {
+    if (!place) return '';
+    const rawName = String(place.name || '').trim();
+    const name = rawName.split(',')[0].trim();
+    if (name) return name;
+    const fallbackParts = String(place.displayName || '').split(',').map(p => p.trim()).filter(Boolean);
+    return fallbackParts[0] || '';
+};
+
+window.getVenueForecastAt = function(targetMs) {
+    const weather = window._venueWeather;
+    const hourly = weather?.data?.hourly;
+    if (weather?.status !== 'ready' || !hourly || !Array.isArray(hourly.time) || !hourly.time.length) return null;
+    const target = Number(targetMs);
+    if (!Number.isFinite(target)) return null;
+    let bestIdx = -1, bestDelta = Infinity;
+    for (let i = 0; i < hourly.time.length; i++) {
+        const slotMs = Date.parse(hourly.time[i]);
+        if (!Number.isFinite(slotMs)) continue;
+        const delta = Math.abs(slotMs - target);
+        if (delta < bestDelta) { bestDelta = delta; bestIdx = i; }
+    }
+    if (bestIdx < 0) return null;
+    return {
+        time: hourly.time[bestIdx],
+        temp: hourly.temperature_2m?.[bestIdx],
+        wind: hourly.wind_speed_10m?.[bestIdx],
+        precipitation: hourly.precipitation?.[bestIdx],
+        weatherCode: hourly.weather_code?.[bestIdx],
+        weatherText: window._weatherCodeMap[hourly.weather_code?.[bestIdx]] || 'Weather'
+    };
+};
+
+window.formatVenueForecastShort = function(forecast) {
+    if (!forecast) return '';
+    const temp = Number.isFinite(Number(forecast.temp)) ? `${Math.round(forecast.temp)}°C` : '-';
+    const code = forecast.weatherCode;
+    let condition = '';
+    if (code !== undefined && code !== null) {
+        if (code <= 1) condition = 'Sunny';
+        else if (code === 2) condition = 'Partly cloudy';
+        else if (code <= 48) condition = 'Cloudy';
+        else if (code <= 55) condition = 'Light rain';
+        else if (code <= 63) condition = 'Light rain';
+        else if (code <= 67) condition = 'Heavy rain';
+        else if (code <= 77) condition = 'Snow';
+        else if (code <= 82) condition = 'Rain showers';
+        else condition = 'Storm';
+    } else { condition = forecast.weatherText || ''; }
+    return condition ? `${temp} · ${condition}` : temp;
+};
+
+window.resolveVenueLocation = function(value) {
+    const normalized = String(value || '').trim().toLowerCase();
+    if (!normalized) return null;
+    if (window._selectedVenueLocation && String(window._selectedVenueLocation.displayName || '').toLowerCase() === normalized) {
+        return window._selectedVenueLocation;
+    }
+    return window._locationAutocompleteResults.find(p => String(p.displayName || '').toLowerCase() === normalized) || null;
+};
+
+window.renderSelectedVenuePreview = function(place) {
+    const card = document.getElementById('selectedLocationPreview');
+    const nameEl = document.getElementById('selectedLocationName');
+    if (!card || !nameEl) return;
+    if (!place) { card.classList.add('hidden'); return; }
+    nameEl.innerText = window.formatVenueShortName(place);
+    card.classList.remove('hidden');
+};
+
+window.initVenueLocationPicker = function() {
+    const input = document.getElementById('raceLocation');
+    if (!input) return;
+    const prefilled = String(input.value || '').trim();
+    if (!prefilled) return;
+    const resolved = window.resolveVenueLocation(prefilled);
+    window.renderSelectedVenuePreview(resolved || { displayName: prefilled, name: prefilled, admin1: '', country: '' });
+};
+
+window.onLocationInput = function(value) {
+    const dropdown = document.getElementById('locationSuggestions');
+    const spinner = document.getElementById('locationSearchSpinner');
+    if (!dropdown) return;
+    const query = value.trim();
+    if (query.length < 2) {
+        dropdown.classList.add('hidden');
+        if (spinner) spinner.classList.add('hidden');
+        clearTimeout(window._locationSearchTimer);
+        return;
+    }
+    clearTimeout(window._locationSearchTimer);
+    if (spinner) spinner.classList.remove('hidden');
+    window._locationSearchTimer = setTimeout(async () => {
+        try {
+            const qLower = query.toLowerCase();
+            const aliasMatches = Object.entries(_VENUE_ALIASES)
+                .filter(([key]) => key.includes(qLower) || qLower.includes(key))
+                .map(([key, fullName]) => ({ _isTrack: true, name: fullName.split(',')[0].trim(), trackLabel: fullName, displayName: fullName, admin1: '', country: fullName.split(',').slice(1).join(',').trim() }))
+                .slice(0, 4);
+            const geoQuery = findBestVenueAlias(query) || query;
+            const [meteoResults, nominatimResults] = await Promise.all([
+                (async () => {
+                    const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(geoQuery)}&count=8&language=en&format=json`);
+                    const json = await res.json();
+                    return Array.isArray(json.results) ? json.results : [];
+                })().catch(() => []),
+                (async () => {
+                    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(geoQuery)}&limit=8&addressdetails=1`, { headers: { 'Accept': 'application/json', 'User-Agent': 'Strateger/1.0' } });
+                    if (!res.ok) return [];
+                    const json = await res.json();
+                    return Array.isArray(json) ? json : [];
+                })().catch(() => [])
+            ]);
+            const fromMeteo = meteoResults.map(r => ({ name: r.name, admin1: r.admin1 || '', country: r.country || '', lat: r.latitude, lon: r.longitude, displayName: [r.name, r.country].filter(Boolean).join(', ') }));
+            const fromNominatim = nominatimResults.map(r => ({ name: (r.display_name || '').split(',')[0] || r.name || query, admin1: r.address?.state || r.address?.county || '', country: r.address?.country || '', lat: Number(r.lat), lon: Number(r.lon), displayName: [(r.display_name || '').split(',')[0] || r.name || query, r.address?.country || ''].filter(Boolean).join(', ') }));
+            const seen = new Set();
+            aliasMatches.forEach(a => seen.add(a.trackLabel.toLowerCase()));
+            const geoResults = [...fromMeteo, ...fromNominatim].filter(r => {
+                const key = `${String(r.displayName || '').toLowerCase()}|${Number(r.lat).toFixed(4)}|${Number(r.lon).toFixed(4)}`;
+                if (seen.has(key)) return false;
+                seen.add(key);
+                return true;
+            }).slice(0, 10);
+            const results = [...aliasMatches, ...geoResults].slice(0, 12);
+            if (spinner) spinner.classList.add('hidden');
+            if (!results.length) {
+                dropdown.innerHTML = `<div class="px-3 py-2.5 text-[11px] text-gray-500">No locations found</div>`;
+                dropdown.classList.remove('hidden');
+                return;
+            }
+            window._locationAutocompleteResults = results;
+            dropdown.innerHTML = results.map((place, i) => {
+                const icon = place._isTrack ? '🏁' : '📍';
+                const sub = place._isTrack ? `<span class="text-blue-400 text-[10px] ml-1">Racing circuit</span>` : (place.country ? `<span class="text-gray-400 text-xs ml-1">${place.country}</span>` : '');
+                return `<div class="px-3 py-2.5 cursor-pointer hover:bg-navy-800 border-b border-gray-700/40 last:border-0 flex items-center gap-2" onmousedown="window.selectLocationSuggestion(${i})"><span class="text-sm shrink-0">${icon}</span><span class="min-w-0"><span class="font-bold text-white text-sm break-words whitespace-normal">${place.name}</span>${sub}</span></div>`;
+            }).join('');
+            dropdown.classList.remove('hidden');
+        } catch (err) {
+            if (spinner) spinner.classList.add('hidden');
+            console.warn('[location-autocomplete] fetch failed:', err);
+        }
+    }, 350);
+};
+
+window.selectLocationSuggestion = function(idx) {
+    const place = window._locationAutocompleteResults[idx];
+    if (!place) return;
+    const fullName = place._isTrack ? place.trackLabel : window.formatVenueShortName(place);
+    const input = document.getElementById('raceLocation');
+    if (input) input.value = fullName;
+    const dropdown = document.getElementById('locationSuggestions');
+    if (dropdown) dropdown.classList.add('hidden');
+    window._selectedVenueLocation = place;
+    window.renderSelectedVenuePreview(place);
+    if (typeof window.syncRaceLocation === 'function') window.syncRaceLocation(fullName);
+    if (typeof window.runSim === 'function') window.runSim();
+};
+
+window.refreshVenueWeather = async function(rawLocation, selectedPlace) {
+    const input = String(rawLocation || '').trim();
+    if (!input) return;
+    const normalized = input.toLowerCase();
+    const fuzzyMatch = findBestVenueAlias(input);
+    const query = fuzzyMatch || _VENUE_ALIASES[normalized] || input;
+    const cacheFreshMs = 10 * 60 * 1000;
+    const hasHourlyCache = Array.isArray(window._venueWeather?.data?.hourly?.time) && window._venueWeather.data.hourly.time.length > 0;
+    if (window._venueWeather.key === query && (Date.now() - window._venueWeather.fetchedAt) < cacheFreshMs && hasHourlyCache) return;
+    if (window._venueWeatherInFlight) return;
+    window._venueWeatherInFlight = true;
+    window._venueWeather = { key: query, status: 'loading', fetchedAt: Date.now(), data: null, resolvedName: '' };
+    try {
+        let best = selectedPlace || window.resolveVenueLocation(input);
+        if (!best || !Number.isFinite(Number(best.lat)) || !Number.isFinite(Number(best.lon))) {
+            const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=1&language=en&format=json`, { cache: 'no-store' });
+            const geo = await geoRes.json();
+            const geoBest = Array.isArray(geo.results) ? geo.results[0] : null;
+            if (!geoBest) throw new Error('Location not found');
+            best = { name: geoBest.name, admin1: geoBest.admin1 || '', country: geoBest.country || '', lat: geoBest.latitude, lon: geoBest.longitude, displayName: [geoBest.name, geoBest.country].filter(Boolean).join(', ') };
+        }
+        const lat = Number(best.lat);
+        const lon = Number(best.lon);
+        const resolvedName = window.formatVenueShortName(best);
+        window._selectedVenueLocation = best;
+        window.renderSelectedVenuePreview(best);
+        const weatherRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,wind_speed_10m,precipitation,weather_code&hourly=temperature_2m,wind_speed_10m,precipitation,weather_code&forecast_days=7&timezone=auto`, { cache: 'no-store' });
+        const weather = await weatherRes.json();
+        const current = weather.current || {};
+        window._venueWeather = {
+            key: query, status: 'ready', fetchedAt: Date.now(), resolvedName,
+            data: { temp: current.temperature_2m, wind: current.wind_speed_10m, precipitation: current.precipitation, weatherText: window._weatherCodeMap[current.weather_code] || 'Weather unavailable', hourly: weather.hourly || null }
+        };
+    } catch (err) {
+        console.warn('[venue-weather] failed:', err?.message || err);
+        window._venueWeather = { key: query, status: 'error', fetchedAt: Date.now(), data: null, resolvedName: '' };
+    } finally {
+        window._venueWeatherInFlight = false;
+        if (!document.getElementById('previewScreen')?.classList.contains('hidden')) {
+            if (typeof window.renderPreview === 'function') window.renderPreview();
+        }
+    }
+};
+
+// ==========================================
+// ↕ DASHBOARD PANEL RESIZER (drag divider)
+// ==========================================
+
+window.initDashPanelResizer = function() {
+    const resizer = document.getElementById('dashPanelResizer');
+    const wrapper = document.getElementById('racePanelsWrapper');
+    const infoPanel = document.getElementById('raceInfoPanel');
+    if (!resizer || !wrapper || !infoPanel) return;
+
+    const STORAGE_KEY = 'strateger_dash_split';
+    const isLandscape = () => window.matchMedia('(min-width:768px) and (orientation:landscape)').matches;
+
+    // Restore saved split
+    const saved = parseFloat(localStorage.getItem(STORAGE_KEY));
+    const initialPct = (saved >= 15 && saved <= 85) ? saved : 60;
+    document.documentElement.style.setProperty('--dash-info-pct', initialPct + '%');
+
+    let dragging = false;
+    let startPos = 0;
+    let startPct = initialPct;
+
+    function getPct(e) {
+        const rect = wrapper.getBoundingClientRect();
+        if (isLandscape()) {
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            return Math.min(85, Math.max(15, ((clientX - rect.left) / rect.width) * 100));
+        } else {
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return Math.min(85, Math.max(15, ((clientY - rect.top) / rect.height) * 100));
+        }
+    }
+
+    function applyPct(pct) {
+        document.documentElement.style.setProperty('--dash-info-pct', pct + '%');
+        try { localStorage.setItem(STORAGE_KEY, pct); } catch(e) {}
+    }
+
+    function onMove(e) {
+        if (!dragging) return;
+        applyPct(getPct(e));
+        e.preventDefault();
+    }
+    function onEnd() {
+        if (!dragging) return;
+        dragging = false;
+        resizer.classList.remove('active');
+        // Detach global move listeners when drag ends so they don't block scroll elsewhere
+        window.removeEventListener('mousemove', onMove);
+        window.removeEventListener('touchmove', onMove);
+        window.removeEventListener('mouseup', onEnd);
+        window.removeEventListener('touchend', onEnd);
+    }
+    function onStart(e) {
+        dragging = true;
+        resizer.classList.add('active');
+        startPct = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dash-info-pct')) || 60;
+        e.preventDefault();
+        // Attach global move/end only for the duration of this drag
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('touchmove', onMove, { passive: false });
+        window.addEventListener('mouseup', onEnd);
+        window.addEventListener('touchend', onEnd);
+    }
+
+    resizer.addEventListener('mousedown', onStart);
+    resizer.addEventListener('touchstart', onStart, { passive: false });
+
+    // Double-tap / double-click to reset to 50/50
+    let lastTap = 0;
+    resizer.addEventListener('dblclick', () => applyPct(50));
+    resizer.addEventListener('touchend', () => {
+        const now = Date.now();
+        if (now - lastTap < 350) applyPct(50);
+        lastTap = now;
+    });
+};
+
+// ==========================================
+// 🖐️ DASHBOARD PANEL DRAG-TO-REORDER + HORIZONTAL PANELS
+// ==========================================
+
+window.initDashboardDrag = function() {
+    // Support both dashboardScrollArea (Streger) and raceInfoPanel (Strateger)
+    const area = document.getElementById('dashboardScrollArea') || document.getElementById('raceInfoPanel');
+    if (!area) return;
+    // Keep the active drag container so handlers always target the correct window/layout.
+    window._dashDragArea = area;
+
+    // Mark direct child panels as draggable
+    const markDraggable = () => {
+        Array.from(area.children).forEach(child => {
+            if (child.id === 'strategyToastContainer') return; // skip toasts
+            if (child.tagName === 'DIV' && !child.classList.contains('drag-handle-added')) {
+                child.setAttribute('draggable', 'true');
+                child.classList.add('drag-handle-added');
+                child.style.cursor = 'grab';
+                child.addEventListener('dragstart', _onDashPanelDragStart);
+                child.addEventListener('dragover', _onDashPanelDragOver);
+                child.addEventListener('drop', _onDashPanelDrop);
+                child.addEventListener('dragend', _onDashPanelDragEnd);
+
+                // Touch support via long-press
+                let touchTimer;
+                child.addEventListener('touchstart', (e) => {
+                    touchTimer = setTimeout(() => {
+                        window._dashDragging = child;
+                        child.style.opacity = '0.5';
+                    }, 400);
+                }, { passive: true });
+                child.addEventListener('touchmove', (e) => {
+                    if (!window._dashDragging) return;
+                    const t = e.touches[0];
+                    const activeArea = window._dashDragArea || area;
+                    const target = document
+                        .elementFromPoint(t.clientX, t.clientY)
+                        ?.closest(`#${activeArea.id} > div`);
+                    if (target && target !== window._dashDragging) {
+                        const rect = target.getBoundingClientRect();
+                        const after = t.clientY > rect.top + rect.height / 2;
+                        activeArea.insertBefore(window._dashDragging, after ? target.nextSibling : target);
+                    }
+                }, { passive: true });
+                child.addEventListener('touchend', () => {
+                    clearTimeout(touchTimer);
+                    if (window._dashDragging) {
+                        window._dashDragging.style.opacity = '';
+                        window._dashDragging = null;
+                        window._saveDashboardOrder();
+                    }
+                });
+            }
+        });
+    };
+
+    markDraggable();
+    // Re-mark when panels appear (live timing etc)
+    new MutationObserver(markDraggable).observe(area, { childList: true });
+
+    // Restore saved order
+    window._restoreDashboardOrder();
+};
+
+window._dashDragSrc = null;
+
+function _onDashPanelDragStart(e) {
+    window._dashDragSrc = this;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', this.id || '');
+    setTimeout(() => { if (this) this.style.opacity = '0.4'; }, 0);
+}
+
+function _onDashPanelDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    const area = window._dashDragArea || document.getElementById('dashboardScrollArea') || document.getElementById('raceInfoPanel');
+    if (!area || !window._dashDragSrc || this === window._dashDragSrc) return;
+    const rect = this.getBoundingClientRect();
+    const after = e.clientY > rect.top + rect.height / 2;
+    area.insertBefore(window._dashDragSrc, after ? this.nextSibling : this);
+}
+
+function _onDashPanelDrop(e) {
+    e.stopPropagation();
+    e.preventDefault();
+    window._saveDashboardOrder();
+}
+
+function _onDashPanelDragEnd() {
+    if (this) this.style.opacity = '';
+    window._dashDragSrc = null;
+}
+
+window._saveDashboardOrder = function() {
+    const area = document.getElementById('dashboardScrollArea') || document.getElementById('raceInfoPanel');
+    if (!area) return;
+    const order = Array.from(area.children).map(c => c.id || c.className.slice(0, 30));
+    try { localStorage.setItem('strateger_dashboard_order', JSON.stringify(order)); } catch(e) {}
+};
+
+window._restoreDashboardOrder = function() {
+    const area = document.getElementById('dashboardScrollArea') || document.getElementById('raceInfoPanel');
+    if (!area) return;
+    try {
+        const order = JSON.parse(localStorage.getItem('strateger_dashboard_order') || 'null');
+        if (!Array.isArray(order) || order.length === 0) return;
+        order.forEach(id => {
+            const el = id ? document.getElementById(id) : null;
+            if (el && el.parentElement === area) area.appendChild(el);
+        });
+    } catch(e) {}
+};
+
+// ==========================================
+// ↔️ HORIZONTAL PANEL PINNING
+// Allows moving dashboard panel cards between left (raceInfoPanel)
+// and right (raceControlDock) columns when horizontal layout is active.
+// ==========================================
+
+const _DASH_PANEL_PLACEMENT_KEY = 'strateger_dash_panel_placement';
+
+function _isHorizontalLayout() {
+    const wrapper = document.getElementById('racePanelsWrapper');
+    if (!wrapper) return false;
+    return getComputedStyle(wrapper).flexDirection === 'row';
+}
+
+window.initHorizontalPanels = function() {
+    if (!_isHorizontalLayout()) return;
+
+    const infoPanel = document.getElementById('raceInfoPanel');
+    const controlDock = document.getElementById('raceControlDock');
+    if (!infoPanel || !controlDock) return;
+
+    const removeAllMoveButtons = () => {
+        document.querySelectorAll('.dash-panel-move-btn').forEach(btn => btn.remove());
+        [infoPanel, controlDock].forEach(p => {
+            Array.from(p.children).forEach(child => {
+                if (child?.dataset) delete child.dataset.moveBtnAdded;
+            });
+        });
+    };
+
+    // Assign IDs to unnamed direct children of raceInfoPanel for persistence
+    let autoIdx = 0;
+    Array.from(infoPanel.children).forEach(child => {
+        if (!child.id) {
+            child.id = 'dashPanel_auto_' + (autoIdx++);
+        }
+    });
+
+    // Restore saved placement (will be ignored if one-panel mode is active below)
+    const saved = JSON.parse(localStorage.getItem(_DASH_PANEL_PLACEMENT_KEY) || '{}');
+    Object.entries(saved).forEach(([id, target]) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        if (target === 'right' && el.closest('#raceInfoPanel')) {
+            controlDock.insertBefore(el, controlDock.firstChild);
+        } else if (target === 'left' && el.closest('#raceControlDock')) {
+            infoPanel.appendChild(el);
+        }
+    });
+
+    // If everything fits in the main panel, keep a single panel layout.
+    const totalChildrenHeight = Array.from(infoPanel.children).reduce((sum, el) => sum + (el.offsetHeight || 0), 0);
+    const shouldUseSinglePanel = totalChildrenHeight > 0 && totalChildrenHeight <= infoPanel.clientHeight;
+    if (shouldUseSinglePanel) {
+        Array.from(controlDock.children).forEach(child => infoPanel.appendChild(child));
+        controlDock.classList.add('hidden');
+        removeAllMoveButtons();
+        return;
+    }
+    controlDock.classList.remove('hidden');
+
+    // Add move-to-other-panel button to each moveable child
+    const SKIP_IDS = new Set(['strategyToastContainer']);
+    const addMoveBtn = (panel, targetPanel, targetKey) => {
+        Array.from(panel.children).forEach(child => {
+            if (!child.dataset) return;
+            if (child.id && SKIP_IDS.has(child.id)) return;
+            // Accept any div child that looks like a panel block (has an id or rounded corners)
+            if (child.tagName !== 'DIV') return;
+            const hasRounded = child.classList.contains('rounded') || child.classList.contains('rounded-lg') || child.classList.contains('rounded-xl');
+            if (!child.id && !hasRounded) return;
+
+            const existingBtn = child.querySelector(':scope > .dash-panel-move-btn');
+            if (existingBtn) existingBtn.remove();
+
+            const btn = document.createElement('button');
+            btn.className = 'dash-panel-move-btn';
+            btn.title = targetKey === 'right' ? 'Move to right panel' : 'Move to left panel';
+            btn.innerHTML = targetKey === 'right' ? '⇥' : '⇤';
+            btn.onclick = (e) => {
+                e.stopPropagation();
+                const savedPlacement = JSON.parse(localStorage.getItem(_DASH_PANEL_PLACEMENT_KEY) || '{}');
+                savedPlacement[child.id] = targetKey;
+                localStorage.setItem(_DASH_PANEL_PLACEMENT_KEY, JSON.stringify(savedPlacement));
+                targetPanel.insertBefore(child, targetPanel.firstChild);
+                window.initHorizontalPanels(); // re-scan after move
+            };
+
+            // Make child position:relative if needed to anchor the button
+            if (!child.style.position || child.style.position === 'static') {
+                child.style.position = 'relative';
+            }
+            child.appendChild(btn);
+            child.dataset.moveBtnAdded = '1';
+        });
+    };
+
+    addMoveBtn(infoPanel, controlDock, 'right');
+    addMoveBtn(controlDock, infoPanel, 'left');
+};
+
+// Re-init horizontal panels on orientation/resize so buttons appear/disappear correctly
+window.addEventListener('resize', () => {
+    if (document.getElementById('raceDashboard')?.classList.contains('hidden')) return;
+    if (typeof window.initHorizontalPanels === 'function') window.initHorizontalPanels();
+});
+
+// ==========================================
+// 🎬 PREVIEW SCREEN HELPERS (v2)
+// ==========================================
+
+window._closePreview = function() {
+    document.getElementById('previewScreen').classList.add('hidden');
+    document.getElementById('setupScreen').classList.remove('hidden');
+};
+
+// Render a mini stint chart in a container element
+window.renderMiniStintChart = function(containerId, stints, maxMs) {
+    const el = document.getElementById(containerId);
+    if (!el) return;
+    if (!stints || stints.length === 0) { el.innerHTML = ''; return; }
+    const cap = maxMs || Math.max(...stints.map(s => s.duration || 0)) || 1;
+    const PALETTE = ['#22d3ee','#a3e635','#f97316','#ef4444','#8b5cf6','#ec4899','#facc15','#34d399'];
+    el.innerHTML = stints.map((s, i) => {
+        const h = Math.max(4, Math.round((s.duration / cap) * 24));
+        const color = s.color || PALETTE[i % PALETTE.length];
+        return `<div class="mini-stint-bar" style="height:${h}px;background:${color}" title="${s.driverName || ''}: ${Math.round(s.duration/60000)}m"></div>`;
+    }).join('');
+};
+
+// Update mini chart in preview header after render
+const _origRenderPreview = window.renderPreview;
+window.renderPreview = function() {
+    if (_origRenderPreview) _origRenderPreview.call(this);
+    // Update mini chart
+    if (window.previewData?.timeline) {
+        const stints = window.previewData.timeline.filter(t => t.type === 'stint');
+        const maxMs = stints.length > 0 ? Math.max(...stints.map(s => s.duration)) : 0;
+        window.renderMiniStintChart('miniStintChart', stints, maxMs);
+        // Update driver count label
+        const summary = {};
+        stints.forEach(s => { summary[s.driverName] = true; });
+        const countEl = document.getElementById('previewDriverCount');
+        if (countEl) {
+            const n = Object.keys(summary).length;
+            countEl.textContent = n > 0 ? `${n} driver${n !== 1 ? 's' : ''} · ${stints.length} stints` : '';
+        }
+    }
+};
+
+// ==========================================
+// 🎭 DEMO MODAL
+// ==========================================
+
+window._selectedDemoScenario = 'sprint';
+
+const _DEMO_SCENARIOS = {
+    sprint: {
+        label: 'Sprint Race', hours: 1, stops: 4, drivers: ['Alice', 'Bob', 'Charlie'],
+        colors: ['#22d3ee', '#a3e635', '#f97316'],
+        chartColors: ['#22d3ee', '#a3e635', '#f97316', '#22d3ee', '#a3e635']
+    },
+    endurance: {
+        label: 'Endurance Classic', hours: 6, stops: 12, drivers: ['Driver 1', 'Driver 2', 'Driver 3', 'Driver 4'],
+        colors: ['#22d3ee', '#a3e635', '#f97316', '#8b5cf6'],
+        chartColors: ['#22d3ee','#a3e635','#f97316','#8b5cf6','#22d3ee','#a3e635','#f97316','#8b5cf6','#22d3ee','#a3e635','#f97316','#8b5cf6','#22d3ee']
+    },
+    night24: {
+        label: '24h Night Race', hours: 24, stops: 48, drivers: ['Alpha A', 'Alpha B', 'Alpha C', 'Beta A', 'Beta B', 'Beta C'],
+        colors: ['#3b82f6','#06b6d4','#8b5cf6','#f97316','#ef4444','#ec4899'],
+        chartColors: [] // filled below
+    }
+};
+// Fill night24 chart colors
+for (let i = 0; i < 49; i++) {
+    _DEMO_SCENARIOS.night24.chartColors.push(['#3b82f6','#06b6d4','#8b5cf6','#f97316','#ef4444','#ec4899'][i % 6]);
+}
+
+window._renderDemoCharts = function() {
+    Object.entries(_DEMO_SCENARIOS).forEach(([key, sc]) => {
+        const el = document.getElementById('demoChart_' + key);
+        if (!el) return;
+        const stints = sc.chartColors.map((color, i) => ({
+            color,
+            duration: (sc.hours * 3600000) / sc.chartColors.length + (Math.random() - 0.5) * 120000
+        }));
+        const maxMs = Math.max(...stints.map(s => s.duration));
+        el.innerHTML = stints.map(s => {
+            const h = Math.max(4, Math.round((s.duration / maxMs) * 14));
+            return `<div class="mini-stint-bar" style="height:${h}px;background:${s.color}"></div>`;
+        }).join('');
+    });
+};
+
+window.openDemoModal = function() {
+    const modal = document.getElementById('demoModal');
+    if (!modal) { window.showDemoConfig && window.showDemoConfig(); return; }
+    modal.classList.remove('hidden');
+    window._renderDemoCharts();
+};
+
+window.closeDemoModal = function() {
+    const modal = document.getElementById('demoModal');
+    if (modal) modal.classList.add('hidden');
+};
+
+window.selectDemoScenario = function(cardEl, scenario) {
+    document.querySelectorAll('#demoScenarioCards .demo-strategy-card').forEach(c => c.classList.remove('selected'));
+    if (cardEl) cardEl.classList.add('selected');
+    window._selectedDemoScenario = scenario;
+};
+
+window.launchSelectedDemo = function() {
+    window.closeDemoModal();
+    const sc = _DEMO_SCENARIOS[window._selectedDemoScenario] || _DEMO_SCENARIOS.sprint;
+    // Apply the scenario config to the form
+    const durationEl = document.getElementById('raceDuration');
+    const stopsEl = document.getElementById('reqPitStops');
+    if (durationEl) durationEl.value = sc.hours;
+    if (stopsEl) stopsEl.value = sc.stops;
+    // Clear existing drivers and apply demo drivers
+    const list = document.getElementById('driversList');
+    if (list) list.innerHTML = '';
+    window._driverGroupParticipants.clear();
+    sc.drivers.forEach(name => {
+        window.addDriverToPool(name);
+        window._driverGroupParticipants.add(name);
+    });
+    window.saveDriverPool(sc.drivers.map((name, i) => ({ name, color: sc.colors[i] })));
+    window.renderDriverGroupUI();
+    window.applyDriverGroupToRace(false);
+    // Re-run sim and open preview
+    if (typeof window.runSim === 'function') window.runSim();
+    setTimeout(() => window.generatePreview && window.generatePreview(false, true), 100);
+};
+
+// ==========================================
+// 🔧 LIVE-ADJUST MODAL
+// ==========================================
+
+window._adjustScenario = 'race';
+window._pendingAdjustment = null;
+
+const _ADJUST_SCENARIOS = {
+    race: {
+        label: 'Mid-Race',
+        controls: [
+            { id: 'adj_elapsedRace', label: 'Elapsed race time (%)', type: 'range', min: 0, max: 95, step: 5, default: 50 },
+            { id: 'adj_extraStops', label: 'Extra pit stops', type: 'range', min: 0, max: 5, step: 1, default: 0 },
+            { id: 'adj_driverOut', label: 'Driver unavailable (index)', type: 'range', min: -1, max: 5, step: 1, default: -1 },
+        ]
+    },
+    qualify: {
+        label: 'Qualifying',
+        controls: [
+            { id: 'adj_qElapsed', label: 'Session elapsed (%)', type: 'range', min: 0, max: 95, step: 5, default: 30 },
+            { id: 'adj_qExtraRun', label: 'Extra qualifying run', type: 'range', min: 0, max: 3, step: 1, default: 0 },
+        ]
+    },
+    safety: {
+        label: 'Safety Car',
+        controls: [
+            { id: 'adj_scDuration', label: 'Safety car duration (min)', type: 'range', min: 0, max: 30, step: 2, default: 10 },
+            { id: 'adj_scElapsed', label: 'Occurs at race % elapsed', type: 'range', min: 5, max: 90, step: 5, default: 40 },
+        ]
+    },
+    weather: {
+        label: 'Weather Change',
+        controls: [
+            { id: 'adj_rainAt', label: 'Rain starts at race % elapsed', type: 'range', min: 5, max: 90, step: 5, default: 50 },
+            { id: 'adj_rainDuration', label: 'Rain duration (min)', type: 'range', min: 0, max: 60, step: 5, default: 20 },
+            { id: 'adj_wetPitExtra', label: 'Extra wet pit time (s)', type: 'range', min: 0, max: 120, step: 10, default: 30 },
+        ]
+    }
+};
+
+window.openLiveAdjustModal = function() {
+    const modal = document.getElementById('liveAdjustModal');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    window.setAdjustScenario(window._adjustScenario || 'race');
+};
+
+window.closeLiveAdjustModal = function() {
+    const modal = document.getElementById('liveAdjustModal');
+    if (modal) modal.classList.add('hidden');
+};
+
+window.setAdjustScenario = function(scenario) {
+    window._adjustScenario = scenario;
+    // Update tab styles
+    const tabIds = ['race', 'qualify', 'safety', 'weather'];
+    const activeClasses = { race: 'active-race', qualify: 'active-qualify', safety: 'active-safety', weather: 'active-weather' };
+    tabIds.forEach(s => {
+        const tab = document.getElementById('adjTab_' + s);
+        if (!tab) return;
+        tab.className = 'scenario-tab';
+        if (s === scenario) tab.classList.add(activeClasses[s]);
+    });
+    // Render controls
+    const container = document.getElementById('adjustScenarioControls');
+    if (!container) return;
+    const def = _ADJUST_SCENARIOS[scenario];
+    if (!def) return;
+    container.innerHTML = def.controls.map(ctrl => `
+        <div class="space-y-1">
+            <div class="flex justify-between items-center">
+                <label class="text-[10px] text-gray-400 font-bold uppercase tracking-wide">${ctrl.label}</label>
+                <span id="${ctrl.id}_val" class="text-xs font-mono text-ice font-bold">${ctrl.default}${ctrl.id.includes('elapsed') || ctrl.id.includes('At') ? '%' : ctrl.id.includes('Duration') || ctrl.id.includes('duration') ? 'm' : ''}</span>
+            </div>
+            <input type="range" id="${ctrl.id}" min="${ctrl.min}" max="${ctrl.max}" step="${ctrl.step}" value="${ctrl.default}"
+                oninput="window._onAdjustSlider('${ctrl.id}', this.value)"
+                class="w-full accent-cyan-400 h-1.5 rounded appearance-none cursor-pointer bg-navy-800">
+        </div>
+    `).join('');
+    window._computeAdjustOutcome();
+};
+
+window._onAdjustSlider = function(id, val) {
+    const display = document.getElementById(id + '_val');
+    if (display) {
+        const unit = id.includes('elapsed') || id.includes('At') ? '%' : id.includes('Duration') || id.includes('duration') ? 'm' : '';
+        display.textContent = val + unit;
+    }
+    window._computeAdjustOutcome();
+};
+
+window._computeAdjustOutcome = function() {
+    if (!window.previewData?.timeline || !window.config) {
+        window._setAdjustOutcome({ pits: '—', stint: '—', drive: '—', risk: '—', pct: { pits: 60, stint: 60, drive: 90, risk: 10 }, classes: { pits: 'safe', stint: 'safe', drive: 'safe', risk: 'safe' }, deltas: { pits: '—', stint: '—', drive: '—', risk: '—' }, deltaClasses: { pits: 'delta-neutral', stint: 'delta-neutral', drive: 'delta-neutral', risk: 'delta-neutral' } });
+        return;
+    }
+    const sc = window._adjustScenario;
+    const stints = window.previewData.timeline.filter(t => t.type === 'stint');
+    const pits = window.previewData.timeline.filter(t => t.type === 'pit');
+    const basePits = pits.length;
+    const basePitMs = window.config.pitTime * 1000 || 120000;
+    const baseAvgStint = stints.length > 0 ? stints.reduce((a, s) => a + s.duration, 0) / stints.length : 0;
+    const baseDrive = stints.reduce((a, s) => a + s.duration, 0);
+    const raceMs = window.config.raceMs || 0;
+
+    let adjPits = basePits, adjStint = baseAvgStint, adjDrive = baseDrive, riskPct = 10;
+
+    if (sc === 'race') {
+        const extra = parseInt(document.getElementById('adj_extraStops')?.value || 0);
+        const driverOut = parseInt(document.getElementById('adj_driverOut')?.value || -1);
+        adjPits = basePits + extra;
+        adjDrive = baseDrive - extra * basePitMs;
+        adjStint = adjPits > 0 ? adjDrive / (adjPits + 1) : adjDrive;
+        riskPct = driverOut >= 0 ? 55 : extra > 2 ? 40 : 15;
+    } else if (sc === 'safety') {
+        const scMin = parseInt(document.getElementById('adj_scDuration')?.value || 0);
+        const scMs = scMin * 60000;
+        adjDrive = Math.max(0, baseDrive - scMs);
+        adjStint = stints.length > 0 ? adjDrive / stints.length : 0;
+        riskPct = scMin > 15 ? 50 : scMin > 5 ? 30 : 10;
+        adjPits = scMin > 5 ? Math.max(0, basePits - 1) : basePits;
+    } else if (sc === 'weather') {
+        const extraSec = parseInt(document.getElementById('adj_wetPitExtra')?.value || 0);
+        const extraMs = extraSec * 1000;
+        adjPits = Math.max(0, basePits - 2); // typically go longer stints in rain
+        adjDrive = baseDrive + extraMs * adjPits;
+        adjStint = adjPits > 0 ? adjDrive / (adjPits + 1) : adjDrive;
+        riskPct = extraSec > 60 ? 65 : extraSec > 20 ? 35 : 15;
+    } else if (sc === 'qualify') {
+        adjPits = basePits;
+        adjStint = baseAvgStint;
+        adjDrive = baseDrive;
+        riskPct = 5;
+    }
+
+    const fmtMin = ms => `${Math.round(ms / 60000)}m`;
+    const deltaPits = adjPits - basePits;
+    const deltaStint = adjStint - baseAvgStint;
+    const deltaDrive = adjDrive - baseDrive;
+
+    const pitsBarPct = Math.min(100, Math.round((adjPits / Math.max(1, basePits + 5)) * 100));
+    const stintBarPct = Math.min(100, Math.round((adjStint / (raceMs / 2)) * 100));
+    const driveBarPct = raceMs > 0 ? Math.min(100, Math.round((adjDrive / raceMs) * 100)) : 80;
+
+    window._pendingAdjustment = { sc, adjPits, adjStint, adjDrive, riskPct, raceMs };
+
+    window._setAdjustOutcome({
+        pits: String(adjPits),
+        stint: fmtMin(adjStint),
+        drive: fmtMin(adjDrive),
+        risk: riskPct > 50 ? '⚠️ High' : riskPct > 25 ? '🟡 Med' : '✅ Low',
+        pct: { pits: pitsBarPct, stint: stintBarPct, drive: driveBarPct, risk: riskPct },
+        classes: {
+            pits: deltaPits > 2 ? 'risk' : deltaPits > 0 ? 'warn' : 'safe',
+            stint: deltaStint < -600000 ? 'risk' : deltaStint < 0 ? 'warn' : 'safe',
+            drive: deltaDrive < -1800000 ? 'risk' : deltaDrive < 0 ? 'warn' : 'safe',
+            risk: riskPct > 50 ? 'risk' : riskPct > 25 ? 'warn' : 'safe'
+        },
+        deltas: {
+            pits: deltaPits !== 0 ? (deltaPits > 0 ? '+' : '') + deltaPits : '—',
+            stint: deltaStint !== 0 ? (deltaStint > 0 ? '+' : '') + Math.round(deltaStint / 60000) + 'm' : '—',
+            drive: deltaDrive !== 0 ? (deltaDrive > 0 ? '+' : '') + Math.round(deltaDrive / 60000) + 'm' : '—',
+            risk: ''
+        },
+        deltaClasses: {
+            pits: deltaPits > 0 ? 'delta-negative' : deltaPits < 0 ? 'delta-positive' : 'delta-neutral',
+            stint: deltaStint < -300000 ? 'delta-negative' : deltaStint > 300000 ? 'delta-positive' : 'delta-neutral',
+            drive: deltaDrive < -600000 ? 'delta-negative' : deltaDrive > 600000 ? 'delta-positive' : 'delta-neutral',
+            risk: riskPct > 50 ? 'delta-negative' : 'delta-neutral'
+        }
+    });
+
+    // Show recommendation
+    const recBox = document.getElementById('adjustRecommendation');
+    const recText = document.getElementById('adjustRecommendationText');
+    if (recBox && recText) {
+        let rec = '';
+        if (sc === 'safety' && parseInt(document.getElementById('adj_scDuration')?.value || 0) > 5) {
+            rec = 'Use the safety car window to pit early — saves time vs. a free-air stop later.';
+        } else if (sc === 'weather' && parseInt(document.getElementById('adj_wetPitExtra')?.value || 0) > 30) {
+            rec = 'Consider delaying your next stop until conditions improve to minimise wet-tyre time in the pits.';
+        } else if (sc === 'race' && parseInt(document.getElementById('adj_extraStops')?.value || 0) > 1) {
+            rec = 'Extra stops cost track position. Only worthwhile if the pace delta exceeds the time loss per stop.';
+        } else {
+            recBox.classList.add('hidden');
+            return;
+        }
+        recText.textContent = rec;
+        recBox.classList.remove('hidden');
+    }
+};
+
+window._setAdjustOutcome = function(data) {
+    const ids = ['Pits', 'Stint', 'Drive', 'Risk'];
+    ids.forEach(key => {
+        const lk = key.toLowerCase();
+        const outEl = document.getElementById('ladjOut' + key);
+        const barEl = document.getElementById('ladjBar' + key);
+        const deltaEl = document.getElementById('ladjDelta' + key);
+        if (outEl) outEl.textContent = data[lk] || '—';
+        if (barEl) {
+            barEl.style.width = (data.pct[lk] || 0) + '%';
+            barEl.className = 'outcome-bar-fill ' + (data.classes[lk] || 'safe');
+        }
+        if (deltaEl) {
+            deltaEl.textContent = data.deltas?.[lk] || '—';
+            deltaEl.className = 'delta-badge ' + (data.deltaClasses?.[lk] || 'delta-neutral');
+        }
+    });
+};
+
+window.applyLiveAdjustment = function() {
+    if (!window._pendingAdjustment || !window.previewData?.timeline) {
+        window.closeLiveAdjustModal();
+        return;
+    }
+    const { sc, adjPits, adjStint, adjDrive, raceMs } = window._pendingAdjustment;
+    const stints = window.previewData.timeline.filter(t => t.type === 'stint');
+    const pits = window.previewData.timeline.filter(t => t.type === 'pit');
+
+    if (sc === 'safety' || sc === 'weather' || sc === 'race') {
+        // Redistribute drive time evenly across existing stints
+        if (stints.length > 0 && adjDrive > 0) {
+            const perStint = Math.round(adjDrive / stints.length / 1000) * 1000;
+            stints.forEach((s, i) => {
+                s.duration = i < stints.length - 1 ? perStint : adjDrive - perStint * (stints.length - 1);
+            });
+        }
+        // Recalculate timeline times
+        if (typeof window.recalculateTimelineTimes === 'function') window.recalculateTimelineTimes();
+    }
+
+    window._pendingAdjustment = null;
+    window.closeLiveAdjustModal();
+
+    // Show outcome in preview panel
+    const panel = document.getElementById('previewAdjustPanel');
+    const label = document.getElementById('adjustScenarioLabel');
+    if (panel) panel.classList.remove('hidden', 'collapsed');
+    if (label) {
+        const names = { race: '🏎️ Race', qualify: '⏱️ Qualify', safety: '🟡 Safety Car', weather: '🌧️ Weather' };
+        label.textContent = names[sc] || sc;
+        label.className = 'delta-badge ' + (sc === 'race' ? 'delta-negative' : sc === 'qualify' ? 'delta-neutral' : sc === 'safety' ? 'delta-neutral' : 'delta-positive');
+    }
+    // Sync outcome bars in preview panel
+    if (stints.length > 0) {
+        const adjDriveVal = stints.reduce((a, s) => a + s.duration, 0);
+        const adjStintVal = adjDriveVal / stints.length;
+        const pitCount = pits.length;
+        const fmtMin = ms => `${Math.round(ms / 60000)}m`;
+        const fields = [
+            { key: 'Pits', val: String(pitCount), pct: Math.min(100, Math.round(pitCount / 20 * 100)), cls: 'safe', delta: '—', deltaCls: 'delta-neutral' },
+            { key: 'Stint', val: fmtMin(adjStintVal), pct: Math.min(100, Math.round(adjStintVal / (raceMs / 2) * 100)), cls: 'safe', delta: '—', deltaCls: 'delta-neutral' },
+            { key: 'Drive', val: fmtMin(adjDriveVal), pct: raceMs > 0 ? Math.min(100, Math.round(adjDriveVal / raceMs * 100)) : 80, cls: 'safe', delta: '—', deltaCls: 'delta-neutral' }
+        ];
+        fields.forEach(f => {
+            const out = document.getElementById('adjOut' + f.key);
+            const bar = document.getElementById('adjBar' + f.key);
+            const dlt = document.getElementById('adjDelta' + f.key);
+            if (out) out.textContent = f.val;
+            if (bar) { bar.style.width = f.pct + '%'; bar.className = 'outcome-bar-fill ' + f.cls; }
+            if (dlt) { dlt.textContent = f.delta; dlt.className = 'delta-badge ' + f.deltaCls; }
+        });
+    }
+
+    window.renderPreview();
+    if (typeof window.showToast === 'function') window.showToast('✅ Scenario applied to strategy', 'success', 2500);
+};
+
+window._togglePreviewAdjustPanel = function() {
+    const panel = document.getElementById('previewAdjustPanel');
+    const icon = document.getElementById('adjustPanelIcon');
+    if (!panel) return;
+    panel.classList.toggle('collapsed');
+    if (icon) icon.style.transform = panel.classList.contains('collapsed') ? 'rotate(-90deg)' : 'rotate(0deg)';
+};
+
+// ==========================================
+// ⚡ QUICK MODE PRESETS (hero pill strip)
+// ==========================================
+
+window._heroCollapsed = localStorage.getItem('strateger_hero_collapsed') === 'true';
+
+window.toggleHero = function() {
+    window._heroCollapsed = !window._heroCollapsed;
+    localStorage.setItem('strateger_hero_collapsed', window._heroCollapsed ? 'true' : 'false');
+    window._applyHeroState();
+};
+
+window._applyHeroState = function() {
+    const body = document.getElementById('heroBody');
+    const sub = document.getElementById('heroSubText');
+    const icon = document.getElementById('heroToggleIcon');
+    const label = document.getElementById('heroToggleLabel');
+    const t = window.t || (k => k);
+    if (window._heroCollapsed) {
+        body && body.classList.add('hidden');
+        sub && sub.classList.add('hidden');
+        icon && icon.classList.replace('fa-chevron-up', 'fa-chevron-down');
+        if (label) label.setAttribute('data-i18n', 'heroExpand'), label.textContent = t('heroExpand') || 'Setup';
+    } else {
+        body && body.classList.remove('hidden');
+        sub && sub.classList.remove('hidden');
+        icon && icon.classList.replace('fa-chevron-down', 'fa-chevron-up');
+        if (label) label.setAttribute('data-i18n', 'heroCollapse'), label.textContent = t('heroCollapse') || 'Hide';
+    }
+};
+
+window.setQuickMode = function(mode) {
+    const presets = {
+        sprint: { duration: 1, stops: 4, minStint: 10, maxStint: 20, pitTime: 90 },
+        endurance: { duration: 6, stops: 12, minStint: 25, maxStint: 40, pitTime: 120 }
+    };
+    const p = presets[mode];
+    if (!p) return;
+    const setVal = (id, v) => { const el = document.getElementById(id); if (el) { el.value = v; } };
+    setVal('raceDuration', p.duration);
+    setVal('reqPitStops', p.stops);
+    setVal('minStint', p.minStint);
+    setVal('maxStint', p.maxStint);
+    setVal('minPitTime', p.pitTime);
+    if (typeof window.runSim === 'function') window.runSim();
+    // Highlight active pill
+    document.querySelectorAll('.quick-pill').forEach(pill => {
+        const isMatch = pill.textContent.toLowerCase().includes(mode === 'sprint' ? 'sprint' : 'endurance');
+        pill.classList.toggle('active', isMatch);
+    });
+    if (typeof window.showToast === 'function') window.showToast(`⚡ ${mode.charAt(0).toUpperCase() + mode.slice(1)} preset loaded`, 'success', 1800);
+};
+
+// Update hero mini chart whenever previewData changes
+window._updateHeroChart = function() {
+    const el = document.getElementById('heroMiniChart');
+    if (!el) return;
+    if (!window.previewData?.timeline) { el.innerHTML = ''; return; }
+    const stints = window.previewData.timeline.filter(t => t.type === 'stint');
+    if (stints.length === 0) { el.innerHTML = ''; return; }
+    const maxMs = Math.max(...stints.map(s => s.duration));
+    el.innerHTML = stints.slice(0, 16).map(s => {
+        const h = Math.max(4, Math.round((s.duration / maxMs) * 20));
+        return `<div class="mini-stint-bar" style="height:${h}px;background:${s.color || '#22d3ee'}"></div>`;
+    }).join('');
+};
+
+// Hook into runSim to also update hero chart
+const _origRunSimForHero = window.runSim;
+if (_origRunSimForHero) {
+    window.runSim = function(...args) {
+        const result = _origRunSimForHero.apply(this, args);
+        setTimeout(window._updateHeroChart, 50);
+        return result;
+    };
+}
+
+// ==========================================
+// 🏁 RIGHT-ZONE WIDGET SYSTEM
+// ==========================================
+
+;(function() {
+    'use strict';
+
+    const WIDGET_ORDER_KEY = 'strateger_widget_order';
+    const WIDGET_COLLAPSED_KEY = 'strateger_widget_collapsed';
+    const LAYOUT_TPL_KEY = 'strateger_layout_tpl';
+    const SNAP_GRID = 20;
+
+    // ---- Layout templates ----
+    // Each template describes: lt-zone-w percentage, which widgets are visible/collapsed,
+    // and order of widgets in the right zone.
+    const TEMPLATES = {
+        classic: {
+            ltZoneW: '58%',
+            widgets: ['widgetLayoutTemplates','widgetDriverInfo','widgetStintData','widgetStrategy'],
+            collapsed: [],
+        },
+        pit: {
+            ltZoneW: '42%',
+            widgets: ['widgetLayoutTemplates','widgetDriverInfo','widgetStintData','widgetStrategy'],
+            collapsed: ['widgetStrategy'],
+        },
+        strategy: {
+            ltZoneW: '50%',
+            widgets: ['widgetLayoutTemplates','widgetStrategy','widgetStintData','widgetDriverInfo'],
+            collapsed: [],
+        },
+        compact: {
+            ltZoneW: '65%',
+            widgets: ['widgetLayoutTemplates','widgetDriverInfo','widgetStintData','widgetStrategy'],
+            collapsed: ['widgetStintData','widgetStrategy'],
+        },
+    };
+
+    // Show/hide right-widgets-area on wide screens
+    function updateWidgetAreaVisibility() {
+        const area = document.getElementById('rightWidgetsArea');
+        if (!area) return;
+        const wide = window.matchMedia('(min-width: 1024px)').matches;
+        if (wide) {
+            area.classList.remove('hidden');
+            area.style.display = 'flex';
+        } else {
+            area.classList.add('hidden');
+            area.style.display = '';
+        }
+    }
+
+    // Apply a layout template
+    window.applyLayoutTemplate = function(tplName) {
+        const tpl = TEMPLATES[tplName];
+        if (!tpl) return;
+        // Save
+        try { localStorage.setItem(LAYOUT_TPL_KEY, tplName); } catch(e) {}
+        // Update CSS var
+        document.documentElement.style.setProperty('--lt-zone-w', tpl.ltZoneW);
+        // Reorder widgets
+        const area = document.getElementById('rightWidgetsArea');
+        if (area) {
+            tpl.widgets.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) area.appendChild(el);
+            });
+        }
+        // Apply collapsed states
+        tpl.widgets.forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            if (tpl.collapsed.includes(id)) {
+                el.classList.add('collapsed');
+                const btn = el.querySelector('.widget-collapse-btn');
+                if (btn) btn.textContent = '▸';
+            } else {
+                el.classList.remove('collapsed');
+                const btn = el.querySelector('.widget-collapse-btn');
+                if (btn) btn.textContent = '▾';
+            }
+        });
+        // Update active template button
+        document.querySelectorAll('.layout-tpl-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.tpl === tplName);
+        });
+    };
+
+    // Collapse/expand a widget
+    window.toggleWidget = function(widgetId) {
+        const el = document.getElementById(widgetId);
+        if (!el) return;
+        const collapsed = el.classList.toggle('collapsed');
+        const btn = el.querySelector('.widget-collapse-btn');
+        if (btn) btn.textContent = collapsed ? '▸' : '▾';
+        // Persist
+        try {
+            const saved = JSON.parse(localStorage.getItem(WIDGET_COLLAPSED_KEY) || '{}');
+            saved[widgetId] = collapsed;
+            localStorage.setItem(WIDGET_COLLAPSED_KEY, JSON.stringify(saved));
+        } catch(e) {}
+    };
+
+    // ---- Widget drag reorder (within right zone) ----
+    let _wDragSrc = null;
+    let _wDropZone = null;
+
+    function initWidgetDragReorder() {
+        const area = document.getElementById('rightWidgetsArea');
+        if (!area) return;
+
+        area.addEventListener('mousedown', onWidgetDragStart, true);
+        area.addEventListener('touchstart', onWidgetTouchStart, { passive: false });
+    }
+
+    function onWidgetDragStart(e) {
+        const handle = e.target.closest('.widget-drag-handle');
+        if (!handle) return;
+        const widget = handle.closest('.right-zone-widget');
+        if (!widget) return;
+        e.preventDefault();
+
+        _wDragSrc = widget;
+        const originalRect = widget.getBoundingClientRect();
+        const offsetX = e.clientX - originalRect.left;
+        const offsetY = e.clientY - originalRect.top;
+
+        // Ghost element
+        const ghost = widget.cloneNode(true);
+        ghost.style.cssText = `position:fixed;left:${originalRect.left}px;top:${originalRect.top}px;width:${originalRect.width}px;opacity:0.85;pointer-events:none;z-index:9999;border:1px solid rgba(34,211,238,0.6);border-radius:10px;`;
+        document.body.appendChild(ghost);
+
+        // Drop zone placeholder
+        const ph = document.createElement('div');
+        ph.className = 'widget-drop-zone active';
+        ph.style.height = originalRect.height + 'px';
+        widget.parentNode.insertBefore(ph, widget);
+        widget.style.display = 'none';
+        _wDropZone = ph;
+
+        function onMove(me) {
+            const cx = me.clientX ?? me.touches?.[0]?.clientX;
+            const cy = me.clientY ?? me.touches?.[0]?.clientY;
+            if (cx == null) return;
+            ghost.style.left = (cx - offsetX) + 'px';
+            ghost.style.top  = (cy - offsetY) + 'px';
+            // Find drop target
+            const area2 = document.getElementById('rightWidgetsArea');
+            if (!area2) return;
+            const siblings = [...area2.querySelectorAll('.right-zone-widget:not([style*="display: none"])')];
+            let inserted = false;
+            for (const sib of siblings) {
+                const sr = sib.getBoundingClientRect();
+                if (cy < sr.top + sr.height / 2) {
+                    area2.insertBefore(_wDropZone, sib);
+                    inserted = true;
+                    break;
+                }
+            }
+            if (!inserted) area2.appendChild(_wDropZone);
+        }
+
+        function onUp() {
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+            document.removeEventListener('touchmove', onMove);
+            document.removeEventListener('touchend', onUp);
+            // Place widget where placeholder is
+            if (_wDropZone && _wDropZone.parentNode) {
+                _wDropZone.parentNode.insertBefore(_wDragSrc, _wDropZone);
+                _wDropZone.remove();
+            }
+            _wDragSrc.style.display = '';
+            ghost.remove();
+            _wDragSrc = null;
+            _wDropZone = null;
+        }
+
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+        document.addEventListener('touchmove', onMove, { passive: false });
+        document.addEventListener('touchend', onUp);
+    }
+
+    function onWidgetTouchStart(e) {
+        const handle = e.target.closest('.widget-drag-handle');
+        if (!handle) return;
+        e.preventDefault();
+        onWidgetDragStart({ target: e.target, clientX: e.touches[0].clientX, clientY: e.touches[0].clientY, preventDefault: () => {} });
+    }
+
+    // ---- Snap-to-grid for the live timing floating widget ----
+    // Overrides the raw pixel position with the nearest grid multiple.
+    window._snapToGrid = function(x, y) {
+        return {
+            x: Math.round(x / SNAP_GRID) * SNAP_GRID,
+            y: Math.round(y / SNAP_GRID) * SNAP_GRID,
+        };
+    };
+
+    function observeLtWrapper() {
+        // Snap logic is handled directly in live-timing.js onDragEnd.
+        // This function is kept as a no-op so init() still calls it without error.
+    }
+
+    // ---- Mirror key values from left-panel to right-zone widgets ----
+    window._syncRightZoneWidgets = function() {
+        // Driver info
+        const driverNameEl = document.getElementById('currentDriverName');
+        const stintTimerEl = document.getElementById('stintTimerDisplay');
+        const dotEl        = document.getElementById('currentDriverDot');
+        if (driverNameEl) {
+            const wn = document.getElementById('wDriverName');
+            if (wn) wn.textContent = driverNameEl.textContent;
+        }
+        if (dotEl) {
+            const wd = document.getElementById('wDriverDot');
+            if (wd) wd.style.background = dotEl.style.background;
+        }
+        if (stintTimerEl) {
+            const wt = document.getElementById('wStintTimer');
+            if (wt) wt.textContent = stintTimerEl.textContent;
+        }
+        // Stint data
+        const targetEl = document.getElementById('strategyTargetStint');
+        if (targetEl) {
+            const wts = document.getElementById('wTargetStint');
+            if (wts) wts.textContent = targetEl.textContent;
+        }
+        const pitCountEl = document.getElementById('pitCountDisplay');
+        if (pitCountEl) {
+            const wpc = document.getElementById('wPitCount');
+            if (wpc) wpc.innerHTML = pitCountEl.innerHTML;
+        }
+        const statusEl = document.getElementById('pitStatusIndicator');
+        if (statusEl) {
+            const ws = document.getElementById('wStatus');
+            if (ws) ws.textContent = statusEl.textContent;
+        }
+        // Strategy outlook pills — mirror from remStintsText
+        const outlookEl = document.getElementById('remStintsText');
+        const wOutlook  = document.getElementById('wStrategyOutlook');
+        if (outlookEl && wOutlook) {
+            wOutlook.innerHTML = outlookEl.innerHTML;
+        }
+    };
+
+    // ---- Persist / restore collapsed state ----
+    function restoreCollapsedState() {
+        try {
+            const saved = JSON.parse(localStorage.getItem(WIDGET_COLLAPSED_KEY) || '{}');
+            Object.entries(saved).forEach(([id, collapsed]) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                if (collapsed) {
+                    el.classList.add('collapsed');
+                    const btn = el.querySelector('.widget-collapse-btn');
+                    if (btn) btn.textContent = '▸';
+                }
+            });
+        } catch(e) {}
+    }
+
+    // ---- Init ----
+    function init() {
+        updateWidgetAreaVisibility();
+        window.addEventListener('resize', updateWidgetAreaVisibility);
+        initWidgetDragReorder();
+        restoreCollapsedState();
+        observeLtWrapper();
+        // Apply saved layout template
+        try {
+            const saved = localStorage.getItem(LAYOUT_TPL_KEY);
+            if (saved && TEMPLATES[saved]) window.applyLayoutTemplate(saved);
+        } catch(e) {}
+        // Sync right zone every second during race
+        setInterval(() => {
+            if (document.getElementById('raceDashboard')?.classList.contains('hidden') === false) {
+                window._syncRightZoneWidgets();
+            }
+        }, 1000);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+})();
+
+// ==========================================
+// ↕ DRIVER LIST DRAG-TO-REORDER
+// ==========================================
+(function() {
+    let _dragging = null;   // the row being dragged
+    let _ghost    = null;   // floating clone
+    let _placeholder = null; // empty slot showing drop target
+    let _startY   = 0;
+    let _offsetY  = 0;      // cursor offset within the row at drag start
+
+    function _getClientY(e) {
+        return e.touches ? e.touches[0].clientY : e.clientY;
+    }
+
+    function _rowsInList() {
+        return Array.from(document.querySelectorAll('#driversList .driver-row'))
+                    .filter(r => !r.classList.contains('driver-drag-ghost') &&
+                                 !r.classList.contains('driver-drag-placeholder'));
+    }
+
+    function _createPlaceholder(height) {
+        const ph = document.createElement('div');
+        ph.className = 'driver-drag-placeholder';
+        ph.style.height = height + 'px';
+        return ph;
+    }
+
+    window._driverDragStart = function(e, row) {
+        if (e.button !== undefined && e.button !== 0) return; // left button only
+        e.preventDefault();
+        e.stopPropagation();
+
+        const rect = row.getBoundingClientRect();
+        _startY  = _getClientY(e);
+        _offsetY = _startY - rect.top;
+
+        // Ghost: visual clone that follows the cursor
+        _ghost = row.cloneNode(true);
+        _ghost.className = row.className + ' driver-drag-ghost';
+        _ghost.style.cssText = `
+            position:fixed; left:${rect.left}px; top:${rect.top}px;
+            width:${rect.width}px; height:${rect.height}px;
+            z-index:9999; pointer-events:none; opacity:0.85;
+            box-shadow:0 8px 24px rgba(0,0,0,0.5);
+            border-color: rgba(34,211,238,0.6) !important;
+        `;
+        document.body.appendChild(_ghost);
+
+        // Placeholder: keeps the space in the list
+        _placeholder = _createPlaceholder(rect.height);
+        row.parentNode.insertBefore(_placeholder, row);
+        row.style.display = 'none';
+
+        _dragging = row;
+        _dragging._dragHeight = rect.height;
+
+        document.addEventListener('mousemove', _driverDragMove, { passive: false });
+        document.addEventListener('touchmove', _driverDragMove, { passive: false });
+        document.addEventListener('mouseup',   _driverDragEnd);
+        document.addEventListener('touchend',  _driverDragEnd);
+    };
+
+    function _driverDragMove(e) {
+        if (!_dragging) return;
+        e.preventDefault();
+        const clientY = _getClientY(e);
+        // Move ghost
+        _ghost.style.top = (clientY - _offsetY) + 'px';
+
+        // Find which row the cursor is over to reposition placeholder
+        const rows = _rowsInList();
+        let inserted = false;
+        for (const r of rows) {
+            const rr = r.getBoundingClientRect();
+            if (clientY < rr.top + rr.height / 2) {
+                r.parentNode.insertBefore(_placeholder, r);
+                inserted = true;
+                break;
+            }
+        }
+        if (!inserted) {
+            const list = document.getElementById('driversList');
+            if (list) list.appendChild(_placeholder);
+        }
+    }
+
+    function _driverDragEnd() {
+        if (!_dragging) return;
+        document.removeEventListener('mousemove', _driverDragMove);
+        document.removeEventListener('touchmove', _driverDragMove);
+        document.removeEventListener('mouseup',   _driverDragEnd);
+        document.removeEventListener('touchend',  _driverDragEnd);
+
+        // Insert the real row where the placeholder is
+        _placeholder.parentNode.insertBefore(_dragging, _placeholder);
+        _dragging.style.display = '';
+        _placeholder.remove();
+        _ghost.remove();
+
+        _dragging = null;
+        _ghost    = null;
+        _placeholder = null;
+
+        // Re-check starter radio integrity: if the checked radio is still present nothing
+        // changes; the DOM reorder just changed visual position which is all we need.
+        window.updateStarterVisuals();
+        if (typeof window.runSim === 'function') window.runSim();
+    }
+})();

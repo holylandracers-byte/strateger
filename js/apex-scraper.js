@@ -350,8 +350,11 @@ class ApexTimingScraper {
             if (comp) {
                 if (isEntering && !comp.inPit) comp.pitCount = (comp.pitCount || 0) + 1;
                 comp.inPit = isEntering;
+                comp._pitStateAt = Date.now();
                 this.log('INFO', `🏎️ Pit ${isEntering ? 'entry' : 'exit'} (*${dir}) for ${comp.driverName || rowId}`);
-                if (!deferEmit) this.emitUpdate();
+                // Pit events are time-critical — emit immediately (no debounce) so the
+                // live-timing controller can react to *out without waiting 90 ms
+                this.emitUpdate();
                 return true;
             }
             return false;
@@ -550,41 +553,95 @@ class ApexTimingScraper {
         }
     }
 
+    /**
+     * Normalize a raw header cell text to a canonical ASCII-like token for matching.
+     * Strips diacritics, emoji, punctuation, collapses whitespace, lowercases.
+     * Also maps RTL / non-Latin header words to their English equivalents so the
+     * downstream regex patterns can match regardless of page locale.
+     */
+    _normalizeHeader(raw) {
+        // 1) Strip emoji and control chars
+        let s = raw.replace(/[\u{1F000}-\u{1FFFF}]/gu, '')
+                   .replace(/[\u{2600}-\u{27BF}]/gu, '')
+                   .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+                   .trim();
+
+        // 2) Decompose diacritics then drop combining marks (è→e, ü→u, etc.)
+        try {
+            s = s.normalize('NFD').replace(/[̀-ͯ]/g, '');
+        } catch(e) { /* NFD unavailable on very old engines */ }
+
+        // 3) Collapse whitespace
+        s = s.replace(/\s+/g, ' ').trim().toLowerCase();
+
+        // 4) RTL / non-Latin → English token table
+        // Hebrew, Arabic, Japanese, Korean, Chinese common timing column words
+        const rtlMap = {
+            // Hebrew
+            'מיקום': 'pos', 'מספר': 'no', 'קארט': 'kart', 'שם': 'name',
+            'נהג': 'driver', 'קבוצה': 'team', 'קפות': 'laps', 'קפה': 'laps',
+            'פער': 'gap', 'אחרון': 'last', 'הטוב': 'best', 'טוב': 'best',
+            'פיטים': 'pit', 'עונש': 'pen', 'קטגוריה': 'cat',
+            'זמן': 'time', 'סה"כ': 'total', 'ממוצע': 'avg',
+            // Arabic
+            'موقف': 'pos', 'رقم': 'no', 'اسم': 'name', 'سائق': 'driver',
+            'لفات': 'laps', 'فجوة': 'gap', 'اخير': 'last', 'افضل': 'best',
+            // Japanese
+            '順位': 'pos', 'ドライバー': 'driver', 'チーム': 'team',
+            '周回': 'laps', 'ギャップ': 'gap', 'ラップ': 'last', 'ベスト': 'best',
+            // Korean
+            '순위': 'pos', '드라이버': 'driver', '팀': 'team',
+            '랩': 'laps', '갭': 'gap', '최고': 'best',
+            // Chinese
+            '名次': 'pos', '车手': 'driver', '车队': 'team',
+            '圈数': 'laps', '差距': 'gap', '最佳': 'best',
+        };
+        if (rtlMap[s]) return rtlMap[s];
+
+        return s;
+    }
+
     detectColumnMapping(headerCells) {
+        // Extended patterns: each field has a broad regex tested against the _normalised_ token
         const patterns = [
-            { field: 'position',   re: /^(cla|pos|rnk|rank|platz|p\.?|#|classifica)$/i },
-            { field: 'kartNumber', re: /^(kart|no|n[°ºo.]?|num|nr|number|startnr|cart)$/i },
-            { field: 'driverName', re: /^(team|name|nom|nome|fahrer|driver|pilota|pilote|concurrent|concorrente|conductor|competitor|equipe|squadra|mannschaft)$/i },
-            { field: 'totalLaps',  re: /^(giri|laps?|nbgiri|nbtrs?|tours?|rdn|runden|vueltas?|tr|rondes?)$/i },
-            { field: 'gap',        re: /^(distacco|gap|diff|dist|abst|abstand|[eé]cart|dif|ecart)$/i },
-            { field: 'lastLap',    re: /^(ultimo\.?\s*t\.?|last|dern\.?|dernier|ultimo|letzte|[uú]ltimo|latest|ult)$/i },
-            { field: 'bestLap',    re: /^(giro\s*mig\.?|best|meilleur|migliore|beste|mejor|melhor)$/i },
-            { field: 'sector1',    re: /^s1$/i },
-            { field: 'sector2',    re: /^s2$/i },
-            { field: 'sector3',    re: /^s3$/i },
-            { field: 'pitCount',   re: /^(pit\s*stop|pits?|box|arr[eê]ts?)$/i },
-            { field: 'penalty',    re: /^(pena|pen|penal|penalty|p[eé]nalit[eé]|strafe)$/i },
+            { field: 'position',   re: /^(cla(ssifica)?|pos(ition)?|rnk|rank|platz|p|#|nr\.?)$/i },
+            { field: 'kartNumber', re: /^(kart|no|n|num(ber)?|nr|startnr|cart|vehicle)$/i },
+            { field: 'driverName', re: /^(team|name|nom|nome|fahrer|driver|pilota|pilote|concurrent|concorrente|conductor|competitor|equipe|squadra|mannschaft|piloto)$/i },
+            { field: 'totalLaps',  re: /^(giri|laps?|nbgiri|nbtrs?|tours?|rdn|runden|vueltas?|tr|rondes?|lap)$/i },
+            { field: 'gap',        re: /^(distacco|gap|diff(erence)?|dist|abst(and)?|ecart|dif)$/i },
+            { field: 'lastLap',    re: /^(ultimo\s*t?|last(lap)?|dern(ier)?|dernier|letzte|ultimo|latest|ult|ltime|last\s*time)$/i },
+            { field: 'bestLap',    re: /^(giro\s*mig(liore)?|best(lap)?|meilleur|migliore|beste|mejor|melhor|btime|best\s*time|avg)$/i },
+            { field: 'sector1',    re: /^s1(ector)?$/i },
+            { field: 'sector2',    re: /^s2(ector)?$/i },
+            { field: 'sector3',    re: /^s3(ector)?$/i },
+            { field: 'pitCount',   re: /^(pit\s*stop|pits?|pitstops?|box|arrets?|parada)$/i },
+            { field: 'penalty',    re: /^(pena(lty)?|pen|penal|penalite|strafe)$/i },
             { field: 'category',   re: /^(categoria|category|cat|classe|klasse|class)$/i },
-            { field: 'country',    re: /^(paese|country|land|pays|pa[ií]s|nation)$/i },
-            { field: 'totalTime',  re: /^(tempo|time|temps|zeit|tiempo|total)$/i },
-            { field: 'onTrack',    re: /^(in\s*pista|on\s*track|auf\s*strecke|en\s*piste)$/i },
+            { field: 'country',    re: /^(paese|country|land|pays|pais|nation|nat)$/i },
+            { field: 'totalTime',  re: /^(tempo|time|temps|zeit|tiempo|total|elapsed)$/i },
+            { field: 'onTrack',    re: /^(in\s*pista|on\s*track|auf\s*strecke|en\s*piste|status|state)$/i },
         ];
 
         const mapping = {};
         const headerTexts = [];
+        const normTexts   = [];
+
         for (let i = 0; i < headerCells.length; i++) {
-            const raw = (headerCells[i].textContent || headerCells[i]).toString().trim();
+            const raw  = (headerCells[i].textContent || headerCells[i]).toString().trim();
+            const norm = this._normalizeHeader(raw);
             headerTexts.push(raw);
-            if (!raw) continue;
+            normTexts.push(norm);
+            if (!norm) continue;
             for (const p of patterns) {
-                if (p.re.test(raw) && mapping[p.field] == null) {
+                if (p.re.test(norm) && mapping[p.field] == null) {
                     mapping[p.field] = i;
                     break;
                 }
             }
         }
 
-        this.log('INFO', `🔍 Header texts: [${headerTexts.join(' | ')}]`);
+        this.log('INFO', `🔍 Header texts:  [${headerTexts.join(' | ')}]`);
+        this.log('INFO', `🔍 Header norms:  [${normTexts.join(' | ')}]`);
 
         const hasEnough = mapping.driverName != null || mapping.kartNumber != null || mapping.position != null;
         if (hasEnough) {
@@ -592,7 +649,76 @@ class ApexTimingScraper {
             return mapping;
         }
 
-        this.log('WARN', '🔍 Could not detect column mapping from headers — using fallback');
+        // ── Structural fallback for completely unknown layouts ─────────────────
+        // When the header is empty or in an unsupported script, infer columns by
+        // heuristics: scan first 3 data rows, detect which columns look like
+        // positions (small integer), kart numbers (1-3 digit), time strings, etc.
+        this.log('WARN', '🔍 Header matching failed — attempting structural heuristic mapping');
+        return this._structuralColumnMapping(headerCells) || null;
+    }
+
+    /**
+     * Structural heuristic: when header text gives no clues, sample the first
+     * few data rows from the parent table to infer field positions by value shape.
+     * Returns a partial mapping or null.
+     */
+    _structuralColumnMapping(headerCells) {
+        // Walk up from a header cell to find the parent table, then sample data rows
+        let tableEl = null;
+        for (const cell of headerCells) {
+            if (cell && cell.closest) { tableEl = cell.closest('table'); break; }
+        }
+        if (!tableEl) return null;
+
+        const dataRows = Array.from(tableEl.querySelectorAll('tr[id^="r"]'));
+        if (dataRows.length === 0) return null;
+
+        const sampleSize = Math.min(5, dataRows.length);
+        const colCount   = headerCells.length;
+        // For each column collect values from sample rows
+        const colValues = Array.from({ length: colCount }, () => []);
+        for (let r = 0; r < sampleSize; r++) {
+            const cells = dataRows[r].querySelectorAll('td');
+            for (let c = 0; c < colCount && c < cells.length; c++) {
+                colValues[c].push(cells[c].textContent.trim());
+            }
+        }
+
+        const isSmallInt  = v => /^\d{1,3}$/.test(v) && parseInt(v) > 0 && parseInt(v) <= 200;
+        const isTimeStr   = v => /\d+:\d{2}\.\d{2,3}/.test(v) || /^\d+\.\d{3}$/.test(v);
+        const isShortText = v => /^[A-Za-z0-9À-ÿ-׿]{2,20}$/.test(v);
+
+        const mapping = {};
+
+        colValues.forEach((vals, idx) => {
+            if (vals.length === 0) return;
+            const allSmallInt  = vals.every(isSmallInt);
+            const anyTimeStr   = vals.some(isTimeStr);
+            const anyShortText = vals.some(isShortText);
+
+            // First column of small integers → position
+            if (allSmallInt && mapping.position == null && idx <= 2) {
+                mapping.position = idx;
+            }
+            // 1-3 digit numbers in early columns → kart
+            else if (allSmallInt && mapping.kartNumber == null && mapping.position != null && idx <= 4) {
+                mapping.kartNumber = idx;
+            }
+            // Short text in early columns → driver name
+            else if (anyShortText && !anyTimeStr && mapping.driverName == null && idx >= 2 && idx <= 6) {
+                mapping.driverName = idx;
+            }
+            // Time string columns: first = lastLap, second = bestLap
+            else if (anyTimeStr) {
+                if (mapping.lastLap == null) mapping.lastLap = idx;
+                else if (mapping.bestLap == null) mapping.bestLap = idx;
+            }
+        });
+
+        if (mapping.position != null || mapping.driverName != null || mapping.kartNumber != null) {
+            this.log('INFO', `🔍 Structural mapping: ${JSON.stringify(mapping)}`);
+            return mapping;
+        }
         return null;
     }
 
@@ -705,7 +831,7 @@ class ApexTimingScraper {
                     if (cells.length < 5) continue;
                     // Check if ≥3 cells match header keywords
                     let hits = 0;
-                    const headerTest = /^(cla|pos|rnk|rank|kart|no|team|name|nom|nome|giri|laps?|gap|diff|distacco|ultimo|last|best|giro\s*mig|s1|s2|s3|pit|pen|categoria|category|paese|country|tempo|time|in\s*pista|on\s*track)$/i;
+                    const headerTest = /^(cla(ssifica)?|pos(ition)?|rnk|rank|platz|kart|no|n|num|nr|team|name|nom|nome|fahrer|driver|pilota|pilote|giri|laps?|nbgiri|tours?|rdn|runden|vueltas?|gap|diff|distacco|dist|ecart|abstand|ultimo|last|best|giro\s*mig|migliore|meilleur|s1|s2|s3|pit|pits?|pitstops?|pen|penalty|penalite|strafe|categoria|category|cat|classe|klasse|paese|country|land|pays|pais|tempo|time|temps|zeit|in\s*pista|on\s*track|auf\s*strecke|status|מיקום|קארט|שם|נהג|קבוצה|קפות|פער|אחרון|הטוב|פיטים)$/i;
                     for (const c of cells) {
                         if (headerTest.test(c.textContent.trim())) hits++;
                     }

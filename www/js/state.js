@@ -37,7 +37,65 @@ window.FREE_LIMITS = {
     pdfExport: false,
     fuelTracking: false,
     googleCalendar: false,
-    googleEmail: false
+    googleEmail: false,
+    teamLogo: false,
+    rulesPdf: false
+};
+
+// ==========================================
+// 🎁 3-DAY FREE TRIAL (once per device)
+// ==========================================
+
+window._TRIAL_KEY   = 'strateger_trial_start';
+window._TRIAL_DAYS  = 3;
+
+window._trialActive = (function() {
+    const start = localStorage.getItem(window._TRIAL_KEY);
+    if (!start) return false;
+    const elapsed = Date.now() - parseInt(start, 10);
+    return elapsed < window._TRIAL_DAYS * 24 * 60 * 60 * 1000;
+})();
+
+window._trialUsed = !!localStorage.getItem(window._TRIAL_KEY);
+
+/** Start trial — only once per device. Returns true if trial was started, false if already used. */
+window.startFreeTrial = function() {
+    if (window._trialUsed) return false;
+    localStorage.setItem(window._TRIAL_KEY, String(Date.now()));
+    window._trialActive = true;
+    window._trialUsed = true;
+    if (typeof window.updateProUI === 'function') window.updateProUI();
+    return true;
+};
+
+window._startTrialFromModal = function() {
+    if (!window.startFreeTrial()) return;
+    document.getElementById('proUpgradeModal')?.classList.add('hidden');
+    if (typeof window.showToast === 'function') {
+        window.showToast('🎁 3-day Pro trial started! Enjoy all features.', 'success');
+    }
+    if (typeof window.updateProUI === 'function') window.updateProUI();
+};
+
+// Populate the payment reference ID whenever the modal opens
+(function() {
+    const _origShowProGate = window.showProGate;
+    // Patch after DOM is ready
+    document.addEventListener('DOMContentLoaded', function() {
+        const refEl = document.getElementById('proPayRefId');
+        if (refEl) {
+            const deviceId = (window.getDeviceId ? window.getDeviceId() : '').slice(-6).toUpperCase() || Math.random().toString(36).slice(-6).toUpperCase();
+            refEl.textContent = deviceId;
+        }
+    });
+})();
+
+/** Hours remaining in active trial (0 if not active). */
+window.trialHoursLeft = function() {
+    const start = localStorage.getItem(window._TRIAL_KEY);
+    if (!start) return 0;
+    const remaining = window._TRIAL_DAYS * 24 * 60 * 60 * 1000 - (Date.now() - parseInt(start, 10));
+    return Math.max(0, Math.ceil(remaining / 3600000));
 };
 
 // Restore Pro license from localStorage on load
@@ -73,6 +131,7 @@ window.FREE_LIMITS = {
  */
 window.checkProFeature = function(featureName) {
     if (window._proUnlocked) return true;
+    if (window._trialActive) return true;
     // Free features are things NOT in the limits or explicitly allowed
     if (featureName === 'liveTiming') return window.FREE_LIMITS.liveTiming;
     if (featureName === 'aiStrategy') return window.FREE_LIMITS.aiStrategy;
@@ -82,6 +141,8 @@ window.checkProFeature = function(featureName) {
     if (featureName === 'fuelTracking') return window.FREE_LIMITS.fuelTracking;
     if (featureName === 'googleCalendar') return window.FREE_LIMITS.googleCalendar;
     if (featureName === 'googleEmail') return window.FREE_LIMITS.googleEmail;
+    if (featureName === 'teamLogo') return window.FREE_LIMITS.teamLogo;
+    if (featureName === 'rulesPdf') return window.FREE_LIMITS.rulesPdf;
     return true; // default: free
 };
 
@@ -89,13 +150,18 @@ window.checkProFeature = function(featureName) {
  * Show Pro upgrade prompt when user tries to access a locked feature.
  */
 window.showProGate = function(featureName) {
-    // If already Pro, never show the upgrade modal
     if (window._proUnlocked) return;
+    if (window._trialActive) return; // still in trial
     const t = window.t || ((k) => k);
     const modal = document.getElementById('proUpgradeModal');
     if (modal) {
         const featureLabel = document.getElementById('proGateFeature');
         if (featureLabel) featureLabel.innerText = featureName || t('proFeature');
+        // Show or hide the trial CTA based on whether trial is available
+        const trialSection = document.getElementById('proTrialSection');
+        if (trialSection) trialSection.classList.toggle('hidden', window._trialUsed);
+        const trialUsedNote = document.getElementById('proTrialUsedNote');
+        if (trialUsedNote) trialUsedNote.classList.toggle('hidden', !window._trialUsed);
         modal.classList.remove('hidden');
     }
 };
@@ -254,13 +320,14 @@ window.currentLang = 'en';
 window.translations = {
     en: {
         ltSearchType: "Filter By:", ltTeam: "Team", ltDriver: "Driver", ltKart: "Kart #", ltPlaceholder: "Enter search value...",
-        previewTitle: "Strategy Preview", addToCalendar: "Add to Google Calendar", timeline: "Timeline", driverSchedule: "Driver Schedule", totalTime: "Total Time", close: "Close",
+        previewTitle: "Strategy Preview", addToCalendar: "Add to Google Calendar", timeline: "Timeline", driverSchedule: "Stint Summary", totalTime: "Total Time", close: "Close",
         googleLogin: "Login with Google", eventCreated: "Event created successfully!", eventError: "Failed to create event", raceEventTitle: "Endurance Race (Strateger)",
         errImpossible: "Impossible Strategy!", errAvgHigh: "Avg stint > Max Stint. Increase Stops or Max Stint.", errAvgLow: "Avg stint < Min Stint. Decrease Stops or Min Stint.",
         appTitle: "STRATEGER", appSubtitle: "Endurance Race Strategy Manager", generalInfo: "General Info", advancedConstraints: "Advanced Constraints", driverConfig: "Drivers", aiTitle: "AI Strategy",
         lblDuration: "Duration (Hours)", lblStops: "Req. Stops", lblMinStint: "Min Stint (min)", lblMaxStint: "Max Stint (min)", lblPitTime: "Pit Time (sec)", lblPitClosedStart: "🚫 Closed Start (min)", lblPitClosedEnd: "🚫 Closed End (min)",
         lblMinDrive: "Min Driver Total (min)", lblMaxDrive: "Max Driver Total (min)", lblBuffer: "Pit Alert / Buffer (s)", lblDoubles: "Allow Doubles", lblSquads: "Use Squads", lblFuel: "Fuel", lblFuelTank: "Fuel Tank (min)",
         addDriver: "+ Add", generateStrategy: "Generate Strategy (AI)", previewStrategy: "Preview Strategy", startRace: "Start Race", loadSaved: "Load Saved Race",
+        stepRaceSettings: "Race Settings", stepDrivers: "Drivers", stepGo: "Let's Go", optional: "optional", joinAsDriverHint: "Enter a race running on another device",
         raceTime: "RACE TIME", stops: "STOPS", live: "LIVE", stop: "Stop", pos: "POS", last: "LAST", best: "BEST", targetStint: "TARGET STINT", buildTime: "BUILD TIME",
         current: "CURRENT", stintTime: "STINT TIME", nextDriver: "Next Driver", penalty: "Penalty", enterPit: "ENTER PIT", push: "PUSH", problem: "PROBLEM",
         resetMode: "Reset Mode", nightMode: "NIGHT MODE", dry: "Dry", wet: "Rain", drying: "Drying", boxNow: "BOX NOW!", stayOnTrackUntilFurther: "Stay on track until further notice", pushMode: "PUSH MODE ACTIVE",
@@ -322,12 +389,26 @@ window.translations = {
         testBtn: "Test",
         demoBtn: "Demo",
         demoRace: "Demo",
+        modeRace: "Race Only", modeQualify: "Qualifying + Race",
+        qualifyTitle: "Qualifying", qualifyFormat: "Format", qualifyFmtSimple: "Simple", qualifyFmtSegments: "Q1/Q2/Q3",
+        qualifySegments: "Segments", qualifyDuration: "Qualifying Duration (min)", qualifyParticipation: "Driver Participation",
+        qualifyPartOne: "One", qualifyPartMulti: "Multiple", qualifyPartAll: "All", qualifyPartOneDriver: "Driver",
+        qualifyPartMultiCount: "Number of drivers", qualifyRuns: "Runs per driver",
+        qualifyPitRule: "Pit Stop Rule", qualifyPitNone: "None", qualifyPitAny: "Any stop", qualifyPitMin: "Min time",
+        qualifyPitMinSec: "Minimum seconds in pit", qualifyStop: "Stop Qualifying", qualifySession: "Session",
+        qualifyRun: "Run", qualifyStageResults: "Results", qualifyUpNext: "Up Next",
+        qualifyAdvance: "Advance to Next Stage", qualifySegmentTime: "Duration (min)",
+        qualifyNextRun: "Next Run", qualifyLastRun: "Last run", qualifyDoneStartRace: "Qualifying done! Set up race settings below and tap Start Race.",
+        startQualify: "Start Qualifying",
+        qualifyScreenTitle: "Qualifying",
         countdownPrefix: "Race starts in",
         countdownGo: "RACE TIME! Start now!",
         countdownAlert: "⏰ Race starts in {min} minutes!",
         autoStarting: "Auto-starting race...",
         lblAutoStart: "Auto-start at race time",
         lblDoublesHint: "Same driver back-to-back",
+        lblMaxConsecutive: "Max consecutive stints per driver",
+        consec2: "2", consec3: "3", consecUnlimited: "Unlimited",
         lblSquadsHint: "Rotate driver groups for night shifts & long races", lblSquadsHintActive: "Drivers split into {n} rotating groups",
         lblFuelHint: "Smart fuel stint constraints & tank management",
         statusHeader: "Status",
@@ -360,29 +441,60 @@ window.translations = {
         nextStintIn: "Your next stint in", stayAwake: "Stay awake", sleepOk: "You can sleep", yourStints: "Your Stints", noStintsFound: "No stints found for you", wakeUpAlert: "⏰ Wake up! Your stint is coming",
         viewerNameHint: "Enter your name to join the race", viewerNameLabel: "Your Name", requestToJoin: "Request to Join", waitingForApproval: "Waiting for host approval...", waitingForApprovalHint: "The race admin will approve your request", viewerNameTooShort: "Name must be at least 2 characters",
         // Pro & New Features
-        proFeature: "Pro Feature", proUpgradeTitle: "⭐ Upgrade to Pro", proUpgradeMsg: "Unlock Live Timing, AI Strategy, Squads, unlimited drivers & themes, and more!", proActivate: "Activate License", proDeactivate: "Deactivate", proEnterKey: "Enter license key...", proInvalidKey: "Invalid license key", proActivated: "⭐ Pro Activated!", proBadge: "PRO", proRequired: "requires Pro", proHaveCoupon: "🎟️ Have a coupon code?", proApplyCoupon: "Apply",
+        proFeature: "Pro Feature", proUpgradeTitle: "Upgrade to Pro", proUpgradeMsg: "Unlock Live Timing, AI Strategy, Squads, unlimited drivers & themes, and more!", proActivate: "Activate License", proDeactivate: "Deactivate", proEnterKey: "Enter license key...", proInvalidKey: "Invalid license key", proActivated: "⭐ Pro Activated!", proBadge: "PRO", proRequired: "requires Pro", proHaveCoupon: "🎟️ Have a coupon code?", proApplyCoupon: "Apply",
         undoPit: "Undo Pit", undoPitToast: "Pit entry undone", undoCountdown: "Undo",
         exportPdf: "Export PDF", exportImage: "Share as Image", exportingPdf: "Generating PDF...",
         onboardTitle1: "Welcome to Strateger!", onboardDesc1: "Your pit strategy assistant for endurance karting. Set up your first race in 3 easy steps.",
         onboardTitle2: "Set Up Your Race", onboardDesc2: "Enter race duration, required pit stops & min/max stint times at the top. Then add your drivers below — pick a starter and assign squads if you have night shifts.",
         onboardTitle3: "Preview & Fine-Tune", onboardDesc3: "Tap 'Preview Strategy' to see your full stint timeline. Drag stints to reorder, adjust durations, or save your plan to the cloud for later.",
         onboardTitle4: "Go Race!", onboardDesc4: "Hit 'Start Race' and the live dashboard takes over — track stint timers, get pit-window alerts, share a live link with your team, and manage driver swaps in real time.",
-        onboardSkip: "Skip", onboardNext: "Next", onboardDone: "Let's Go!",
+        onboardSkip: "I'll explore on my own", onboardNext: "Next", onboardDone: "Let's Go!",
+        onboardDemoHint: "The best way to get started is to run a quick demo race — it takes 30 seconds and shows you exactly how everything works.",
+        onboardRunDemo: "Run Demo Race",
+        onboardWelcome: "Welcome to Strateger!",
         soundMute: "Mute", soundUnmute: "Unmute",
         aiOptimize: "AI Optimize Strategy",
         raceFinished: "RACE FINISHED", totalPitTime: "Pit Time", raceStart: "Start", pitLog: "Pit Stop Log", drove: "Drove", pitNoun: "Pit", driveNoun: "Drive", stints: "Stints", avgStint: "Avg",
         demoSelectFeatures: "Select Pro features to test", demoLiveTimingDesc: "Simulated 20-team leaderboard", demoRainLabel: "Rain Simulation", demoRainDesc: "Random rain events with pace changes", demoPenaltyDesc: "Random penalties & time additions", demoTiresLabel: "Tire Degradation", demoTiresDesc: "Lap times increase over stint", demoSquadsLabel: "Squads", demoSquadsDesc: "Driver groups with rotation", demoFuelLabel: "Fuel Management", demoFuelDesc: "Track fuel level & pit for refueling",
         unitMin: "m", unitHour: "h",
+        raceHistory: "Race History", noRaceHistory: "No race history yet. Complete a race to see it here.",
+        proBadge: "PRO",
+        addDriverToGroup: "Add driver to group…", driverGroupHint: "Tap a driver to include/exclude from this race", clickToAddToRace: "Add to race", clickToRemoveFromRace: "Remove from race", removeFromGroup: "Remove from group", minTwoDrivers: "Minimum 2 drivers required",
+        lblTeamName: "Team Name",
+        heroTitle: "Race Strategy", heroSub: "Plan stints · Manage drivers · Win races",
+        qpSprint: "⚡ Sprint", qpEndurance: "🏁 Endurance", qpQualify: "⏱️ + Qualifying", qpDemo: "🎬 Demo", qpLibrary: "📚 Library",
+        heroCollapse: "Hide", heroExpand: "Setup",
+        rulesPdfBtn: "Upload Race Rules (PDF)", rulesPdfLoaded: "Rules Loaded",
+        rulesPdfModalTitle: "Race Rules PDF", rulesPdfModalSub: "AI will read the rules and suggest the best strategy in your language",
+        rulesPdfDrop: "Click to select PDF", rulesPdfDropHint: "Max ~50 pages recommended",
+        rulesPdfReading: "Reading PDF…", rulesPdfError: "Could not read PDF.", rulesPdfAiError: "AI returned no result.",
+        rulesPdfClear: "Remove", rulesPdfAnalyze: "Analyze & Suggest Strategy", pages: "pages",
+        saveSettings: "Save", backToRace: "← Back to Race",
+        livePreviewBtn: "▶ PLAN",
+        appearance: "Appearance",
+        // Live-timing widget strings
+        leaderLabel: "LEADER", pitLabel: "PIT",
+        lapSingular: "lap", lapPlural: "laps",
+        topKartsTitle: "TOP KARTS", numDecSep: ".",
+        raceClockLabel: "RACE TIME",
+        teamLogoUpload: "Upload Logo", teamLogoChange: "Change Logo", teamLogoRemove: "Remove",
+        teamLogoUploading: "Uploading…", teamLogoTooLarge: "File too large (max 2 MB)",
+        teamLogoInvalidType: "Only JPG, PNG or SVG allowed",
+        stintAvg: "Stint Avg",
+        norm: "NORM",
+        pitLatestExitIn: "Latest exit in", pitLeaveNow: "⚠️ Leave now!", pitLatestExitPassed: "🚨 EXIT OVERDUE",
+        autoPit: "Auto", autoPitOn: "Auto", autoPitOff: "Manual",
     },
     he: {
         ltSearchType: "סנן לפי:", ltTeam: "קבוצה", ltDriver: "נהג", ltKart: "מספר קארט", ltPlaceholder: "הכנס ערך לחיפוש...",
-        previewTitle: "תצוגה מקדימה", addToCalendar: "הוסף ליומן גוגל", timeline: "ציר זמן", driverSchedule: "לוח זמנים לנהגים", totalTime: "זמן כולל", close: "סגור",
+        previewTitle: "תצוגה מקדימה", addToCalendar: "הוסף ליומן גוגל", timeline: "ציר זמן", driverSchedule: "סיכום סטינטים", totalTime: "זמן כולל", close: "סגור",
         googleLogin: "התחבר עם Google", eventCreated: "האירוע נוצר בהצלחה!", eventError: "שגיאה ביצירת האירוע", raceEventTitle: "מירוץ סיבולת (Strateger)",
         errImpossible: "אסטרטגיה לא אפשרית!", errAvgHigh: "ממוצע סטינט גבוה מהמקסימום. הוסף עצירות או הגדל מקסימום.", errAvgLow: "ממוצע סטינט נמוך מהמינימום. הפחת עצירות או הקטן מינימום.",
         appTitle: "STRATEGER", appSubtitle: "ניהול אסטרטגיה למירוצי סיבולת", generalInfo: "הגדרות כלליות", advancedConstraints: "אילוצים מתקדמים", driverConfig: "נהגים", aiTitle: "אסטרטגיה חכמה (AI)",
         lblDuration: "משך (שעות)", lblStops: "עצירות חובה", lblMinStint: "מינימום סטינט (דק')", lblMaxStint: "מקסימום סטינט (דק')", lblPitTime: "זמן פיטס (שניות)", lblPitClosedStart: "🚫 סגור בהתחלה (דק')", lblPitClosedEnd: "🚫 סגור בסוף (דק')",
         lblMinDrive: "מינימום לנהג (דק')", lblMaxDrive: "מקסימום לנהג (דק')", lblBuffer: "התראה מראש (שניות)", lblDoubles: "אפשר דאבל סטינט", lblSquads: "שימוש בחוליות", lblFuel: "דלק", lblFuelTank: "מיכל דלק (דק')",
         addDriver: "+ הוסף", generateStrategy: "צור אסטרטגיה (AI)", previewStrategy: "תצוגה מקדימה", startRace: "התחל מירוץ", loadSaved: "טען מירוץ",
+        stepRaceSettings: "הגדרות מירוץ", stepDrivers: "נהגים", stepGo: "יאללה נתחיל", optional: "אופציונלי", joinAsDriverHint: "התחבר למירוץ שרץ במכשיר אחר",
         raceTime: "זמן מירוץ", stops: "עצירות", live: "חי", stop: "עצור", pos: "מיקום", last: "אחרון", best: "הטוב", targetStint: "יעד סטינט", buildTime: "צבור זמן",
         current: "נוכחי", stintTime: "זמן סטינט", nextDriver: "נהג הבא", penalty: "עונש", enterPit: "כניסה לפיטס", push: "קצב", problem: "תקלה",
         resetMode: "איפוס מצב", nightMode: "מצב לילה", dry: "יבש", wet: "גשם", drying: "מתייבש", boxNow: "היכנס עכשיו!", stayOnTrackUntilFurther: "הישאר במסלול עד הוראה חדשה", pushMode: "מצב PUSH פעיל",
@@ -442,12 +554,26 @@ window.translations = {
         testBtn: "בדיקה",
         demoBtn: "דמו",
         demoRace: "דמו",
+        modeRace: "מירוץ בלבד", modeQualify: "מקצה דירוג + מירוץ",
+        qualifyTitle: "מקצה דירוג", qualifyFormat: "פורמט", qualifyFmtSimple: "פשוט", qualifyFmtSegments: "Q1/Q2/Q3",
+        qualifySegments: "שלבים", qualifyDuration: "משך מקצה (דק')", qualifyParticipation: "השתתפות נהגים",
+        qualifyPartOne: "נהג אחד", qualifyPartMulti: "כמה נהגים", qualifyPartAll: "כולם", qualifyPartOneDriver: "נהג",
+        qualifyPartMultiCount: "מספר נהגים", qualifyRuns: "ריצות לנהג",
+        qualifyPitRule: "כלל פיטסטופ", qualifyPitNone: "ללא", qualifyPitAny: "כל עצירה", qualifyPitMin: "זמן מינימום",
+        qualifyPitMinSec: "שניות מינימום בפיטס", qualifyStop: "עצור מקצה", qualifySession: "סשן",
+        qualifyRun: "ריצה", qualifyStageResults: "תוצאות", qualifyUpNext: "הבא",
+        qualifyAdvance: "מעבר לשלב הבא", qualifySegmentTime: "משך (דק')",
+        qualifyNextRun: "ריצה הבאה", qualifyLastRun: "ריצה אחרונה", qualifyDoneStartRace: "מקצה הסתיים! הגדר הגדרות מירוץ למטה והתחל.",
+        startQualify: "התחל מקצה דירוג",
+        qualifyScreenTitle: "מקצה דירוג",
         countdownPrefix: "המירוץ מתחיל בעוד",
         countdownGo: "הגיע הזמן! התחל עכשיו!",
         countdownAlert: "⏰ המירוץ מתחיל בעוד {min} דקות!",
         autoStarting: "מתחיל מירוץ אוטומטית...",
         lblAutoStart: "התחלה אוטומטית בזמן המירוץ",
         lblDoublesHint: "אותו נהג שוב",
+        lblMaxConsecutive: "מקסימום סטינטים רצופים לנהג",
+        consec2: "2", consec3: "3", consecUnlimited: "ללא הגבלה",
         lblSquadsHint: "סיבוב חוליות נהגים למשמרות לילה ומירוצים ארוכים", lblSquadsHintActive: "הנהגים מחולקים ל-{n} חוליות מתחלפות",
         lblFuelHint: "אילוצי דלק חכמים וניהול מיכל",
         statusHeader: "מצב",
@@ -480,11 +606,8 @@ window.translations = {
         nextStintIn: "הסטינט הבא שלך בעוד", stayAwake: "הישאר ער", sleepOk: "אפשר לישון", yourStints: "הסטינטים שלך", noStintsFound: "לא נמצאו סטינטים עבורך", wakeUpAlert: "⏰ התעורר! הסטינט שלך מתקרב",
         viewerNameHint: "הכנס את שמך כדי להצטרף למירוץ", viewerNameLabel: "השם שלך", requestToJoin: "בקש להצטרף", waitingForApproval: "ממתין לאישור מנהל...", waitingForApprovalHint: "מנהל המירוץ יאשר את בקשתך", viewerNameTooShort: "השם חייב להכיל לפחות 2 תווים",
         proFeature: "תכונת Pro", proUpgradeTitle: "⭐ שדרג ל-Pro", proUpgradeMsg: "שחרר תזמון חי, אסטרטגיית AI, חוליות, נהגים וערכות נושא ללא הגבלה, ועוד!", proActivate: "הפעל רישיון", proDeactivate: "בטל", proEnterKey: "הכנס מפתח רישיון...", proInvalidKey: "מפתח רישיון לא תקין", proActivated: "⭐ Pro הופעל!", proBadge: "PRO", proRequired: "דרוש Pro", proHaveCoupon: "🎟️ יש לך קוד קופון?", proApplyCoupon: "החל",
-        onboardTitle1: "ברוכים הבאים ל-Strateger!", onboardDesc1: "העוזר האישי שלך לאסטרטגיית פיטים במירוצי סיבולת. הגדר את המירוץ הראשון שלך ב-3 צעדים פשוטים.",
-        onboardTitle2: "הגדר את המירוץ", onboardDesc2: "הזן משך מירוץ, עצירות פיט נדרשות וזמני סטינט מינימום/מקסימום למעלה. אחר כך הוסף נהגים — בחר מתניע והקצה חוליות אם יש לך משמרות לילה.",
-        onboardTitle3: "תצוגה מקדימה וכיוונון", onboardDesc3: "לחץ על 'תצוגה מקדימה' כדי לראות את ציר הזמן המלא. גרור סטינטים לסידור מחדש, שנה משכי זמן, או שמור את התוכנית לענן.",
-        onboardTitle4: "צא למירוץ!", onboardDesc4: "לחץ 'התחל מירוץ' והדשבורד החי נכנס לפעולה — עקוב אחרי טיימרים, קבל התראות פיט, שתף קישור חי עם הצוות, ונהל החלפות נהגים בזמן אמת.",
-        onboardSkip: "דלג", onboardNext: "הבא", onboardDone: "יאללה!",
+        onboardWelcome: "ברוכים הבאים ל-Strateger!", onboardDemoHint: "הדרך הכי טובה להתחיל היא להריץ מירוץ דמו קצר — לוקח 30 שניות ומראה בדיוק איך הכל עובד.", onboardRunDemo: "הרץ דמו",
+        onboardSkip: "אחקור לבד", onboardNext: "הבא", onboardDone: "יאללה!",
         aiOptimize: "ייעול אסטרטגיה (AI)",
         raceFinished: "המירוץ נגמר", totalPitTime: "זמן פיטס", raceStart: "התחלה", pitLog: "יומן עצירות", drove: "נהג", pitNoun: "פיט", driveNoun: "נסיעה", stints: "סטינטים", avgStint: "ממוצע",
         demoSelectFeatures: "בחר תכונות Pro לבדיקה", demoLiveTimingDesc: "טבלת 20 קבוצות מדומה", demoRainLabel: "סימולציית גשם", demoRainDesc: "אירועי גשם אקראיים עם שינוי קצב", demoPenaltyDesc: "עונשים אקראיים ותוספות זמן", demoTiresLabel: "בלאי צמיגים", demoTiresDesc: "זמני הקפה עולים במהלך הסטינט", demoSquadsLabel: "חוליות", demoSquadsDesc: "קבוצות נהגים עם רוטציה", demoFuelLabel: "ניהול דלק", demoFuelDesc: "מעקב אחר דלק ועצירה לתדלוק",
@@ -492,10 +615,36 @@ window.translations = {
         soundMute: "השתק", soundUnmute: "בטל השתקה",
         undoPit: "בטל כניסה", undoPitToast: "כניסה לפיטס בוטלה", undoCountdown: "בטל",
         exportPdf: "ייצוא PDF", exportImage: "שתף כתמונה", exportingPdf: "מייצא PDF...",
+        raceHistory: "היסטוריית מירוצים", noRaceHistory: "אין היסטוריית מירוצים. סיים מירוץ כדי לראות אותו כאן.",
+        proBadge: "PRO",
+        addDriverToGroup: "הוסף נהג לקבוצה…", driverGroupHint: "לחץ על נהג כדי להוסיף/להסיר מהמירוץ", clickToAddToRace: "הוסף למירוץ", clickToRemoveFromRace: "הסר מהמירוץ", removeFromGroup: "הסר מהקבוצה", minTwoDrivers: "נדרשים לפחות 2 נהגים",
+        lblTeamName: "שם הקבוצה",
+        heroTitle: "אסטרטגיית מירוץ", heroSub: "תכנן סטינטים · נהל נהגים · נצח",
+        qpSprint: "⚡ ספרינט", qpEndurance: "🏁 סיבולת", qpQualify: "⏱️ + מקצה דירוג", qpDemo: "🎬 דמו", qpLibrary: "📚 ספרייה",
+        heroCollapse: "הסתר", heroExpand: "הגדרות",
+        rulesPdfBtn: "העלה תקנון מירוץ (PDF)", rulesPdfLoaded: "תקנון נטען",
+        rulesPdfModalTitle: "תקנון מירוץ PDF", rulesPdfModalSub: "הבינה המלאכותית תקרא את התקנון ותציע אסטרטגיה מיטבית בשפתך",
+        rulesPdfDrop: "לחץ לבחירת PDF", rulesPdfDropHint: "מומלץ עד ~50 עמודים",
+        rulesPdfReading: "קורא PDF…", rulesPdfError: "לא ניתן לקרוא את ה-PDF.", rulesPdfAiError: "הבינה המלאכותית לא החזירה תוצאה.",
+        rulesPdfClear: "הסר", rulesPdfAnalyze: "נתח והצע אסטרטגיה", pages: "עמודים",
+        saveSettings: "שמור", backToRace: "← חזרה למירוץ",
+        livePreviewBtn: "▶ תוכנית",
+        appearance: "מראה",
+        leaderLabel: "מוביל", pitLabel: "פיטס",
+        lapSingular: "הקפה", lapPlural: "הקפות",
+        topKartsTitle: "קארטים מובילים", numDecSep: ".",
+        raceClockLabel: "זמן מירוץ",
+        teamLogoUpload: "העלה לוגו", teamLogoChange: "החלף לוגו", teamLogoRemove: "הסר",
+        teamLogoUploading: "מעלה…", teamLogoTooLarge: "קובץ גדול מדי (מקסימום 2 MB)",
+        teamLogoInvalidType: "רק JPG, PNG או SVG",
+        stintAvg: "ממוצע סטינט",
+        norm: "רגיל",
+        pitLatestExitIn: "יציאה אחרונה בעוד", pitLeaveNow: "⚠️ צא עכשיו!", pitLatestExitPassed: "🚨 יציאה באיחור",
+        autoPit: "אוטו", autoPitOn: "אוטו", autoPitOff: "ידני",
     },
     fr: {
         ltSearchType: "Filtrer par:", ltTeam: "Équipe", ltDriver: "Pilote", ltKart: "Kart n°", ltPlaceholder: "Rechercher...",
-        previewTitle: "Aperçu de la Stratégie", addToCalendar: "Ajouter au Calendrier", timeline: "Chronologie", driverSchedule: "Planning Pilotes", totalTime: "Temps Total", close: "Fermer",
+        previewTitle: "Aperçu de la Stratégie", addToCalendar: "Ajouter au Calendrier", timeline: "Chronologie", driverSchedule: "Résumé des Relais", totalTime: "Temps Total", close: "Fermer",
         googleLogin: "Connexion Google", eventCreated: "Événement créé !", eventError: "Erreur création", raceEventTitle: "Course d'Endurance",
         errImpossible: "Stratégie Impossible!", errAvgHigh: "Moyenne > Max. Ajoutez des arrêts.", errAvgLow: "Moyenne < Min. Réduisez les arrêts.",
         appSubtitle: "Gestionnaire de Stratégie", generalInfo: "Info Générale", advancedConstraints: "Contraintes Avancées", driverConfig: "Pilotes", aiTitle: "Stratégie IA",
@@ -561,12 +710,25 @@ window.translations = {
         testBtn: "Test",
         demoBtn: "Démo",
         demoRace: "Démo",
+        modeRace: "Course seule", modeQualify: "Qualifications + Course",
+        qualifyTitle: "Qualifications", qualifyFormat: "Format", qualifyFmtSimple: "Simple", qualifyFmtSegments: "Q1/Q2/Q3",
+        qualifySegments: "Segments", qualifyDuration: "Durée qualif. (min)", qualifyParticipation: "Participation",
+        qualifyPartOne: "Un pilote", qualifyPartMulti: "Plusieurs", qualifyPartAll: "Tous", qualifyPartOneDriver: "Pilote",
+        qualifyPartMultiCount: "Nombre de pilotes", qualifyRuns: "Tours par pilote",
+        qualifyPitRule: "Règle stand", qualifyPitNone: "Aucun", qualifyPitAny: "Tout arrêt", qualifyPitMin: "Temps min",
+        qualifyPitMinSec: "Secondes min au stand", qualifyStop: "Arrêter qualif.", qualifySession: "Session",
+        qualifyRun: "Tour", qualifyStageResults: "Résultats", qualifyUpNext: "Suivant",
+        qualifyAdvance: "Passer à la prochaine manche", qualifySegmentTime: "Durée (min)",
+        qualifyNextRun: "Tour suivant", qualifyLastRun: "Dernier tour", qualifyDoneStartRace: "Qualif. terminées! Configurez la course et démarrez.",
+        startQualify: "Lancer les qualifications", qualifyScreenTitle: "Qualifications",
         countdownPrefix: "Course dans",
         countdownGo: "C'EST L'HEURE ! Démarrez !",
         countdownAlert: "⏰ Course dans {min} minutes !",
         autoStarting: "Démarrage auto...",
         lblAutoStart: "Démarrage auto à l'heure",
         lblDoublesHint: "Même pilote consécutivement",
+        lblMaxConsecutive: "Relais consécutifs max par pilote",
+        consec2: "2", consec3: "3", consecUnlimited: "Illimité",
         lblSquadsHint: "Rotation des équipes pour les relais de nuit & longues courses", lblSquadsHintActive: "Pilotes répartis en {n} groupes rotatifs",
         lblFuelHint: "Contraintes carburant & gestion du réservoir",
         statusHeader: "Statut",
@@ -612,10 +774,28 @@ window.translations = {
         soundMute: "Muet", soundUnmute: "Activer le son",
         undoPit: "Annuler Pit", undoPitToast: "Entrée pit annulée", undoCountdown: "Annuler",
         exportPdf: "Exporter PDF", exportImage: "Partager en image", exportingPdf: "Génération PDF...",
+        heroTitle: "Stratégie de Course", heroSub: "Planifier · Gérer · Gagner",
+        qpSprint: "⚡ Sprint", qpEndurance: "🏁 Endurance", qpQualify: "⏱️ + Qualif.", qpDemo: "🎬 Démo", qpLibrary: "📚 Bibliothèque",
+        heroCollapse: "Réduire", heroExpand: "Config",
+        rulesPdfBtn: "Importer le règlement (PDF)", rulesPdfLoaded: "Règlement chargé",
+        rulesPdfModalTitle: "Règlement de Course PDF", rulesPdfModalSub: "L'IA lira le règlement et suggérera la meilleure stratégie dans votre langue",
+        rulesPdfDrop: "Cliquez pour sélectionner un PDF", rulesPdfDropHint: "Max ~50 pages recommandées",
+        rulesPdfReading: "Lecture du PDF…", rulesPdfError: "Impossible de lire le PDF.", rulesPdfAiError: "L'IA n'a retourné aucun résultat.",
+        rulesPdfClear: "Supprimer", rulesPdfAnalyze: "Analyser et suggérer une stratégie", pages: "pages",
+        leaderLabel: "LEADER", pitLabel: "BOX",
+        lapSingular: "tour", lapPlural: "tours",
+        topKartsTitle: "TOP KARTS", numDecSep: ",",
+        raceClockLabel: "TEMPS DE COURSE",
+        teamLogoUpload: "Importer logo", teamLogoChange: "Changer logo", teamLogoRemove: "Supprimer",
+        teamLogoUploading: "Envoi…", teamLogoTooLarge: "Fichier trop grand (max 2 Mo)",
+        teamLogoInvalidType: "Seulement JPG, PNG ou SVG",
+        stintAvg: "Moy. Relais",
+        norm: "NORM",
+        pitLatestExitIn: "Sortie max dans", pitLeaveNow: "⚠️ Sortez maintenant!", pitLatestExitPassed: "🚨 SORTIE EN RETARD",
     },
     pt: {
         ltSearchType: "Filtrar por:", ltTeam: "Equipe", ltDriver: "Piloto", ltKart: "Kart nº", ltPlaceholder: "Pesquisar...",
-        previewTitle: "Visualização da Estratégia", addToCalendar: "Adicionar ao Calendário", timeline: "Linha do Tempo", driverSchedule: "Escala de Pilotos", totalTime: "Tempo Total", close: "Fechar",
+        previewTitle: "Visualização da Estratégia", addToCalendar: "Adicionar ao Calendário", timeline: "Linha do Tempo", driverSchedule: "Resumo dos Stints", totalTime: "Tempo Total", close: "Fechar",
         googleLogin: "Login Google", eventCreated: "Evento criado!", eventError: "Erro ao criar", raceEventTitle: "Corrida de Resistência",
         errImpossible: "Estratégia Impossível!", errAvgHigh: "Média > Máx. Aumente paradas.", errAvgLow: "Média < Mín. Reduza paradas.",
         appSubtitle: "Gestor de Estratégia", generalInfo: "Info Geral", advancedConstraints: "Restrições Avançadas", driverConfig: "Pilotos", aiTitle: "Estratégia IA",
@@ -676,12 +856,23 @@ window.translations = {
         testBtn: "Teste",
         demoBtn: "Demo",
         demoRace: "Demo",
+        modeRace: "Apenas Corrida", modeQualify: "Classificação + Corrida",
+        qualifyTitle: "Classificação", qualifyFormat: "Formato", qualifyFmtSimple: "Simples", qualifyFmtSegments: "Q1/Q2/Q3",
+        qualifySegments: "Segmentos", qualifyDuration: "Duração classif. (min)", qualifyParticipation: "Participação",
+        qualifyPartOne: "Um piloto", qualifyPartMulti: "Vários", qualifyPartAll: "Todos", qualifyPartOneDriver: "Piloto",
+        qualifyPitRule: "Regra de box", qualifyPitNone: "Sem regra", qualifyPitMustChange: "Deve trocar",
+        qualifyRun: "Volta", qualifyStageResults: "Resultados", qualifyUpNext: "A seguir",
+        qualifyAdvance: "Avançar para a próxima fase", qualifySegmentTime: "Duração (min)",
+        qualifyNextRun: "Próxima volta", qualifyLastRun: "Última volta", qualifyDoneStartRace: "Classif. concluída! Configure a corrida e inicie.",
+        startQualify: "Iniciar classificação", qualifyScreenTitle: "Classificação",
         countdownPrefix: "Corrida começa em",
         countdownGo: "HORA DA CORRIDA! Inicie agora!",
         countdownAlert: "⏰ Corrida começa em {min} minutos!",
         autoStarting: "Iniciando automaticamente...",
         lblAutoStart: "Início automático no horário",
         lblDoublesHint: "Mesmo piloto consecutivamente",
+        lblMaxConsecutive: "Máx. stints consecutivos por piloto",
+        consec2: "2", consec3: "3", consecUnlimited: "Ilimitado",
         lblSquadsHint: "Rotação de equipes para turnos noturnos & corridas longas", lblSquadsHintActive: "Pilotos divididos em {n} grupos rotativos",
         lblFuelHint: "Restrições inteligentes de combustível & gestão do tanque",
         statusHeader: "Status",
@@ -728,10 +919,35 @@ window.translations = {
         undoPit: "Cancelar Box", undoPitToast: "Entrada cancelada", undoCountdown: "Cancelar",
         exportPdf: "Exportar PDF", exportImage: "Compartilhar Imagem", exportingPdf: "Gerando PDF...",
         stintsLeft: "STINTS RESTANTES", future: "FUTURO", addStop: "ADICIONAR PARADA", finalLap: "VOLTA FINAL",
+        heroTitle: "Estratégia de Corrida", heroSub: "Planejar · Gerir · Vencer",
+        qpSprint: "⚡ Sprint", qpEndurance: "🏁 Resistência", qpQualify: "⏱️ + Qualif.", qpDemo: "🎬 Demo", qpLibrary: "📚 Biblioteca",
+        heroCollapse: "Recolher", heroExpand: "Config",
+        rulesPdfBtn: "Carregar Regulamento (PDF)", rulesPdfLoaded: "Regulamento Carregado",
+        rulesPdfModalTitle: "Regulamento PDF", rulesPdfModalSub: "A IA lê as regras e sugere a melhor estratégia no seu idioma",
+        rulesPdfDrop: "Clique para selecionar PDF", rulesPdfDropHint: "Máx ~50 páginas recomendadas",
+        rulesPdfReading: "Lendo PDF…", rulesPdfError: "Não foi possível ler o PDF.", rulesPdfAiError: "IA não retornou resultado.",
+        rulesPdfClear: "Remover", rulesPdfAnalyze: "Analisar e Sugerir Estratégia", pages: "páginas",
+        saveSettings: "Salvar", backToRace: "← Voltar à Corrida",
+        livePreviewBtn: "▶ PLANO",
+        appearance: "Aparência",
+        raceHistory: "Histórico de Corridas", noRaceHistory: "Sem histórico. Complete uma corrida para ver aqui.",
+        qualifyPartMultiCount: "Número de pilotos", qualifyRuns: "Voltas por piloto",
+        qualifyPitMin: "Tempo mínimo", qualifyPitMinSec: "Segundos mínimos no box",
+        onboardWelcome: "Bem-vindo ao Strateger!", onboardDemoHint: "A melhor forma de começar é correr uma corrida demo — leva 30 segundos e mostra tudo como funciona.", onboardRunDemo: "Correr Demo",
+        leaderLabel: "LÍDER", pitLabel: "BOX",
+        lapSingular: "volta", lapPlural: "voltas",
+        topKartsTitle: "TOP KARTS", numDecSep: ",",
+        raceClockLabel: "TEMPO DE CORRIDA",
+        teamLogoUpload: "Enviar logo", teamLogoChange: "Alterar logo", teamLogoRemove: "Remover",
+        teamLogoUploading: "Enviando…", teamLogoTooLarge: "Ficheiro demasiado grande (máx. 2 MB)",
+        teamLogoInvalidType: "Apenas JPG, PNG ou SVG",
+        stintAvg: "Méd. Stint",
+        norm: "NORM",
+        pitLatestExitIn: "Saída máx. em", pitLeaveNow: "⚠️ Saia agora!", pitLatestExitPassed: "🚨 SAÍDA ATRASADA",
     },
     ru: {
         ltSearchType: "Фильтр по:", ltTeam: "Команда", ltDriver: "Пилот", ltKart: "Карт №", ltPlaceholder: "Поиск...",
-        previewTitle: "Предпросмотр стратегии", addToCalendar: "Добавить в календарь", timeline: "Хронология", driverSchedule: "Расписание", totalTime: "Общее время", close: "Закрыть",
+        previewTitle: "Предпросмотр стратегии", addToCalendar: "Добавить в календарь", timeline: "Хронология", driverSchedule: "Сводка стинтов", totalTime: "Общее время", close: "Закрыть",
         googleLogin: "Вход через Google", eventCreated: "Событие создано!", eventError: "Ошибка создания", raceEventTitle: "Гонка на выносливость",
         errImpossible: "Невозможная стратегия!", errAvgHigh: "Средн. > Макс. Добавьте остановок.", errAvgLow: "Средн. < Мин. Уменьшите остановок.",
         appSubtitle: "Менеджер стратегии", generalInfo: "Основная информация", advancedConstraints: "Продвинутые ограничения", driverConfig: "Пилоты", aiTitle: "ИИ стратегия",
@@ -796,12 +1012,23 @@ window.translations = {
         testBtn: "Тест",
         demoBtn: "Демо",
         demoRace: "Демо",
+        modeRace: "Только гонка", modeQualify: "Квалификация + Гонка",
+        qualifyTitle: "Квалификация", qualifyFormat: "Формат", qualifyFmtSimple: "Простой", qualifyFmtSegments: "Q1/Q2/Q3",
+        qualifySegments: "Сегменты", qualifyDuration: "Длит. квал. (мин)", qualifyParticipation: "Участие гонщиков",
+        qualifyPartOne: "Один", qualifyPartMulti: "Несколько", qualifyPartAll: "Все", qualifyPartOneDriver: "Гонщик",
+        qualifyPitRule: "Правило пит-стопа", qualifyPitNone: "Без правила", qualifyPitMustChange: "Обязательная смена",
+        qualifyRun: "Заезд", qualifyStageResults: "Результаты", qualifyUpNext: "Следующий",
+        qualifyAdvance: "Перейти к следующему этапу", qualifySegmentTime: "Длит. (мин)",
+        qualifyNextRun: "Следующий заезд", qualifyLastRun: "Последний заезд", qualifyDoneStartRace: "Квал. завершена! Настройте гонку и запускайте.",
+        startQualify: "Начать квалификацию", qualifyScreenTitle: "Квалификация",
         countdownPrefix: "Гонка через",
         countdownGo: "ВРЕМЯ ГОНКИ! Стартуйте!",
         countdownAlert: "⏰ Гонка через {min} минут!",
         autoStarting: "Автостарт...",
         lblAutoStart: "Автостарт во время гонки",
         lblDoublesHint: "Одинаковый пилот подряд",
+        lblMaxConsecutive: "Макс. подряд стинтов на пилота",
+        consec2: "2", consec3: "3", consecUnlimited: "Без ограничений",
         lblSquadsHint: "Ротация групп для ночных смен и длинных гонок", lblSquadsHintActive: "Пилоты разделены на {n} сменных группы",
         lblFuelHint: "Умные ограничения по топливу и управление баком",
         statusHeader: "Статус",
@@ -847,10 +1074,33 @@ window.translations = {
         soundMute: "Без звука", soundUnmute: "Включить звук",
         undoPit: "Отменить пит", undoPitToast: "Вход в пит отменён", undoCountdown: "Отмена",
         exportPdf: "Экспорт PDF", exportImage: "Поделиться картинкой", exportingPdf: "Создание PDF...",
+        heroTitle: "Стратегия гонки", heroSub: "Планировать · Управлять · Побеждать",
+        qpSprint: "⚡ Спринт", qpEndurance: "🏁 Выносливость", qpQualify: "⏱️ + Квали", qpDemo: "🎬 Демо", qpLibrary: "📚 Библиотека",
+        heroCollapse: "Скрыть", heroExpand: "Настройки",
+        rulesPdfBtn: "Загрузить регламент (PDF)", rulesPdfLoaded: "Регламент загружен",
+        rulesPdfModalTitle: "Регламент гонки PDF", rulesPdfModalSub: "ИИ прочитает правила и предложит лучшую стратегию на вашем языке",
+        rulesPdfDrop: "Нажмите для выбора PDF", rulesPdfDropHint: "Рекомендуется до ~50 страниц",
+        rulesPdfReading: "Чтение PDF…", rulesPdfError: "Не удалось прочитать PDF.", rulesPdfAiError: "ИИ не вернул результат.",
+        rulesPdfClear: "Удалить", rulesPdfAnalyze: "Анализировать и предложить стратегию", pages: "страниц",
+        saveSettings: "Сохранить", backToRace: "← Назад к гонке",
+        livePreviewBtn: "▶ ПЛАН",
+        appearance: "Внешний вид",
+        raceHistory: "История гонок", noRaceHistory: "Нет истории. Завершите гонку, чтобы увидеть её здесь.",
+        onboardWelcome: "Добро пожаловать в Strateger!", onboardDemoHint: "Лучший способ начать — запустить демо-гонку. Занимает 30 секунд и показывает всё в действии.", onboardRunDemo: "Запустить демо",
+        leaderLabel: "ЛИДЕР", pitLabel: "ПИТ",
+        lapSingular: "круг", lapPlural: "кругов",
+        topKartsTitle: "ТОП КАРТЫ", numDecSep: ",",
+        raceClockLabel: "ВРЕМЯ ГОНКИ",
+        teamLogoUpload: "Загрузить лого", teamLogoChange: "Изменить лого", teamLogoRemove: "Удалить",
+        teamLogoUploading: "Загрузка…", teamLogoTooLarge: "Файл слишком большой (макс. 2 МБ)",
+        teamLogoInvalidType: "Только JPG, PNG или SVG",
+        stintAvg: "Ср. Стинт",
+        norm: "НОРМ",
+        pitLatestExitIn: "Выезд не позднее", pitLeaveNow: "⚠️ Выезжай!", pitLatestExitPassed: "🚨 ВЫЕЗД ПРОСРОЧЕН",
     },
     ar: {
         ltSearchType: "تصفية حسب:", ltTeam: "الفريق", ltDriver: "السائق", ltKart: "رقم الكارت", ltPlaceholder: "البحث...",
-        previewTitle: "معاينة الإستراتيجية", addToCalendar: "إضافة للتقويم", timeline: "الجدول الزمني", driverSchedule: "جدول السائقين", totalTime: "الوقت الإجمالي", close: "إغلاق",
+        previewTitle: "معاينة الإستراتيجية", addToCalendar: "إضافة للتقويم", timeline: "الجدول الزمني", driverSchedule: "ملخص الجولات", totalTime: "الوقت الإجمالي", close: "إغلاق",
         googleLogin: "تسجيل الدخول عبر Google", eventCreated: "تم إنشاء الحدث!", eventError: "خطأ في الإنشاء", raceEventTitle: "سباق التحمل",
         errImpossible: "إستراتيجية غير ممكنة!", errAvgHigh: "المتوسط > الحد الأقصى. أضف محطات.", errAvgLow: "المتوسط < الحد الأدنى. اقلل المحطات.",
         appSubtitle: "مدير الإستراتيجية", generalInfo: "معلومات عامة", advancedConstraints: "القيود المتقدمة", driverConfig: "السائقون", aiTitle: "إستراتيجية AI",
@@ -915,12 +1165,23 @@ window.translations = {
         testBtn: "اختبار",
         demoBtn: "عرض توضيحي",
         demoRace: "عرض",
+        modeRace: "سباق فقط", modeQualify: "التأهل + السباق",
+        qualifyTitle: "التأهل", qualifyFormat: "الصيغة", qualifyFmtSimple: "بسيط", qualifyFmtSegments: "Q1/Q2/Q3",
+        qualifySegments: "المراحل", qualifyDuration: "مدة التأهل (دقائق)", qualifyParticipation: "مشاركة السائقين",
+        qualifyPartOne: "واحد", qualifyPartMulti: "متعددون", qualifyPartAll: "الكل", qualifyPartOneDriver: "سائق",
+        qualifyPitRule: "قاعدة الحفرة", qualifyPitNone: "بلا قاعدة", qualifyPitMustChange: "يجب التغيير",
+        qualifyRun: "جولة", qualifyStageResults: "النتائج", qualifyUpNext: "التالي",
+        qualifyAdvance: "الانتقال للمرحلة التالية", qualifySegmentTime: "المدة (دق)",
+        qualifyNextRun: "الجولة التالية", qualifyLastRun: "الجولة الأخيرة", qualifyDoneStartRace: "انتهى التأهل! اضبط إعدادات السباق وابدأ.",
+        startQualify: "بدء التأهل", qualifyScreenTitle: "التأهل",
         countdownPrefix: "السباق يبدأ خلال",
         countdownGo: "وقت السباق! ابدأ الآن!",
         countdownAlert: "⏰ السباق يبدأ خلال {min} دقائق!",
         autoStarting: "بدء تلقائي...",
         lblAutoStart: "بدء تلقائي في موعد السباق",
         lblDoublesHint: "نفس السائق متتالي",
+        lblMaxConsecutive: "الحد الأقصى للجولات المتتالية لكل سائق",
+        consec2: "2", consec3: "3", consecUnlimited: "غير محدود",
         lblSquadsHint: "تبديل مجموعات السائقين للمناوبات الليلية والسباقات الطويلة", lblSquadsHintActive: "السائقون مقسمون إلى {n} مجموعات متناوبة",
         lblFuelHint: "إدارة ذكية لقيود الوقود والخزان",
         statusHeader: "الحالة",
@@ -966,10 +1227,35 @@ window.translations = {
         soundMute: "كتم الصوت", soundUnmute: "إلغاء كتم الصوت",
         undoPit: "إلغاء الحفرة", undoPitToast: "تم إلغاء دخول الحفرة", undoCountdown: "إلغاء",
         exportPdf: "تصدير PDF", exportImage: "مشاركة كصورة", exportingPdf: "إنشاء PDF...",
+        heroTitle: "استراتيجية السباق", heroSub: "خطط · أدر · انتصر",
+        qpSprint: "⚡ سبرينت", qpEndurance: "🏁 تحمل", qpQualify: "⏱️ + تأهيل", qpDemo: "🎬 عرض", qpLibrary: "📚 مكتبة",
+        heroCollapse: "إخفاء", heroExpand: "إعدادات",
+        rulesPdfBtn: "رفع قواعد السباق (PDF)", rulesPdfLoaded: "تم تحميل القواعد",
+        rulesPdfModalTitle: "قواعد السباق PDF", rulesPdfModalSub: "سيقرأ الذكاء الاصطناعي القواعد ويقترح أفضل استراتيجية بلغتك",
+        rulesPdfDrop: "انقر لتحديد PDF", rulesPdfDropHint: "يُنصح بحد أقصى ~50 صفحة",
+        rulesPdfReading: "قراءة PDF…", rulesPdfError: "تعذّر قراءة PDF.", rulesPdfAiError: "لم يُرجع الذكاء الاصطناعي نتيجة.",
+        rulesPdfClear: "إزالة", rulesPdfAnalyze: "تحليل واقتراح استراتيجية", pages: "صفحات",
+        saveSettings: "حفظ", backToRace: "← العودة للسباق",
+        livePreviewBtn: "▶ خطة",
+        appearance: "المظهر",
+        raceHistory: "سجل السباقات", noRaceHistory: "لا يوجد سجل. أكمل سباقاً لرؤيته هنا.",
+        onboardWelcome: "مرحباً بك في Strateger!", onboardDemoHint: "أفضل طريقة للبدء هي تشغيل سباق تجريبي — يستغرق 30 ثانية ويُظهر كيف يعمل كل شيء.", onboardRunDemo: "تشغيل سباق تجريبي",
+        qualifyPartMultiCount: "عدد السائقين", qualifyRuns: "جولات لكل سائق",
+        qualifyPitMin: "الحد الأدنى للوقت", qualifyPitMinSec: "الحد الأدنى من الثواني في الحفرة",
+        leaderLabel: "القائد", pitLabel: "حفرة",
+        lapSingular: "دورة", lapPlural: "دورات",
+        topKartsTitle: "أفضل الكارتات", numDecSep: ".",
+        raceClockLabel: "وقت السباق",
+        teamLogoUpload: "رفع الشعار", teamLogoChange: "تغيير الشعار", teamLogoRemove: "إزالة",
+        teamLogoUploading: "جارٍ الرفع…", teamLogoTooLarge: "الملف كبير جدًا (الحد الأقصى 2 ميغابايت)",
+        teamLogoInvalidType: "JPG أو PNG أو SVG فقط",
+        stintAvg: "متوسط الشوط",
+        norm: "عادي",
+        pitLatestExitIn: "أقصى وقت للخروج", pitLeaveNow: "⚠️ اخرج الآن!", pitLatestExitPassed: "🚨 تأخر الخروج",
     },
     es: {
         ltSearchType: "Filtrar por:", ltTeam: "Equipo", ltDriver: "Piloto", ltKart: "Kart nº", ltPlaceholder: "Buscar...",
-        previewTitle: "Vista previa de la estrategia", addToCalendar: "Añadir al calendario", timeline: "Cronología", driverSchedule: "Horario de pilotos", totalTime: "Tiempo total", close: "Cerrar",
+        previewTitle: "Vista previa de la estrategia", addToCalendar: "Añadir al calendario", timeline: "Cronología", driverSchedule: "Resumen de Stints", totalTime: "Tiempo total", close: "Cerrar",
         googleLogin: "Iniciar sesión con Google", eventCreated: "¡Evento creado!", eventError: "Error al crear", raceEventTitle: "Carrera de resistencia",
         errImpossible: "¡Estrategia imposible!", errAvgHigh: "Promedio > Máx. Añada paradas.", errAvgLow: "Promedio < Mín. Reduzca paradas.",
         appSubtitle: "Gestor de estrategia", generalInfo: "Información general", advancedConstraints: "Restricciones avanzadas", driverConfig: "Pilotos", aiTitle: "Estrategia IA",
@@ -1034,12 +1320,23 @@ window.translations = {
         testBtn: "Prueba",
         demoBtn: "Demostración",
         demoRace: "Demo",
+        modeRace: "Solo carrera", modeQualify: "Clasificación + Carrera",
+        qualifyTitle: "Clasificación", qualifyFormat: "Formato", qualifyFmtSimple: "Simple", qualifyFmtSegments: "Q1/Q2/Q3",
+        qualifySegments: "Segmentos", qualifyDuration: "Duración clasif. (min)", qualifyParticipation: "Participación",
+        qualifyPartOne: "Uno", qualifyPartMulti: "Varios", qualifyPartAll: "Todos", qualifyPartOneDriver: "Piloto",
+        qualifyPitRule: "Regla de boxes", qualifyPitNone: "Sin regla", qualifyPitMustChange: "Cambio obligatorio",
+        qualifyRun: "Vuelta", qualifyStageResults: "Resultados", qualifyUpNext: "Siguiente",
+        qualifyAdvance: "Avanzar a la siguiente etapa", qualifySegmentTime: "Duración (min)",
+        qualifyNextRun: "Siguiente vuelta", qualifyLastRun: "Última vuelta", qualifyDoneStartRace: "¡Clasif. terminada! Configura la carrera y empieza.",
+        startQualify: "Iniciar clasificación", qualifyScreenTitle: "Clasificación",
         countdownPrefix: "Carrera en",
         countdownGo: "¡HORA DE LA CARRERA! ¡Empieza ahora!",
         countdownAlert: "⏰ ¡Carrera en {min} minutos!",
         autoStarting: "Iniciando automáticamente...",
         lblAutoStart: "Inicio automático a la hora",
         lblDoublesHint: "Mismo piloto consecutivamente",
+        lblMaxConsecutive: "Máx. stints consecutivos por piloto",
+        consec2: "2", consec3: "3", consecUnlimited: "Ilimitado",
         lblSquadsHint: "Rotación de escuadrones para turnos nocturnos y carreras largas", lblSquadsHintActive: "Pilotos divididos en {n} grupos rotativos",
         lblFuelHint: "Restricciones inteligentes de combustible y gestión del depósito",
         statusHeader: "Estado",
@@ -1085,9 +1382,34 @@ window.translations = {
         soundMute: "Silenciar", soundUnmute: "Activar sonido",
         undoPit: "Deshacer Pit", undoPitToast: "Entrada al pit deshecha", undoCountdown: "Deshacer",
         exportPdf: "Exportar PDF", exportImage: "Compartir Imagen", exportingPdf: "Generando PDF...",
+        heroTitle: "Estrategia de Carrera", heroSub: "Planificar · Gestionar · Ganar",
+        qpSprint: "⚡ Sprint", qpEndurance: "🏁 Resistencia", qpQualify: "⏱️ + Clasif.", qpDemo: "🎬 Demo", qpLibrary: "📚 Biblioteca",
+        heroCollapse: "Ocultar", heroExpand: "Config",
+        rulesPdfBtn: "Subir Reglamento (PDF)", rulesPdfLoaded: "Reglamento Cargado",
+        rulesPdfModalTitle: "Reglamento PDF", rulesPdfModalSub: "La IA leerá las reglas y sugerirá la mejor estrategia en tu idioma",
+        rulesPdfDrop: "Clic para seleccionar PDF", rulesPdfDropHint: "Máx ~50 páginas recomendadas",
+        rulesPdfReading: "Leyendo PDF…", rulesPdfError: "No se pudo leer el PDF.", rulesPdfAiError: "La IA no devolvió ningún resultado.",
+        rulesPdfClear: "Eliminar", rulesPdfAnalyze: "Analizar y sugerir estrategia", pages: "páginas",
+        saveSettings: "Guardar", backToRace: "← Volver a la Carrera",
+        livePreviewBtn: "▶ PLAN",
+        appearance: "Apariencia",
+        raceHistory: "Historial de Carreras", noRaceHistory: "Sin historial. Completa una carrera para verlo aquí.",
+        onboardWelcome: "¡Bienvenido a Strateger!", onboardDemoHint: "La mejor forma de empezar es correr una demo rápida — tarda 30 segundos y muestra exactamente cómo funciona todo.", onboardRunDemo: "Correr Demo",
+        qualifyPartMultiCount: "Número de pilotos", qualifyRuns: "Vueltas por piloto",
+        qualifyPitMin: "Tiempo mínimo", qualifyPitMinSec: "Segundos mínimos en boxes",
+        leaderLabel: "LÍDER", pitLabel: "BOX",
+        lapSingular: "vuelta", lapPlural: "vueltas",
+        topKartsTitle: "TOP KARTS", numDecSep: ",",
+        raceClockLabel: "TIEMPO DE CARRERA",
+        teamLogoUpload: "Subir logo", teamLogoChange: "Cambiar logo", teamLogoRemove: "Quitar",
+        teamLogoUploading: "Subiendo…", teamLogoTooLarge: "Archivo demasiado grande (máx. 2 MB)",
+        teamLogoInvalidType: "Solo JPG, PNG o SVG",
+        stintAvg: "Prom. Stint",
+        norm: "NORM",
+        pitLatestExitIn: "Salida máx. en", pitLeaveNow: "⚠️ ¡Sal ahora!", pitLatestExitPassed: "🚨 SALIDA TARDÍA",
     },
     it: {
-        ltSearchType: "Filtra per:", ltTeam: "Squadra", ltDriver: "Pilota", ltKart: "Kart n°", ltPlaceholder: "Ricerca...", previewTitle: "Anteprima strategia", addToCalendar: "Aggiungi al calendario", timeline: "Cronologia", driverSchedule: "Orario piloti", totalTime: "Tempo totale", close: "Chiudi",
+        ltSearchType: "Filtra per:", ltTeam: "Squadra", ltDriver: "Pilota", ltKart: "Kart n°", ltPlaceholder: "Ricerca...", previewTitle: "Anteprima strategia", addToCalendar: "Aggiungi al calendario", timeline: "Cronologia", driverSchedule: "Riepilogo Stint", totalTime: "Tempo totale", close: "Chiudi",
         googleLogin: "Accedi con Google", eventCreated: "Evento creato!", eventError: "Errore creazione", raceEventTitle: "Gara di resistenza", errImpossible: "Strategia impossibile!", errAvgHigh: "Media > Max. Aggiungi soste.", errAvgLow: "Media < Min. Riduci soste.",
         appSubtitle: "Gestore strategia", generalInfo: "Info generale", advancedConstraints: "Vincoli avanzati", driverConfig: "Piloti", aiTitle: "Strategia IA", lblDuration: "Durata (H)", lblStops: "Soste richieste", lblMinStint: "Min stint", lblMaxStint: "Max stint", lblPitTime: "Tempo pit", lblPitClosedStart: "🚫 Chiuso inizio", lblPitClosedEnd: "🚫 Chiuso fine",
         lblMinDrive: "Min totale (min)", lblMaxDrive: "Max totale (min)", lblBuffer: "Avviso (s)", lblDoubles: "Consenti doppi", lblSquads: "Usa squadre", lblFuel: "Carburante", lblFuelTank: "Serbatoio (min)", addDriver: "+ Aggiungi", generateStrategy: "Genera (IA)", previewStrategy: "Anteprima", startRace: "Inizia", loadSaved: "Carica",
@@ -1101,12 +1423,23 @@ window.translations = {
         testBtn: "Prova",
         demoBtn: "Demo",
         demoRace: "Demo",
+        modeRace: "Solo gara", modeQualify: "Qualifiche + Gara",
+        qualifyTitle: "Qualifiche", qualifyFormat: "Formato", qualifyFmtSimple: "Semplice", qualifyFmtSegments: "Q1/Q2/Q3",
+        qualifySegments: "Segmenti", qualifyDuration: "Durata qualifiche (min)", qualifyParticipation: "Partecipazione",
+        qualifyPartOne: "Uno", qualifyPartMulti: "Più piloti", qualifyPartAll: "Tutti", qualifyPartOneDriver: "Pilota",
+        qualifyPitRule: "Regola box", qualifyPitNone: "Nessuna regola", qualifyPitMustChange: "Cambio obbligatorio",
+        qualifyRun: "Giro", qualifyStageResults: "Risultati", qualifyUpNext: "Prossimo",
+        qualifyAdvance: "Avanza alla fase successiva", qualifySegmentTime: "Durata (min)",
+        qualifyNextRun: "Prossimo giro", qualifyLastRun: "Ultimo giro", qualifyDoneStartRace: "Qualifiche terminate! Configura la gara e inizia.",
+        startQualify: "Inizia qualifiche", qualifyScreenTitle: "Qualifiche",
         countdownPrefix: "Gara tra",
         countdownGo: "ORA DELLA GARA! Parti ora!",
         countdownAlert: "⏰ Gara tra {min} minuti!",
         autoStarting: "Avvio automatico...",
         lblAutoStart: "Avvio automatico all'orario",
         lblDoublesHint: "Stesso pilota consecutivamente",
+        lblMaxConsecutive: "Max stint consecutivi per pilota",
+        consec2: "2", consec3: "3", consecUnlimited: "Illimitato",
         lblSquadsHint: "Rotazione squadre per turni notturni & gare lunghe", lblSquadsHintActive: "Piloti divisi in {n} gruppi a rotazione",
         lblFuelHint: "Vincoli carburante intelligenti & gestione serbatoio",
         statusHeader: "Stato",
@@ -1138,7 +1471,7 @@ window.translations = {
         driverEntryHint: "Inserisci l'ID gara per connetterti", driverEntryLabel: "ID gara", driverConnect: "Connetti come pilota", driverIdTooShort: "L'ID è troppo corto", joinAsDriver: "Unisciti come pilota", backToSetup: "← Torna alle impostazioni",
         nextStintIn: "Il tuo prossimo stint tra", stayAwake: "Resta sveglio", sleepOk: "Puoi dormire", yourStints: "I Tuoi Stint", noStintsFound: "Nessuno stint trovato per te", wakeUpAlert: "⏰ Svegliati! Il tuo stint si avvicina",
         viewerNameHint: "Inserisci il tuo nome per unirti alla gara", viewerNameLabel: "Il Tuo Nome", requestToJoin: "Richiedi di unirti", waitingForApproval: "In attesa di approvazione...", waitingForApprovalHint: "L'amministratore della gara approverà la tua richiesta", viewerNameTooShort: "Il nome deve avere almeno 2 caratteri",
-        proFeature: "Funzione Pro", proUpgradeTitle: "⭐ Passa a Pro", proUpgradeMsg: "Sblocca Cronometraggio Live, Strategia IA, Squadre, piloti e temi illimitati, e altro!", proActivate: "Attiva licenza", proDeactivate: "Disattiva", proEnterKey: "Inserisci la chiave di licenza...", proInvalidKey: "Chiave di licenza non valida", proActivated: "⭐ Pro Attivato!", proBadge: "PRO", proRequired: "richiede Pro", proHaveCoupon: "🎟️ Hai un codice coupon?", proApplyCoupon: "Applica",
+        proFeature: "Funzione Pro", proUpgradeTitle: "Passa a Pro", proUpgradeMsg: "Sblocca Cronometraggio Live, Strategia IA, Squadre, piloti e temi illimitati, e altro!", proActivate: "Attiva licenza", proDeactivate: "Disattiva", proEnterKey: "Inserisci la chiave di licenza...", proInvalidKey: "Chiave di licenza non valida", proActivated: "⭐ Pro Attivato!", proBadge: "PRO", proRequired: "richiede Pro", proHaveCoupon: "🎟️ Hai un codice coupon?", proApplyCoupon: "Applica",
         onboardTitle1: "Benvenuto su Strateger!", onboardDesc1: "Il tuo assistente strategico per le gare di endurance in kart. Configura la tua prima gara in 3 semplici passi.",
         onboardTitle2: "Configura la gara", onboardDesc2: "Inserisci durata, soste obbligatorie e tempi stint min/max in alto. Aggiungi i tuoi piloti sotto — scegli chi parte e assegna le squadre per i turni notturni.",
         onboardTitle3: "Anteprima e regolazioni", onboardDesc3: "Tocca 'Anteprima Strategia' per vedere il piano completo. Trascina gli stint per riordinare, modifica le durate o salva il piano nel cloud.",
@@ -1152,10 +1485,35 @@ window.translations = {
         soundMute: "Muto", soundUnmute: "Riattiva",
         undoPit: "Annulla Pit", undoPitToast: "Ingresso pit annullato", undoCountdown: "Annulla",
         exportPdf: "Esporta PDF", exportImage: "Condividi Immagine", exportingPdf: "Generazione PDF...",
+        heroTitle: "Strategia di Gara", heroSub: "Pianifica · Gestisci · Vinci",
+        qpSprint: "⚡ Sprint", qpEndurance: "🏁 Resistenza", qpQualify: "⏱️ + Qualifiche", qpDemo: "🎬 Demo", qpLibrary: "📚 Libreria",
+        heroCollapse: "Nascondi", heroExpand: "Config",
+        rulesPdfBtn: "Carica Regolamento (PDF)", rulesPdfLoaded: "Regolamento Caricato",
+        rulesPdfModalTitle: "Regolamento PDF", rulesPdfModalSub: "L'IA legge le regole e suggerisce la migliore strategia nella tua lingua",
+        rulesPdfDrop: "Clicca per selezionare PDF", rulesPdfDropHint: "Max ~50 pagine consigliate",
+        rulesPdfReading: "Lettura PDF…", rulesPdfError: "Impossibile leggere il PDF.", rulesPdfAiError: "L'IA non ha restituito risultati.",
+        rulesPdfClear: "Rimuovi", rulesPdfAnalyze: "Analizza e suggerisci strategia", pages: "pagine",
+        saveSettings: "Salva", backToRace: "← Torna alla Gara",
+        livePreviewBtn: "▶ PIANO",
+        appearance: "Aspetto",
+        raceHistory: "Cronologia Gare", noRaceHistory: "Nessuna cronologia. Completa una gara per vederla qui.",
+        onboardWelcome: "Benvenuto su Strateger!", onboardDemoHint: "Il modo migliore per iniziare è una demo rapida — ci vogliono 30 secondi e mostra esattamente come funziona tutto.", onboardRunDemo: "Avvia Demo",
+        qualifyPartMultiCount: "Numero di piloti", qualifyRuns: "Giri per pilota",
+        qualifyPitMin: "Tempo minimo", qualifyPitMinSec: "Secondi minimi ai box",
+        leaderLabel: "LEADER", pitLabel: "BOX",
+        lapSingular: "giro", lapPlural: "giri",
+        topKartsTitle: "TOP KART", numDecSep: ",",
+        raceClockLabel: "TEMPO GARA",
+        teamLogoUpload: "Carica logo", teamLogoChange: "Cambia logo", teamLogoRemove: "Rimuovi",
+        teamLogoUploading: "Caricamento…", teamLogoTooLarge: "File troppo grande (max 2 MB)",
+        teamLogoInvalidType: "Solo JPG, PNG o SVG",
+        stintAvg: "Media Stint",
+        norm: "NORM",
+        pitLatestExitIn: "Uscita max tra", pitLeaveNow: "⚠️ Esci ora!", pitLatestExitPassed: "🚨 USCITA IN RITARDO",
     },
     ka: {
         ltSearchType: "ფილტრი:", ltTeam: "გუნდი", ltDriver: "მძღოლი", ltKart: "კარტი #", ltPlaceholder: "ძებნა...",
-        previewTitle: "სტრატეგიის წინასწარი ნახვა", addToCalendar: "დაამატე კალენდარში", timeline: "ქრონოლოგია", driverSchedule: "მძღოლების განრიგი", totalTime: "მোცემი დრო", close: "დახურვა",
+        previewTitle: "სტრატეგიის წინასწარი ნახვა", addToCalendar: "დაამატე კალენდარში", timeline: "ქრონოლოგია", driverSchedule: "სტინტების შეჯამება", totalTime: "მোცემი დრო", close: "დახურვა",
         googleLogin: "შეიყვანე Google-ით", eventCreated: "ღვაბი შეიქმნა!", eventError: "შეცდომა", raceEventTitle: "გამძლეობის რბოლა",
         errImpossible: "შეუძლებელი სტრატეგია!", errAvgHigh: "საშუალო > მაქსიმუმი. დაამატე გაჩერება.", errAvgLow: "საშუალო < მინიმუმი. კლებითი გაჩერება.",
         appSubtitle: "სტრატეგიის მენეჯერი", generalInfo: "ზოგადი ინფორმაცია", advancedConstraints: "დამატებითი შეზღუდვები", driverConfig: "მძღოლები", aiTitle: "AI სტრატეგია",
@@ -1218,12 +1576,23 @@ window.translations = {
         testBtn: "ტესტი",
         demoBtn: "დემო",
         demoRace: "დემო",
+        modeRace: "მხოლოდ რბოლა", modeQualify: "კვალიფიკაცია + რბოლა",
+        qualifyTitle: "კვალიფიკაცია", qualifyFormat: "ფორმატი", qualifyFmtSimple: "მარტივი", qualifyFmtSegments: "Q1/Q2/Q3",
+        qualifySegments: "სეგმენტები", qualifyDuration: "კვალ. ხანგრძლ. (წთ)", qualifyParticipation: "მონაწილეობა",
+        qualifyPartOne: "ერთი", qualifyPartMulti: "რამდენიმე", qualifyPartAll: "ყველა", qualifyPartOneDriver: "მძღოლი",
+        qualifyPitRule: "პიტ-სტოპის წესი", qualifyPitNone: "წესის გარეშე", qualifyPitMustChange: "სავალდებულო ცვლა",
+        qualifyRun: "გარბენი", qualifyStageResults: "შედეგები", qualifyUpNext: "შემდეგი",
+        qualifyAdvance: "გადასვლა შემდეგ ეტაპზე", qualifySegmentTime: "ხანგრძლ. (წთ)",
+        qualifyNextRun: "შემდეგი გარბენი", qualifyLastRun: "ბოლო გარბენი", qualifyDoneStartRace: "კვალიფ. დასრულდა! დააყენე რბოლის პარამეტრები და დაიწყე.",
+        startQualify: "კვალიფიკაციის დაწყება", qualifyScreenTitle: "კვალიფიკაცია",
         countdownPrefix: "რბოლა იწყება",
         countdownGo: "რბოლის დრო! დაიწყეთ!",
         countdownAlert: "⏰ რბოლა {min} წუთში!",
         autoStarting: "ავტომატური დაწყება...",
         lblAutoStart: "ავტომატური დაწყება",
         lblDoublesHint: "ერთი და იგივე მძღოლი ზედიზედ",
+        lblMaxConsecutive: "მაქს. თანამიმდევრული სტინტები მძღოლზე",
+        consec2: "2", consec3: "3", consecUnlimited: "შეუზღუდავი",
         lblSquadsHint: "ჯგუფების როტაცია ღამის ცვლებისთვის და გრძელი რბოლებისთვის", lblSquadsHintActive: "მძღოლები დაყოფილია {n} მონაცვლე ჯგუფად",
         lblFuelHint: "ჭკვიანი საწვავის შეზღუდვები და ავზის მართვა",
         statusHeader: "სტატუსი",
@@ -1269,9 +1638,35 @@ window.translations = {
         soundMute: "დადუმება", soundUnmute: "ხმის ჩართვა",
         undoPit: "გაუქმება", undoPitToast: "პიტი გაუქმებულია", undoCountdown: "გაუქმება",
         exportPdf: "PDF ექსპორტი", exportImage: "გაზიარება სურათად", exportingPdf: "PDF-ის გენერაცია...",
+        heroTitle: "სარბოლო სტრატეგია", heroSub: "დაგეგმე · მართე · გაიმარჯვე",
+        qpSprint: "⚡ სპრინტი", qpEndurance: "🏁 გამძლეობა", qpQualify: "⏱️ + კვალიფ.", qpDemo: "🎬 დემო", qpLibrary: "📚 ბიბლიოთეკა",
+        heroCollapse: "დამალვა", heroExpand: "პარამეტრები",
+        driverExitedEarly: "მძღოლი ადრე გამოვიდა", driverExitedEarlyNotice: "მძღოლი პიტიდან გამოვიდა საჭირო დროამდე — დაადასტურეთ მისაღებად.",
+        rulesPdfBtn: "PDF-ით ჩამოტვირთე წესები", rulesPdfLoaded: "წესები ჩაიტვირთა",
+        rulesPdfModalTitle: "სარბოლო წესები PDF", rulesPdfModalSub: "AI წაიკითხავს წესებს და შემოგთავაზებს საუკეთესო სტრატეგიას",
+        rulesPdfDrop: "დააჭირე PDF-ის ასარჩევად", rulesPdfDropHint: "მაქს. ~50 გვერდი",
+        rulesPdfReading: "PDF-ის წაკითხვა…", rulesPdfError: "PDF-ის წაკითხვა ვერ მოხერხდა.", rulesPdfAiError: "AI-ს შედეგი არ დაბრუნებია.",
+        rulesPdfClear: "წაშლა", rulesPdfAnalyze: "ანალიზი და სტრატეგიის შემოთავაზება", pages: "გვერდი",
+        saveSettings: "შენახვა", backToRace: "← რბოლაზე დაბრუნება",
+        livePreviewBtn: "▶ გეგმა",
+        appearance: "გარეგნობა",
+        raceHistory: "რბოლის ისტორია", noRaceHistory: "ისტორია არ არის. დაასრულე რბოლა სანახავად.",
+        onboardWelcome: "კეთილი იყოს Strateger-ში!", onboardDemoHint: "საუკეთესო გზაა სწრაფი დემო — 30 წამი სჭირდება და ყველაფერს გიჩვენებს.", onboardRunDemo: "დემოს გაშვება",
+        qualifyPartMultiCount: "მძღოლების რაოდენობა", qualifyRuns: "სირბილი მძღოლზე",
+        qualifyPitMin: "მინიმალური დრო", qualifyPitMinSec: "მინიმალური წამები პიტში",
+        leaderLabel: "ლიდერი", pitLabel: "პიტი",
+        lapSingular: "წრე", lapPlural: "წრე",
+        topKartsTitle: "საუკეთესო კარტები", numDecSep: ".",
+        raceClockLabel: "რბოლის დრო",
+        teamLogoUpload: "ლოგოს ატვირთვა", teamLogoChange: "ლოგოს შეცვლა", teamLogoRemove: "წაშლა",
+        teamLogoUploading: "იტვირთება…", teamLogoTooLarge: "ფაილი ძალიან დიდია (მაქს. 2 MB)",
+        teamLogoInvalidType: "მხოლოდ JPG, PNG ან SVG",
+        stintAvg: "სტინტის საშ.",
+        norm: "NORM",
+        pitLatestExitIn: "გასვლა მაქს.", pitLeaveNow: "⚠️ გადი ახლავე!", pitLatestExitPassed: "🚨 გასვლა ვადაგასული",
     },
     de: {
-        ltSearchType: "Filter nach:", ltTeam: "Team", ltDriver: "Fahrer", ltKart: "Kart Nr.", ltPlaceholder: "Suchen...", previewTitle: "Strategievorschau", addToCalendar: "Zum Kalender hinzufügen", timeline: "Zeitleiste", driverSchedule: "Fahrerplan", totalTime: "Gesamtzeit", close: "Schließen",
+        ltSearchType: "Filter nach:", ltTeam: "Team", ltDriver: "Fahrer", ltKart: "Kart Nr.", ltPlaceholder: "Suchen...", previewTitle: "Strategievorschau", addToCalendar: "Zum Kalender hinzufügen", timeline: "Zeitleiste", driverSchedule: "Stint-Übersicht", totalTime: "Gesamtzeit", close: "Schließen",
         googleLogin: "Mit Google anmelden", eventCreated: "Ereignis erstellt!", eventError: "Erstellungsfehler", raceEventTitle: "Ausdauerrennen", errImpossible: "Unmögliche Strategie!", errAvgHigh: "Durchschn. > Max. Stopps hinzufügen.", errAvgLow: "Durchschn. < Min. Stopps reduzieren.",
         appSubtitle: "Strategie-Manager", generalInfo: "Allgemeine Informationen", advancedConstraints: "Erweiterte Einschränkungen", driverConfig: "Fahrer", aiTitle: "KI-Strategie", lblDuration: "Dauer (Std.)", lblStops: "Erforderliche Stops", lblMinStint: "Min. Stint", lblMaxStint: "Max. Stint", lblPitTime: "Boxenzeit", lblPitClosedStart: "🚫 Start geschlossen", lblPitClosedEnd: "🚫 Ende geschlossen",
         lblMinDrive: "Min. Gesamt (min)", lblMaxDrive: "Max. Gesamt (min)", lblBuffer: "Warnung (s)", lblDoubles: "Doppel erlauben", lblSquads: "Staffeln verwenden", lblFuel: "Kraftstoff", lblFuelTank: "Tank (min)", addDriver: "+ Hinzufügen", generateStrategy: "Generieren (KI)", previewStrategy: "Vorschau", startRace: "Starten", loadSaved: "Laden",
@@ -1285,12 +1680,23 @@ window.translations = {
         testBtn: "Test",
         demoBtn: "Demo",
         demoRace: "Demo",
+        modeRace: "Nur Rennen", modeQualify: "Qualifying + Rennen",
+        qualifyTitle: "Qualifying", qualifyFormat: "Format", qualifyFmtSimple: "Einfach", qualifyFmtSegments: "Q1/Q2/Q3",
+        qualifySegments: "Segmente", qualifyDuration: "Qualifying-Dauer (Min)", qualifyParticipation: "Fahrerbeteiligung",
+        qualifyPartOne: "Einer", qualifyPartMulti: "Mehrere", qualifyPartAll: "Alle", qualifyPartOneDriver: "Fahrer",
+        qualifyPitRule: "Box-Regel", qualifyPitNone: "Keine Regel", qualifyPitMustChange: "Pflicht-Wechsel",
+        qualifyRun: "Runde", qualifyStageResults: "Ergebnisse", qualifyUpNext: "Nächster",
+        qualifyAdvance: "Zur nächsten Stufe", qualifySegmentTime: "Dauer (Min)",
+        qualifyNextRun: "Nächste Runde", qualifyLastRun: "Letzte Runde", qualifyDoneStartRace: "Qualifying fertig! Renneinstellungen konfigurieren und starten.",
+        startQualify: "Qualifying starten", qualifyScreenTitle: "Qualifying",
         countdownPrefix: "Rennen in",
         countdownGo: "RENNZEIT! Jetzt starten!",
         countdownAlert: "⏰ Rennen in {min} Minuten!",
         autoStarting: "Automatischer Start...",
         lblAutoStart: "Autostart zur Rennzeit",
         lblDoublesHint: "Derselbe Fahrer hintereinander",
+        lblMaxConsecutive: "Max. aufeinanderfolgende Stints pro Fahrer",
+        consec2: "2", consec3: "3", consecUnlimited: "Unbegrenzt",
         lblSquadsHint: "Staffelrotation für Nachtschichten & Langstreckenrennen", lblSquadsHintActive: "Fahrer in {n} rotierende Gruppen aufgeteilt",
         lblFuelHint: "Intelligente Kraftstoffbeschränkungen & Tankmanagement",
         statusHeader: "Status",
@@ -1336,9 +1742,35 @@ window.translations = {
         soundMute: "Stummschalten", soundUnmute: "Ton einschalten",
         undoPit: "Pit rückgängig", undoPitToast: "Pit-Einfahrt rückgängig", undoCountdown: "Rückgängig",
         exportPdf: "PDF exportieren", exportImage: "Als Bild teilen", exportingPdf: "PDF wird erstellt...",
+        heroTitle: "Rennstrategie", heroSub: "Planen · Verwalten · Gewinnen",
+        qpSprint: "⚡ Sprint", qpEndurance: "🏁 Ausdauer", qpQualify: "⏱️ + Quali", qpDemo: "🎬 Demo", qpLibrary: "📚 Bibliothek",
+        heroCollapse: "Ausblenden", heroExpand: "Setup",
+        exitPits: "Exit Pits",
+        rulesPdfBtn: "Reglement hochladen (PDF)", rulesPdfLoaded: "Reglement geladen",
+        rulesPdfModalTitle: "Rennreglement PDF", rulesPdfModalSub: "Die KI liest die Regeln und schlägt die beste Strategie in deiner Sprache vor",
+        rulesPdfDrop: "Klicke zum PDF auswählen", rulesPdfDropHint: "Max. ~50 Seiten empfohlen",
+        rulesPdfReading: "PDF wird gelesen…", rulesPdfError: "PDF konnte nicht gelesen werden.", rulesPdfAiError: "KI hat kein Ergebnis zurückgegeben.",
+        rulesPdfClear: "Entfernen", rulesPdfAnalyze: "Analysieren und Strategie vorschlagen", pages: "Seiten",
+        saveSettings: "Speichern", backToRace: "← Zurück zum Rennen",
+        livePreviewBtn: "▶ PLAN",
+        appearance: "Darstellung",
+        raceHistory: "Rennverlauf", noRaceHistory: "Kein Verlauf. Beende ein Rennen, um es hier zu sehen.",
+        onboardWelcome: "Willkommen bei Strateger!", onboardDemoHint: "Am besten startest du mit einer kurzen Demo — dauert 30 Sekunden und zeigt alles in Aktion.", onboardRunDemo: "Demo starten",
+        qualifyPartMultiCount: "Anzahl Fahrer", qualifyRuns: "Runden pro Fahrer",
+        qualifyPitMin: "Mindestzeit", qualifyPitMinSec: "Mindestsekunden in der Box",
+        leaderLabel: "FÜHREND", pitLabel: "BOX",
+        lapSingular: "Runde", lapPlural: "Runden",
+        topKartsTitle: "TOP KARTS", numDecSep: ",",
+        raceClockLabel: "RENNZEIT",
+        teamLogoUpload: "Logo hochladen", teamLogoChange: "Logo ändern", teamLogoRemove: "Entfernen",
+        teamLogoUploading: "Wird hochgeladen…", teamLogoTooLarge: "Datei zu groß (max. 2 MB)",
+        teamLogoInvalidType: "Nur JPG, PNG oder SVG",
+        stintAvg: "Stint Ø",
+        norm: "NORM",
+        pitLatestExitIn: "Spätestausfahrt in", pitLeaveNow: "⚠️ Jetzt ausfahren!", pitLatestExitPassed: "🚨 AUSFAHRT ÜBERFÄLLIG",
     },
     ja: {
-        ltSearchType: "フィルタリング:", ltTeam: "チーム", ltDriver: "ドライバー", ltKart: "カート番号", ltPlaceholder: "検索...", previewTitle: "戦略プレビュー", addToCalendar: "カレンダーに追加", timeline: "タイムライン", driverSchedule: "ドライバースケジュール", totalTime: "総時間", close: "閉じる",
+        ltSearchType: "フィルタリング:", ltTeam: "チーム", ltDriver: "ドライバー", ltKart: "カート番号", ltPlaceholder: "検索...", previewTitle: "戦略プレビュー", addToCalendar: "カレンダーに追加", timeline: "タイムライン", driverSchedule: "スティント概要", totalTime: "総時間", close: "閉じる",
         googleLogin: "Googleでログイン", eventCreated: "イベントが作成されました!", eventError: "作成エラー", raceEventTitle: "耐久レース", errImpossible: "不可能な戦略!", errAvgHigh: "平均 > 最大。ピットストップを追加してください。", errAvgLow: "平均 < 最小。ピットストップを減らしてください。",
         appSubtitle: "戦略マネージャー", generalInfo: "一般情報", advancedConstraints: "高度な制約", driverConfig: "ドライバー", aiTitle: "AI戦略", lblDuration: "期間 (時間)", lblStops: "必要なピットストップ", lblMinStint: "最小スティント", lblMaxStint: "最大スティント", lblPitTime: "ピットタイム", lblPitClosedStart: "🚫 開始時に閉鎖", lblPitClosedEnd: "🚫 終了時に閉鎖",
         lblMinDrive: "最小合計 (分)", lblMaxDrive: "最大合計 (分)", lblBuffer: "警告 (秒)", lblDoubles: "ダブルを許可", lblSquads: "スクワッドを使用", lblFuel: "燃料", lblFuelTank: "燃料タンク (分)", addDriver: "+ 追加", generateStrategy: "生成 (AI)", previewStrategy: "プレビュー", startRace: "スタート", loadSaved: "読み込み",
@@ -1352,12 +1784,23 @@ window.translations = {
         testBtn: "テスト",
         demoBtn: "デモ",
         demoRace: "デモ",
+        modeRace: "レースのみ", modeQualify: "予選 + レース",
+        qualifyTitle: "予選", qualifyFormat: "フォーマット", qualifyFmtSimple: "シンプル", qualifyFmtSegments: "Q1/Q2/Q3",
+        qualifySegments: "セグメント", qualifyDuration: "予選時間 (分)", qualifyParticipation: "ドライバー参加",
+        qualifyPartOne: "一人", qualifyPartMulti: "複数", qualifyPartAll: "全員", qualifyPartOneDriver: "ドライバー",
+        qualifyPitRule: "ピットルール", qualifyPitNone: "ルールなし", qualifyPitMustChange: "交代必須",
+        qualifyRun: "ラン", qualifyStageResults: "結果", qualifyUpNext: "次",
+        qualifyAdvance: "次のステージへ", qualifySegmentTime: "時間 (分)",
+        qualifyNextRun: "次のラン", qualifyLastRun: "最終ラン", qualifyDoneStartRace: "予選終了！レース設定をして開始してください。",
+        startQualify: "予選開始", qualifyScreenTitle: "予選",
         countdownPrefix: "レースまで",
         countdownGo: "レース時間！今すぐスタート！",
         countdownAlert: "⏰ レースまで{min}分！",
         autoStarting: "自動スタート中...",
         lblAutoStart: "レース時間に自動スタート",
         lblDoublesHint: "同じドライバーが連続",
+        lblMaxConsecutive: "ドライバーごとの最大連続スティント",
+        consec2: "2", consec3: "3", consecUnlimited: "無制限",
         lblSquadsHint: "夜間シフトとロングレース用のグループローテーション", lblSquadsHintActive: "ドライバーが{n}つのローテーショングループに分割",
         lblFuelHint: "スマート燃料制約とタンク管理",
         statusHeader: "ステータス",
@@ -1403,10 +1846,36 @@ window.translations = {
         soundMute: "ミュート", soundUnmute: "ミュート解除",
         undoPit: "ピット取消", undoPitToast: "ピット入場取消", undoCountdown: "取消",
         exportPdf: "PDFエクスポート", exportImage: "画像で共有", exportingPdf: "PDF生成中...",
+        heroTitle: "レース戦略", heroSub: "計画 · 管理 · 勝利",
+        qpSprint: "⚡ スプリント", qpEndurance: "🏁 耐久", qpQualify: "⏱️ + 予選", qpDemo: "🎬 デモ", qpLibrary: "📚 ライブラリ",
+        heroCollapse: "隠す", heroExpand: "設定",
+        exitPits: "Exit Pits",
+        rulesPdfBtn: "ルールブックをアップロード (PDF)", rulesPdfLoaded: "ルールブックが読み込まれました",
+        rulesPdfModalTitle: "レース規則 PDF", rulesPdfModalSub: "AIがルールを読み取り、あなたの言語で最適な戦略を提案します",
+        rulesPdfDrop: "クリックしてPDFを選択", rulesPdfDropHint: "最大〜50ページ推奨",
+        rulesPdfReading: "PDFを読み込み中…", rulesPdfError: "PDFを読み込めませんでした。", rulesPdfAiError: "AIが結果を返しませんでした。",
+        rulesPdfClear: "削除", rulesPdfAnalyze: "分析して戦略を提案", pages: "ページ",
+        saveSettings: "保存", backToRace: "← レースに戻る",
+        livePreviewBtn: "▶ プラン",
+        appearance: "外観",
+        raceHistory: "レース履歴", noRaceHistory: "履歴なし。レースを完了するとここに表示されます。",
+        onboardWelcome: "Strategerへようこそ！", onboardDemoHint: "まずデモを試してみましょう — 30秒でアクションを確認できます。", onboardRunDemo: "デモを開始",
+        qualifyPartMultiCount: "ドライバー数", qualifyRuns: "ドライバーあたりの周回数",
+        qualifyPitMin: "最小時間", qualifyPitMinSec: "ピット内の最小秒数",
+        leaderLabel: "リーダー", pitLabel: "ピット",
+        lapSingular: "周", lapPlural: "周",
+        topKartsTitle: "トップカート", numDecSep: ".",
+        raceClockLabel: "レース時間",
+        teamLogoUpload: "ロゴをアップロード", teamLogoChange: "ロゴを変更", teamLogoRemove: "削除",
+        teamLogoUploading: "アップロード中…", teamLogoTooLarge: "ファイルが大きすぎます（最大 2 MB）",
+        teamLogoInvalidType: "JPG、PNG、または SVG のみ",
+        stintAvg: "スティント平均",
+        norm: "NORM",
+        pitLatestExitIn: "最遅出発まで", pitLeaveNow: "⚠️ 今すぐ出発!", pitLatestExitPassed: "🚨 出発超過",
     },
     el: {
         ltSearchType: "Φιλτράρισμα:", ltTeam: "Ομάδα", ltDriver: "Οδηγός", ltKart: "Καρτ αρ.", ltPlaceholder: "Αναζήτηση...",
-        previewTitle: "Προεπισκόπηση Στρατηγικής", addToCalendar: "Προσθήκη στο ημερολόγιο", timeline: "Χρονοδιάγραμμα", driverSchedule: "Πρόγραμμα Οδηγών", totalTime: "Συνολικός Χρόνος", close: "Κλείσιμο",
+        previewTitle: "Προεπισκόπηση Στρατηγικής", addToCalendar: "Προσθήκη στο ημερολόγιο", timeline: "Χρονοδιάγραμμα", driverSchedule: "Σύνοψη Γύρων", totalTime: "Συνολικός Χρόνος", close: "Κλείσιμο",
         googleLogin: "Σύνδεση με Google", eventCreated: "Το γεγονός δημιουργήθηκε!", eventError: "Σφάλμα δημιουργίας", raceEventTitle: "Αγώνας αντοχής",
         errImpossible: "Αδύνατη στρατηγική!", errAvgHigh: "Μέσος > Μέγιστος. Προσθέστε στάσεις.", errAvgLow: "Μέσος < Ελάχιστος. Μειώστε στάσεις.",
         appSubtitle: "Διαχειριστής Στρατηγικής", generalInfo: "Γενικές Πληροφορίες", advancedConstraints: "Προχωρημένοι Περιορισμοί", driverConfig: "Οδηγοί", aiTitle: "Στρατηγική AI",
@@ -1471,12 +1940,23 @@ window.translations = {
         testBtn: "Δοκιμή",
         demoBtn: "Demo",
         demoRace: "Demo",
+        modeRace: "Μόνο αγώνας", modeQualify: "Κατατακτήρια + Αγώνας",
+        qualifyTitle: "Κατατακτήρια", qualifyFormat: "Μορφή", qualifyFmtSimple: "Απλή", qualifyFmtSegments: "Q1/Q2/Q3",
+        qualifySegments: "Τμήματα", qualifyDuration: "Διάρκεια κατατακτ. (λεπτ)", qualifyParticipation: "Συμμετοχή",
+        qualifyPartOne: "Ένας", qualifyPartMulti: "Πολλοί", qualifyPartAll: "Όλοι", qualifyPartOneDriver: "Οδηγός",
+        qualifyPitRule: "Κανόνας πιτ", qualifyPitNone: "Χωρίς κανόνα", qualifyPitMustChange: "Υποχρεωτική αλλαγή",
+        qualifyRun: "Γύρος", qualifyStageResults: "Αποτελέσματα", qualifyUpNext: "Επόμενος",
+        qualifyAdvance: "Προχώρα στο επόμενο στάδιο", qualifySegmentTime: "Διάρκεια (λεπτ)",
+        qualifyNextRun: "Επόμενος γύρος", qualifyLastRun: "Τελευταίος γύρος", qualifyDoneStartRace: "Κατατακτήρια τέλος! Ρύθμισε τον αγώνα και ξεκίνα.",
+        startQualify: "Έναρξη κατατακτήριων", qualifyScreenTitle: "Κατατακτήρια",
         countdownPrefix: "Αγώνας σε",
         countdownGo: "ΩΡΑ ΑΓΩΝΑ! Ξεκινήστε τώρα!",
         countdownAlert: "⏰ Αγώνας σε {min} λεπτά!",
         autoStarting: "Αυτόματη εκκίνηση...",
         lblAutoStart: "Αυτόματη εκκίνηση στην ώρα",
         lblDoublesHint: "Ίδιος οδηγός διαδοχικά",
+        lblMaxConsecutive: "Μέγ. διαδοχικά stint ανά οδηγό",
+        consec2: "2", consec3: "3", consecUnlimited: "Απεριόριστο",
         lblSquadsHint: "Εναλλαγή ομάδων για νυχτερινές βάρδιες & μακρούς αγώνες", lblSquadsHintActive: "Οι οδηγοί χωρίστηκαν σε {n} εναλλασσόμενες ομάδες",
         lblFuelHint: "Έξυπνοι περιορισμοί καυσίμου & διαχείριση ντεπόζιτου",
         statusHeader: "Κατάσταση",
@@ -1521,8 +2001,91 @@ window.translations = {
         soundMute: "Σίγαση", soundUnmute: "Ενεργοποίηση ήχου",
         undoPit: "Αναίρεση Pit", undoPitToast: "Είσοδος pit αναιρέθηκε", undoCountdown: "Αναίρεση",
         exportPdf: "Εξαγωγή PDF", exportImage: "Κοινοποίηση Εικόνας", exportingPdf: "Δημιουργία PDF...",
+        heroTitle: "Στρατηγική Αγώνα", heroSub: "Σχεδίασε · Διαχειρίσου · Νίκησε",
+        qpSprint: "⚡ Σπριντ", qpEndurance: "🏁 Αντοχή", qpQualify: "⏱️ + Κατάταξη", qpDemo: "🎬 Δείγμα", qpLibrary: "📚 Βιβλιοθήκη",
+        heroCollapse: "Απόκρυψη", heroExpand: "Ρυθμίσεις",
+        rulesPdfBtn: "Ανέβασμα κανονισμού (PDF)", rulesPdfLoaded: "Κανονισμός φορτώθηκε",
+        rulesPdfModalTitle: "Κανονισμός Αγώνα PDF", rulesPdfModalSub: "Η AI διαβάζει τους κανόνες και προτείνει την καλύτερη στρατηγική στη γλώσσα σας",
+        rulesPdfDrop: "Κάντε κλικ για επιλογή PDF", rulesPdfDropHint: "Συνιστάται μέγιστο ~50 σελίδες",
+        rulesPdfReading: "Ανάγνωση PDF…", rulesPdfError: "Δεν ήταν δυνατή η ανάγνωση του PDF.", rulesPdfAiError: "Η AI δεν επέστρεψε αποτέλεσμα.",
+        rulesPdfClear: "Αφαίρεση", rulesPdfAnalyze: "Ανάλυση και πρόταση στρατηγικής", pages: "Σελίδες",
+        saveSettings: "Αποθήκευση", backToRace: "← Επιστροφή στον αγώνα",
+        livePreviewBtn: "▶ ΠΛΑΝΟ",
+        appearance: "Εμφάνιση",
+        raceHistory: "Ιστορικό αγώνων", noRaceHistory: "Κανένα ιστορικό. Ολοκληρώστε έναν αγώνα για να το δείτε εδώ.",
+        onboardWelcome: "Καλωσήρθατε στο Strateger!", onboardDemoHint: "Ξεκινήστε με ένα σύντομο demo — διαρκεί 30 δευτερόλεπτα και δείχνει τα πάντα σε δράση.", onboardRunDemo: "Εκκίνηση Demo",
+        qualifyPartMultiCount: "Αριθμός οδηγών", qualifyRuns: "Γύροι ανά οδηγό",
+        qualifyPitMin: "Ελάχιστος χρόνος", qualifyPitMinSec: "Ελάχιστα δευτερόλεπτα στο pit",
+        leaderLabel: "ΑΡΧΗΓΟΣ", pitLabel: "ΠΙΤ",
+        lapSingular: "γύρος", lapPlural: "γύροι",
+        topKartsTitle: "TOP KART", numDecSep: ",",
+        raceClockLabel: "ΧΡΟΝΟΣ ΑΓΩΝΑ",
+        teamLogoUpload: "Ανέβασμα λογότυπου", teamLogoChange: "Αλλαγή λογότυπου", teamLogoRemove: "Αφαίρεση",
+        teamLogoUploading: "Ανέβασμα…", teamLogoTooLarge: "Αρχείο πολύ μεγάλο (μέγ. 2 MB)",
+        teamLogoInvalidType: "Μόνο JPG, PNG ή SVG",
+        stintAvg: "Μέσος Stint",
+        norm: "ΚΑΝΟΝ",
+        pitLatestExitIn: "Ύστατη έξοδος σε", pitLeaveNow: "⚠️ Βγες τώρα!", pitLatestExitPassed: "🚨 ΕΞΟΔΟΣ ΕΚΠΡΌΘΕΣΜΗ",
     }
 };
+
+// Normalize keys that should stay consistent across all languages.
+(function normalizeGlobalTranslations() {
+    const teamNameByLang = {
+        en: 'Team Name',
+        he: 'שם הקבוצה',
+        fr: "Nom de l'equipe",
+        pt: 'Nome da equipe',
+        ru: 'Название команды',
+        ar: 'اسم الفريق',
+        es: 'Nombre del equipo',
+        it: 'Nome squadra',
+        ka: 'გუნდის სახელი',
+        de: 'Teamname',
+        ja: 'チーム名',
+        el: 'Ονομα ομάδας'
+    };
+    const settingsSavedByLang = {
+        en: 'Settings saved',
+        he: 'ההגדרות נשמרו',
+        fr: 'Parametres enregistres',
+        pt: 'Configuracoes salvas',
+        ru: 'Настройки сохранены',
+        ar: 'تم حفظ الإعدادات',
+        es: 'Configuracion guardada',
+        it: 'Impostazioni salvate',
+        ka: 'პარამეტრები შენახულია',
+        de: 'Einstellungen gespeichert',
+        ja: '設定を保存しました',
+        el: 'Οι ρυθμίσεις αποθηκεύτηκαν'
+    };
+    const lblDoublesByLang = {
+        en: 'Allow consecutive stints',
+        he: 'אפשר סטינטים רצופים',
+        fr: 'Autoriser les relais consecutifs',
+        pt: 'Permitir stints consecutivos',
+        ru: 'Разрешить последовательные стинты',
+        ar: 'السماح بمقاطع متتالية',
+        es: 'Permitir stints consecutivos',
+        it: 'Consenti stint consecutivi',
+        ka: 'დაუშვი ზედიზედ stint-ები',
+        de: 'Aufeinanderfolgende Stints erlauben',
+        ja: '連続スティントを許可',
+        el: 'Να επιτρέπονται διαδοχικά stint'
+    };
+
+    Object.keys(window.translations || {}).forEach(lang => {
+        const dict = window.translations[lang];
+        if (!dict) return;
+        // qualifyTitle is already set per-language above — do not override
+        dict.lblTeamName = teamNameByLang[lang] || teamNameByLang.en;
+        dict.lblDoubles = lblDoublesByLang[lang] || lblDoublesByLang.en;
+        dict.settingsSaved = settingsSavedByLang[lang] || settingsSavedByLang.en;
+        if (lang === 'he') {
+            dict.proUpgradeTitle = 'שדרג ל-Pro';
+        }
+    });
+})();
 
 window.t = function(key) {
     // 🟢 Use viewer's own language preference if set
@@ -1530,7 +2093,8 @@ window.t = function(key) {
         ? localStorage.getItem('strateger_viewer_lang') || localStorage.getItem('strateger_lang') || 'en'
         : localStorage.getItem('strateger_lang') || 'en';
     const dict = window.translations[lang] || window.translations['en'];
-    return dict[key] || key;
+    const en = window.translations['en'] || {};
+    return dict[key] || en[key] || key;
 };
 
 // ==========================================
@@ -1587,8 +2151,9 @@ window.setLanguage = function(lang) {
     if (typeof window.updateWeatherUI === 'function') window.updateWeatherUI();
     if (typeof window.renderFrame === 'function') window.renderFrame();
     if (typeof window.renderPreview === 'function' && window.previewData) window.renderPreview();
-    // Re-run sim so simResult text is translated to the new language
-    if (typeof window.runSim === 'function' && window.drivers && window.drivers.length > 0) window.runSim();
+    if (typeof window._applyHeroState === 'function') window._applyHeroState();
+    // Re-run sim so simResult text is translated to the new language (skip during init burst)
+    if (!window._initRunSimSuppressed && typeof window.runSim === 'function' && window.drivers && window.drivers.length > 0) window.runSim();
 };
 
 // ==========================================
@@ -1615,9 +2180,14 @@ window.saveHostState = function() {
             drivers: [] 
         };
         
-        const driverInputs = document.querySelectorAll('.driver-input');
-        driverInputs.forEach(input => {
-            draft.drivers.push({ name: input.value });
+        const driverRows = document.querySelectorAll('#driversList .driver-row');
+        driverRows.forEach(row => {
+            if (row.classList.contains('opacity-50')) return; // skip placeholders
+            const input = row.querySelector('.driver-input');
+            const name = input ? input.value.trim() : '';
+            if (!name) return; // skip blank
+            const colorPicker = row.querySelector('.driver-color-picker');
+            draft.drivers.push({ name, color: colorPicker ? colorPicker.value : undefined });
         });
 
         localStorage.setItem(window.DRAFT_CONFIG_KEY, JSON.stringify(draft));
@@ -1634,12 +2204,15 @@ window.loadDraftConfig = function() {
         if(draft.minStint) document.getElementById('minStint').value = draft.minStint;
         if(draft.maxStint) document.getElementById('maxStint').value = draft.maxStint;
         
-        if (draft.drivers && draft.drivers.length > 0 && typeof window.createDriverInput === 'function') {
-            const list = document.getElementById('driversList');
-            if(list) list.innerHTML = ''; 
-            draft.drivers.forEach((d, i) => {
-                window.createDriverInput(d.name, i===0, 'A'); 
-            });
+        if (draft.drivers && draft.drivers.length > 0) {
+            const pool = draft.drivers.filter(d => d.name && d.name.trim());
+            if (pool.length > 0 && typeof window.saveDriverPool === 'function') {
+                window.saveDriverPool(pool.map(d => ({ name: d.name.trim(), color: d.color || window._nextDriverColor?.() || '#22d3ee' })));
+                if (window._driverGroupParticipants) {
+                    window._driverGroupParticipants.clear();
+                    pool.forEach(d => window._driverGroupParticipants.add(d.name.trim()));
+                }
+            }
         }
     } catch(e) { console.error("Error loading draft", e); }
 };
@@ -1651,6 +2224,83 @@ function attachConfigListeners() {
         el.addEventListener('input', window.saveHostState); 
     });
 }
+
+// ==========================================
+// 💾 SAVE SETTINGS (persists full config by deviceId)
+// ==========================================
+
+window.SAVED_SETTINGS_KEY = 'strateger_saved_settings';
+
+window.saveSettingsToDevice = function() {
+    const deviceId = window.getDeviceId ? window.getDeviceId() : 'default';
+    const all = JSON.parse(localStorage.getItem(window.SAVED_SETTINGS_KEY) || '{}');
+
+    const settings = {
+        savedAt: Date.now(),
+        duration: document.getElementById('raceDuration')?.value,
+        stops: document.getElementById('reqPitStops')?.value,
+        minStint: document.getElementById('minStint')?.value,
+        maxStint: document.getElementById('maxStint')?.value,
+        minPitTime: document.getElementById('minPitTime')?.value,
+        raceStartTime: document.getElementById('raceStartTime')?.value,
+        raceStartDate: document.getElementById('raceStartDate')?.value,
+        raceLocation: document.getElementById('raceLocation')?.value,
+        liveTimingUrl: document.getElementById('liveTimingUrl')?.value,
+        searchValue: document.getElementById('searchValue')?.value,
+        searchType: document.querySelector('input[name="searchType"]:checked')?.value,
+        allowDouble: document.getElementById('allowDouble')?.checked,
+        maxConsecutive: document.getElementById('maxConsecutive')?.value,
+        numSquads: document.getElementById('numSquads')?.value,
+        lang: window.currentLang || 'en',
+    };
+
+    all[deviceId] = settings;
+    localStorage.setItem(window.SAVED_SETTINGS_KEY, JSON.stringify(all));
+
+    // Brief visual feedback
+    const btn = document.getElementById('saveSettingsBtn');
+    if (btn) {
+        const orig = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-check text-neon"></i>';
+        btn.classList.add('border-neon/60', 'text-neon');
+        setTimeout(() => { btn.innerHTML = orig; btn.classList.remove('border-neon/60', 'text-neon'); }, 1500);
+    }
+    if (typeof window.showToast === 'function') {
+        window.showToast(window.t('settingsSaved'), 'success', 1500);
+    }
+};
+
+window.loadSavedSettings = function() {
+    const deviceId = window.getDeviceId ? window.getDeviceId() : 'default';
+    const all = JSON.parse(localStorage.getItem(window.SAVED_SETTINGS_KEY) || '{}');
+    const s = all[deviceId];
+    if (!s) return;
+
+    const set = (id, val) => { const el = document.getElementById(id); if (el && val !== undefined && val !== null && val !== '') el.value = val; };
+    const setChecked = (id, val) => { const el = document.getElementById(id); if (el && val !== undefined) el.checked = !!val; };
+
+    set('raceDuration', s.duration);
+    set('reqPitStops', s.stops);
+    set('minStint', s.minStint);
+    set('maxStint', s.maxStint);
+    set('minPitTime', s.minPitTime);
+    set('raceStartTime', s.raceStartTime);
+    set('raceStartDate', s.raceStartDate);
+    set('raceLocation', s.raceLocation);
+    set('liveTimingUrl', s.liveTimingUrl);
+    set('searchValue', s.searchValue);
+    setChecked('allowDouble', s.allowDouble);
+    set('maxConsecutive', s.maxConsecutive);
+    set('numSquads', s.numSquads);
+
+    if (s.searchType) {
+        const radio = document.querySelector(`input[name="searchType"][value="${s.searchType}"]`);
+        if (radio) radio.checked = true;
+    }
+    if (s.lang && typeof window.setLanguage === 'function') window.setLanguage(s.lang);
+
+    if (!window._initRunSimSuppressed && typeof window.runSim === 'function') window.runSim();
+};
 
 // ==========================================
 // 💾 SAVED RACE LOGIC (Persistence)
@@ -1687,11 +2337,15 @@ if (!window.__racePersistenceHooksAttached) {
 }
 
 window.checkForSavedRace = function() {
-    // 1. טעינת טיוטה (Draft) למסך ההגדרות
+    // Suppress intermediate runSim calls during the init burst; do one final run after
+    window._initRunSimSuppressed = true;
+    window.loadSavedSettings();
     window.loadDraftConfig();
+    window._initRunSimSuppressed = false;
 
-    // 1b. Always re-run simulation with current (restored) params
-    if (typeof window.runSim === 'function') window.runSim();
+    // Single deferred run after all settings are loaded
+    if (typeof window.scheduleRunSim === 'function') window.scheduleRunSim(0);
+    else if (typeof window.runSim === 'function') window.runSim();
 
     // 2. בדיקת מירוץ פעיל
     const savedData = localStorage.getItem(window.RACE_STATE_KEY);
@@ -1711,6 +2365,12 @@ window.checkForSavedRace = function() {
             const currentIdx = data.state.currentDriverIdx || 0;
             const driverName = data.drivers[currentIdx] ? data.drivers[currentIdx].name : 'Unknown';
             document.getElementById('savedRaceDriver').innerText = driverName;
+            const savedPitCount = data.liveData?.ourTeamPitCount ?? data.state?.pitCount ?? 0;
+            const savedStintNo = data.state?.globalStintNumber ?? ((data.state?.pitCount || 0) + 1);
+            const stopsEl = document.getElementById('savedRaceStops');
+            const stintEl = document.getElementById('savedRaceStint');
+            if (stopsEl) stopsEl.innerText = String(savedPitCount);
+            if (stintEl) stintEl.innerText = String(savedStintNo);
             
             const raceMs = data.config.raceMs || (data.config.duration * 3600000);
             const elapsed = Date.now() - data.state.startTime;
@@ -1858,11 +2518,167 @@ window.finalDiscardRace = function() {
     localStorage.removeItem('strateger_host_id');
     // Delete Chat History
     localStorage.removeItem('strateger_chat_history');
-    
+
     document.getElementById('confirmDiscardModal').classList.add('hidden');
     document.getElementById('savedRaceModal').classList.add('hidden');
     document.getElementById('setupScreen').classList.remove('hidden');
-    
+
     // רענון נקי
     window.location.reload();
 };
+
+// ==========================================
+// 🌍 TRANSLATION PATCHES — Demo, Weather, Location
+// ==========================================
+(function() {
+    const required = {
+        demoRaceLength: 'Race Length',
+        demoLenSprint: 'Sprint 30m',
+        demoLenClub: 'Club 1h',
+        demoLenEndurance: 'Endurance 3h',
+        demoLenPro: 'Pro 6h',
+        demoLenCustom: 'Custom...',
+        demoCustomLabel: 'Custom Duration',
+        demoGridSize: 'Grid Size',
+        demoChaosLevel: 'Challenge',
+        demoChaosLow: 'Low',
+        demoChaosNormal: 'Normal',
+        demoChaosHigh: 'High',
+        demoSafetyCarLabel: 'Safety Car Events',
+        demoSafetyCarDesc: 'Temporary neutralization with slower pace',
+        demoIncidentsLabel: 'On-track Incidents',
+        demoIncidentsDesc: 'Random incidents that affect specific teams',
+        raceFinishedClose: 'Close',
+        lblTrackLocation: '📍 Race Location',
+        lblLocationPlaceholder: 'Search circuit or city...',
+        lblLocationHint: 'Used for weather forecast',
+        lblShowWeather: 'Show weather in stint preview',
+        locationWeather: 'Location & Weather',
+        weatherTooFarOut: 'Date too far — forecast unavailable',
+        minUnit: 'min',
+        confirmFinish: 'CONFIRM RACE FINISH',
+        minTwoDrivers: 'Minimum 2 drivers required',
+    };
+
+    const localized = {
+        he: {
+            demoRaceLength: 'משך מירוץ', demoLenSprint: 'ספרינט 30דק', demoLenClub: 'מועדון 1ש', demoLenEndurance: 'אנדורנס 3ש', demoLenPro: 'פרו 6ש', demoLenCustom: 'מותאם אישית...',
+            demoCustomLabel: 'משך מותאם אישית',
+            demoGridSize: 'גודל גריד', demoChaosLevel: 'רמת אתגר', demoChaosLow: 'נמוכה', demoChaosNormal: 'רגילה', demoChaosHigh: 'גבוהה',
+            demoSafetyCarLabel: 'אירועי Safety Car', demoSafetyCarDesc: 'ניטרול זמני עם קצב איטי יותר', demoIncidentsLabel: 'תקריות מסלול', demoIncidentsDesc: 'אירועים אקראיים שמשפיעים על קבוצות ספציפיות',
+            raceFinishedClose: 'סגור',
+            lblTrackLocation: '📍 מיקום המסלול', lblLocationPlaceholder: 'חפש מעגל או עיר...', lblLocationHint: 'משמש לתחזית מזג אוויר', lblShowWeather: 'הצג מזג אוויר בתצוגת סטינטים',
+            locationWeather: 'מיקום ומזג אוויר', weatherTooFarOut: 'תאריך רחוק מדי — תחזית לא זמינה', minUnit: 'דק\'',
+            confirmFinish: 'אישור סיום מירוץ',
+            minTwoDrivers: 'נדרשים לפחות 2 נהגים',
+        },
+        fr: {
+            demoRaceLength: 'Duree de course', demoLenSprint: 'Sprint 30 min', demoLenClub: 'Club 1 h', demoLenEndurance: 'Endurance 3 h', demoLenPro: 'Pro 6 h', demoLenCustom: 'Personnalise...',
+            demoCustomLabel: 'Duree personnalisee',
+            demoGridSize: 'Taille de grille', demoChaosLevel: 'Niveau de challenge', demoChaosLow: 'Faible', demoChaosNormal: 'Normal', demoChaosHigh: 'Eleve',
+            demoSafetyCarLabel: 'Evenements Safety Car', demoSafetyCarDesc: 'Neutralisation temporaire avec rythme reduit', demoIncidentsLabel: 'Incidents piste', demoIncidentsDesc: 'Incidents aleatoires impactant certaines equipes',
+            raceFinishedClose: 'Fermer',
+            lblTrackLocation: '📍 Lieu de course', lblLocationPlaceholder: 'Rechercher circuit ou ville...', lblLocationHint: 'Utilise pour la meteo', lblShowWeather: 'Afficher la meteo par relais',
+            locationWeather: 'Lieu & Meteo', weatherTooFarOut: 'Date trop eloignee — prevision indisponible', minUnit: 'min',
+        },
+        pt: {
+            demoRaceLength: 'Duracao da corrida', demoLenSprint: 'Sprint 30m', demoLenClub: 'Clube 1h', demoLenEndurance: 'Endurance 3h', demoLenPro: 'Pro 6h', demoLenCustom: 'Personalizado...',
+            demoCustomLabel: 'Duracao personalizada',
+            demoGridSize: 'Tamanho do grid', demoChaosLevel: 'Nivel de desafio', demoChaosLow: 'Baixo', demoChaosNormal: 'Normal', demoChaosHigh: 'Alto',
+            demoSafetyCarLabel: 'Eventos de Safety Car', demoSafetyCarDesc: 'Neutralizacao temporaria com ritmo mais lento', demoIncidentsLabel: 'Incidentes na pista', demoIncidentsDesc: 'Incidentes aleatorios que afetam equipes especificas',
+            raceFinishedClose: 'Fechar',
+            lblTrackLocation: '📍 Local da corrida', lblLocationPlaceholder: 'Buscar circuito ou cidade...', lblLocationHint: 'Usado para previsao do tempo', lblShowWeather: 'Mostrar clima por stint',
+            locationWeather: 'Local & Clima', weatherTooFarOut: 'Data muito distante — previsao indisponivel', minUnit: 'min',
+        },
+        ru: {
+            demoRaceLength: 'Длительность гонки', demoLenSprint: 'Спринт 30м', demoLenClub: 'Клуб 1ч', demoLenEndurance: 'Эндюранс 3ч', demoLenPro: 'Про 6ч', demoLenCustom: 'Своя длительность...',
+            demoCustomLabel: 'Произвольная длительность',
+            demoGridSize: 'Размер решетки', demoChaosLevel: 'Сложность', demoChaosLow: 'Низкая', demoChaosNormal: 'Нормальная', demoChaosHigh: 'Высокая',
+            demoSafetyCarLabel: 'События Safety Car', demoSafetyCarDesc: 'Временная нейтрализация с более медленным темпом', demoIncidentsLabel: 'Инциденты на трассе', demoIncidentsDesc: 'Случайные инциденты, влияющие на отдельные команды',
+            raceFinishedClose: 'Закрыть',
+            lblTrackLocation: '📍 Место гонки', lblLocationPlaceholder: 'Найти трассу или город...', lblLocationHint: 'Для прогноза погоды', lblShowWeather: 'Показывать погоду по стинтам',
+            locationWeather: 'Локация и погода', weatherTooFarOut: 'Дата слишком далеко — прогноз недоступен', minUnit: 'мин',
+        },
+        ar: {
+            demoRaceLength: 'مدة السباق', demoLenSprint: 'سبرينت 30د', demoLenClub: 'نادي 1س', demoLenEndurance: 'تحمل 3س', demoLenPro: 'احترافي 6س', demoLenCustom: 'مخصص...',
+            demoCustomLabel: 'مدة مخصصة',
+            demoGridSize: 'حجم الشبكة', demoChaosLevel: 'مستوى التحدي', demoChaosLow: 'منخفض', demoChaosNormal: 'عادي', demoChaosHigh: 'مرتفع',
+            demoSafetyCarLabel: 'احداث سيارة الامان', demoSafetyCarDesc: 'تحييد مؤقت بوتيرة ابطأ', demoIncidentsLabel: 'حوادث المضمار', demoIncidentsDesc: 'حوادث عشوائية تؤثر على فرق محددة',
+            raceFinishedClose: 'اغلاق',
+            lblTrackLocation: '📍 موقع السباق', lblLocationPlaceholder: 'ابحث عن حلبة او مدينة...', lblLocationHint: 'يستخدم لتوقعات الطقس', lblShowWeather: 'اظهار الطقس في كل stint',
+            locationWeather: 'الموقع والطقس', weatherTooFarOut: 'التاريخ بعيد جدا — التوقعات غير متوفرة', minUnit: 'د',
+        },
+        es: {
+            demoRaceLength: 'Duracion de carrera', demoLenSprint: 'Sprint 30m', demoLenClub: 'Club 1h', demoLenEndurance: 'Endurance 3h', demoLenPro: 'Pro 6h', demoLenCustom: 'Personalizado...',
+            demoCustomLabel: 'Duracion personalizada',
+            demoGridSize: 'Tamano de parrilla', demoChaosLevel: 'Nivel de desafio', demoChaosLow: 'Bajo', demoChaosNormal: 'Normal', demoChaosHigh: 'Alto',
+            demoSafetyCarLabel: 'Eventos de Safety Car', demoSafetyCarDesc: 'Neutralizacion temporal con ritmo mas lento', demoIncidentsLabel: 'Incidentes en pista', demoIncidentsDesc: 'Incidentes aleatorios que afectan equipos especificos',
+            raceFinishedClose: 'Cerrar',
+            lblTrackLocation: '📍 Ubicacion de la carrera', lblLocationPlaceholder: 'Buscar circuito o ciudad...', lblLocationHint: 'Para el pronostico del tiempo', lblShowWeather: 'Mostrar clima por stint',
+            locationWeather: 'Lugar y Clima', weatherTooFarOut: 'Fecha muy lejana — prevision no disponible', minUnit: 'min',
+        },
+        it: {
+            demoRaceLength: 'Durata gara', demoLenSprint: 'Sprint 30m', demoLenClub: 'Club 1h', demoLenEndurance: 'Endurance 3h', demoLenPro: 'Pro 6h', demoLenCustom: 'Personalizzato...',
+            demoCustomLabel: 'Durata personalizzata',
+            demoGridSize: 'Dimensione griglia', demoChaosLevel: 'Livello sfida', demoChaosLow: 'Basso', demoChaosNormal: 'Normale', demoChaosHigh: 'Alto',
+            demoSafetyCarLabel: 'Eventi Safety Car', demoSafetyCarDesc: 'Neutralizzazione temporanea con ritmo ridotto', demoIncidentsLabel: 'Incidenti in pista', demoIncidentsDesc: 'Incidenti casuali che influenzano team specifici',
+            raceFinishedClose: 'Chiudi',
+            lblTrackLocation: '📍 Luogo gara', lblLocationPlaceholder: 'Cerca circuito o citta...', lblLocationHint: 'Per le previsioni meteo', lblShowWeather: 'Mostra meteo per stint',
+            locationWeather: 'Luogo e Meteo', weatherTooFarOut: 'Data troppo lontana — previsione non disponibile', minUnit: 'min',
+        },
+        ka: {
+            demoRaceLength: 'რბოლის ხანგრძლივობა', demoLenSprint: 'სპრინტი 30წთ', demoLenClub: 'კლუბი 1სთ', demoLenEndurance: 'ენდურანსი 3სთ', demoLenPro: 'პრო 6სთ', demoLenCustom: 'მორგებული...',
+            demoCustomLabel: 'მორგებული ხანგრძლივობა',
+            demoGridSize: 'გრიდის ზომა', demoChaosLevel: 'სირთულის დონე', demoChaosLow: 'დაბალი', demoChaosNormal: 'ნორმალური', demoChaosHigh: 'მაღალი',
+            demoSafetyCarLabel: 'Safety Car მოვლენები', demoSafetyCarDesc: 'დროებითი ნეიტრალიზაცია დაბალი ტემპით', demoIncidentsLabel: 'ტრეკის ინციდენტები', demoIncidentsDesc: 'შემთხვევითი ინციდენტები, რომლებიც კონკრეტულ გუნდებზე მოქმედებს',
+            raceFinishedClose: 'დახურვა',
+            lblTrackLocation: '📍 რბოლის მდებარეობა', lblLocationPlaceholder: 'მოძებნე ტრეკი ან ქალაქი...', lblLocationHint: 'ამინდის პროგნოზისთვის', lblShowWeather: 'ამინდის ჩვენება stint-ებში',
+            locationWeather: 'მდებარეობა და ამინდი', weatherTooFarOut: 'თარიღი ძალიან შორია — პროგნოზი მიუწვდომელია', minUnit: 'წთ',
+        },
+        de: {
+            demoRaceLength: 'Renndauer', demoLenSprint: 'Sprint 30m', demoLenClub: 'Club 1h', demoLenEndurance: 'Endurance 3h', demoLenPro: 'Pro 6h', demoLenCustom: 'Benutzerdefiniert...',
+            demoCustomLabel: 'Benutzerdefinierte Dauer',
+            demoGridSize: 'Grid-Grosse', demoChaosLevel: 'Schwierigkeitsgrad', demoChaosLow: 'Niedrig', demoChaosNormal: 'Normal', demoChaosHigh: 'Hoch',
+            demoSafetyCarLabel: 'Safety-Car-Ereignisse', demoSafetyCarDesc: 'Zeitweise Neutralisierung mit langsamerem Tempo', demoIncidentsLabel: 'Streckenereignisse', demoIncidentsDesc: 'Zufallige Vorfalle mit Einfluss auf einzelne Teams',
+            raceFinishedClose: 'Schliessen',
+            lblTrackLocation: '📍 Rennort', lblLocationPlaceholder: 'Strecke oder Stadt suchen...', lblLocationHint: 'Fur Wettervorhersage', lblShowWeather: 'Wetter pro Stint anzeigen',
+            locationWeather: 'Ort & Wetter', weatherTooFarOut: 'Datum zu weit entfernt — Vorhersage nicht verfugbar', minUnit: 'Min',
+        },
+        ja: {
+            demoRaceLength: 'レース時間', demoLenSprint: 'スプリント 30分', demoLenClub: 'クラブ 1時間', demoLenEndurance: '耐久 3時間', demoLenPro: 'プロ 6時間', demoLenCustom: 'カスタム...',
+            demoCustomLabel: 'カスタム時間',
+            demoGridSize: 'グリッド数', demoChaosLevel: '難易度', demoChaosLow: '低', demoChaosNormal: '標準', demoChaosHigh: '高',
+            demoSafetyCarLabel: 'セーフティカーイベント', demoSafetyCarDesc: '一時的にペースを落とす中立化', demoIncidentsLabel: 'コース上のインシデント', demoIncidentsDesc: '特定チームに影響するランダムインシデント',
+            raceFinishedClose: '閉じる',
+            lblTrackLocation: '📍 レース場所', lblLocationPlaceholder: 'サーキットや都市を検索...', lblLocationHint: '天気予報に使用', lblShowWeather: 'スティントごとの天気を表示',
+            locationWeather: '場所と天気', weatherTooFarOut: '日付が遠すぎます — 予報は利用できません', minUnit: '分',
+        },
+        el: {
+            demoRaceLength: 'Διαρκεια αγωνα', demoLenSprint: 'Sprint 30λ', demoLenClub: 'Club 1ω', demoLenEndurance: 'Endurance 3ω', demoLenPro: 'Pro 6ω', demoLenCustom: 'Προσαρμοσμενο...',
+            demoCustomLabel: 'Προσαρμοσμενη διαρκεια',
+            demoGridSize: 'Μεγεθος grid', demoChaosLevel: 'Επιπεδο προκλησης', demoChaosLow: 'Χαμηλο', demoChaosNormal: 'Κανονικο', demoChaosHigh: 'Υψηλο',
+            demoSafetyCarLabel: 'Γεγονοτα Safety Car', demoSafetyCarDesc: 'Προσωρινη ουδετεροποιηση με χαμηλοτερο ρυθμο', demoIncidentsLabel: 'Περιστατικα πιστας', demoIncidentsDesc: 'Τυχαια περιστατικα που επηρεαζουν συγκεκριμενες ομαδες',
+            raceFinishedClose: 'Κλεισιμο',
+            lblTrackLocation: '📍 Τοποθεσια αγωνα', lblLocationPlaceholder: 'Αναζητηση πιστας ή πολης...', lblLocationHint: 'Για προγνωση καιρου', lblShowWeather: 'Εμφανιση καιρου ανα stint',
+            locationWeather: 'Τοποθεσια και Καιρος', weatherTooFarOut: 'Ημερομηνια πολυ μακρια — προγνωση μη διαθεσιμη', minUnit: 'λ',
+        },
+    };
+
+    Object.entries(required).forEach(([k, v]) => {
+        if (!window.translations.en[k]) window.translations.en[k] = v;
+    });
+
+    Object.entries(localized).forEach(([lang, patch]) => {
+        if (!window.translations[lang]) return;
+        Object.entries(patch).forEach(([k, v]) => {
+            if (!window.translations[lang][k]) window.translations[lang][k] = v;
+        });
+    });
+
+    Object.keys(window.translations).forEach((lang) => {
+        const dict = window.translations[lang];
+        Object.keys(required).forEach((k) => {
+            if (dict[k] == null) dict[k] = window.translations.en[k];
+        });
+    });
+})();

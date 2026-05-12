@@ -159,10 +159,7 @@ body {
 [dir="rtl"] .input-field:not([type="number"]):not([type="time"]):not([type="date"]) {
     text-align: right;
 }
-/* Driver row buttons / icon+text in RTL */
-[dir="rtl"] .driver-row {
-    flex-direction: row-reverse;
-}
+/* Driver row RTL — remove duplicate; handled in driver section below */
 /* Stint pills in strategy outlook - keep LTR */
 [dir="rtl"] #remStintsText,
 [dir="rtl"] .stint-outlook-pill {
@@ -474,6 +471,19 @@ body:has(#qualifyingDashboard:not(.hidden)) {
 }
 
 /* ==================== COLLAPSIBLE SECTIONS ==================== */
+.collapsible-section {
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.collapsible-section:hover {
+    border-color: rgba(255,255,255,0.1) !important;
+}
+.collapsible-section h2 {
+    user-select: none;
+    transition: opacity 0.15s;
+}
+.collapsible-section h2:hover {
+    opacity: 0.85;
+}
 .collapsible-section .collapse-body {
     max-height: 2000px;
     overflow: hidden;
@@ -737,6 +747,44 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 /* Legacy — now handled by .theme-swatch.active */
 .bg-swatch { position: relative; }
 
+/* ==================== DRIVER ROW — DRAG HANDLE ==================== */
+.driver-drag-handle {
+    width: 20px;
+    min-width: 20px;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: grab;
+    color: #4b5563;
+    flex-shrink: 0;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    transition: color 0.15s;
+    padding: 0 2px;
+}
+.driver-drag-handle:hover  { color: #9ca3af; }
+.driver-drag-handle:active { cursor: grabbing; color: var(--ice); }
+[dir="rtl"] .driver-drag-handle { order: 10; }
+
+/* Ghost (floating clone while dragging) */
+.driver-drag-ghost {
+    border-radius: 10px;
+    border: 1px solid rgba(34,211,238,0.5) !important;
+    background: #111a2e !important;
+    transition: none !important;
+}
+
+/* Placeholder (empty slot in list) */
+.driver-drag-placeholder {
+    border-radius: 10px;
+    border: 2px dashed rgba(34,211,238,0.35);
+    background: rgba(34,211,238,0.04);
+    margin-bottom: 6px;
+    box-sizing: border-box;
+}
+
 /* ==================== DRIVER ROW — PRO DESIGN ==================== */
 .driver-row {
     display: flex;
@@ -877,11 +925,39 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .squad-badge:hover { opacity: 0.8; }
 .squad-toggle-container { margin-right: 8px; }
 
-[dir="rtl"] .driver-row { flex-direction: row-reverse; }
-[dir="rtl"] .driver-accent-bar { border-radius: 0 10px 10px 0; }
-[dir="rtl"] .driver-color-swatch { margin: 0 10px 0 8px; }
-[dir="rtl"] .driver-starter-btn { margin-right: 0; margin-left: 6px; }
-[dir="rtl"] .squad-toggle-container { margin-right: 0; margin-left: 8px; }
+/* ── RTL driver row ──
+   row-reverse mirrors the LTR order, so:
+   LTR: [handle][accent][swatch][starter-btn][name][squad]
+   RTL: [squad][name][starter-btn][swatch][accent][handle]
+   The accent-bar radius also flips. Name/input need explicit RTL direction.
+*/
+[dir="rtl"] .driver-row {
+    flex-direction: row-reverse;
+}
+[dir="rtl"] .driver-accent-bar {
+    border-radius: 0 10px 10px 0;
+}
+[dir="rtl"] .driver-color-swatch {
+    margin: 0 10px 0 8px;
+}
+[dir="rtl"] .driver-starter-btn {
+    margin-right: 0;
+    margin-left: 6px;
+}
+[dir="rtl"] .driver-name-wrap {
+    text-align: right;
+}
+[dir="rtl"] .driver-input {
+    direction: rtl;
+    text-align: right;
+}
+[dir="rtl"] .driver-starter-label {
+    text-align: right;
+}
+[dir="rtl"] .squad-toggle-container {
+    margin-right: 0;
+    margin-left: 8px;
+}
 
 /* ==================== LIVE TIMING ==================== */
 .position-up { color: #22c55e; }
@@ -2657,4 +2733,162 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     #pitInlineDock {
         flex-shrink: 0;
     }
+}
+
+/* ==================== ADVANCED PIT ADVICE BANNER ==================== */
+
+/* Base: hidden until JS makes it visible */
+.pit-advice-status {
+    transition: color 0.3s, background 0.3s, border-color 0.3s;
+    letter-spacing: 0.04em;
+    font-size: 13px;
+    padding: 6px 12px;
+    border-radius: 8px;
+    text-align: center;
+}
+
+/* ==================== MOBILE UX IMPROVEMENTS ==================== */
+
+/* ── Global touch-target floor for all action buttons on mobile ── */
+@media (max-width: 767px) {
+    /* Any tappable button in the race dashboard gets min 44 px height */
+    #raceControlDock button,
+    #pitModal button,
+    #pitInlineDock button,
+    header button {
+        min-height: 44px;
+        min-width: 44px;
+    }
+
+    /* Pit entry / exit CTAs: larger touch area, clear visual hierarchy */
+    #pitEntryBtn {
+        min-height: 56px !important;
+        font-size: 1.1rem !important;
+        letter-spacing: 0.06em;
+    }
+
+    /* Exit Pits CTA: larger on small screens */
+    #confirmExitBtn {
+        min-height: 60px !important;
+        font-size: 1.6rem !important;
+        padding-top: 14px !important;
+        padding-bottom: 14px !important;
+    }
+
+    /* Cancel pit entry link: at least 44 px tall so it's easily tappable */
+    #pitModal > button[onclick*="cancelPitStop"] {
+        display: block;
+        padding: 12px 24px;
+        min-height: 44px;
+    }
+
+    /* Pit timer: slightly smaller on very small phones so it doesn't overflow */
+    @media (max-width: 360px) {
+        #pitTimerDisplay {
+            font-size: 3rem !important;
+        }
+    }
+
+    /* Inline pit dock: bigger timer text */
+    #pitInlineTimer {
+        font-size: 2rem !important;
+    }
+
+    /* Header buttons: ensure consistent size */
+    header button,
+    #headerOverflowMenu button {
+        min-height: 40px;
+        min-width: 40px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* Bottom-dock control row: give each action button breathing room */
+    #raceControlDock .flex.justify-between button {
+        min-height: 48px;
+        flex: 1 1 0;
+    }
+
+    /* Active-press feedback on all touch buttons */
+    #raceControlDock button:active,
+    #pitModal button:active,
+    header button:active {
+        transform: scale(0.96);
+        transition: transform 0.08s;
+    }
+
+    /* Pit advice banner on mobile: full width, higher contrast */
+    #pitAdviceStatus {
+        font-size: 15px !important;
+        padding: 10px 14px !important;
+        border-width: 2px !important;
+    }
+
+    /* Live-timing HB indicator: slightly larger on mobile for readability */
+    #liveHeartbeat {
+        font-size: 11px !important;
+    }
+
+    /* Competitor row: slightly taller on mobile for easier reading */
+    .competitor-row {
+        min-height: 32px;
+    }
+
+    /* Position badges: slightly larger */
+    .cr-pos {
+        width: 24px;
+        min-width: 24px;
+        height: 22px;
+        font-size: 12px;
+    }
+}
+
+/* ── Very small phone (≤360px) tweaks ── */
+@media (max-width: 360px) {
+    #pitModal h2 { font-size: 1.5rem; }
+    #pitReadyBanner { font-size: 1.5rem !important; }
+    #pitAdviceStatus { font-size: 12px !important; }
+    .cr-gap, .cr-int { display: none; }
+}
+
+/* ── Landscape mobile: compact pit modal ── */
+@media (max-height: 500px) and (orientation: landscape) {
+    #pitModal {
+        flex-direction: row !important;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-around;
+        gap: 8px;
+        padding: 8px 16px !important;
+    }
+    #pitModal h2 { font-size: 1.2rem; margin-bottom: 0; }
+    #pitTimerDisplay { font-size: 2.5rem !important; margin-bottom: 0; }
+    #pitReadyBanner { font-size: 1.2rem !important; }
+    #pitAdviceStatus { font-size: 12px !important; }
+    #confirmExitBtn { min-height: 48px !important; font-size: 1.2rem !important; }
+}
+
+/* ── Sharpen HB stale indicator animation ── */
+@keyframes hb-stale-blink {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.3; }
+}
+.hb-stale {
+    animation: hb-stale-blink 0.8s ease-in-out infinite;
+    color: #ef4444 !important;
+    font-weight: 800 !important;
+}
+
+/* ── Pit advice: colour variants ── */
+.pit-advice-status.text-yellow-300 { color: #fde047; }
+.pit-advice-status.text-orange-400 { color: #fb923c; }
+.pit-advice-status.text-green-300  { color: #86efac; }
+.pit-advice-status.text-red-500    { color: #ef4444; }
+
+/* ── Inline pit dock: consistent border on all states ── */
+#pitInlineDock {
+    border: 1px solid rgba(34,211,238,0.3);
+    border-radius: 12px;
+    background: rgba(2,6,23,0.85);
 }
