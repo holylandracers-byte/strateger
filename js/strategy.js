@@ -920,9 +920,8 @@ window.initRace = function() {
     document.getElementById('previewScreen').classList.add('hidden');
     document.getElementById('raceDashboard').classList.remove('hidden');
 
-    // Init draggable panels and resizer after dashboard is visible
+    // Init draggable panels (resizer removed — single-panel layout)
     if (typeof window.initDashboardDrag === 'function') window.initDashboardDrag();
-    if (typeof window.initDashPanelResizer === 'function') window.initDashPanelResizer();
     // Init horizontal panel pinning (only active in landscape/wide layout)
     if (typeof window.initHorizontalPanels === 'function') {
         // Small delay to let layout settle after transition
