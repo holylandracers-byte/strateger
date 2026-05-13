@@ -924,12 +924,6 @@ window.renderFrame = function() {
 
     // Recalculate target every frame (needed for last stint = remaining time)
     if (typeof window.recalculateTargetStint === 'function') window.recalculateTargetStint();
-    
-    // בודק שפה כל פריים לוודא סינכרון
-    const currentLang = localStorage.getItem('strateger_lang') || 'en';
-    if (document.documentElement.lang !== currentLang && typeof window.setLanguage === 'function') {
-        window.setLanguage(currentLang);
-    }
 
     const raceMs = window.config.raceMs || (parseFloat(window.config.duration) * 3600000);
     if (!raceMs) return;
@@ -1141,8 +1135,11 @@ function _maybeRecalcAfterDrift() {
     if (!planned) return;
 
     const elapsed = (now - window.state.stintStart) + (window.state.stintOffset || 0);
-    const drift = Math.abs(elapsed - planned);
-    if (drift < _STINT_DRIFT_THRESHOLD_MS) return;
+    // Only recalc when the stint has genuinely overrun the plan — never fire while
+    // we're still inside the planned window (elapsed < planned), since the "drift"
+    // there is just normal progress, not a real deviation.
+    const overrun = elapsed - planned;
+    if (overrun < _STINT_DRIFT_THRESHOLD_MS) return;
 
     // Current stint already deviated — update its target to actual elapsed so far,
     // then regenerate remaining stint targets using the available future time.
@@ -1343,65 +1340,63 @@ function updateRemainingStrategyLogic(raceRemainingMs) {
 }
 
 window.updatePitModalLogic = function() {
+    // Guard: bail out if we're not actually in a pit stop (prevents NaN cascade)
+    if (!window.state || !window.state.isInPit || !window.state.pitStart) return;
+
     const now = (window.getSyncedNow && typeof window.getSyncedNow === 'function') ? window.getSyncedNow() : Date.now();
-    const elapsedSec = (now - window.state.pitStart) / 1000;
+    // pitStart guard: if somehow pitStart is in the future or zero, clamp to now
+    const pitStart = Math.min(window.state.pitStart, now);
+    const elapsedSec = Math.max(0, (now - pitStart) / 1000);
     const basePitTime = parseInt(window.config.minPitTime || window.config.pitTime) || 0;
-    const totalRequiredTime = Math.max(0, basePitTime + window.currentPitAdjustment); 
+    const totalRequiredTime = Math.max(0, basePitTime + (window.currentPitAdjustment || 0));
     const buffer = parseInt(document.getElementById('releaseBuffer')?.value) || 5;
     const timeRemaining = totalRequiredTime - elapsedSec;
-    const t = window.t || ((k) => k); // פונקציית התרגום
-
-    
+    const t = window.t || ((k) => k);
 
     const timerDisplay = document.getElementById('pitTimerDisplay');
-    if (timerDisplay) timerDisplay.innerText = Math.max(0, timeRemaining).toFixed(1);
-
     const releaseBtn = document.getElementById('confirmExitBtn');
+    const pitReadyBanner = document.getElementById('pitReadyBanner');
+    const pitWarningBox = document.getElementById('pitWarningBox');
+
     if (!releaseBtn) return;
-    // always allow exit button and show unified label
+
+    if (timerDisplay) timerDisplay.innerText = Math.max(0, timeRemaining).toFixed(1);
     releaseBtn.disabled = false;
     releaseBtn.innerText = t('exitPits');
 
-    // If live timing reports we've already left the pits, allow an early forced exit.
+    // Live timing: driver already left pit before minimum time
     try {
-        const liveSaysInPit = window.liveData && (typeof window.liveData.ourTeamInPit !== 'undefined') ? window.liveData.ourTeamInPit : null;
-        if (window.state && window.state.isInPit && liveSaysInPit === false) {
-            const earlyBy = Math.max(0, totalRequiredTime - elapsedSec).toFixed(1);
-            const timerDisplay2 = document.getElementById('pitTimerDisplay');
-            if (timerDisplay2) timerDisplay2.className = "text-6xl font-bold font-mono text-yellow-300";
-            // note early exit time in warning, but button keeps common label
-            const pitWarningBox2 = document.getElementById('pitWarningBox');
-            if (pitWarningBox2) {
-                pitWarningBox2.classList.remove('hidden');
-                pitWarningBox2.innerText = `${t('driverExitedEarlyNotice') || 'Driver exited the pit before required time — confirm to accept.'} (${earlyBy}s early)`;
+        const liveSaysInPit = window.liveData && (typeof window.liveData.ourTeamInPit !== 'undefined')
+            ? window.liveData.ourTeamInPit : null;
+        if (liveSaysInPit === false) {
+            if (timerDisplay) timerDisplay.className = "text-6xl font-bold font-mono text-yellow-300";
+            if (pitWarningBox) {
+                pitWarningBox.classList.remove('hidden');
+                pitWarningBox.innerText = `${t('driverExitedEarlyNotice') || 'Driver exited pit early — confirm to accept.'} (${Math.max(0, timeRemaining).toFixed(1)}s early)`;
             }
-            window._lastOrangeBeep = null;
+            releaseBtn.className = "w-full max-w-xs bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-4 rounded-lg text-3xl border border-yellow-400 cursor-pointer";
             window.alertState.lastZone = 'go';
+            if (typeof window._runPitAdvice === 'function') window._runPitAdvice();
             return;
         }
     } catch (e) {
         console.warn('Live-pit early-exit check failed', e);
     }
 
-    // Determine current zone
-    // buffer = seconds the driver needs to walk/drive from pit crew to pit exit line
-    // So when timeRemaining <= buffer, driver must GO NOW so they cross the line at the right time
-    // When timeRemaining <= 0, the minimum pit time is fully served
+    // Zone classification:
+    // 'wait'  — counting down, driver must stay
+    // 'ready' — within buffer window, driver must walk to exit NOW to cross line on time
+    // 'go'    — minimum time fully served, driver is free
     let pitZone = 'wait';
     if (timeRemaining <= 0) pitZone = 'go';
-    else if (buffer > 0 && timeRemaining <= buffer) pitZone = 'ready'; // ready = GO NOW (driver must leave to reach exit)
-
-    const pitReadyBanner = document.getElementById('pitReadyBanner');
+    else if (buffer > 0 && timeRemaining <= buffer) pitZone = 'ready';
 
     if (pitZone === 'wait') {
         if (timerDisplay) timerDisplay.className = "text-6xl font-bold font-mono text-red-500";
-        releaseBtn.disabled = false;
-        releaseBtn.innerText = t('exitPits');
         releaseBtn.className = "w-full max-w-xs bg-gray-800 text-gray-500 font-bold py-4 rounded-lg text-2xl border border-gray-700 cursor-pointer";
-        const pitWarningBox = document.getElementById('pitWarningBox');
         if (pitWarningBox) pitWarningBox.classList.add('hidden');
-        // Show GET READY heads-up 3 seconds before buffer zone starts
         if (pitReadyBanner) {
+            // "GET READY" heads-up 3 s before the buffer zone
             if (buffer > 0 && timeRemaining <= buffer + 3 && timeRemaining > buffer) {
                 pitReadyBanner.classList.remove('hidden');
                 pitReadyBanner.className = "w-full max-w-xs py-2 rounded-xl mb-2 text-center font-bold text-lg tracking-wider transition-all duration-300 bg-gray-800/80 border border-gray-600 text-gray-400";
@@ -1411,57 +1406,34 @@ window.updatePitModalLogic = function() {
             }
         }
         window._lastOrangeBeep = null;
-    } else if (pitZone === 'ready') {
-        // BUFFER ZONE: Driver must GO NOW — they need `buffer` seconds to reach the pit exit line
-        if (timerDisplay) timerDisplay.className = "text-6xl font-bold font-mono text-green-400 animate-pulse";
-        releaseBtn.disabled = false;
-        releaseBtn.innerText = t('exitPits');
-        releaseBtn.className = "w-full max-w-xs bg-green-600 hover:bg-green-500 text-white font-bold py-4 rounded-lg text-3xl border border-green-400 shadow-[0_0_20px_rgba(34,197,94,0.6)] cursor-pointer";
-        const pitWarningBox = document.getElementById('pitWarningBox');
-        if (pitWarningBox) pitWarningBox.classList.add('hidden');
-        // Show big GO! GO! GO! banner — driver must leave NOW
-        if (pitReadyBanner) {
-            pitReadyBanner.classList.remove('hidden');
-            pitReadyBanner.innerHTML = `<div class="text-green-300 text-5xl animate-bounce">${t('go')}</div>`;
-            pitReadyBanner.className = "w-full max-w-xs py-4 rounded-xl mb-2 text-center font-black tracking-wider transition-all duration-300 bg-green-600/40 border-2 border-green-400 shadow-[0_0_40px_rgba(34,197,94,0.6)]";
-        }
-        window._lastOrangeBeep = null;
-        // Sound only on transition to go zone
-        if (window.alertState.lastZone !== 'go' && window.alertState.lastZone !== 'ready') {
-            window.playReleaseSound();
-        }
-    } else {
-        // TIMER DONE: minimum pit time fully served
-        if (timerDisplay) timerDisplay.className = "text-6xl font-bold font-mono text-green-500";
-        releaseBtn.disabled = false;
-        releaseBtn.innerText = t('exitPits');
-        releaseBtn.className = "w-full max-w-xs bg-green-600 hover:bg-green-500 text-white font-bold py-4 rounded-lg text-3xl border border-green-400 shadow-[0_0_20px_rgba(34,197,94,0.6)] cursor-pointer";
-        const pitWarningBox = document.getElementById('pitWarningBox');
-        if (pitWarningBox) pitWarningBox.classList.add('hidden');
-        // Show big GO! GO! GO! banner
-        if (pitReadyBanner) {
-            pitReadyBanner.classList.remove('hidden');
-            pitReadyBanner.innerHTML = `<div class="text-green-300 text-5xl animate-bounce">${t('go')}</div>`;
-            pitReadyBanner.className = "w-full max-w-xs py-4 rounded-xl mb-2 text-center font-black tracking-wider transition-all duration-300 bg-green-600/40 border-2 border-green-400 shadow-[0_0_40px_rgba(34,197,94,0.6)]";
-        }
-        window._lastOrangeBeep = null;
-        // Sound only on transition to go zone
-        if (window.alertState.lastZone !== 'go' && window.alertState.lastZone !== 'ready') {
-            window.playReleaseSound();
-        }
-    }
 
-    // === allow manual exit even before mandatory time elapses ===
-    if (timeRemaining > 0) {
-        // user can force the driver-exited action; count pit time until click
-        const earlyBy = Math.max(0, totalRequiredTime - elapsedSec).toFixed(1);
-        releaseBtn.disabled = false;
-        // keep unified label
-        releaseBtn.className = "w-full max-w-xs bg-orange-600 hover:bg-orange-500 text-white font-bold py-4 rounded-lg text-3xl border border-orange-400 shadow-[0_0_20px_rgba(249,115,22,0.6)] cursor-pointer";
-        const pitWarningBox = document.getElementById('pitWarningBox');
-        if (pitWarningBox) {
-            pitWarningBox.classList.remove('hidden');
-            pitWarningBox.innerText = `${t('driverExitedEarlyNotice') || 'Driver exited the pit before required time — confirm to accept.'} (${earlyBy}s early)`;
+    } else if (pitZone === 'ready') {
+        if (timerDisplay) timerDisplay.className = "text-6xl font-bold font-mono text-green-400 animate-pulse";
+        releaseBtn.className = "w-full max-w-xs bg-green-600 hover:bg-green-500 text-white font-bold py-4 rounded-lg text-3xl border border-green-400 shadow-[0_0_20px_rgba(34,197,94,0.6)] cursor-pointer";
+        if (pitWarningBox) pitWarningBox.classList.add('hidden');
+        if (pitReadyBanner) {
+            pitReadyBanner.classList.remove('hidden');
+            pitReadyBanner.innerHTML = `<div class="text-green-300 text-5xl animate-bounce">${t('go')}</div>`;
+            pitReadyBanner.className = "w-full max-w-xs py-4 rounded-xl mb-2 text-center font-black tracking-wider transition-all duration-300 bg-green-600/40 border-2 border-green-400 shadow-[0_0_40px_rgba(34,197,94,0.6)]";
+        }
+        window._lastOrangeBeep = null;
+        if (window.alertState.lastZone !== 'go' && window.alertState.lastZone !== 'ready') {
+            window.playReleaseSound();
+        }
+
+    } else {
+        // pitZone === 'go'
+        if (timerDisplay) timerDisplay.className = "text-6xl font-bold font-mono text-green-500";
+        releaseBtn.className = "w-full max-w-xs bg-green-600 hover:bg-green-500 text-white font-bold py-4 rounded-lg text-3xl border border-green-400 shadow-[0_0_20px_rgba(34,197,94,0.6)] cursor-pointer";
+        if (pitWarningBox) pitWarningBox.classList.add('hidden');
+        if (pitReadyBanner) {
+            pitReadyBanner.classList.remove('hidden');
+            pitReadyBanner.innerHTML = `<div class="text-green-300 text-5xl animate-bounce">${t('go')}</div>`;
+            pitReadyBanner.className = "w-full max-w-xs py-4 rounded-xl mb-2 text-center font-black tracking-wider transition-all duration-300 bg-green-600/40 border-2 border-green-400 shadow-[0_0_40px_rgba(34,197,94,0.6)]";
+        }
+        window._lastOrangeBeep = null;
+        if (window.alertState.lastZone !== 'go' && window.alertState.lastZone !== 'ready') {
+            window.playReleaseSound();
         }
     }
 
@@ -1592,6 +1564,9 @@ window._executePitEntry = function(isShortStint) {
 
     // Set up extra pit UI (min lap countdown + toggle button)
     if (typeof window._setupExtraPitUI === 'function') window._setupExtraPitUI();
+
+    // Reset one-shot alert flags for this new pit stop
+    window._pitAdviceFlags = {};
 
     if (window.pitInterval) clearInterval(window.pitInterval);
     window.pitInterval = setInterval(window.updatePitModalLogic, 100);
@@ -2119,7 +2094,7 @@ window._handlePitBothTimestamps = function() {
     const secsUntilExit = Math.max(0, Math.round((recommendedExit - now) / 1000));
     const pitDurationSec = Math.round(pitDurationMs / 1000);
 
-    // Store for use by updatePitModalLogic
+    // Store for use by updatePitModalLogic (data only — one-shot flags live on window._pitAdviceFlags)
     window._pitAdvice = {
         scenario: 'both',
         pitDurationSec,
@@ -2141,8 +2116,8 @@ window._handlePitBothTimestamps = function() {
     }
 
     // Toast prompt once when recommended exit window opens
-    if (!window._pitAdvice._goPromptFired && secsUntilExit <= 5) {
-        window._pitAdvice._goPromptFired = true;
+    if (!window._pitAdviceFlags.goPromptFired && secsUntilExit <= 5) {
+        window._pitAdviceFlags.goPromptFired = true;
         if (typeof window.showToast === 'function') {
             window.showToast(t('pitLeaveNow') || '🟢 Leave pit now!', 'success', 4000);
         }
@@ -2205,17 +2180,17 @@ window._handlePitInOnly = function() {
         statusEl.classList.remove('hidden');
     }
 
-    // One-shot alert when recommended window arrives
-    if (!window._pitAdvice._warnFired && secsToRec <= 0 && secsToLatest > 0) {
-        window._pitAdvice._warnFired = true;
+    // One-shot alert when recommended window arrives (flags on persistent _pitAdviceFlags, not on _pitAdvice)
+    if (!window._pitAdviceFlags.warnFired && secsToRec <= 0 && secsToLatest > 0) {
+        window._pitAdviceFlags.warnFired = true;
         if (typeof window.showToast === 'function') {
             window.showToast(t('pitLeaveNow') || '⚠️ Leave pit now!', 'warning', 5000);
         }
         if (typeof window.playAlertBeep === 'function') window.playAlertBeep('warning');
     }
     // One-shot critical alert when latest exit is passed
-    if (!window._pitAdvice._critFired && secsToLatest <= 0) {
-        window._pitAdvice._critFired = true;
+    if (!window._pitAdviceFlags.critFired && secsToLatest <= 0) {
+        window._pitAdviceFlags.critFired = true;
         if (typeof window.showToast === 'function') {
             window.showToast(t('pitLatestExitPassed') || '🚨 EXIT OVERDUE! Risk of penalty!', 'error', 8000);
         }
@@ -2230,9 +2205,12 @@ window._handlePitInOnly = function() {
  * Hook into the pit modal tick loop: pick the right scenario and run it.
  * Called by updatePitModalLogic every 100 ms.
  */
+window._pitAdviceFlags = {};
+
 window._runPitAdvice = function() {
     if (!window.state || !window.state.isInPit) {
         window._pitAdvice = null;
+        window._pitAdviceFlags = {};
         return;
     }
     const hasPitOut = window.liveData && window.liveData._pitOutAt &&

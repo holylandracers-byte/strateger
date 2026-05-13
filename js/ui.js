@@ -428,6 +428,30 @@ window.createDriverInput = function(val, checked, squad) {
     squadLabel.appendChild(squadHidden);
     squadLabel.appendChild(squadDisplay);
 
+    // ── Per-driver stamina (max stint minutes) ──
+    // Shown only in No Limit Endurance (when global maxStint = 0).
+    // Represents how long this driver can physically handle in one stint.
+    const staminaWrap = document.createElement('div');
+    staminaWrap.className = 'driver-stamina-wrap hidden';
+    staminaWrap.title = 'Max stint this driver can handle (min). Used when no global max stint is set.';
+
+    const staminaInput = document.createElement('input');
+    staminaInput.type = 'number';
+    staminaInput.className = 'driver-stamina-input';
+    staminaInput.placeholder = '∞m';
+    staminaInput.min = '1';
+    staminaInput.addEventListener('click', (e) => e.stopPropagation());
+    staminaInput.oninput = () => {
+        if (typeof window.scheduleRunSim === 'function') window.scheduleRunSim(400);
+    };
+
+    const staminaLabel = document.createElement('span');
+    staminaLabel.className = 'driver-stamina-label';
+    staminaLabel.textContent = 'm max';
+
+    staminaWrap.appendChild(staminaInput);
+    staminaWrap.appendChild(staminaLabel);
+
     div.appendChild(dragHandle);
     div.appendChild(accentBar);
     div.appendChild(colorSwatch);
@@ -435,6 +459,7 @@ window.createDriverInput = function(val, checked, squad) {
     div.appendChild(indicator);
     div.appendChild(starterBtn);
     div.appendChild(nameWrap);
+    div.appendChild(staminaWrap);
     div.appendChild(squadLabel);
 
     document.getElementById('driversList').appendChild(div);
@@ -2643,6 +2668,21 @@ window.initDashPanelResizer = function() {
         if (now - lastTap < 350) applyPct(50);
         lastTap = now;
     });
+
+    // Auto-hide resizer when info panel content fits without scrolling.
+    // Use a debounced ResizeObserver only — no MutationObserver (avoids self-trigger loops).
+    let _resizerRafId = null;
+    function _syncResizerVisibility() {
+        if (_resizerRafId) return; // already queued
+        _resizerRafId = requestAnimationFrame(() => {
+            _resizerRafId = null;
+            const fits = infoPanel.scrollHeight <= infoPanel.clientHeight + 8;
+            resizer.style.display = fits ? 'none' : '';
+            // Don't touch infoPanel.style.flex here — it would cause layout thrash
+        });
+    }
+    _syncResizerVisibility();
+    new ResizeObserver(_syncResizerVisibility).observe(infoPanel);
 };
 
 // ==========================================
@@ -3322,10 +3362,12 @@ window._applyHeroState = function() {
 };
 
 window.setQuickMode = function(mode) {
+    // Presets: only set fields that are meaningful for the mode.
+    // nolimit intentionally zeros stops/maxStint/pitTime to trigger NLE mode detection.
     const presets = {
-        sprint:    { duration: 1,  stops: 4,  minStint: 10,  maxStint: 20,  pitTime: 90,  extraPits: 0,  minPitLapSec: 0,   pitClosedStart: 0,  pitClosedEnd: 0  },
-        endurance: { duration: 6,  stops: 12, minStint: 25,  maxStint: 40,  pitTime: 120, extraPits: 0,  minPitLapSec: 0,   pitClosedStart: 0,  pitClosedEnd: 0  },
-        kart24h:   { duration: 24, stops: 0,  minStint: 0,   maxStint: 0,   pitTime: 30,  extraPits: 10, minPitLapSec: 120, pitClosedStart: 10, pitClosedEnd: 10 }
+        sprint:    { duration: 1,  stops: 4,  minStint: 10, maxStint: 20, pitTime: 90,  pitClosedStart: 0, pitClosedEnd: 0 },
+        endurance: { duration: 6,  stops: 12, minStint: 25, maxStint: 40, pitTime: 120, pitClosedStart: 0, pitClosedEnd: 0 },
+        nolimit:   { duration: 24, stops: 0,  minStint: 0,  maxStint: 0,  pitTime: 0,   pitClosedStart: 10, pitClosedEnd: 10 }
     };
     const p = presets[mode];
     if (!p) return;
@@ -3338,35 +3380,55 @@ window.setQuickMode = function(mode) {
     setVal('pitClosedStart', p.pitClosedStart);
     setVal('pitClosedEnd', p.pitClosedEnd);
 
-    // Extra pit config
-    const extraSection = document.getElementById('extraPitSection');
-    const reqExtraPitsEl = document.getElementById('reqExtraPits');
-    const minPitLapEl = document.getElementById('minPitLapSec');
-    if (extraSection) extraSection.classList.toggle('hidden', p.extraPits === 0);
-    if (reqExtraPitsEl) reqExtraPitsEl.value = p.extraPits;
-    if (minPitLapEl) minPitLapEl.value = p.minPitLapSec;
-
-    // For 24H kart: auto-set max driver time based on current driver count,
-    // reset numTeams field, and update rotation info display.
-    if (mode === 'kart24h') {
-        window._autoSetKartDriverMaxTime();
-        const numTeamsEl = document.getElementById('numTeams');
-        if (numTeamsEl) numTeamsEl.value = 0;
-        window._updateKartRotationInfo();
+    // Reset NLE-specific fields when switching to non-NLE modes
+    if (mode !== 'nolimit') {
+        setVal('kartChangeInterval', 0);
+        setVal('reqExtraPits', 0);
+        setVal('minPitLapSec', 0);
+        setVal('numTeams', 0);
+        const kartChangeInfoEl = document.getElementById('kartChangeInfo');
+        if (kartChangeInfoEl) kartChangeInfoEl.classList.add('hidden');
+        const kartRotInfoEl = document.getElementById('kartRotationInfo');
+        if (kartRotInfoEl) kartRotInfoEl.classList.add('hidden');
     }
 
     if (typeof window.runSim === 'function') window.runSim();
 
     // Highlight active pill
     document.querySelectorAll('.quick-pill').forEach(pill => {
-        const text = pill.textContent.toLowerCase();
+        const text = pill.textContent.toLowerCase().trim();
         const match = (mode === 'sprint' && text.includes('sprint')) ||
-                      (mode === 'endurance' && text.includes('endurance') && !text.includes('24h')) ||
-                      (mode === 'kart24h' && text.includes('24h'));
+                      (mode === 'endurance' && (text.includes('endurance') || text.includes('🏁'))) ||
+                      (mode === 'nolimit' && (text.includes('no limit') || text.includes('∞')));
         pill.classList.toggle('active', match);
     });
-    const label = { sprint: '⚡ Sprint', endurance: '🏁 Endurance', kart24h: '🏎 24H Kart' }[mode] || mode;
+    const label = { sprint: '⚡ Sprint', endurance: '🏁 Endurance', nolimit: '∞ No Limit' }[mode] || mode;
     if (typeof window.showToast === 'function') window.showToast(`${label} preset loaded`, 'success', 1800);
+};
+
+// Show kart-change interval info when the user enters a frequency
+window._updateKartChangeInfo = function() {
+    const intervalMin = parseFloat(document.getElementById('kartChangeInterval')?.value || '0') || 0;
+    const durationH   = parseFloat(document.getElementById('raceDuration')?.value || '0') || 0;
+    const infoEl      = document.getElementById('kartChangeInfo');
+    if (!infoEl) return;
+    if (intervalMin <= 0 || durationH <= 0) {
+        infoEl.classList.add('hidden');
+        return;
+    }
+    const totalKartChanges = Math.floor((durationH * 60) / intervalMin);
+    infoEl.textContent = `~${totalKartChanges} mandatory kart change${totalKartChanges !== 1 ? 's' : ''} over ${durationH}h`;
+    infoEl.classList.remove('hidden');
+};
+
+// Auto-show / hide the NLE section based on whether mode detection says noLimitEndurance
+window._syncNLESection = function() {
+    const maxStintVal  = parseFloat(document.getElementById('maxStint')?.value  || '0') || 0;
+    const reqStopsVal  = parseInt(document.getElementById('reqPitStops')?.value || '0') || 0;
+    const pitTimeVal   = parseInt(document.getElementById('minPitTime')?.value  || '0') || 0;
+    const isNLE = maxStintVal === 0 || reqStopsVal === 0 || pitTimeVal === 0;
+    const section = document.getElementById('extraPitSection');
+    if (section) section.classList.toggle('hidden', !isNLE);
 };
 
 // Show kart rotation window info whenever numTeams changes
@@ -3403,6 +3465,15 @@ window._autoSetKartDriverMaxTime = function() {
 window._onDriverCountChange = function() {
     const reqExtraPits = parseInt(document.getElementById('reqExtraPits')?.value || '0');
     if (reqExtraPits > 0) window._autoSetKartDriverMaxTime();
+};
+
+// Show per-driver stamina inputs only when in No Limit Endurance (global maxStint = 0)
+window._syncStaminaVisibility = function() {
+    const maxStintGlobal = parseFloat(document.getElementById('maxStint')?.value || '0') || 0;
+    const isNLE = maxStintGlobal === 0;
+    document.querySelectorAll('.driver-stamina-wrap').forEach(el => {
+        el.classList.toggle('hidden', !isNLE);
+    });
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

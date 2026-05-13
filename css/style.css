@@ -907,6 +907,37 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
     opacity: 0.8;
 }
 
+/* Per-driver stamina field — visible only in No Limit Endurance */
+.driver-stamina-wrap {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    margin-right: 6px;
+    flex-shrink: 0;
+}
+.driver-stamina-input {
+    width: 44px;
+    background: rgba(249,115,22,0.08);
+    border: 1px solid rgba(249,115,22,0.35);
+    border-radius: 5px;
+    color: #fb923c;
+    font-size: 11px;
+    font-weight: 700;
+    text-align: center;
+    padding: 2px 3px;
+    outline: none;
+    transition: border-color 0.15s;
+}
+.driver-stamina-input::placeholder { color: #6b7280; font-weight: 400; }
+.driver-stamina-input:focus { border-color: #f97316; }
+.driver-stamina-label {
+    font-size: 9px;
+    color: #f97316;
+    font-weight: 600;
+    white-space: nowrap;
+    opacity: 0.7;
+}
+
 /* Squad badge */
 .squad-badge {
     min-width: 22px;
