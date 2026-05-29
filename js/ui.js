@@ -1137,6 +1137,26 @@ window.openStintDriverPicker = function(stintIndex, anchorEl) {
 window.updateStats = function(currentStintMs) {
     const tb = document.getElementById('statsTable'); 
     if (!tb || !window.drivers) return;
+
+    const rebuildKey = window.drivers.map((d, i) =>
+        `${i}:${d.isExpanded ? 1 : 0}:${d.stints || 0}:${i === window.state.currentDriverIdx ? 1 : 0}`
+    ).join('|');
+    const now = Date.now();
+    const needsRebuild = rebuildKey !== window._statsRebuildKey || tb.children.length === 0;
+    if (!needsRebuild && window._statsLastTick && (now - window._statsLastTick) < 900) {
+        // Light update: refresh time cells only when structure unchanged
+        window.drivers.forEach((d, i) => {
+            const row = tb.querySelector(`tr[data-driver-idx="${i}"]:not([data-log-row])`);
+            if (!row) return;
+            let t = d.totalTime || 0;
+            if (i === window.state.currentDriverIdx && !window.state.isInPit) t += currentStintMs;
+            const timeCell = row.querySelector('[data-stat-time]');
+            if (timeCell) timeCell.textContent = window.formatTimeHMS(t);
+        });
+        return;
+    }
+    window._statsRebuildKey = rebuildKey;
+    window._statsLastTick = now;
     
     tb.innerHTML = '';
     
@@ -1156,6 +1176,7 @@ window.updateStats = function(currentStintMs) {
         const mainRow = document.createElement('tr');
         const isCurrent = (i === window.state.currentDriverIdx);
         mainRow.className = isCurrent ? "bg-white/10 font-bold text-white border-b border-gray-600" : "border-b border-gray-700 text-gray-300";
+        mainRow.setAttribute('data-driver-idx', String(i));
         
         // Show squad info if night mode is active and squads are enabled
         const SQUAD_COLOR_MAP = { A: '#3b82f6', B: '#06b6d4', C: '#a855f7', D: '#f97316' };
@@ -1194,7 +1215,7 @@ window.updateStats = function(currentStintMs) {
         mainRow.innerHTML = `
             <td class="text-center cursor-pointer p-2 hover:text-ice" onclick="window.toggleLog(${i})">${d.isExpanded ? '▲' : '▼'}</td>
             <td class="py-2 pr-2"><div class="flex items-center">${colorDot}${d.name} ${isCurrent ? '🏎️' : ''}${squadBadge}${maxTimeIndicator}</div></td>
-            <td class="py-2 text-center">${d.stints || 0}</td> <td class="py-2 text-right font-mono"><div>${window.formatTimeHMS(displayTotalTime)}${maxDriverMin > 0 ? `<span class="text-[8px] text-gray-600 ml-1">/${window.formatTimeHMS(maxDriverMin*60000)}</span>` : ''}</div><div class="flex items-center gap-1 justify-end"><span class="text-[9px] text-gray-500">${pct}%</span><div class="w-10">${pctBar}</div></div></td>
+            <td class="py-2 text-center">${d.stints || 0}</td> <td class="py-2 text-right font-mono"><div data-stat-time>${window.formatTimeHMS(displayTotalTime)}${maxDriverMin > 0 ? `<span class="text-[8px] text-gray-600 ml-1">/${window.formatTimeHMS(maxDriverMin*60000)}</span>` : ''}</div><div class="flex items-center gap-1 justify-end"><span class="text-[9px] text-gray-500">${pct}%</span><div class="w-10">${pctBar}</div></div></td>
         `;
         tb.appendChild(mainRow);
 

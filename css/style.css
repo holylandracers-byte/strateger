@@ -254,9 +254,43 @@ body:has(#qualifyingDashboard:not(.hidden)) {
     overflow-y: auto !important;
 }
 #raceControlDock {
-    flex: 1 1 0 !important;
+    flex: 0 0 auto !important;
     min-height: 80px !important;
     overflow-y: auto !important;
+}
+
+/* Portrait tablet: sticky pit dock, scrollable info above */
+@media (min-width: 600px) and (max-width: 1023px) and (orientation: portrait) {
+    #racePanelsWrapper {
+        flex-direction: column !important;
+        min-height: 0 !important;
+    }
+    #raceInfoPanel {
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+        max-height: none !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch;
+    }
+    #raceControlDock {
+        flex: 0 0 auto !important;
+        position: sticky;
+        bottom: 0;
+        z-index: 15;
+        margin-top: auto;
+        box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.45);
+        border-top: 1px solid rgba(34, 211, 238, 0.25) !important;
+        padding-bottom: max(8px, env(safe-area-inset-bottom)) !important;
+    }
+    #pitEntryBtn {
+        min-height: 52px;
+        font-size: 1.125rem;
+    }
+}
+
+/* Reduce GPU load when tab hidden */
+body.strateger-page-hidden * {
+    animation-play-state: paused !important;
 }
 
 /* ==================== TABLET LANDSCAPE: 2-COLUMN RACE DASHBOARD ==================== */

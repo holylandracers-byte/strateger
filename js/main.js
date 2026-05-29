@@ -1104,9 +1104,13 @@ window.renderFrame = function() {
         updateWeatherUI();
         updateModeUI();
 
-        // === Update live timing UI (needed for viewers who receive liveData via broadcast) ===
+        // === Update live timing UI (throttled — scraper also updates on packets) ===
         if (typeof window.updateLiveTimingUI === 'function' && window.liveTimingConfig && window.liveTimingConfig.enabled) {
-            window.updateLiveTimingUI();
+            const ltNow = Date.now();
+            if (!window._liveUiLastRender || (ltNow - window._liveUiLastRender) >= 1500) {
+                window._liveUiLastRender = ltNow;
+                window.updateLiveTimingUI();
+            }
         }
 
         // === Update new dashboard overlays ===
@@ -1569,7 +1573,7 @@ window._executePitEntry = function(isShortStint) {
     window._pitAdviceFlags = {};
 
     if (window.pitInterval) clearInterval(window.pitInterval);
-    window.pitInterval = setInterval(window.updatePitModalLogic, 100);
+    window.pitInterval = setInterval(window.updatePitModalLogic, 250);
 
     // Show inline pit dock in the bottom dock
     window._showInlinePitDock();
@@ -4786,4 +4790,11 @@ Be concise and practical.`;
 // 📊 DRIVER % BAR IN DASHBOARD STATS
 // ==========================================
 // (Integrated into updateStats — see ui.js modifications)
+
+document.addEventListener('visibilitychange', () => {
+    document.body.classList.toggle('strateger-page-hidden', document.hidden);
+    if (document.hidden) {
+        if (window._inlinePitInterval) { /* keep pit timer running */ }
+    }
+});
 
