@@ -401,6 +401,12 @@ window.fetchLiveTimingFromProxy = async function() {
     });
 
     window._liveTimingConfigSignature = configSignature;
+
+    const apexBtn = document.getElementById('apexViewToggle');
+    if (apexBtn && window.liveTimingManager) {
+        const prov = window.liveTimingManager.provider;
+        apexBtn.style.display = prov === 'apex' ? '' : 'none';
+    }
 };
 
 window.parseTimeToMs = function(timeStr) {
