@@ -2339,7 +2339,7 @@ window.submitFeedback = async () => {
     try {
         // Send to Netlify function with timeout
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+        const timeout = setTimeout(() => controller.abort('Request timeout'), 15000); // 15 second timeout
         
         const response = await fetch(window.APP_CONFIG.API_BASE + '/.netlify/functions/send-feedback', {
             method: 'POST',
