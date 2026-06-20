@@ -1179,33 +1179,81 @@ class ApexTimingScraper {
 
     async scrapeInitialGrid() {
         this.log('INFO', '🌐 Fetching initial grid via HTTP (with CORS proxy)');
+        await this._doHttpGridScrape();
+        // Start HTTP polling as fallback for when WS can't connect (cross-origin block).
+        // Polling runs every 4s regardless of WS state; WS messages take priority when
+        // they arrive (mergeCompetitor preserves all live WS state on top of HTTP snapshots).
+        this._startHttpPolling();
+    }
+
+    _startHttpPolling() {
+        if (this._httpPollTimer) return; // already running
+        const POLL_MS = 4000;
+        this._httpPollTimer = setInterval(async () => {
+            if (!this.isRunning) { this._stopHttpPolling(); return; }
+            await this._doHttpGridScrape();
+        }, POLL_MS);
+        this.log('INFO', `🔄 HTTP polling started (every ${POLL_MS / 1000}s as WS fallback)`);
+    }
+
+    _stopHttpPolling() {
+        if (this._httpPollTimer) {
+            clearInterval(this._httpPollTimer);
+            this._httpPollTimer = null;
+        }
+    }
+
+    async _doHttpGridScrape() {
         try {
             const html = await this.fetchWithProxy(this.raceUrl);
-            
-            // Extract the grid table from the full page HTML
-            // Look for the main timing table — Apex uses <table id="tbl"> or similar
-            const tableMatch = html.match(/<table[^>]*id=["']?tbl["']?[^>]*>([\s\S]*?)<\/table>/i) ||
-                               html.match(/<table[^>]*class=["'][^"']*live[^"']*["'][^>]*>([\s\S]*?)<\/table>/i);
-            
-            let gridContent = '';
-            if (tableMatch) {
-                gridContent = tableMatch[1];
-                this.log('INFO', `📋 Extracted table content (${gridContent.length} chars)`);
-            } else {
-                // Try to find rows directly in the full HTML
-                gridContent = html;
-                this.log('INFO', `📋 No table tag found, using full HTML (${html.length} chars)`);
-            }
-
-            this.log('INFO', `📋 Scraped grid HTML (${gridContent.length} chars)`);
-            
-            // Only use HTTP result if WS didn't already give us data
-            if (this.competitors.size === 0 && gridContent.length > 0) {
+            const gridContent = this._extractStandingsTable(html);
+            if (gridContent && gridContent.length > 0) {
                 this.parseGridHTML(gridContent);
             }
         } catch (e) {
             this.log('WARN', `HTTP grid scrape failed: ${e.message}`);
         }
+    }
+
+    /**
+     * Extract the race standings table from Apex full-page HTML.
+     *
+     * Apex serves multiple tables: the main standings table (rows with id="r<N>")
+     * and a lap-history/sector table (headers: Lap, S1, S2, S3, Time). We want the
+     * standings table, identified by:
+     *   1. <table id="tbl"> or <table id="grid"> (common Apex IDs)
+     *   2. The table containing the most rows with id^="r" (race competitor rows)
+     *   3. Fallback: full HTML (let parseGridHTML sort it out)
+     */
+    _extractStandingsTable(html) {
+        // Parse as DOM for reliable table selection
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+
+        // 1) Named standings tables — return innerHTML so parseGridHTML can wrap it in <table>
+        for (const id of ['tbl', 'grid', 'classifica', 'results', 'timing', 'ranking']) {
+            const el = doc.getElementById(id);
+            if (el) {
+                this.log('INFO', `📋 Found standings table by id="${id}"`);
+                return el.innerHTML;
+            }
+        }
+
+        // 2) Table with the most rows whose id starts with "r" (Apex race row IDs)
+        const tables = Array.from(doc.querySelectorAll('table'));
+        let bestTable = null, bestCount = 0;
+        for (const tbl of tables) {
+            const rRows = tbl.querySelectorAll('tr[id^="r"]').length;
+            if (rRows > bestCount) { bestCount = rRows; bestTable = tbl; }
+        }
+        if (bestTable && bestCount >= 2) {
+            this.log('INFO', `📋 Standings table selected by max r-rows (${bestCount} rows)`);
+            return bestTable.innerHTML;
+        }
+
+        // 3) Fallback to full HTML
+        this.log('INFO', `📋 No distinct standings table found, using full HTML (${html.length} chars)`);
+        return html;
     }
 
     async fetchWithProxy(url) {
@@ -1261,13 +1309,15 @@ class ApexTimingScraper {
             clearTimeout(this._emitTimer);
             this._emitTimer = null;
         }
-        
+
+        this._stopHttpPolling();
+
         // Abort any in-flight HTTP request
         if (this._activeController) {
             try { this._activeController.abort(); } catch(e) {}
             this._activeController = null;
         }
-        
+
         if (this.ws) {
             try { this.ws.close(); } catch (e) {}
             this.ws = null;
@@ -1276,7 +1326,7 @@ class ApexTimingScraper {
             clearInterval(this.pollInterval);
             this.pollInterval = null;
         }
-        
+
         this._errorLogThrottle = {};
     }
 
