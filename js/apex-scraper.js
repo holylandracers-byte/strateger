@@ -123,15 +123,24 @@ class ApexTimingScraper {
         const raceProtocol = (urlObj.protocol || '').toLowerCase();
         const isSecureRace = raceProtocol === 'https:';
         const wsScheme = isSecureRace ? 'wss' : 'ws';
-        const wsOffset = isSecureRace ? 3 : 2;
 
-        const configPort = await this.fetchConfigPort(raceUrl);
-        const wsPort = configPort + wsOffset;
+        // Port 8523 is Apex Timing's global real-time WebSocket port (same for all tracks).
+        // This was the original working approach before the configPort+3 formula was introduced.
+        // configPort (e.g. 8910) is the HTTP data port, not the WS port.
+        const APEX_GLOBAL_WS_PORT = 8523;
+
+        let configPort = null;
+        try {
+            configPort = await this.fetchConfigPort(raceUrl);
+        } catch (e) {
+            this.log('WARN', `configPort fetch failed, using global port ${APEX_GLOBAL_WS_PORT}: ${e.message}`);
+        }
+
         return {
-            configPort,
-            wsPort,
-            wsUrl: `${wsScheme}://${urlObj.hostname}:${wsPort}/`,
-            source: isSecureRace ? 'config.js + HTTPS(+3)' : 'config.js + HTTP(+2)'
+            configPort: configPort || APEX_GLOBAL_WS_PORT,
+            wsPort: APEX_GLOBAL_WS_PORT,
+            wsUrl: `${wsScheme}://${urlObj.hostname}:${APEX_GLOBAL_WS_PORT}/`,
+            source: `global port ${APEX_GLOBAL_WS_PORT}${configPort ? ` (configPort=${configPort} found but not used for WS)` : ''}`
         };
     }
 
