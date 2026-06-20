@@ -1049,6 +1049,8 @@
                                 <span id="autoPitIcon">🤖</span>
                                 <span id="autoPitLabel" data-i18n="autoPit">Auto</span>
                             </button>
+                            <!-- Force Pit Out: bypasses 20s guard and live timing auto-exit, shown only when in pit -->
+                            <button id="forcePitOutBtn" onclick="window.forcePitOut()" class="hidden text-[10px] bg-amber-600 hover:bg-amber-500 text-white font-bold px-2 py-0.5 rounded border border-amber-400 transition" title="Force pit out now (override)">⚡ OUT</button>
                             <button onclick="window.stopLiveTiming()" class="text-[10px] bg-red-900 text-white px-2 rounded" data-i18n="stop">Stop</button>
                         </div>
                     </div>

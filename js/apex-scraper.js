@@ -627,7 +627,10 @@ class ApexTimingScraper {
         const normTexts   = [];
 
         for (let i = 0; i < headerCells.length; i++) {
-            const raw  = (headerCells[i].textContent || headerCells[i]).toString().trim();
+            const cell = headerCells[i];
+            // Collect text from all descendant text nodes; avoids [object HTMLTableCellElement]
+            // when a <th> contains only child elements (images, spans) with no direct text.
+            const raw  = (cell.innerText ?? cell.textContent ?? '').trim();
             const norm = this._normalizeHeader(raw);
             headerTexts.push(raw);
             normTexts.push(norm);

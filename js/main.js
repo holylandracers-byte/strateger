@@ -1521,10 +1521,30 @@ window.confirmPitEntry = function(autoDetected) {
     window._executePitEntry(isShortStint);
 };
 
+// Show/hide the Force Pit Out button based on current pit state
+window._syncForcePitOutBtn = function() {
+    const btn = document.getElementById('forcePitOutBtn');
+    if (!btn) return;
+    const inPit = window.state && window.state.isInPit;
+    btn.classList.toggle('hidden', !inPit);
+};
+
+// Manual override: exit pit immediately, bypass 20s guard and live-timing auto-exit
+window.forcePitOut = function() {
+    if (!window.state || !window.state.isInPit) return;
+    console.log('[ForcePitOut] Manual pit exit override triggered');
+    window.liveData && (window.liveData._pitEntryForcedAt = null);
+    if (typeof window.confirmPitExit === 'function') {
+        window.confirmPitExit(true);
+    }
+    window._syncForcePitOutBtn();
+};
+
 // Internal: actually execute pit entry after confirmation
 window._executePitEntry = function(isShortStint) {
     const now = (window.getSyncedNow && typeof window.getSyncedNow === 'function') ? window.getSyncedNow() : Date.now();
     window.state.isInPit = true;
+    window._syncForcePitOutBtn();
     window.state.pitStart = now;
     window.state.pitCount++; // === UP COUNT ===
     window._lastPitEntryTime = now; // Record for cooldown guard
@@ -1623,8 +1643,9 @@ window._hideInlinePitDock = function() {
 window.cancelPitStop = function() {
     if (window.pitInterval) clearInterval(window.pitInterval);
     window._hideInlinePitDock();
-    
+
     window.state.isInPit = false;
+    window._syncForcePitOutBtn();
     window.state.pendingPitEntry = false;
     
     // === FIX: Decrement count on cancel ===
@@ -1929,6 +1950,7 @@ window.confirmPitExit = function(autoDetected) {
     if (typeof window.cycleNextDriver === 'function') window.cycleNextDriver();
 
     window.state.isInPit = false;
+    window._syncForcePitOutBtn();
     window.state.stintStart = now;
     window.state.stintOffset = 0;
 
