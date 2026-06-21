@@ -310,7 +310,8 @@ body.strateger-page-hidden * {
         padding: 12px !important;
         gap: 10px !important;
     }
-    /* Right: control dock — takes remaining width, never scrolls */
+    /* Right: control dock — takes remaining width, scrolls if its content (now including
+       the driver stats table) grows past the viewport */
     #raceControlDock {
         flex: 1 1 0 !important;
         min-width: 200px !important;
@@ -318,7 +319,7 @@ body.strateger-page-hidden * {
         border-left: 1px solid rgba(55,65,81,0.6) !important;
         display: flex !important;
         flex-direction: column !important;
-        justify-content: flex-end !important;
+        justify-content: flex-start !important;
         padding: 12px !important;
         gap: 10px !important;
         overflow-y: auto;

@@ -1198,24 +1198,9 @@
                     </div>
                 </div>
 
-                <!-- Driver stats table -->
-                <div class="bg-navy-900 border border-gray-700 rounded-lg overflow-hidden">
-                    <table class="w-full text-xs">
-                        <thead class="text-gray-400 text-[9px] bg-navy-950 border-b border-gray-700">
-                            <tr>
-                                <th class="w-5 p-1"></th>
-                                <th class="text-left p-1" data-i18n="driverHeader">DRIVER</th>
-                                <th class="text-center p-1" data-i18n="stops">ST</th>
-                                <th class="text-right p-1" data-i18n="totalHeader">TOTAL</th>
-                            </tr>
-                        </thead>
-                        <tbody id="statsTable" class="divide-y divide-gray-800"></tbody>
-                    </table>
-                </div>
-
             </div><!-- end raceInfoPanel -->
 
-                <!-- Controls: next driver + penalty + pit button -->
+                <!-- Controls: next driver + penalty + pit button + driver stats -->
                 <div id="raceControlDock" class="bg-navy-900 border border-gray-700 rounded-lg px-2 pt-1.5 pb-2 space-y-1.5">
 
                     <!-- Next driver + penalty row -->
@@ -1255,6 +1240,24 @@
                         </span>
                         <span id="btnPitAdjBadge" class="hidden text-sm bg-black/40 px-2 py-1 rounded text-yellow-300 font-mono border border-yellow-500/50"></span>
                     </button>
+
+                    <!-- Driver stats table — moved here from raceInfoPanel so this length-heavy
+                         list gets its own dedicated zone instead of being squeezed under the
+                         live-timing widget, which left this dock looking sparse/empty while
+                         raceInfoPanel was overcrowded. -->
+                    <div class="bg-navy-900 border border-gray-700 rounded-lg overflow-hidden">
+                        <table class="w-full text-xs">
+                            <thead class="text-gray-400 text-[9px] bg-navy-950 border-b border-gray-700">
+                                <tr>
+                                    <th class="w-5 p-1"></th>
+                                    <th class="text-left p-1" data-i18n="driverHeader">DRIVER</th>
+                                    <th class="text-center p-1" data-i18n="stops">ST</th>
+                                    <th class="text-right p-1" data-i18n="totalHeader">TOTAL</th>
+                                </tr>
+                            </thead>
+                            <tbody id="statsTable" class="divide-y divide-gray-800"></tbody>
+                        </table>
+                    </div>
 
                 </div>
 
