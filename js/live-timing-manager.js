@@ -108,7 +108,8 @@ class LiveTimingManager {
             onError: callbacks.onError || null,
             onFatalError: callbacks.onFatalError || null,
             onComment: callbacks.onComment || null,
-            updateInterval: callbacks.updateInterval || 5000
+            updateInterval: callbacks.updateInterval || 5000,
+            wsPortOverride: callbacks.wsPortOverride || null
         };
 
         // זהה ספק
@@ -255,13 +256,14 @@ class LiveTimingManager {
         return;
     }
 
-    console.log(`[LiveTimingManager] Starting Apex scraper with URL: ${url}`);
+    console.log(`[LiveTimingManager] Starting Apex scraper with URL: ${url}${this.config.wsPortOverride ? ` (WS port override: ${this.config.wsPortOverride})` : ''}`);
 
     this.currentScraper = new ApexTimingScraper({
         raceUrl: url,
         searchTerm: this.config.searchTerm,
         searchType: this.config.searchType || 'team',
         updateInterval: this.config.updateInterval,
+        wsPortOverride: this.config.wsPortOverride,
         debug: false,
 
         onUpdate: (data) => {

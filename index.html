@@ -373,6 +373,17 @@
                     </div>
                     <input type="text" id="searchValue" class="input-field text-xs" data-i18n="ltPlaceholder" placeholder="Search value...">
                 </div>
+                <div class="mb-2">
+                    <label class="text-[10px] text-gray-400 flex items-center gap-1 cursor-pointer select-none" onclick="document.getElementById('wsPortOverrideRow').classList.toggle('hidden')">
+                        <i class="fas fa-chevron-right text-[8px]"></i>
+                        <span data-i18n="advancedConnection">Advanced connection</span>
+                    </label>
+                    <div id="wsPortOverrideRow" class="hidden mt-1">
+                        <label class="text-[10px] text-gray-500 block mb-1" data-i18n="wsPortOverrideLabel">Apex WS port override (leave blank = auto):</label>
+                        <input type="number" id="wsPortOverride" class="input-field text-xs" data-i18n="wsPortOverridePlaceholder" placeholder="e.g. 8523 or 8913" min="1" max="65535">
+                        <p class="text-[9px] text-gray-600 mt-1" data-i18n="wsPortOverrideHint">If live timing connects but shows no data, the feed's WebSocket port may differ from the auto-detected one. Try the venue's configPort+3 (HTTPS) or +2 (HTTP).</p>
+                    </div>
+                </div>
                 <div class="flex gap-2">
                     <button onclick="window.testLiveTiming()" class="flex-1 bg-red-900/50 border border-red-500/50 text-red-300 text-xs py-1.5 rounded hover:bg-red-900" data-i18n="testBtn">Test</button>
                     <button onclick="window.openManualInput()" class="flex-1 bg-fuel/20 border border-fuel/50 text-fuel text-xs py-1.5 rounded hover:bg-fuel/30" data-i18n="manualInput">Manual</button>

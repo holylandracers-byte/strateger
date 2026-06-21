@@ -11,6 +11,9 @@ class ApexTimingScraper {
         this.maxConsecutiveErrors = 15;
         this.searchTerm = config.searchTerm || '';
         this.searchType = config.searchType || 'team';
+        // Manual override for the Apex WS port — set by the race admin in the Live Timing
+        // panel when auto-detection (global port 8523) doesn't connect for a given venue.
+        this.wsPortOverride = config.wsPortOverride || null;
         this.gridHtml = '';
         this.sessionId = '';
         this.debug = config.debug || false;
@@ -123,6 +126,18 @@ class ApexTimingScraper {
         const raceProtocol = (urlObj.protocol || '').toLowerCase();
         const isSecureRace = raceProtocol === 'https:';
         const wsScheme = isSecureRace ? 'wss' : 'ws';
+
+        // Manual override takes priority over every auto-detection strategy below —
+        // the race admin sets this in the Live Timing panel when neither the global port
+        // nor configPort+3 connects for a given venue.
+        if (this.wsPortOverride) {
+            return {
+                configPort: this.wsPortOverride,
+                wsPort: this.wsPortOverride,
+                wsUrl: `${wsScheme}://${urlObj.hostname}:${this.wsPortOverride}/`,
+                source: `manual override (port ${this.wsPortOverride})`
+            };
+        }
 
         // Port 8523 is Apex Timing's global real-time WebSocket port (same for all tracks).
         // This was the original working approach before the configPort+3 formula was introduced.

@@ -105,6 +105,10 @@ window.updateSearchConfig = function() {
     } else if (searchType === 'driver') {
         window.searchConfig.driverName = searchValue;
     }
+
+    const wsPortInput = document.getElementById('wsPortOverride');
+    const wsPortVal = wsPortInput ? parseInt(wsPortInput.value, 10) : NaN;
+    window.liveTimingConfig.wsPortOverride = (Number.isFinite(wsPortVal) && wsPortVal > 0 && wsPortVal <= 65535) ? wsPortVal : null;
 };
 
 // פונקציית הבדיקה (Test Connection)
@@ -207,7 +211,8 @@ window.fetchLiveTimingFromProxy = async function() {
     // איחוד פרמטרים לחיפוש חכם
     const searchTerm = window.searchConfig.driverName || window.searchConfig.teamName || window.searchConfig.kartNumber || '';
     const searchType = window.searchConfig.kartNumber ? 'kart' : (window.searchConfig.driverName ? 'driver' : 'team');
-    const configSignature = `${url}|${searchType}|${searchTerm}`;
+    const wsPortOverride = window.liveTimingConfig.wsPortOverride || null;
+    const configSignature = `${url}|${searchType}|${searchTerm}|${wsPortOverride || ''}`;
     
     // Check if already running with same config - don't restart
     const stats = window.liveTimingManager.getStats();
@@ -228,8 +233,9 @@ window.fetchLiveTimingFromProxy = async function() {
     // התחלת הסקרייפר דרך המנהל
     window.liveTimingManager.start(url, searchTerm, {
         searchType: searchType,
-        updateInterval: 2000, 
-        
+        updateInterval: 2000,
+        wsPortOverride: wsPortOverride,
+
         onUpdate: (data) => {
             console.log('[LiveTiming] Data update:', { 
                 hasOurTeam: !!data.ourTeam, 

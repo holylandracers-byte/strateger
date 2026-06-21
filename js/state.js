@@ -340,6 +340,7 @@ window.translations = {
         saveStratTitle: "Save Strategy", libTitle: "Strategy Library", aiPlaceholder: "e.g. 'Driver 1 is fast but tires wear out...'",
         thStart: "Start", thEnd: "End", thType: "Type", thDriver: "Driver", thDuration: "Duration",
         liveTiming: "Live Timing", liveTimingUrl: "Live Timing URL...", connectLive: "Connect", disconnectLive: "Disconnect", searchTeam: "Search team...", searchDriver: "Search driver...", searchKart: "Search kart #...", demoMode: "Demo Mode",
+        advancedConnection: "Advanced connection", wsPortOverrideLabel: "Apex WS port override (leave blank = auto):", wsPortOverridePlaceholder: "e.g. 8523 or 8913", wsPortOverrideHint: "If live timing connects but shows no data, the feed's WebSocket port may differ from the auto-detected one. Try the venue's configPort+3 (HTTPS) or +2 (HTTP).",
         sendEmail: "Send", cancel: "Cancel", create: "Create", save: "Save", load: "Load", delete: "Delete",
         activeRaceFound: "Active Race Found", continueRace: "Continue Race", discardRace: "Discard",
         areYouSure: "Are you sure?", deleteWarning: "This will delete the active race data permanently.", yesDelete: "Yes, Delete", noKeep: "No, Keep",
@@ -2457,6 +2458,11 @@ window.continueRace = function() {
                 const searchInput = document.getElementById('searchValue');
                 if (searchInput && window.searchConfig) {
                     searchInput.value = window.searchConfig.teamName || window.searchConfig.driverName || window.searchConfig.kartNumber || '';
+                }
+                const wsPortInput = document.getElementById('wsPortOverride');
+                if (wsPortInput && window.liveTimingConfig.wsPortOverride) {
+                    wsPortInput.value = window.liveTimingConfig.wsPortOverride;
+                    document.getElementById('wsPortOverrideRow')?.classList.remove('hidden');
                 }
                 
                 // Show restored live data immediately (before scraper reconnects)
