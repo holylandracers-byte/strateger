@@ -139,10 +139,11 @@ class ApexTimingScraper {
             };
         }
 
-        // Port 8523 is Apex Timing's global real-time WebSocket port (same for all tracks).
-        // This was the original working approach before the configPort+3 formula was introduced.
-        // configPort (e.g. 8910) is the HTTP data port, not the WS port.
-        const APEX_GLOBAL_WS_PORT = 8523;
+        // Apex's own client (javascript_live_timing.min.js) derives the WS port from the
+        // venue's configPort: configPort+3 for HTTPS pages, configPort+2 for HTTP pages.
+        // configPort is fetched fresh each time this runs (not cached) since a venue can be
+        // reassigned a different configPort between sessions/events.
+        const APEX_GLOBAL_WS_PORT = 8523; // last-resort fallback if configPort can't be fetched at all
 
         let configPort = null;
         try {
@@ -151,11 +152,21 @@ class ApexTimingScraper {
             this.log('WARN', `configPort fetch failed, using global port ${APEX_GLOBAL_WS_PORT}: ${e.message}`);
         }
 
+        if (configPort) {
+            const wsPort = isSecureRace ? configPort + 3 : configPort + 2;
+            return {
+                configPort,
+                wsPort,
+                wsUrl: `${wsScheme}://${urlObj.hostname}:${wsPort}/`,
+                source: `configPort+${isSecureRace ? 3 : 2} (configPort=${configPort})`
+            };
+        }
+
         return {
-            configPort: configPort || APEX_GLOBAL_WS_PORT,
+            configPort: APEX_GLOBAL_WS_PORT,
             wsPort: APEX_GLOBAL_WS_PORT,
             wsUrl: `${wsScheme}://${urlObj.hostname}:${APEX_GLOBAL_WS_PORT}/`,
-            source: `global port ${APEX_GLOBAL_WS_PORT}${configPort ? ` (configPort=${configPort} found but not used for WS)` : ''}`
+            source: `global port ${APEX_GLOBAL_WS_PORT} (configPort fetch failed)`
         };
     }
 
@@ -280,7 +291,27 @@ class ApexTimingScraper {
         if (!this.isRunning) return;
         const delay = Math.min(2000 * Math.pow(2, this.consecutiveErrors), 30000);
         this.log('INFO', `Reconnecting in ${delay / 1000}s...`);
-        setTimeout(() => this.connectWebSocket(), delay);
+        setTimeout(async () => {
+            if (!this.isRunning) return;
+            // Re-resolve the socket URL before every reconnect attempt (skip when the admin
+            // has set a manual port override — that should stay fixed). A venue's configPort
+            // can differ from what we resolved at start() if the page reloaded onto a new
+            // session/event, so re-fetching keeps the WS port correlated with the live race
+            // instead of retrying the same possibly-wrong port forever.
+            if (!this.wsPortOverride) {
+                try {
+                    const urlObj = new URL(this.raceUrl);
+                    const socketConfig = await this.resolveSocketConfig(this.raceUrl, urlObj);
+                    if (socketConfig.wsUrl !== this.wsUrl) {
+                        this.log('INFO', `🔁 Re-resolved WS URL: ${socketConfig.wsUrl} (${socketConfig.source})`);
+                    }
+                    this.wsUrl = socketConfig.wsUrl;
+                } catch (e) {
+                    this.log('WARN', `Re-resolve before reconnect failed, reusing previous WS URL: ${e.message}`);
+                }
+            }
+            this.connectWebSocket();
+        }, delay);
     }
 
     handleMessage(data) {
