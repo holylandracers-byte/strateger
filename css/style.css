@@ -50,10 +50,6 @@
     --alert-push:       #a3e635;
     --alert-conserve:   #38bdf8;
     --alert-caution:    #eab308;
-
-    /* Layout two-zone widths (desktop) */
-    --lt-zone-w: 58%;
-    --ctrl-zone-w: 42%;
 }
 
 html {
@@ -2207,27 +2203,33 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 /* ==================== LIVE TIMING FULL OVERHAUL ==================== */
 
-/* ---- Two-zone dashboard layout (wide screens ≥ 1024px) ---- */
+/* ---- Two-zone dashboard layout (wide screens ≥ 1024px) ----
+   Stacked top/bottom (full width, like portrait) rather than side-by-side, so the
+   height-resizer below the live-timing panel always has somewhere to go. */
 @media (min-width: 1024px) {
     #racePanelsWrapper {
-        flex-direction: row !important;
+        flex-direction: column !important;
         align-items: stretch;
     }
-    /* Left zone: full live timing panel */
+    /* Top zone: live timing panel */
     #raceInfoPanel {
-        flex: 0 0 var(--lt-zone-w, 58%) !important;
-        min-width: 320px !important;
-        max-width: 820px !important;
-        border-right: 1px solid rgba(55,65,81,0.5) !important;
+        flex: 0 0 var(--dash-info-pct, 60%) !important;
+        min-height: 200px !important;
+        border-right: none !important;
+        border-bottom: 1px solid rgba(55,65,81,0.5) !important;
         overflow-y: auto !important;
         padding: 10px 12px !important;
     }
-    /* Right zone: pit entry + control widgets */
+    /* While live timing is actively shown, the top zone always gets at least half
+       the available height — the resizer can still push it higher, just not lower. */
+    #raceInfoPanel:has(#liveTimingWidgetWrapper:not(.hidden)) {
+        min-height: 50% !important;
+    }
+    /* Bottom zone: pit entry + driver stats — fills whatever height remains */
     #raceControlDock {
         flex: 1 1 0 !important;
-        min-width: 280px !important;
+        min-height: 200px !important;
         border-top: none !important;
-        border-left: none !important;
         display: flex !important;
         flex-direction: column !important;
         justify-content: flex-start !important;
@@ -2235,14 +2237,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
         gap: 8px !important;
         overflow-y: auto !important;
     }
-    /* Resizer becomes a vertical divider */
-    #dashPanelResizer {
-        width: 8px !important;
-        height: 100% !important;
-        cursor: col-resize !important;
-        flex-direction: column !important;
-    }
-    /* Live timing widget fills the left zone */
+    /* Live timing widget fills the top zone */
     #raceInfoPanel #liveTimingWidgetWrapper {
         min-height: 300px;
     }
@@ -2642,11 +2637,6 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 /* ---- 1920×1080 / wide desktop ---- */
 @media (min-width: 1400px) {
-    :root {
-        --lt-zone-w: 60%;
-        --ctrl-zone-w: 40%;
-    }
-    #raceInfoPanel { max-width: 960px !important; }
     .cr-name { max-width: 160px; }
     .competitor-row { height: 36px; min-height: 36px; }
     .cr-sectors { display: flex; }
@@ -2654,9 +2644,6 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 /* ---- 1366×768 / 1280×800 — tighter ---- */
 @media (min-width: 1024px) and (max-width: 1366px) {
-    :root {
-        --lt-zone-w: 56%;
-    }
     .cr-avg, .cr-int { display: none; }
     .cr-name { max-width: 100px; }
 }

@@ -2624,12 +2624,20 @@ window.initDashPanelResizer = function() {
     if (!resizer || !wrapper || !infoPanel) return;
 
     const STORAGE_KEY = 'strateger_dash_split';
-    const isLandscape = () => window.matchMedia('(min-width:768px) and (orientation:landscape)').matches;
+    // Side-by-side (width-drag) only in the narrow 768–1023px landscape tablet range.
+    // Both portrait AND ≥1024px wide screens stack the panels top/bottom (height-drag).
+    const isSideBySide = () => window.matchMedia('(min-width:768px) and (max-width:1023px) and (orientation:landscape)').matches;
+    const isLiveTimingActive = () => {
+        const lt = document.getElementById('liveTimingWidgetWrapper');
+        return !!lt && !lt.classList.contains('hidden');
+    };
+    // Floor applies only in stacked (height-drag) mode, and only while live timing is shown.
+    const minPct = () => (!isSideBySide() && isLiveTimingActive()) ? 50 : 15;
 
     // Restore saved split
     const saved = parseFloat(localStorage.getItem(STORAGE_KEY));
     const initialPct = (saved >= 15 && saved <= 85) ? saved : 60;
-    document.documentElement.style.setProperty('--dash-info-pct', initialPct + '%');
+    document.documentElement.style.setProperty('--dash-info-pct', Math.max(initialPct, minPct()) + '%');
 
     let dragging = false;
     let startPos = 0;
@@ -2637,12 +2645,13 @@ window.initDashPanelResizer = function() {
 
     function getPct(e) {
         const rect = wrapper.getBoundingClientRect();
-        if (isLandscape()) {
+        const lo = minPct();
+        if (isSideBySide()) {
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-            return Math.min(85, Math.max(15, ((clientX - rect.left) / rect.width) * 100));
+            return Math.min(85, Math.max(lo, ((clientX - rect.left) / rect.width) * 100));
         } else {
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            return Math.min(85, Math.max(15, ((clientY - rect.top) / rect.height) * 100));
+            return Math.min(85, Math.max(lo, ((clientY - rect.top) / rect.height) * 100));
         }
     }
 
@@ -2690,20 +2699,9 @@ window.initDashPanelResizer = function() {
         lastTap = now;
     });
 
-    // Auto-hide resizer when info panel content fits without scrolling.
-    // Use a debounced ResizeObserver only — no MutationObserver (avoids self-trigger loops).
-    let _resizerRafId = null;
-    function _syncResizerVisibility() {
-        if (_resizerRafId) return; // already queued
-        _resizerRafId = requestAnimationFrame(() => {
-            _resizerRafId = null;
-            const fits = infoPanel.scrollHeight <= infoPanel.clientHeight + 8;
-            resizer.style.display = fits ? 'none' : '';
-            // Don't touch infoPanel.style.flex here — it would cause layout thrash
-        });
-    }
-    _syncResizerVisibility();
-    new ResizeObserver(_syncResizerVisibility).observe(infoPanel);
+    // Resizer is always visible/draggable — the user controls the split manually
+    // regardless of how much content either panel currently has.
+    resizer.style.display = '';
 };
 
 // ==========================================
@@ -3657,296 +3655,6 @@ if (_origRunSimForHero) {
         return result;
     };
 }
-
-// ==========================================
-// 🏁 RIGHT-ZONE WIDGET SYSTEM
-// ==========================================
-
-;(function() {
-    'use strict';
-
-    const WIDGET_ORDER_KEY = 'strateger_widget_order';
-    const WIDGET_COLLAPSED_KEY = 'strateger_widget_collapsed';
-    const LAYOUT_TPL_KEY = 'strateger_layout_tpl';
-    const SNAP_GRID = 20;
-
-    // ---- Layout templates ----
-    // Each template describes: lt-zone-w percentage, which widgets are visible/collapsed,
-    // and order of widgets in the right zone.
-    const TEMPLATES = {
-        classic: {
-            ltZoneW: '58%',
-            widgets: ['widgetLayoutTemplates','widgetDriverInfo','widgetStintData','widgetStrategy'],
-            collapsed: [],
-        },
-        pit: {
-            ltZoneW: '42%',
-            widgets: ['widgetLayoutTemplates','widgetDriverInfo','widgetStintData','widgetStrategy'],
-            collapsed: ['widgetStrategy'],
-        },
-        strategy: {
-            ltZoneW: '50%',
-            widgets: ['widgetLayoutTemplates','widgetStrategy','widgetStintData','widgetDriverInfo'],
-            collapsed: [],
-        },
-        compact: {
-            ltZoneW: '65%',
-            widgets: ['widgetLayoutTemplates','widgetDriverInfo','widgetStintData','widgetStrategy'],
-            collapsed: ['widgetStintData','widgetStrategy'],
-        },
-    };
-
-    // Show/hide right-widgets-area on wide screens
-    function updateWidgetAreaVisibility() {
-        const area = document.getElementById('rightWidgetsArea');
-        if (!area) return;
-        const wide = window.matchMedia('(min-width: 1024px)').matches;
-        if (wide) {
-            area.classList.remove('hidden');
-            area.style.display = 'flex';
-        } else {
-            area.classList.add('hidden');
-            area.style.display = '';
-        }
-    }
-
-    // Apply a layout template
-    window.applyLayoutTemplate = function(tplName) {
-        const tpl = TEMPLATES[tplName];
-        if (!tpl) return;
-        // Save
-        try { localStorage.setItem(LAYOUT_TPL_KEY, tplName); } catch(e) {}
-        // Update CSS var
-        document.documentElement.style.setProperty('--lt-zone-w', tpl.ltZoneW);
-        // Reorder widgets
-        const area = document.getElementById('rightWidgetsArea');
-        if (area) {
-            tpl.widgets.forEach(id => {
-                const el = document.getElementById(id);
-                if (el) area.appendChild(el);
-            });
-        }
-        // Apply collapsed states
-        tpl.widgets.forEach(id => {
-            const el = document.getElementById(id);
-            if (!el) return;
-            if (tpl.collapsed.includes(id)) {
-                el.classList.add('collapsed');
-                const btn = el.querySelector('.widget-collapse-btn');
-                if (btn) btn.textContent = '▸';
-            } else {
-                el.classList.remove('collapsed');
-                const btn = el.querySelector('.widget-collapse-btn');
-                if (btn) btn.textContent = '▾';
-            }
-        });
-        // Update active template button
-        document.querySelectorAll('.layout-tpl-btn').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.tpl === tplName);
-        });
-    };
-
-    // Collapse/expand a widget
-    window.toggleWidget = function(widgetId) {
-        const el = document.getElementById(widgetId);
-        if (!el) return;
-        const collapsed = el.classList.toggle('collapsed');
-        const btn = el.querySelector('.widget-collapse-btn');
-        if (btn) btn.textContent = collapsed ? '▸' : '▾';
-        // Persist
-        try {
-            const saved = JSON.parse(localStorage.getItem(WIDGET_COLLAPSED_KEY) || '{}');
-            saved[widgetId] = collapsed;
-            localStorage.setItem(WIDGET_COLLAPSED_KEY, JSON.stringify(saved));
-        } catch(e) {}
-    };
-
-    // ---- Widget drag reorder (within right zone) ----
-    let _wDragSrc = null;
-    let _wDropZone = null;
-
-    function initWidgetDragReorder() {
-        const area = document.getElementById('rightWidgetsArea');
-        if (!area) return;
-
-        area.addEventListener('mousedown', onWidgetDragStart, true);
-        area.addEventListener('touchstart', onWidgetTouchStart, { passive: false });
-    }
-
-    function onWidgetDragStart(e) {
-        const handle = e.target.closest('.widget-drag-handle');
-        if (!handle) return;
-        const widget = handle.closest('.right-zone-widget');
-        if (!widget) return;
-        e.preventDefault();
-
-        _wDragSrc = widget;
-        const originalRect = widget.getBoundingClientRect();
-        const offsetX = e.clientX - originalRect.left;
-        const offsetY = e.clientY - originalRect.top;
-
-        // Ghost element
-        const ghost = widget.cloneNode(true);
-        ghost.style.cssText = `position:fixed;left:${originalRect.left}px;top:${originalRect.top}px;width:${originalRect.width}px;opacity:0.85;pointer-events:none;z-index:9999;border:1px solid rgba(34,211,238,0.6);border-radius:10px;`;
-        document.body.appendChild(ghost);
-
-        // Drop zone placeholder
-        const ph = document.createElement('div');
-        ph.className = 'widget-drop-zone active';
-        ph.style.height = originalRect.height + 'px';
-        widget.parentNode.insertBefore(ph, widget);
-        widget.style.display = 'none';
-        _wDropZone = ph;
-
-        function onMove(me) {
-            const cx = me.clientX ?? me.touches?.[0]?.clientX;
-            const cy = me.clientY ?? me.touches?.[0]?.clientY;
-            if (cx == null) return;
-            ghost.style.left = (cx - offsetX) + 'px';
-            ghost.style.top  = (cy - offsetY) + 'px';
-            // Find drop target
-            const area2 = document.getElementById('rightWidgetsArea');
-            if (!area2) return;
-            const siblings = [...area2.querySelectorAll('.right-zone-widget:not([style*="display: none"])')];
-            let inserted = false;
-            for (const sib of siblings) {
-                const sr = sib.getBoundingClientRect();
-                if (cy < sr.top + sr.height / 2) {
-                    area2.insertBefore(_wDropZone, sib);
-                    inserted = true;
-                    break;
-                }
-            }
-            if (!inserted) area2.appendChild(_wDropZone);
-        }
-
-        function onUp() {
-            document.removeEventListener('mousemove', onMove);
-            document.removeEventListener('mouseup', onUp);
-            document.removeEventListener('touchmove', onMove);
-            document.removeEventListener('touchend', onUp);
-            // Place widget where placeholder is
-            if (_wDropZone && _wDropZone.parentNode) {
-                _wDropZone.parentNode.insertBefore(_wDragSrc, _wDropZone);
-                _wDropZone.remove();
-            }
-            _wDragSrc.style.display = '';
-            ghost.remove();
-            _wDragSrc = null;
-            _wDropZone = null;
-        }
-
-        document.addEventListener('mousemove', onMove);
-        document.addEventListener('mouseup', onUp);
-        document.addEventListener('touchmove', onMove, { passive: false });
-        document.addEventListener('touchend', onUp);
-    }
-
-    function onWidgetTouchStart(e) {
-        const handle = e.target.closest('.widget-drag-handle');
-        if (!handle) return;
-        e.preventDefault();
-        onWidgetDragStart({ target: e.target, clientX: e.touches[0].clientX, clientY: e.touches[0].clientY, preventDefault: () => {} });
-    }
-
-    // ---- Snap-to-grid for the live timing floating widget ----
-    // Overrides the raw pixel position with the nearest grid multiple.
-    window._snapToGrid = function(x, y) {
-        return {
-            x: Math.round(x / SNAP_GRID) * SNAP_GRID,
-            y: Math.round(y / SNAP_GRID) * SNAP_GRID,
-        };
-    };
-
-    function observeLtWrapper() {
-        // Snap logic is handled directly in live-timing.js onDragEnd.
-        // This function is kept as a no-op so init() still calls it without error.
-    }
-
-    // ---- Mirror key values from left-panel to right-zone widgets ----
-    window._syncRightZoneWidgets = function() {
-        // Driver info
-        const driverNameEl = document.getElementById('currentDriverName');
-        const stintTimerEl = document.getElementById('stintTimerDisplay');
-        const dotEl        = document.getElementById('currentDriverDot');
-        if (driverNameEl) {
-            const wn = document.getElementById('wDriverName');
-            if (wn) wn.textContent = driverNameEl.textContent;
-        }
-        if (dotEl) {
-            const wd = document.getElementById('wDriverDot');
-            if (wd) wd.style.background = dotEl.style.background;
-        }
-        if (stintTimerEl) {
-            const wt = document.getElementById('wStintTimer');
-            if (wt) wt.textContent = stintTimerEl.textContent;
-        }
-        // Stint data
-        const targetEl = document.getElementById('strategyTargetStint');
-        if (targetEl) {
-            const wts = document.getElementById('wTargetStint');
-            if (wts) wts.textContent = targetEl.textContent;
-        }
-        const pitCountEl = document.getElementById('pitCountDisplay');
-        if (pitCountEl) {
-            const wpc = document.getElementById('wPitCount');
-            if (wpc) wpc.innerHTML = pitCountEl.innerHTML;
-        }
-        const statusEl = document.getElementById('pitStatusIndicator');
-        if (statusEl) {
-            const ws = document.getElementById('wStatus');
-            if (ws) ws.textContent = statusEl.textContent;
-        }
-        // Strategy outlook pills — mirror from remStintsText
-        const outlookEl = document.getElementById('remStintsText');
-        const wOutlook  = document.getElementById('wStrategyOutlook');
-        if (outlookEl && wOutlook) {
-            wOutlook.innerHTML = outlookEl.innerHTML;
-        }
-    };
-
-    // ---- Persist / restore collapsed state ----
-    function restoreCollapsedState() {
-        try {
-            const saved = JSON.parse(localStorage.getItem(WIDGET_COLLAPSED_KEY) || '{}');
-            Object.entries(saved).forEach(([id, collapsed]) => {
-                const el = document.getElementById(id);
-                if (!el) return;
-                if (collapsed) {
-                    el.classList.add('collapsed');
-                    const btn = el.querySelector('.widget-collapse-btn');
-                    if (btn) btn.textContent = '▸';
-                }
-            });
-        } catch(e) {}
-    }
-
-    // ---- Init ----
-    function init() {
-        updateWidgetAreaVisibility();
-        window.addEventListener('resize', updateWidgetAreaVisibility);
-        initWidgetDragReorder();
-        restoreCollapsedState();
-        observeLtWrapper();
-        // Apply saved layout template
-        try {
-            const saved = localStorage.getItem(LAYOUT_TPL_KEY);
-            if (saved && TEMPLATES[saved]) window.applyLayoutTemplate(saved);
-        } catch(e) {}
-        // Sync right zone every second during race
-        setInterval(() => {
-            if (document.getElementById('raceDashboard')?.classList.contains('hidden') === false) {
-                window._syncRightZoneWidgets();
-            }
-        }, 1000);
-    }
-
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
-    } else {
-        init();
-    }
-})();
 
 // ==========================================
 // ↕ DRIVER LIST DRAG-TO-REORDER
