@@ -446,13 +446,20 @@ class ApexTimingScraper {
             return false;
         }
 
-        // Cell update: r<rowId>c<colIdx>|<value>|
-        const cellMatch = line.match(/^(r\d+)c(\d+)\|([^|]*)\|?$/);
+        // Cell update: r<rowId>c<colIdx>|<value>| OR r<rowId>c<colIdx>|<type>|<value>
+        // Real Apex feeds (e.g. live-data.apex-timing.com) send a short type code before
+        // the value (tn=new time, to=old/total time, etc., matching the grid's own
+        // data-type attributes) — r24600c6|tn|18.818 — not just a bare value. The type
+        // code isn't needed by updateCompetitorCell (colIdx alone resolves the field via
+        // columnMap), so it's matched and discarded. Without this, every real delta
+        // carrying an actual value failed to match and was silently dropped — only
+        // empty-value deltas (no-ops) matched the old 2-part-only pattern.
+        const cellMatch = line.match(/^(r\d+)c(\d+)\|(?:[a-z]{1,4}\|)?([^|]*)\|?$/i);
         if (cellMatch) {
             const rowId = cellMatch[1];
             const colIdx = parseInt(cellMatch[2]);
             const value = cellMatch[3];
-            
+
             const comp = this.competitors.get(rowId);
             if (comp) {
                 this.updateCompetitorCell(comp, colIdx, value);
@@ -695,8 +702,8 @@ class ApexTimingScraper {
             { field: 'driverName', re: /^(team|name|nom|nome|fahrer|driver|pilota|pilote|concurrent|concorrente|conductor|competitor|equipe|squadra|mannschaft|piloto)$/i },
             { field: 'totalLaps',  re: /^(giri|laps?|nbgiri|nbtrs?|tours?|rdn|runden|vueltas?|tr|rondes?|lap)$/i },
             { field: 'gap',        re: /^(distacco|gap|diff(erence)?|dist|abst(and)?|ecart|dif)$/i },
-            { field: 'lastLap',    re: /^(ultimo\s*t?|last(lap)?|dern(ier)?|dernier|letzte|ultimo|latest|ult|ltime|last\s*time)$/i },
-            { field: 'bestLap',    re: /^(giro\s*mig(liore)?|best(lap)?|meilleur|migliore|beste|mejor|melhor|btime|best\s*time|avg)$/i },
+            { field: 'lastLap',    re: /^(ultimo\s*t?|last\s*lap|last|dern(ier)?|dernier|letzte|ultimo|latest|ult|ltime|last\s*time)$/i },
+            { field: 'bestLap',    re: /^(giro\s*mig(liore)?|best\s*lap|best|meilleur|migliore|beste|mejor|melhor|btime|best\s*time|avg)$/i },
             { field: 'sector1',    re: /^s1(ector)?$/i },
             { field: 'sector2',    re: /^s2(ector)?$/i },
             { field: 'sector3',    re: /^s3(ector)?$/i },
@@ -904,14 +911,28 @@ class ApexTimingScraper {
         }
     }
 
+    /**
+     * Apex venues vary in whether the row identifier is the standard `id` attribute
+     * (id="r1234") or, on some installs, only `data-id` (data-id="r1234" with no plain
+     * id at all). Always prefer the real id; data-id is the fallback. Critical: every
+     * WS delta packet (e.g. "r24574c9|tn|59.955") references the SAME identifier the
+     * live page uses, so if this falls through to a synthetic per-row counter instead,
+     * deltas can never find a matching competitor record and silently no-op forever —
+     * the symptom is laps/position/best-lap appearing frozen despite a live connection.
+     */
+    getRowId(row) {
+        return row.id || row.getAttribute('data-id') || '';
+    }
+
     parseGridHTML(html) {
         const parser = new DOMParser();
         const doc = parser.parseFromString(`<html><body><table>${html}</table></body></html>`, 'text/html');
 
         // ── Detect column mapping from header row ──
         if (!this.columnMap) {
-            // 1) Explicit header row by class
-            let headerRow = doc.querySelector('tr.titles') || doc.querySelector('thead tr');
+            // 1) Explicit header row by class — "titles" and "header" are seen on some
+            // installs, "head" on others (e.g. data-id="r0" class="head").
+            let headerRow = doc.querySelector('tr.titles') || doc.querySelector('tr.head') || doc.querySelector('thead tr');
             // 2) Scan all rows to find one whose cells match known header patterns
             if (!headerRow) {
                 const candidates = doc.querySelectorAll('tr');
@@ -941,12 +962,12 @@ class ApexTimingScraper {
 
         // ── Collect the header row's id so we can skip it later ──
         const headerRowId = (() => {
-            const hr = doc.querySelector('tr.titles') || doc.querySelector('thead tr');
-            return hr ? hr.id : null;
+            const hr = doc.querySelector('tr.titles') || doc.querySelector('tr.head') || doc.querySelector('thead tr');
+            return hr ? this.getRowId(hr) : null;
         })();
 
-        // ── Find data rows ──
-        let rows = doc.querySelectorAll('tr[id^="r"]');
+        // ── Find data rows ── (id first, data-id fallback — see getRowId)
+        let rows = doc.querySelectorAll('tr[id^="r"], tr[data-id^="r"]');
         if (rows.length === 0) {
             rows = Array.from(doc.querySelectorAll('tr')).filter(tr => {
                 const cells = tr.querySelectorAll('td');
@@ -962,10 +983,10 @@ class ApexTimingScraper {
             const tagNames = new Set();
             allTags.forEach(el => tagNames.add(el.tagName.toLowerCase()));
             this.log('WARN', `📋 HTML tags found: ${[...tagNames].join(', ')}`);
-            const rElements = doc.querySelectorAll('[id^="r"]');
-            this.log('WARN', `📋 Elements with id^="r": ${rElements.length}`);
+            const rElements = doc.querySelectorAll('[id^="r"], [data-id^="r"]');
+            this.log('WARN', `📋 Elements with id/data-id^="r": ${rElements.length}`);
             if (rElements.length > 0) {
-                this.log('WARN', `📋 First r-element: tag=${rElements[0].tagName}, id=${rElements[0].id}, children=${rElements[0].children.length}`);
+                this.log('WARN', `📋 First r-element: tag=${rElements[0].tagName}, rowId=${this.getRowId(rElements[0])}, children=${rElements[0].children.length}`);
             }
             this.parseGridHTMLRegex(html);
             return;
@@ -983,16 +1004,22 @@ class ApexTimingScraper {
         let skippedRows = 0;
         for (const row of rows) {
             // Skip header / titles rows explicitly
-            if (row.classList && (row.classList.contains('titles') || row.classList.contains('header'))) {
+            if (row.classList && (row.classList.contains('titles') || row.classList.contains('header') || row.classList.contains('head'))) {
                 skippedRows++;
                 continue;
             }
-            if (headerRowId && row.id === headerRowId) { skippedRows++; continue; }
+            const thisRowId = this.getRowId(row);
+            if (headerRowId && thisRowId === headerRowId) { skippedRows++; continue; }
 
             const cells = row.querySelectorAll('td');
             if (cells.length < 5) continue;
 
-            const rowId = row.id || `r${nextComps.size}`;
+            // No synthetic-counter fallback here: a row without a real id/data-id can't
+            // be correlated with future WS delta packets (which always reference the
+            // feed's real row identifier), so it would silently stop receiving updates
+            // forever. Better to skip it than to track it under a fake id.
+            if (!thisRowId) { skippedRows++; continue; }
+            const rowId = thisRowId;
 
             const comp = {
                 rowId: rowId,
@@ -1097,8 +1124,10 @@ class ApexTimingScraper {
 
             if (cells.length < 5) continue;
 
-            // Skip rows whose HTML class suggests header
-            if (/titles|header/i.test(match[0])) continue;
+            // Skip rows whose HTML class suggests header (some venues use class="head"
+            // rather than "titles"/"header" — match the class attribute specifically so
+            // this doesn't false-positive on unrelated "head" substrings elsewhere in the tag)
+            if (/class=["'][^"']*\b(titles|header|head)\b[^"']*["']/i.test(match[0])) continue;
 
             const getCell = (field, fallbackIdx) => {
                 const idx = cm ? cm[field] : fallbackIdx;
