@@ -77,10 +77,15 @@ class LiveTimingManager {
      */
     detectProvider(url) {
         const lower = String(url).toLowerCase();
-        if (lower.includes('hakafast') || lower.includes('/live-timing/')) return 'hakafast';
+        // Branded/known-domain checks first — these are unambiguous.
         if (url.includes('racefacer')) return 'racefacer';
         if (url.includes('apex-timing') || url.includes('apex_timing') || url.includes('apextiming')) return 'apex';
         if (url.includes('alphatiming.co.uk')) return 'alpha';
+        // Hakafast has no fixed public domain, so it's detected by the "hakafast" keyword
+        // or, as a last resort, the generic "/live-timing/" path — but only once every
+        // branded provider above has already been ruled out (Apex URLs also contain
+        // "/live-timing/", so checking this first would misclassify every Apex race).
+        if (lower.includes('hakafast') || lower.includes('/live-timing/')) return 'hakafast';
         return 'unknown';
     }
 
