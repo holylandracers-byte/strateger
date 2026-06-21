@@ -2139,38 +2139,15 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     white-space: nowrap;
 }
 
-/* ==================== LIVE-TIMING WIDGET: DRAGGABLE + RESIZABLE ==================== */
-
-/*
- * The widget wrapper is positioned fixed by default (overlapping mode) once the
- * user starts dragging.  Before any drag the wrapper sits inline in the normal
- * document flow and the inner panel keeps its current appearance.
- *
- * Maximised/minimised window support: we clamp the widget to the viewport so it
- * never goes off-screen.  CSS min-width/min-height stop it from collapsing to
- * zero during resize.  overflow:hidden on the wrapper clips anything that would
- * otherwise scroll outside the visible area.
- */
+/* ==================== LIVE-TIMING WIDGET ==================== */
+/* Always docked inline inside #raceInfoPanel — no floating/drag/resize mode. */
 
 .lt-widget-wrapper {
-    /* Inline by default — takes part in normal page flow */
     position: relative;
     z-index: 100;
     min-width: 220px;
     min-height: 80px;
-    /* Visible overflow guard: the resize handle protrudes slightly */
     overflow: visible;
-}
-
-/* Once the user has dragged the widget it becomes fixed */
-.lt-widget-wrapper.lt-fixed {
-    position: fixed;
-    overflow: hidden;
-    border-radius: 8px;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 0 0 1px rgba(239,68,68,0.25);
-    /* Clamp inside the viewport so it never leaves the screen */
-    max-width: calc(100vw - 16px);
-    max-height: calc(100vh - 16px);
 }
 
 .lt-widget-inner {
@@ -2182,72 +2159,11 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     border-radius: inherit;
 }
 
-/* Table area fills remaining vertical space when the widget is resized */
 .lt-table-scroll {
     flex: 1 1 0;
     overflow-y: auto;
     min-height: 60px;
-    max-height: none; /* override the old inline max-height once we're in fixed mode */
-}
-.lt-widget-wrapper:not(.lt-fixed) .lt-table-scroll {
-    max-height: 180px; /* keep original behaviour in inline mode */
-}
-
-/* ---- Drag handle ---- */
-.lt-drag-handle {
-    touch-action: none; /* prevent scroll interference on touch devices */
-    -webkit-touch-callout: none;
-}
-.lt-widget-wrapper.lt-fixed .lt-drag-handle {
-    cursor: grab;
-}
-.lt-widget-wrapper.lt-fixed .lt-drag-handle:active {
-    cursor: grabbing;
-}
-
-/* ---- Resize handle ---- */
-.lt-resize-handle {
-    position: absolute;
-    bottom: 0;
-    right: 0;
-    width: 18px;
-    height: 18px;
-    cursor: se-resize;
-    touch-action: none;
-    background: linear-gradient(135deg, transparent 50%, rgba(239,68,68,0.35) 50%);
-    border-bottom-right-radius: 8px;
-    z-index: 10;
-}
-/* Only show the resize handle when in fixed (floating) mode */
-.lt-widget-wrapper:not(.lt-fixed) .lt-resize-handle {
-    display: none;
-}
-
-/* ---- RTL: flip resize handle to bottom-left ---- */
-[dir="rtl"] .lt-resize-handle {
-    right: auto;
-    left: 0;
-    cursor: sw-resize;
-    transform: scaleX(-1);
-    border-bottom-right-radius: 0;
-    border-bottom-left-radius: 8px;
-}
-
-/* ---- During active drag: disable pointer events on inner content ---- */
-.lt-widget-wrapper.lt-dragging .lt-widget-inner * {
-    pointer-events: none;
-}
-/* ---- During active resize: same ---- */
-.lt-widget-wrapper.lt-resizing .lt-widget-inner * {
-    pointer-events: none;
-}
-
-/* Resize hint icon only visible in floating mode */
-.lt-resize-hint {
-    display: none;
-}
-.lt-widget-wrapper.lt-fixed .lt-resize-hint {
-    display: inline;
+    max-height: 180px;
 }
 
 /* ==================== TEAM LOGO (PRO) ==================== */
@@ -2326,8 +2242,8 @@ input[type="date"]::-webkit-calendar-picker-indicator {
         cursor: col-resize !important;
         flex-direction: column !important;
     }
-    /* Live timing widget fills the left zone, no floating by default */
-    #raceInfoPanel #liveTimingWidgetWrapper:not(.lt-fixed) {
+    /* Live timing widget fills the left zone */
+    #raceInfoPanel #liveTimingWidgetWrapper {
         min-height: 300px;
     }
 }
@@ -2758,12 +2674,12 @@ input[type="date"]::-webkit-calendar-picker-indicator {
         max-height: calc(100vh - 320px) !important;
         overflow-y: auto;
     }
-    .lt-widget-wrapper:not(.lt-fixed) {
+    .lt-widget-wrapper {
         display: flex;
         flex-direction: column;
         min-height: 300px;
     }
-    .lt-widget-wrapper:not(.lt-fixed) .lt-widget-inner {
+    .lt-widget-wrapper .lt-widget-inner {
         flex: 1;
     }
 }

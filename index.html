@@ -1039,11 +1039,10 @@
 
             <div id="raceInfoPanel" class="flex-1 min-h-0 overflow-y-auto p-2 space-y-2">
 
-                <!-- Live-timing widget wrapper: draggable + resizable -->
+                <!-- Live-timing widget wrapper: always docked inside raceInfoPanel -->
                 <div id="liveTimingWidgetWrapper" class="lt-widget-wrapper hidden">
                 <div id="liveTimingPanel" class="bg-navy-900/80 border border-red-500/50 p-2 rounded lt-widget-inner">
-                    <!-- Drag handle -->
-                    <div id="liveTimingDragHandle" class="lt-drag-handle flex justify-between items-center mb-1 cursor-move select-none">
+                    <div id="liveTimingDragHandle" class="flex justify-between items-center mb-1 select-none">
                         <div class="flex items-center gap-2">
                             <span class="sync-dot live-dot"></span>
                             <span class="text-xs font-bold" data-i18n="live">LIVE</span>
@@ -1051,7 +1050,6 @@
                             <span class="text-[10px] text-gray-400 font-mono ml-1" id="liveRaceClock"></span>
                         </div>
                         <div class="flex items-center gap-1">
-                            <span class="lt-resize-hint text-[9px] text-gray-600 select-none mr-1">⇲</span>
                             <!-- Pro: team logo upload button (hidden for free tier) -->
                             <button id="teamLogoUploadBtn" class="team-logo-upload-btn hidden" onclick="window.openTeamLogoUpload()" title="Upload Logo">📷</button>
                             <button id="apexViewToggle" onclick="window.toggleApexIframe()" class="text-[10px] bg-navy-700 border border-gray-600 text-gray-300 px-2 py-0.5 rounded" title="Toggle original Apex view">🌐</button>
@@ -1116,8 +1114,6 @@
                         <iframe id="apexIframe" src="" class="w-full rounded" style="height:240px;border:none;background:#0a1120;" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
                     </div>
                     <div id="kartRankingPanel" class="hidden mt-1 p-2 bg-navy-950 rounded border border-gray-700/50"></div>
-                    <!-- Resize handle (bottom-right corner) -->
-                    <div id="liveTimingResizeHandle" class="lt-resize-handle" title="Resize"></div>
                 </div>
                 </div>
 
