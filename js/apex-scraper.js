@@ -111,6 +111,20 @@ class ApexTimingScraper {
         return Number.isFinite(p) && p > 0 ? p : null;
     }
 
+    /**
+     * Apex's shared client script (javascript_live_timing.min.js) declares a default
+     * `configHost = "www.apex-timing.com"`, but many venues override it in their own
+     * config.js to point the WebSocket/data connection at a dedicated data host
+     * (e.g. "live-data.apex-timing.com") that differs from the race page's own domain.
+     * Using the race page's hostname instead of this override is why some venues never
+     * connect even with the right port.
+     */
+    extractConfigHost(text) {
+        if (!text) return null;
+        const m = text.match(/var\s+configHost\s*=\s*['"]([^'"]+)['"]/i);
+        return (m && m[1]) ? m[1].trim() : null;
+    }
+
     extractConfigScriptUrl(html, raceUrl) {
         if (!html) return null;
         const scriptMatch = html.match(/<script[^>]+src=["']([^"']*config\.js(?:\?[^"']*)?)["']/i);
@@ -127,54 +141,68 @@ class ApexTimingScraper {
         const isSecureRace = raceProtocol === 'https:';
         const wsScheme = isSecureRace ? 'wss' : 'ws';
 
-        // Manual override takes priority over every auto-detection strategy below —
-        // the race admin sets this in the Live Timing panel when neither the global port
-        // nor configPort+3 connects for a given venue.
+        // Apex's shared client script declares a default configHost equal to the race
+        // page's own domain, but many venues override it in their config.js to point the
+        // WS/data connection at a dedicated host (e.g. live-data.apex-timing.com) instead
+        // of the page's own domain (e.g. www.apex-timing.com). Fetch it here so both the
+        // auto-detect path and the manual port-override path below use the correct host.
+        const APEX_GLOBAL_WS_PORT = 8523; // last-resort fallback if configPort can't be fetched at all
+        let configPort = null;
+        let configHost = null;
+        try {
+            const cfg = await this.fetchApexConfig(raceUrl);
+            configPort = cfg.port;
+            configHost = cfg.host;
+        } catch (e) {
+            this.log('WARN', `Apex config fetch failed, using global port ${APEX_GLOBAL_WS_PORT} and race page host: ${e.message}`);
+        }
+        const wsHost = configHost || urlObj.hostname;
+
+        // Manual override takes priority over the port auto-detection below — the race
+        // admin sets this in the Live Timing panel when neither the global port nor
+        // configPort+3 connects for a given venue. The host is still resolved from
+        // config.js above, since a wrong host fails regardless of which port is used.
         if (this.wsPortOverride) {
             return {
                 configPort: this.wsPortOverride,
                 wsPort: this.wsPortOverride,
-                wsUrl: `${wsScheme}://${urlObj.hostname}:${this.wsPortOverride}/`,
-                source: `manual override (port ${this.wsPortOverride})`
+                wsUrl: `${wsScheme}://${wsHost}:${this.wsPortOverride}/`,
+                source: `manual override (port ${this.wsPortOverride}, host ${wsHost})`
             };
         }
 
         // Apex's own client (javascript_live_timing.min.js) derives the WS port from the
         // venue's configPort: configPort+3 for HTTPS pages, configPort+2 for HTTP pages.
-        // configPort is fetched fresh each time this runs (not cached) since a venue can be
-        // reassigned a different configPort between sessions/events.
-        const APEX_GLOBAL_WS_PORT = 8523; // last-resort fallback if configPort can't be fetched at all
-
-        let configPort = null;
-        try {
-            configPort = await this.fetchConfigPort(raceUrl);
-        } catch (e) {
-            this.log('WARN', `configPort fetch failed, using global port ${APEX_GLOBAL_WS_PORT}: ${e.message}`);
-        }
-
+        // configPort/configHost are fetched fresh each time this runs (not cached) since a
+        // venue can be reassigned different values between sessions/events.
         if (configPort) {
             const wsPort = isSecureRace ? configPort + 3 : configPort + 2;
             return {
                 configPort,
                 wsPort,
-                wsUrl: `${wsScheme}://${urlObj.hostname}:${wsPort}/`,
-                source: `configPort+${isSecureRace ? 3 : 2} (configPort=${configPort})`
+                wsUrl: `${wsScheme}://${wsHost}:${wsPort}/`,
+                source: `configPort+${isSecureRace ? 3 : 2} (configPort=${configPort}, host=${wsHost})`
             };
         }
 
         return {
             configPort: APEX_GLOBAL_WS_PORT,
             wsPort: APEX_GLOBAL_WS_PORT,
-            wsUrl: `${wsScheme}://${urlObj.hostname}:${APEX_GLOBAL_WS_PORT}/`,
-            source: `global port ${APEX_GLOBAL_WS_PORT} (configPort fetch failed)`
+            wsUrl: `${wsScheme}://${wsHost}:${APEX_GLOBAL_WS_PORT}/`,
+            source: `global port ${APEX_GLOBAL_WS_PORT} (configPort fetch failed, host=${wsHost})`
         };
     }
 
     /**
-     * Fetch circuit-specific WebSocket port from javascript/config.js.
-     * Each Apex Timing circuit has a unique port stored in configPort.
+     * Fetch circuit-specific WebSocket port (configPort) and data host (configHost) from
+     * javascript/config.js. Each Apex Timing circuit has its own configPort, and some
+     * circuits also override configHost to point at a dedicated data server distinct from
+     * the race page's own domain (e.g. race page on www.apex-timing.com, but the WS/data
+     * host is live-data.apex-timing.com). Returns { port, host } — host is null if the
+     * config.js didn't declare an override, so callers should fall back to the race page's
+     * own hostname in that case.
      */
-    async fetchConfigPort(raceUrl) {
+    async fetchApexConfig(raceUrl) {
         const tried = [];
         const logTry = (label, cfgUrl) => {
             tried.push(cfgUrl);
@@ -190,8 +218,9 @@ class ApexTimingScraper {
             const text = await this.fetchWithProxy(defaultConfigUrl);
             const p = this.extractConfigPort(text);
             if (p) {
-                this.log('INFO', `✅ Detected configPort: ${p}`);
-                return p;
+                const h = this.extractConfigHost(text);
+                this.log('INFO', `✅ Detected configPort: ${p}${h ? `, configHost: ${h}` : ''}`);
+                return { port: p, host: h };
             }
             this.log('WARN', 'configPort not found in default config.js');
         } catch (e) {
@@ -206,8 +235,9 @@ class ApexTimingScraper {
             // Some deployments inline configPort directly.
             const inlinePort = this.extractConfigPort(html);
             if (inlinePort) {
-                this.log('INFO', `✅ Detected configPort inline in page HTML: ${inlinePort}`);
-                return inlinePort;
+                const inlineHost = this.extractConfigHost(html);
+                this.log('INFO', `✅ Detected configPort inline in page HTML: ${inlinePort}${inlineHost ? `, configHost: ${inlineHost}` : ''}`);
+                return { port: inlinePort, host: inlineHost };
             }
 
             const scriptUrl = this.extractConfigScriptUrl(html, raceUrl);
@@ -216,8 +246,9 @@ class ApexTimingScraper {
                 const scriptText = await this.fetchWithProxy(scriptUrl);
                 const p = this.extractConfigPort(scriptText);
                 if (p) {
-                    this.log('INFO', `✅ Detected configPort: ${p}`);
-                    return p;
+                    const h = this.extractConfigHost(scriptText);
+                    this.log('INFO', `✅ Detected configPort: ${p}${h ? `, configHost: ${h}` : ''}`);
+                    return { port: p, host: h };
                 }
                 this.log('WARN', 'configPort not found in discovered config.js');
             }
