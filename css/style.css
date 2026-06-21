@@ -486,6 +486,16 @@ body.strateger-page-hidden * {
     animation: fadeIn 0.25s ease-out;
 }
 
+/* Any full-screen modal opened over the race dashboard (#pitModal and friends use
+   Tailwind's z-50) was lower than the docked live-timing widget's z-index:100, so the
+   widget could render through the modal during pit stops. Match the project's other
+   full-screen modals (#demoModal z-200, #liveAdjustModal z-190 — both keep their own
+   higher specificity #id rule below and so still win over this). */
+#pitModal,
+[id$="Modal"] {
+    z-index: 190;
+}
+
 /* ==================== MODAL BACKDROP + CONTENT ANIMATION ==================== */
 [id$="Modal"]:not(.hidden),
 #pitModal:not(.hidden),
@@ -2136,7 +2146,9 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 }
 
 /* ==================== LIVE-TIMING WIDGET ==================== */
-/* Always docked inline inside #raceInfoPanel — no floating/drag/resize mode. */
+/* Always docked inline inside #raceInfoPanel — never floats. At ≥1024px its height is
+   adjustable via #liveTimingHeightHandle (see js/live-timing.js); at narrower
+   breakpoints it just sizes to its content. */
 
 .lt-widget-wrapper {
     position: relative;
@@ -2160,6 +2172,36 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     overflow-y: auto;
     min-height: 60px;
     max-height: 180px;
+}
+
+/* ---- Live-timing widget height-resize handle (≥1024px only) ---- */
+.lt-height-handle {
+    display: none;
+}
+@media (min-width: 1024px) {
+    .lt-height-handle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 14px;
+        margin-top: 2px;
+        cursor: row-resize;
+        user-select: none;
+        -webkit-user-select: none;
+        touch-action: none;
+        flex-shrink: 0;
+    }
+    .lt-height-handle span {
+        width: 40px;
+        height: 4px;
+        border-radius: 2px;
+        background: rgba(255,255,255,0.15);
+        transition: background 0.2s;
+    }
+    .lt-height-handle:hover span,
+    .lt-height-handle.active span {
+        background: rgba(239,68,68,0.6);
+    }
 }
 
 /* ==================== TEAM LOGO (PRO) ==================== */
@@ -2204,32 +2246,37 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 /* ==================== LIVE TIMING FULL OVERHAUL ==================== */
 
 /* ---- Two-zone dashboard layout (wide screens ≥ 1024px) ----
-   Stacked top/bottom (full width, like portrait) rather than side-by-side, so the
-   height-resizer below the live-timing panel always has somewhere to go. */
+   Side-by-side, each column fixed at exactly 50% width (not adjustable). Height is
+   independent per column: raceInfoPanel's height is set by the user via the drag
+   handle on the live-timing widget itself; raceControlDock sizes to its own content
+   (no forced stretch/split) and only scrolls internally if its content overflows the
+   row's height. */
 @media (min-width: 1024px) {
     #racePanelsWrapper {
-        flex-direction: column !important;
-        align-items: stretch;
+        flex-direction: row !important;
+        /* stretch: both columns share the same outer height (the row's available
+           height) for visual symmetry. Each column scrolls internally — via its own
+           overflow-y:auto — only if its actual content exceeds that shared height;
+           otherwise it just sits at the top with empty space below (no forced split). */
+        align-items: stretch !important;
     }
-    /* Top zone: live timing panel */
     #raceInfoPanel {
-        flex: 0 0 var(--dash-info-pct, 60%) !important;
-        min-height: 200px !important;
-        border-right: none !important;
-        border-bottom: 1px solid rgba(55,65,81,0.5) !important;
+        flex: 0 0 50% !important;
+        width: 50% !important;
+        max-width: 50% !important;
+        min-width: 0 !important;
+        border-right: 1px solid rgba(55,65,81,0.5) !important;
+        border-bottom: none !important;
         overflow-y: auto !important;
         padding: 10px 12px !important;
     }
-    /* While live timing is actively shown, the top zone always gets at least half
-       the available height — the resizer can still push it higher, just not lower. */
-    #raceInfoPanel:has(#liveTimingWidgetWrapper:not(.hidden)) {
-        min-height: 50% !important;
-    }
-    /* Bottom zone: pit entry + driver stats — fills whatever height remains */
     #raceControlDock {
-        flex: 1 1 0 !important;
-        min-height: 200px !important;
+        flex: 0 0 50% !important;
+        width: 50% !important;
+        max-width: 50% !important;
+        min-width: 0 !important;
         border-top: none !important;
+        border-left: none !important;
         display: flex !important;
         flex-direction: column !important;
         justify-content: flex-start !important;
@@ -2237,9 +2284,29 @@ input[type="date"]::-webkit-calendar-picker-indicator {
         gap: 8px !important;
         overflow-y: auto !important;
     }
-    /* Live timing widget fills the top zone */
+    /* Live timing widget height is user-controlled via #liveTimingHeightHandle
+       (see js/live-timing.js) — driven by the --lt-widget-h CSS var. */
     #raceInfoPanel #liveTimingWidgetWrapper {
-        min-height: 300px;
+        height: var(--lt-widget-h, 420px);
+        min-height: 200px;
+        max-height: calc(100% - 16px);
+        display: flex;
+        flex-direction: column;
+    }
+    #raceInfoPanel #liveTimingPanel {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+    }
+    #raceInfoPanel #liveTimingPanel .lt-table-scroll {
+        flex: 1 1 0;
+        max-height: none;
+    }
+    /* The generic panel-split resizer has no job at the fixed 50/50 width — the
+       live-timing widget's own height handle is the relevant control here instead. */
+    #dashPanelResizer {
+        display: none !important;
     }
 }
 

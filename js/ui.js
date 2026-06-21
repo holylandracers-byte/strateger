@@ -2624,15 +2624,12 @@ window.initDashPanelResizer = function() {
     if (!resizer || !wrapper || !infoPanel) return;
 
     const STORAGE_KEY = 'strateger_dash_split';
-    // Side-by-side (width-drag) only in the narrow 768–1023px landscape tablet range.
-    // Both portrait AND ≥1024px wide screens stack the panels top/bottom (height-drag).
-    const isSideBySide = () => window.matchMedia('(min-width:768px) and (max-width:1023px) and (orientation:landscape)').matches;
-    const isLiveTimingActive = () => {
-        const lt = document.getElementById('liveTimingWidgetWrapper');
-        return !!lt && !lt.classList.contains('hidden');
-    };
-    // Floor applies only in stacked (height-drag) mode, and only while live timing is shown.
-    const minPct = () => (!isSideBySide() && isLiveTimingActive()) ? 50 : 15;
+    // Side-by-side (width-drag) in the 768-1023px landscape tablet range. Portrait stacks
+    // top/bottom (height-drag). ≥1024px is also side-by-side, but at a fixed 50/50 split —
+    // this resizer is inert there (see _isFixedSplitWidth below).
+    const isSideBySide = () => window.matchMedia('(min-width:768px) and (orientation:landscape)').matches;
+    const isFixedSplitWidth = () => window.matchMedia('(min-width:1024px)').matches;
+    const minPct = () => 15;
 
     // Restore saved split
     const saved = parseFloat(localStorage.getItem(STORAGE_KEY));
@@ -2687,20 +2684,28 @@ window.initDashPanelResizer = function() {
         window.addEventListener('touchend', onEnd);
     }
 
-    resizer.addEventListener('mousedown', onStart);
-    resizer.addEventListener('touchstart', onStart, { passive: false });
+    function guardedStart(e) {
+        // ≥1024px uses a fixed 50/50 split — this resizer has nothing to do there.
+        // The live-timing widget's own height handle (see initLiveTimingHeightResize)
+        // is the relevant control at that breakpoint instead.
+        if (isFixedSplitWidth()) return;
+        onStart(e);
+    }
+    resizer.addEventListener('mousedown', guardedStart);
+    resizer.addEventListener('touchstart', guardedStart, { passive: false });
 
     // Double-tap / double-click to reset to 50/50
     let lastTap = 0;
-    resizer.addEventListener('dblclick', () => applyPct(50));
+    resizer.addEventListener('dblclick', () => { if (!isFixedSplitWidth()) applyPct(50); });
     resizer.addEventListener('touchend', () => {
+        if (isFixedSplitWidth()) return;
         const now = Date.now();
         if (now - lastTap < 350) applyPct(50);
         lastTap = now;
     });
 
-    // Resizer is always visible/draggable — the user controls the split manually
-    // regardless of how much content either panel currently has.
+    // Resizer is visible/draggable at narrower breakpoints; CSS hides it at ≥1024px
+    // (fixed 50/50 split — see .dash-resizer media query).
     resizer.style.display = '';
 };
 

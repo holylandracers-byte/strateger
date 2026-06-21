@@ -27,6 +27,15 @@ window._updateAutoPitUI = function() {
     }
 };
 
+// Single chokepoint for every place that wants live timing (real feed or demo
+// simulation) to force a pit entry/exit/penalty-adjustment. Every such call MUST go
+// through this guard instead of checking _autoPitEnabled inline — that's what let the
+// demo-mode pit bridge slip through ungated before. When Manual is selected this
+// always returns false and the caller must do nothing.
+window._liveTimingMayForcePit = function() {
+    return !!window._autoPitEnabled;
+};
+
 function getLapWord(count) {
     // Use translation system so all 12 languages are supported automatically
     return count === 1
@@ -279,7 +288,7 @@ window.fetchLiveTimingFromProxy = async function() {
                 // Auto-detect pit entry from live timing — AUTHORITATIVE: live timing always wins
                 const now = Date.now();
 
-                if (window._autoPitEnabled && window.state && window.state.isRunning && !window.state.isInPit && data.ourTeam.inPit) {
+                if (window._liveTimingMayForcePit() && window.state && window.state.isRunning && !window.state.isInPit && data.ourTeam.inPit) {
                     // Live timing says we are in pit — override everything
                     console.log('[LiveTiming] 🛑 AUTHORITATIVE PIT ENTRY from live data (inPit=true)');
                     if (typeof window.confirmPitEntry === 'function') {
@@ -288,7 +297,7 @@ window.fetchLiveTimingFromProxy = async function() {
                     }
                 }
                 // Fallback: detect pit entry from pitCount increase (catches cases where inPit flag was missed between polls)
-                else if (window._autoPitEnabled && window.state && window.state.isRunning && !window.state.isInPit
+                else if (window._liveTimingMayForcePit() && window.state && window.state.isRunning && !window.state.isInPit
                     && prevPitCount != null && data.ourTeam.pitCount != null
                     && data.ourTeam.pitCount > prevPitCount) {
                     console.log(`[LiveTiming] 🛑 PIT ENTRY detected via pitCount increase (${prevPitCount} → ${data.ourTeam.pitCount})`);
@@ -303,7 +312,7 @@ window.fetchLiveTimingFromProxy = async function() {
                 // Fire when: (a) we were genuinely in pit and feed says out, OR
                 //            (b) entry was forced via pitCount increase (wasInPit=false case)
                 const entryWasForced = !!window.liveData._pitEntryForcedAt;
-                const exitCondition  = window._autoPitEnabled && window.state && window.state.isInPit && !data.ourTeam.inPit &&
+                const exitCondition  = window._liveTimingMayForcePit() && window.state && window.state.isInPit && !data.ourTeam.inPit &&
                                        (wasInPit === true || entryWasForced);
                 if (exitCondition) {
                     // Guard: don't auto-exit if pit time is too short (< 20s) — prevents false exits
@@ -342,8 +351,11 @@ window.fetchLiveTimingFromProxy = async function() {
                         window._fireStrategyNotification(msg, 'warning');
                     }
                     
-                    // Auto-adjust pit time if penalty has a time component
-                    if (newPenaltyTime > 0 && typeof window.adjustPitTime === 'function') {
+                    // Auto-adjust pit time if penalty has a time component — only when
+                    // auto-pit is enabled. In Manual mode the admin is notified above but
+                    // nothing is changed automatically; a false-positive penalty from a
+                    // noisy feed must not silently alter the pit time.
+                    if (window._liveTimingMayForcePit() && newPenaltyTime > 0 && typeof window.adjustPitTime === 'function') {
                         const addedSec = newPenaltyTime;
                         window.adjustPitTime(addedSec);
                         console.log(`[LiveTiming] ⏱️ Auto-adjusted pit time by +${addedSec}s for penalty`);
@@ -1641,8 +1653,10 @@ window.updateDemoData = function() {
         window.liveData.ourTeamPitCount = ourTeam.pitCount ?? null;
 
         // Case 1: Demo says team entered pit, but app doesn't know yet
-        // → trigger confirmPitEntry just like real live timing would
-        if (window.state && window.state.isRunning && !window.state.isInPit && ourTeam.inPit) {
+        // → trigger confirmPitEntry just like real live timing would (only when
+        //   auto-pit is enabled — this mirrors the real-feed path's gating exactly,
+        //   since this whole block exists specifically to mirror that path)
+        if (window._liveTimingMayForcePit() && window.state && window.state.isRunning && !window.state.isInPit && ourTeam.inPit) {
             console.log('[Demo] 🛑 AUTO PIT ENTRY from demo simulation');
             if (typeof window.confirmPitEntry === 'function') {
                 window.confirmPitEntry(true); // true = auto-detected, skip confirm dialog
@@ -1651,7 +1665,7 @@ window.updateDemoData = function() {
 
         // Case 2: Demo says team exited pit, but app still thinks we're in pit
         // → trigger confirmPitExit just like real live timing would
-        if (window.state && window.state.isRunning && window.state.isInPit && !ourTeam.inPit && wasInPit === true) {
+        if (window._liveTimingMayForcePit() && window.state && window.state.isRunning && window.state.isInPit && !ourTeam.inPit && wasInPit === true) {
             console.log('[Demo] ✅ AUTO PIT EXIT from demo simulation');
             window.liveData.stintLapHistory = [];
             window.liveData.stintBestLap = null;
@@ -1722,6 +1736,78 @@ window.toggleCompetitorsTable = function() {
     if (btn) btn.textContent = window._competitorsTableOpen ? '📋' : '🗂️';
 };
 
+// ==================== LIVE-TIMING WIDGET HEIGHT RESIZE (≥1024px) ====================
+// The widget stays docked inside raceInfoPanel at all times — this only adjusts its
+// height within that column, dragging #liveTimingHeightHandle up/down. Width is fixed
+// at 50% by CSS regardless of this value.
+
+(function initLiveTimingHeightResize() {
+    const STORAGE_KEY = 'strateger_lt_widget_h';
+    const MIN_H = 200;
+
+    let handle = null, wrapper = null;
+    let dragging = false;
+    let startY = 0, startH = 0;
+
+    function maxH() {
+        if (!wrapper || !wrapper.parentElement) return 800;
+        return Math.max(MIN_H, wrapper.parentElement.clientHeight - 16);
+    }
+
+    function applyH(h) {
+        const clamped = Math.max(MIN_H, Math.min(h, maxH()));
+        document.documentElement.style.setProperty('--lt-widget-h', clamped + 'px');
+        try { localStorage.setItem(STORAGE_KEY, clamped); } catch (e) {}
+    }
+
+    function onMove(e) {
+        if (!dragging) return;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        applyH(startH + (clientY - startY));
+        e.preventDefault();
+    }
+    function onEnd() {
+        if (!dragging) return;
+        dragging = false;
+        handle.classList.remove('active');
+        window.removeEventListener('mousemove', onMove);
+        window.removeEventListener('touchmove', onMove);
+        window.removeEventListener('mouseup', onEnd);
+        window.removeEventListener('touchend', onEnd);
+    }
+    function onStart(e) {
+        if (!window.matchMedia('(min-width:1024px)').matches) return;
+        dragging = true;
+        handle.classList.add('active');
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        startY = clientY;
+        startH = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--lt-widget-h')) || 420;
+        e.preventDefault();
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('touchmove', onMove, { passive: false });
+        window.addEventListener('mouseup', onEnd);
+        window.addEventListener('touchend', onEnd);
+    }
+
+    function attach() {
+        handle = document.getElementById('liveTimingHeightHandle');
+        wrapper = document.getElementById('liveTimingWidgetWrapper');
+        if (!handle || !wrapper) return;
+
+        const saved = parseInt(localStorage.getItem(STORAGE_KEY));
+        document.documentElement.style.setProperty('--lt-widget-h', (Number.isFinite(saved) && saved >= MIN_H ? saved : 420) + 'px');
+
+        handle.addEventListener('mousedown', onStart);
+        handle.addEventListener('touchstart', onStart, { passive: false });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', attach);
+    } else {
+        attach();
+    }
+})();
+
 // ==================== RACE CLOCK SYNC ====================
 // Keeps the widget's clock (liveRaceClock) in sync with the main app's race timer.
 // Handles: Apex countdown, RaceFacer timeLeftSeconds, demo mode, and DST-safe offsets.
@@ -1749,28 +1835,36 @@ window.toggleCompetitorsTable = function() {
         const syncedNow = (window.getSyncedNow && typeof window.getSyncedNow === 'function')
             ? window.getSyncedNow() : Date.now();
 
-        // Priority 1: live timing feed has provided a countdown (Apex/RaceFacer)
+        const st = window.state;
+        const cfg = window.config;
+        const raceMs = cfg ? (cfg.raceMs || (parseFloat(cfg.duration) || 0) * 3600000) : 0;
+
+        // Priority 1: live timing feed has provided a countdown (Apex/RaceFacer).
+        // This MUST match window.renderFrame()'s computation in main.js exactly — both
+        // re-derive "remaining" through the app's own configured raceMs (not the feed's
+        // raw value directly), since the live feed's race duration can differ slightly
+        // from what was configured in Strateger. Using the feed's raw value directly (as
+        // this used to) made the widget clock and the main dashboard clock disagree.
         const ld = window.liveData;
-        if (ld && ld.raceTimeLeftMs != null && ld._raceTimeReceivedAt) {
-            const elapsed = syncedNow - ld._raceTimeReceivedAt;
-            const adjusted = Math.max(0, ld.raceTimeLeftMs - elapsed);
-            el.textContent = formatRaceTime(adjusted);
+        if (ld && ld.raceTimeLeftMs != null && ld.raceTimeLeftMs >= 0 && raceMs > 0) {
+            const sinceReceived = ld._raceTimeReceivedAt ? (syncedNow - ld._raceTimeReceivedAt) : 0;
+            const raceRemainingRaw = Math.max(0, ld.raceTimeLeftMs - sinceReceived);
+            const effectiveElapsedMs = Math.max(0, raceMs - raceRemainingRaw);
+            const elapsedSec = Math.floor(effectiveElapsedMs / 1000);
+            const totalSec = Math.floor(raceMs / 1000);
+            const remainingSec = Math.max(0, totalSec - elapsedSec);
+            el.textContent = formatRaceTime(remainingSec * 1000);
             el.title = window.t ? window.t('raceClockLabel') : 'RACE TIME';
             return;
         }
 
-        // Priority 2: main app race timer (derived from window.state)
-        const st = window.state;
-        const cfg = window.config;
-        if (st && st.isRunning && st.startTime && cfg) {
-            const raceDurationMs = (parseFloat(cfg.duration) || 0) * 3600000;
-            if (raceDurationMs > 0) {
-                const elapsed = syncedNow - st.startTime;
-                const remaining = Math.max(0, raceDurationMs - elapsed);
-                el.textContent = formatRaceTime(remaining);
-                el.title = window.t ? window.t('raceClockLabel') : 'RACE TIME';
-                return;
-            }
+        // Priority 2: main app race timer (derived from window.state), no live feed yet
+        if (st && st.isRunning && st.startTime && raceMs > 0) {
+            const elapsed = syncedNow - st.startTime;
+            const remaining = Math.max(0, raceMs - elapsed);
+            el.textContent = formatRaceTime(remaining);
+            el.title = window.t ? window.t('raceClockLabel') : 'RACE TIME';
+            return;
         }
 
         // No data
