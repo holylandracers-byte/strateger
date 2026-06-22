@@ -370,7 +370,9 @@ window.fetchLiveTimingFromProxy = async function() {
                     }
                 }
             }
-            window.liveData.competitors = dedupeLiveCompetitors(data.competitors || []);
+            const liveComps = dedupeLiveCompetitors(data.competitors || []);
+            window._trackCompetitorStints(liveComps);
+            window.liveData.competitors = liveComps;
 
             // === Race time from live timing (RaceFacer provides timeLeftSeconds) ===
             if (data.race && data.race.timeLeftSeconds != null) {
@@ -732,7 +734,9 @@ window.updateCompetitorsTable = function() {
 
         const isDanger = !isUs && window.liveData.position && Math.abs(comp.position - window.liveData.position) <= 2;
         const isGoodPace = !isUs && goodPaceThreshold && comp.bestLap && comp.bestLap <= goodPaceThreshold;
-        const isPB = comp.lastLap && comp.bestLap && comp.lastLap > 0 && comp.lastLap <= comp.bestLap;
+        // PB glow is scoped to the current stint (since last pit), not the whole race —
+        // a driver going faster in stint 3 than their stint-1 best should still glow.
+        const isPB = comp.lastLap && comp.stintBestLap && comp.lastLap > 0 && comp.lastLap <= comp.stintBestLap;
         const kartKey = comp.kart || '';
         const isTopKart = kartKey && window._fastKarts && window._fastKarts.has(kartKey);
 
@@ -936,7 +940,9 @@ window.updateCompetitorsTable = function() {
         // ---- Avg lap (per-stint preferred; fall back to overall) ----
         const avgEl = row.querySelector('.cr-avg');
         if (avgEl) {
-            // Use per-stint average when available (demo mode sets stintAvgLap)
+            // stintAvgLap is set for both demo (updateDemoData) and real feed
+            // (_trackCompetitorStints), reset to empty laps every time a competitor exits
+            // the pit — so this is "average since their last pit stop", not the whole race.
             const stintAvgMs = comp.stintAvgLap || 0;
             const avgMs = stintAvgMs > 0 ? stintAvgMs : (comp.avgLap || 0);
             const avgTxt = avgMs > 0 ? window.formatLapTime(avgMs) : '';
@@ -953,6 +959,60 @@ window.updateCompetitorsTable = function() {
 
     // ---- Update kart ranking mini-panel ----
     window._updateKartRankingPanel();
+};
+
+// ==================== PER-STINT LAP TRACKING (real-feed) ====================
+// Demo mode already tracks stintLaps/stintAvgLap per competitor (reset on pit exit,
+// see updateDemoData). The real feed (apex/racefacer/alpha) only reports lastLap/
+// bestLap as fresh objects every update — no continuity across updates, no stint
+// concept, and bestLap is feed-reported as a lifetime value. This rebuilds the same
+// per-stint state (stintLaps, stintAvgLap, stintBestLap) for the real feed so AVG/BEST
+// in the competitor table reflect "since this driver's last pit stop", not the whole
+// race, matching what demo mode already does and what the table renderer expects.
+window._stintTrackerMap = window._stintTrackerMap || {};
+
+window._trackCompetitorStints = function(competitors) {
+    if (!competitors || competitors.length === 0) return;
+    const trackers = window._stintTrackerMap;
+
+    competitors.forEach(c => {
+        const key = c.rowId || c.kart || c.team || c.name;
+        if (!key) return;
+
+        if (!trackers[key]) {
+            trackers[key] = { stintLaps: [], recentLaps: [], lastSeenLapMs: 0, wasInPit: !!c.inPit };
+        }
+        const t = trackers[key];
+
+        // Pit exit (was in pit, now out) — new stint starts, drop the previous stint's laps.
+        const isInPit = !!c.inPit;
+        if (t.wasInPit && !isInPit) {
+            t.stintLaps = [];
+        }
+        t.wasInPit = isInPit;
+
+        // Record a newly-completed lap (avoid double-counting the same lap on repeat updates).
+        const lapMs = c.lastLapMs || 0;
+        if (lapMs > 0 && lapMs !== t.lastSeenLapMs && lapMs >= 20000 && lapMs <= 180000) {
+            t.lastSeenLapMs = lapMs;
+            t.stintLaps.push(lapMs);
+            // Lifetime average (bounded — used only as the trend-comparison baseline and
+            // as a fallback before a competitor's first stint lap of the race arrives).
+            t.recentLaps.push(lapMs);
+            if (t.recentLaps.length > 200) t.recentLaps.shift();
+        }
+
+        if (t.stintLaps.length > 0) {
+            c.stintAvgLap = Math.round(t.stintLaps.reduce((a, b) => a + b, 0) / t.stintLaps.length);
+            c.stintBestLap = Math.min(...t.stintLaps);
+        } else {
+            c.stintAvgLap = 0;
+            c.stintBestLap = 0;
+        }
+        c.avgLap = t.recentLaps.length > 0
+            ? Math.round(t.recentLaps.reduce((a, b) => a + b, 0) / t.recentLaps.length)
+            : 0;
+    });
 };
 
 // ==================== KART PERFORMANCE TRACKING ====================
@@ -1544,10 +1604,11 @@ window.updateDemoData = function() {
                 }
                 // Overall average
                 comp.avgLap = Math.round(comp.lapTimes.reduce((a, b) => a + b, 0) / comp.lapTimes.length);
-                // Per-stint average (only laps since last pit)
+                // Per-stint average + best (only laps since last pit)
                 comp.stintAvgLap = comp.stintLaps.length > 0
                     ? Math.round(comp.stintLaps.reduce((a, b) => a + b, 0) / comp.stintLaps.length)
                     : comp.avgLap;
+                comp.stintBestLap = comp.stintLaps.length > 0 ? Math.min(...comp.stintLaps) : 0;
             }
         }
     });
