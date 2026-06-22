@@ -2716,14 +2716,24 @@ window.initDashPanelResizer = function() {
 window.initDashboardDrag = function() {
     // Support both dashboardScrollArea (Streger) and raceInfoPanel (Strateger)
     const area = document.getElementById('dashboardScrollArea') || document.getElementById('raceInfoPanel');
+    if (area) window._initDashboardDragArea(area);
+
+    // raceControlDock gets the same drag-to-reorder treatment, so panels moved there via
+    // the ⇥ button (e.g. the stats table) can be reordered against each other too.
+    // pitActionGroup is excluded — it's pinned to the bottom via margin-top:auto and
+    // always stays together as a single unit, never reordered.
+    const dock = document.getElementById('raceControlDock');
+    if (dock) window._initDashboardDragArea(dock, ['pitActionGroup']);
+};
+
+window._initDashboardDragArea = function(area, skipIds) {
     if (!area) return;
-    // Keep the active drag container so handlers always target the correct window/layout.
-    window._dashDragArea = area;
+    const skip = new Set(['strategyToastContainer', ...(skipIds || [])]);
 
     // Mark direct child panels as draggable
     const markDraggable = () => {
         Array.from(area.children).forEach(child => {
-            if (child.id === 'strategyToastContainer') return; // skip toasts
+            if (skip.has(child.id)) return; // skip toasts / pinned groups
             if (child.tagName === 'DIV' && !child.classList.contains('drag-handle-added')) {
                 child.setAttribute('draggable', 'true');
                 child.classList.add('drag-handle-added');
@@ -2742,16 +2752,15 @@ window.initDashboardDrag = function() {
                     }, 400);
                 }, { passive: true });
                 child.addEventListener('touchmove', (e) => {
-                    if (!window._dashDragging) return;
+                    if (!window._dashDragging || !area.contains(window._dashDragging)) return;
                     const t = e.touches[0];
-                    const activeArea = window._dashDragArea || area;
                     const target = document
                         .elementFromPoint(t.clientX, t.clientY)
-                        ?.closest(`#${activeArea.id} > div`);
+                        ?.closest(`#${area.id} > div`);
                     if (target && target !== window._dashDragging) {
                         const rect = target.getBoundingClientRect();
                         const after = t.clientY > rect.top + rect.height / 2;
-                        activeArea.insertBefore(window._dashDragging, after ? target.nextSibling : target);
+                        area.insertBefore(window._dashDragging, after ? target.nextSibling : target);
                     }
                 }, { passive: true });
                 child.addEventListener('touchend', () => {
@@ -2759,7 +2768,7 @@ window.initDashboardDrag = function() {
                     if (window._dashDragging) {
                         window._dashDragging.style.opacity = '';
                         window._dashDragging = null;
-                        window._saveDashboardOrder();
+                        window._saveDashboardOrder(area);
                     }
                 });
             }
@@ -2771,13 +2780,17 @@ window.initDashboardDrag = function() {
     new MutationObserver(markDraggable).observe(area, { childList: true });
 
     // Restore saved order
-    window._restoreDashboardOrder();
+    window._restoreDashboardOrder(area);
 };
 
 window._dashDragSrc = null;
 
 function _onDashPanelDragStart(e) {
     window._dashDragSrc = this;
+    // Capture the element's own parent at drag-start — dragover/drop must always
+    // target this, not the last-initialized area, since raceInfoPanel and
+    // raceControlDock both run independent drag-to-reorder areas at the same time.
+    window._dashDragSrcArea = this.parentElement;
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', this.id || '');
     setTimeout(() => { if (this) this.style.opacity = '0.4'; }, 0);
@@ -2786,8 +2799,9 @@ function _onDashPanelDragStart(e) {
 function _onDashPanelDragOver(e) {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
-    const area = window._dashDragArea || document.getElementById('dashboardScrollArea') || document.getElementById('raceInfoPanel');
-    if (!area || !window._dashDragSrc || this === window._dashDragSrc) return;
+    if (!window._dashDragSrc || this === window._dashDragSrc) return;
+    const area = window._dashDragSrcArea;
+    if (!area || this.parentElement !== area) return; // ignore drop targets outside the source's own area
     const rect = this.getBoundingClientRect();
     const after = e.clientY > rect.top + rect.height / 2;
     area.insertBefore(window._dashDragSrc, after ? this.nextSibling : this);
@@ -2796,7 +2810,7 @@ function _onDashPanelDragOver(e) {
 function _onDashPanelDrop(e) {
     e.stopPropagation();
     e.preventDefault();
-    window._saveDashboardOrder();
+    window._saveDashboardOrder(window._dashDragSrcArea);
 }
 
 function _onDashPanelDragEnd() {
@@ -2804,18 +2818,24 @@ function _onDashPanelDragEnd() {
     window._dashDragSrc = null;
 }
 
-window._saveDashboardOrder = function() {
-    const area = document.getElementById('dashboardScrollArea') || document.getElementById('raceInfoPanel');
+// Each draggable area persists its own child order under its own key, so
+// raceInfoPanel and raceControlDock don't clobber each other's saved order.
+function _dashOrderStorageKey(area) {
+    return area.id === 'raceControlDock' ? 'strateger_dashboard_order_dock' : 'strateger_dashboard_order';
+}
+
+window._saveDashboardOrder = function(area) {
+    area = area || document.getElementById('dashboardScrollArea') || document.getElementById('raceInfoPanel');
     if (!area) return;
     const order = Array.from(area.children).map(c => c.id || c.className.slice(0, 30));
-    try { localStorage.setItem('strateger_dashboard_order', JSON.stringify(order)); } catch(e) {}
+    try { localStorage.setItem(_dashOrderStorageKey(area), JSON.stringify(order)); } catch(e) {}
 };
 
-window._restoreDashboardOrder = function() {
-    const area = document.getElementById('dashboardScrollArea') || document.getElementById('raceInfoPanel');
+window._restoreDashboardOrder = function(area) {
+    area = area || document.getElementById('dashboardScrollArea') || document.getElementById('raceInfoPanel');
     if (!area) return;
     try {
-        const order = JSON.parse(localStorage.getItem('strateger_dashboard_order') || 'null');
+        const order = JSON.parse(localStorage.getItem(_dashOrderStorageKey(area)) || 'null');
         if (!Array.isArray(order) || order.length === 0) return;
         order.forEach(id => {
             const el = id ? document.getElementById(id) : null;
@@ -2901,8 +2921,9 @@ window.initHorizontalPanels = function() {
     });
 
     // Add move-to-other-panel button to moveable children
-    // raceControlDock's own fixed action rows (pitEntryBtn, penalty, pit timer) are NOT moveable.
-    const SKIP_IDS = new Set(['strategyToastContainer', 'pitInlineDock', 'confirmRaceFinishBtn', 'pitEntryBtn']);
+    // pitActionGroup (next-driver row + pit button, grouped together and pinned to the
+    // bottom via margin-top:auto) is NOT moveable — it always stays put as a single unit.
+    const SKIP_IDS = new Set(['strategyToastContainer', 'pitActionGroup']);
     const SKIP_CLASSES = new Set(['penalty-btn']);
 
     const addMoveBtn = (panel, targetPanel, targetKey) => {

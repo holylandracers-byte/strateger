@@ -2153,6 +2153,14 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     overflow-y: auto;
 }
 
+/* #pitActionGroup must win over raceControlDock's own Tailwind `space-y-1.5` sibling-margin
+   rule (`.space-y-1\.5 > :not([hidden]) ~ :not([hidden])`), which has higher specificity
+   than a single `.mt-auto` class and would otherwise override it back to a fixed 6px gap,
+   leaving the group NOT pinned to the bottom despite the class being present. */
+#raceControlDock > #pitActionGroup {
+    margin-top: auto;
+}
+
 /* ==================== LIVE-TIMING WIDGET ==================== */
 /* Always docked inline inside #raceInfoPanel — never floats. At ≥1024px its height is
    adjustable via #liveTimingHeightHandle (see js/live-timing.js); at narrower
