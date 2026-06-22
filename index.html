@@ -991,7 +991,10 @@
 
     <div id="raceDashboard" class="hidden flex flex-col h-full min-h-0 bg-navy-950 w-full relative">
 
-        <div id="dashboardInfoBar" class="bg-navy-900 border-b border-gray-800 shrink-0 p-2 grid grid-cols-4 gap-1 items-center z-[15] shadow-md">
+        <div id="dashboardInfoBar" class="relative bg-navy-900 border-b border-gray-800 shrink-0 p-2 grid grid-cols-4 gap-1 items-center z-[15] shadow-md">
+            <button id="liveDemoStartBtn" onclick="window.openDemoModalFromLiveRace()" title="Start Demo" class="absolute top-1 ltr:right-1 rtl:left-1 bg-navy-800 hover:bg-navy-700 border border-neon/40 text-neon w-6 h-6 rounded-full flex items-center justify-center text-[11px] z-20">
+                🎭
+            </button>
             <div class="flex items-center justify-center">
                 <button id="btnRain" onclick="window.toggleRain()" class="bg-navy-800 border border-blue-500/50 rounded px-2 py-1.5 hover:bg-navy-700 transition text-sm min-h-[40px]">
                     <span id="rainIcon">☀️</span> <span id="rainText" class="text-[10px] font-bold text-yellow-400 hidden xs:inline">Dry</span>

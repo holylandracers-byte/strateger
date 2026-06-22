@@ -3063,6 +3063,24 @@ window.openDemoModal = function() {
     window._renderDemoCharts();
 };
 
+// Entry point for the small "start demo" button shown in the live race header.
+// launchSelectedDemo() destructively overwrites window.drivers/config — calling it while
+// a real race is running would corrupt that race's data without ever stopping the clock
+// or hiding the dashboard, so this confirms first instead of opening the picker directly.
+window.openDemoModalFromLiveRace = function() {
+    if (window.state && window.state.isRunning) {
+        const t = window.t || ((k) => k);
+        window.showConfirmModal(
+            `🎭 ${t('startDemoTooltip') || 'Start Demo'}`,
+            t('startDemoMidRaceWarning') || 'This will end your current race and replace it with a demo. This cannot be undone.',
+            t('startDemoConfirm') || 'Start Demo',
+            () => window.openDemoModal()
+        );
+        return;
+    }
+    window.openDemoModal();
+};
+
 window.closeDemoModal = function() {
     const modal = document.getElementById('demoModal');
     if (modal) modal.classList.add('hidden');
