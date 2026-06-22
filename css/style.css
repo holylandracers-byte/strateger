@@ -2145,6 +2145,14 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     white-space: nowrap;
 }
 
+/* Driver-stats table body scrolls on its own — previously the wrapper around the whole
+   table was overflow:hidden (needed to clip the rounded corners around the sticky header),
+   which silently clipped extra driver rows with no scrollbar at all instead of scrolling. */
+.stats-table-scroll {
+    max-height: 260px;
+    overflow-y: auto;
+}
+
 /* ==================== LIVE-TIMING WIDGET ==================== */
 /* Always docked inline inside #raceInfoPanel — never floats. At ≥1024px its height is
    adjustable via #liveTimingHeightHandle (see js/live-timing.js); at narrower

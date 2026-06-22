@@ -1905,8 +1905,10 @@ window.confirmPitExit = function(autoDetected) {
     // Guard: only exit if actually in pit
     if (!window.state.isInPit) return;
 
-    // Guard: when live timing is active, block manual pit exit — live timing is authoritative
-    if (!autoDetected && window.liveTimingConfig && window.liveTimingConfig.enabled && window.liveTimingManager) {
+    // Guard: when live timing is active AND set to Auto, block manual pit exit — live
+    // timing is authoritative. When the user has switched to Manual (_autoPitEnabled
+    // false), they always get full manual control regardless of live-timing connection.
+    if (!autoDetected && window._liveTimingMayForcePit() && window.liveTimingConfig && window.liveTimingConfig.enabled && window.liveTimingManager) {
         const stats = window.liveTimingManager.getStats();
         if (stats && stats.isRunning) {
             console.log('[PitExit] Manual pit exit blocked — live timing is authoritative');
