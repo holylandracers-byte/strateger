@@ -975,7 +975,13 @@ window.initRace = function() {
 
 window.recalculateTimelineTimes = function() {
     if (!window.previewData?.timeline) return;
-    let currentTime = new Date(window.previewData.startTime);
+    // Once the race is actually running, anchor the timeline to the real start time
+    // instead of the pre-race planned start — they can differ by the lag between
+    // planning and the actual green flag, and during a live race the real one is ground truth.
+    const anchor = (window.state && window.state.isRunning && window.state.startTime)
+        ? window.state.startTime
+        : window.previewData.startTime;
+    let currentTime = new Date(anchor);
     window.previewData.timeline.forEach(item => {
         item.startTime = new Date(currentTime);
         item.endTime = new Date(currentTime.getTime() + item.duration);

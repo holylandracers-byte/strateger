@@ -1899,6 +1899,36 @@ window.getBoxMessage = function() {
     return t('boxNow');
 };
 
+// Rewrites window.previewData.timeline so the just-completed stint reflects what actually
+// happened (real driver, real duration) instead of the original plan, and every remaining
+// stint's duration is pulled from window.state.stintTargets (the live, drift-redistributed
+// values). Called on every pit exit so the "▶ PLAN" preview always shows reality-so-far +
+// an adjusted forecast for what's left, even when a different driver ran a stint than
+// originally scheduled, or a stint ran much longer/shorter than planned.
+window._syncPreviewWithActuals = function(actualDriverIdx, actualDriveDuration) {
+    if (!window.previewData || !window.previewData.timeline) return;
+    const stints = window.previewData.timeline.filter(s => s.type === 'stint');
+    const completedIdx = (window.state.globalStintNumber || 1) - 1; // 0-based index of the stint that just ended
+    const completedStint = stints[completedIdx];
+    if (completedStint) {
+        completedStint._plannedDuration = completedStint._plannedDuration ?? completedStint.duration;
+        completedStint._plannedDriverIdx = completedStint._plannedDriverIdx ?? completedStint.driverIdx;
+        completedStint.duration = actualDriveDuration;
+        completedStint.driverIdx = actualDriverIdx;
+        completedStint.driverName = window.drivers[actualDriverIdx]?.name || completedStint.driverName;
+        completedStint.color = window.drivers[actualDriverIdx]?.color || completedStint.color;
+        completedStint._actual = true;
+    }
+    // Remaining stints: pull the redistributed durations already computed in stintTargets.
+    const targets = window.state.stintTargets;
+    if (Array.isArray(targets)) {
+        for (let i = completedIdx + 1; i < stints.length; i++) {
+            if (targets[i] != null) stints[i].duration = targets[i];
+        }
+    }
+    if (typeof window.recalculateTimelineTimes === 'function') window.recalculateTimelineTimes();
+};
+
 window.confirmPitExit = function(autoDetected) {
     // Guard: race is finished — no pit actions allowed
     if (window.state.isFinished || (!window.state.isRunning && window.state.startTime)) return;
@@ -1988,6 +2018,15 @@ window.confirmPitExit = function(autoDetected) {
         }
         console.log(`♻️ Pit exit recalc: actual ${(driveDuration/60000).toFixed(1)}m vs planned ${(planned/60000).toFixed(1)}m — redistributed ${newRemaining.length} remaining stints`);
     })();
+
+    // Sync the Preview/Plan screen with what actually happened: the just-completed stint
+    // gets overwritten with the real driver + real duration (even if a different driver
+    // ran it than planned), and every remaining stint's duration is pulled from
+    // window.state.stintTargets, which _recalcOnPitExit just redistributed above. This
+    // keeps "▶ PLAN" showing reality-so-far + an adjusted forecast, not a stale original plan.
+    if (typeof window._syncPreviewWithActuals === 'function') {
+        window._syncPreviewWithActuals(prevDriverIdx, driveDuration);
+    }
 
     window.state.globalStintNumber++;
 
@@ -3433,6 +3472,16 @@ window.skipOnboarding = function() {
 // 📄 PDF / IMAGE EXPORT
 // ==========================================
 
+// Waits for layout to settle after DOM/style mutations (renderPreview's innerHTML
+// rebuild, _prepareFullCapture's overflow/height changes) before html2canvas reads
+// scrollWidth/scrollHeight — without this the capture can intermittently measure the
+// pre-mutation layout, producing a cropped or stale-looking export.
+function _waitForLayoutSettle() {
+    return new Promise(resolve => {
+        requestAnimationFrame(() => requestAnimationFrame(resolve));
+    });
+}
+
 // Expand scroll-clipped elements so html2canvas captures the full content,
 // then restore after capture.
 function _prepareFullCapture() {
@@ -3481,7 +3530,14 @@ window.exportStrategyImage = async function() {
         return;
     }
 
+    // Re-render with current data before capturing — without this the export can freeze
+    // whatever times were last drawn, which may be stale (e.g. a pit exit synced new
+    // actual durations into previewData.timeline after this screen's last render).
+    if (typeof window.recalculateTimelineTimes === 'function') window.recalculateTimelineTimes();
+    if (typeof window.renderPreview === 'function') window.renderPreview();
+
     const saved = _prepareFullCapture();
+    await _waitForLayoutSettle();
     try {
         const canvas = await html2canvas(target, {
             backgroundColor: '#020617',
@@ -3520,7 +3576,13 @@ window.exportStrategyPdf = async function() {
     const btn = event?.target?.closest?.('button');
     if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ' + t('exportingPdf'); }
 
+    // Re-render with current data before capturing — same staleness concern as the
+    // PNG export above (see exportStrategyImage).
+    if (typeof window.recalculateTimelineTimes === 'function') window.recalculateTimelineTimes();
+    if (typeof window.renderPreview === 'function') window.renderPreview();
+
     const saved = _prepareFullCapture();
+    await _waitForLayoutSettle();
     try {
         const canvas = await html2canvas(target, {
             backgroundColor: '#020617',
@@ -4275,6 +4337,19 @@ window.openLivePreview = function() {
         s._done = (i + 1) < currentStintNum;
         s._current = (i + 1) === currentStintNum;
     });
+    // The current (in-progress) stint's driver may have changed since the plan was made
+    // (e.g. a manual swap before the pit stop) — reflect that even though the stint isn't
+    // done yet, so the preview never shows a driver who isn't actually out on track.
+    const currentStint = stints[currentStintNum - 1];
+    if (currentStint && window.state.isRunning && !window.state.isInPit) {
+        const liveDriverIdx = window.state.currentDriverIdx;
+        if (liveDriverIdx != null && liveDriverIdx !== currentStint.driverIdx) {
+            currentStint.driverIdx = liveDriverIdx;
+            currentStint.driverName = window.drivers[liveDriverIdx]?.name || currentStint.driverName;
+            currentStint.color = window.drivers[liveDriverIdx]?.color || currentStint.color;
+        }
+    }
+    if (typeof window.recalculateTimelineTimes === 'function') window.recalculateTimelineTimes();
 
     raceDashboard.classList.add('hidden');
     previewScreen.classList.remove('hidden');
@@ -4684,6 +4759,15 @@ window.clearRulesPdf = function() {
     if (input) input.value = '';
 };
 
+// A real rules page run through pdf.js's text layer normally yields well over a hundred
+// characters. Scanned/photographed pages have no text layer at all, so getTextContent()
+// returns empty or near-empty — this threshold is the signal to fall back to OCR for
+// that specific page, rather than silently feeding the AI prompt a blank page (which is
+// the root cause of "time data extracted wrong": numbers that simply aren't there at all
+// get hallucinated/guessed by the AI instead of being flagged as missing).
+const RULES_PDF_OCR_MIN_CHARS = 40;
+const RULES_PDF_OCR_MAX_PAGES = 15; // OCR is slow — cap how many scanned pages we'll process
+
 window.handleRulesPdfUpload = async function(input) {
     const file = input.files[0];
     if (!file) return;
@@ -4703,16 +4787,46 @@ window.handleRulesPdfUpload = async function(input) {
         const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
         const numPages = pdf.numPages;
         let fullText = '';
+        let scannedPagesOcred = 0;
+        let scannedPagesSkipped = 0;
+
         for (let p = 1; p <= Math.min(numPages, 60); p++) {
             const page = await pdf.getPage(p);
             const content = await page.getTextContent();
-            fullText += content.items.map(i => i.str).join(' ') + '\n';
+            let pageText = content.items.map(i => i.str).join(' ').trim();
+
+            if (pageText.length < RULES_PDF_OCR_MIN_CHARS) {
+                // Likely a scanned/photographed page with no real text layer — render it
+                // to a canvas and OCR that instead of treating it as genuinely blank.
+                if (window.Tesseract && scannedPagesOcred < RULES_PDF_OCR_MAX_PAGES) {
+                    if (statusEl) statusEl.textContent = `${(window.t && window.t('rulesPdfOcring')) || 'Scanning page'} ${p}/${numPages}…`;
+                    try {
+                        const ocrText = await window._ocrPdfPage(page);
+                        if (ocrText && ocrText.trim().length > pageText.length) {
+                            pageText = ocrText.trim();
+                        }
+                        scannedPagesOcred++;
+                    } catch (ocrErr) {
+                        console.warn(`[RulesPDF] OCR failed for page ${p}:`, ocrErr);
+                    }
+                } else if (pageText.length === 0) {
+                    scannedPagesSkipped++;
+                }
+            }
+
+            fullText += pageText + '\n';
         }
+
         window._rulesPdfText = fullText.slice(0, 12000); // cap to avoid token overflow
         window._rulesPdfFileName = file.name;
 
         if (nameEl) nameEl.textContent = file.name;
-        if (pagesEl) pagesEl.textContent = `${numPages} ${(window.t && window.t('pages')) || 'pages'}`;
+        if (pagesEl) {
+            let pagesLabel = `${numPages} ${(window.t && window.t('pages')) || 'pages'}`;
+            if (scannedPagesOcred > 0) pagesLabel += ` · 🔍 OCR ×${scannedPagesOcred}`;
+            if (scannedPagesSkipped > 0) pagesLabel += ` · ⚠️ ${scannedPagesSkipped} ${(window.t && window.t('rulesPdfBlankPages')) || 'blank/unreadable'}`;
+            pagesEl.textContent = pagesLabel;
+        }
         if (previewEl) previewEl.classList.remove('hidden');
         if (statusEl) statusEl.classList.add('hidden');
         if (analyzeBtn) analyzeBtn.disabled = false;
@@ -4722,6 +4836,20 @@ window.handleRulesPdfUpload = async function(input) {
         console.error('PDF read error:', err);
         if (statusEl) { statusEl.textContent = (window.t && window.t('rulesPdfError')) || 'Could not read PDF.'; }
     }
+};
+
+// Renders one pdf.js page to an offscreen canvas at a high-enough scale for OCR
+// accuracy on typical rules-sheet font sizes, then runs Tesseract on it.
+window._ocrPdfPage = async function(page) {
+    const viewport = page.getViewport({ scale: 2.5 });
+    const canvas = document.createElement('canvas');
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    const ctx = canvas.getContext('2d');
+    await page.render({ canvasContext: ctx, viewport }).promise;
+
+    const result = await window.Tesseract.recognize(canvas, 'eng');
+    return result?.data?.text || '';
 };
 
 window.analyzeRulesPdf = function() {
