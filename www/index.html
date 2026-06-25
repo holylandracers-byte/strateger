@@ -36,12 +36,15 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
     <!-- PDF reading (for race rules upload) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <!-- OCR fallback for scanned/photographed rules PDFs with no real text layer -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js" defer></script>
 
-    <script src="js/racefacer-scraper.js"></script>
-    <script src="js/apex-scraper.js"></script>
-    <script src="js/alpha-scraper.js"></script>
-    <script src="js/live-timing-manager.js"></script>
-    <script src="js/qualifying.js"></script>
+    <script src="js/racefacer-scraper.js?v=7"></script>
+    <script src="js/apex-scraper.js?v=7"></script>
+    <script src="js/hakafast-scraper.js?v=7"></script>
+    <script src="js/alpha-scraper.js?v=7"></script>
+    <script src="js/live-timing-manager.js?v=7"></script>
+    <script src="js/qualifying.js?v=7"></script>
 
     <link rel="stylesheet" href="css/style.css">
 
@@ -154,6 +157,12 @@
                 <span class="hidden sm:inline" data-i18n="driverLink">Driver</span>
             </button>
 
+            <!-- Demo — visible on sm+ screens; always available, not just on first run -->
+            <button onclick="window.showDemoConfig()" class="hidden sm:flex bg-gradient-to-r from-ice/20 to-blue-500/20 hover:from-ice/30 hover:to-blue-500/30 text-ice text-xs font-bold px-2 py-1.5 rounded-full border border-ice/40 hover:border-ice/60 transition transform active:scale-95 items-center gap-1" title="Run Demo Race">
+                <i class="fas fa-play"></i>
+                <span class="hidden sm:inline" data-i18n="runDemo">Demo</span>
+            </button>
+
             <!-- Contact Us — visible on sm+ screens -->
             <button onclick="window.openContactUsModal()" class="hidden sm:flex bg-navy-800 hover:bg-navy-700 text-gray-300 hover:text-white text-xs font-bold px-2 py-1.5 rounded-full border border-gray-700 hover:border-gray-500 transition transform active:scale-95 items-center gap-1" title="Contact Us">
                 📝
@@ -180,6 +189,9 @@
                     <i class="fas fa-ellipsis-v"></i>
                 </button>
                 <div id="headerOverflowMenu" class="hidden absolute right-0 top-full mt-1 bg-navy-900 border border-gray-700 rounded-lg shadow-2xl p-1.5 min-w-[160px] z-50 animate-scale-in">
+                    <button onclick="window.showDemoConfig(); document.getElementById('headerOverflowMenu').classList.add('hidden')" class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm text-ice hover:bg-navy-800 transition text-left">
+                        <i class="fas fa-play w-4 text-center"></i> <span data-i18n="runDemo">Demo</span>
+                    </button>
                     <button onclick="window.toggleMute(); document.getElementById('headerOverflowMenu').classList.add('hidden')" class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:bg-navy-800 hover:text-white transition text-left">
                         <i class="fas fa-volume-up w-4 text-center text-gray-500" id="overflowMuteIcon"></i> <span data-i18n="mute">Sound</span>
                     </button>
@@ -371,6 +383,17 @@
                         </label>
                     </div>
                     <input type="text" id="searchValue" class="input-field text-xs" data-i18n="ltPlaceholder" placeholder="Search value...">
+                </div>
+                <div class="mb-2">
+                    <label class="text-[10px] text-gray-400 flex items-center gap-1 cursor-pointer select-none" onclick="document.getElementById('wsPortOverrideRow').classList.toggle('hidden')">
+                        <i class="fas fa-chevron-right text-[8px]"></i>
+                        <span data-i18n="advancedConnection">Advanced connection</span>
+                    </label>
+                    <div id="wsPortOverrideRow" class="hidden mt-1">
+                        <label class="text-[10px] text-gray-500 block mb-1" data-i18n="wsPortOverrideLabel">Apex WS port override (leave blank = auto):</label>
+                        <input type="number" id="wsPortOverride" class="input-field text-xs" data-i18n="wsPortOverridePlaceholder" placeholder="e.g. 8523 or 8913" min="1" max="65535">
+                        <p class="text-[9px] text-gray-600 mt-1" data-i18n="wsPortOverrideHint">If live timing connects but shows no data, the feed's WebSocket port may differ from the auto-detected one. Try the venue's configPort+3 (HTTPS) or +2 (HTTP).</p>
+                    </div>
                 </div>
                 <div class="flex gap-2">
                     <button onclick="window.testLiveTiming()" class="flex-1 bg-red-900/50 border border-red-500/50 text-red-300 text-xs py-1.5 rounded hover:bg-red-900" data-i18n="testBtn">Test</button>
@@ -977,7 +1000,10 @@
 
     <div id="raceDashboard" class="hidden flex flex-col h-full min-h-0 bg-navy-950 w-full relative">
 
-        <div id="dashboardInfoBar" class="bg-navy-900 border-b border-gray-800 shrink-0 p-2 grid grid-cols-4 gap-1 items-center z-[15] shadow-md">
+        <div id="dashboardInfoBar" class="relative bg-navy-900 border-b border-gray-800 shrink-0 p-2 grid grid-cols-4 gap-1 items-center z-[15] shadow-md">
+            <button id="liveDemoStartBtn" onclick="window.openDemoModalFromLiveRace()" title="Start Demo" class="absolute top-1 ltr:right-1 rtl:left-1 bg-navy-800 hover:bg-navy-700 border border-neon/40 text-neon w-6 h-6 rounded-full flex items-center justify-center text-[11px] z-20">
+                🎭
+            </button>
             <div class="flex items-center justify-center">
                 <button id="btnRain" onclick="window.toggleRain()" class="bg-navy-800 border border-blue-500/50 rounded px-2 py-1.5 hover:bg-navy-700 transition text-sm min-h-[40px]">
                     <span id="rainIcon">☀️</span> <span id="rainText" class="text-[10px] font-bold text-yellow-400 hidden xs:inline">Dry</span>
@@ -1027,11 +1053,10 @@
 
             <div id="raceInfoPanel" class="flex-1 min-h-0 overflow-y-auto p-2 space-y-2">
 
-                <!-- Live-timing widget wrapper: draggable + resizable -->
+                <!-- Live-timing widget wrapper: always docked inside raceInfoPanel -->
                 <div id="liveTimingWidgetWrapper" class="lt-widget-wrapper hidden">
                 <div id="liveTimingPanel" class="bg-navy-900/80 border border-red-500/50 p-2 rounded lt-widget-inner">
-                    <!-- Drag handle -->
-                    <div id="liveTimingDragHandle" class="lt-drag-handle flex justify-between items-center mb-1 cursor-move select-none">
+                    <div id="liveTimingDragHandle" class="flex justify-between items-center mb-1 select-none">
                         <div class="flex items-center gap-2">
                             <span class="sync-dot live-dot"></span>
                             <span class="text-xs font-bold" data-i18n="live">LIVE</span>
@@ -1039,7 +1064,6 @@
                             <span class="text-[10px] text-gray-400 font-mono ml-1" id="liveRaceClock"></span>
                         </div>
                         <div class="flex items-center gap-1">
-                            <span class="lt-resize-hint text-[9px] text-gray-600 select-none mr-1">⇲</span>
                             <!-- Pro: team logo upload button (hidden for free tier) -->
                             <button id="teamLogoUploadBtn" class="team-logo-upload-btn hidden" onclick="window.openTeamLogoUpload()" title="Upload Logo">📷</button>
                             <button id="apexViewToggle" onclick="window.toggleApexIframe()" class="text-[10px] bg-navy-700 border border-gray-600 text-gray-300 px-2 py-0.5 rounded" title="Toggle original Apex view">🌐</button>
@@ -1048,6 +1072,8 @@
                                 <span id="autoPitIcon">🤖</span>
                                 <span id="autoPitLabel" data-i18n="autoPit">Auto</span>
                             </button>
+                            <!-- Force Pit Out: bypasses 20s guard and live timing auto-exit, shown only when in pit -->
+                            <button id="forcePitOutBtn" onclick="window.forcePitOut()" class="hidden text-[10px] bg-amber-600 hover:bg-amber-500 text-white font-bold px-2 py-0.5 rounded border border-amber-400 transition" title="Force pit out now (override)">⚡ OUT</button>
                             <button onclick="window.stopLiveTiming()" class="text-[10px] bg-red-900 text-white px-2 rounded" data-i18n="stop">Stop</button>
                         </div>
                     </div>
@@ -1102,150 +1128,159 @@
                         <iframe id="apexIframe" src="" class="w-full rounded" style="height:240px;border:none;background:#0a1120;" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
                     </div>
                     <div id="kartRankingPanel" class="hidden mt-1 p-2 bg-navy-950 rounded border border-gray-700/50"></div>
-                    <!-- Resize handle (bottom-right corner) -->
-                    <div id="liveTimingResizeHandle" class="lt-resize-handle" title="Resize"></div>
                 </div>
-                </div>
-
-                <!-- Strategy + current driver + stint timer — all in one compact row -->
-                <div class="bg-navy-900 border border-gray-700 rounded-lg p-2">
-                    <div class="grid grid-cols-3 gap-2 items-center">
-                        <!-- Target stint -->
-                        <div class="text-center">
-                            <div class="text-[9px] text-gray-400 font-bold tracking-widest uppercase" data-i18n="targetStint">TARGET</div>
-                            <div class="flex items-baseline justify-center gap-1">
-                                <span id="strategyTargetStint" class="text-xl font-bold text-white font-mono">--:--</span>
-                                <span id="strategyDelta" class="text-[10px] font-bold text-gray-400"></span>
-                            </div>
-                            <div id="strategyAdvice" class="text-[9px] text-gray-500 font-bold uppercase truncate" data-i18n="buildTime">BUILD</div>
-                        </div>
-                        <!-- Current driver -->
-                        <div class="text-center">
-                            <div class="text-[9px] text-gray-500 uppercase" data-i18n="current">Current</div>
-                            <div class="flex items-center justify-center gap-1">
-                                <span id="currentDriverDot" class="w-2.5 h-2.5 rounded-full shrink-0" style="background:#22d3ee"></span>
-                                <div id="currentDriverName" class="text-base font-bold text-ice truncate">---</div>
-                            </div>
-                        </div>
-                        <!-- Stint timer -->
-                        <div class="text-center">
-                            <div class="text-[9px] text-gray-500 uppercase" data-i18n="stintTime">Stint</div>
-                            <div id="stintTimerDisplay" class="text-xl font-mono font-bold text-white">00:00</div>
-                        </div>
-                    </div>
-                    <!-- Progress bar -->
-                    <div class="relative h-4 bg-navy-950 rounded-full overflow-hidden mt-2 border border-gray-600 shadow-inner">
-                        <div id="zoneForbidden" class="absolute top-0 left-0 h-full bg-red-900/40 w-0 border-r border-red-500 z-0"></div>
-                        <div id="minStintLine" class="absolute top-0 bottom-0 w-0.5 bg-white z-10 hidden"></div>
-                        <div id="targetStintLine" class="absolute top-0 bottom-0 w-0.5 bg-ice z-10 hidden"></div>
-                        <div id="stintProgressBar" class="absolute top-0 left-0 h-full bg-gradient-to-r from-green-600 to-neon transition-all duration-500 z-0 opacity-90" style="width: 0%"></div>
-                    </div>
-                    <div id="strategyScheduleBanner" class="hidden mt-1 pt-1 border-t border-gray-700/50 text-center text-[10px]"></div>
-                    <div id="squadStatusInfo" class="hidden mt-1 text-[10px]"></div>
+                <!-- Drag up/down to resize the live-timing widget's height (≥1024px only) -->
+                <div id="liveTimingHeightHandle" class="lt-height-handle" title="Drag to resize"><span></span></div>
                 </div>
 
                 <!-- Strategy toasts -->
                 <div id="strategyToastContainer" class="space-y-1"></div>
 
-                <!-- Actions group: strategy panel + mode buttons — dragged together -->
-                <div id="strategyGroup" class="bg-navy-900 border border-gray-700 rounded-lg overflow-hidden">
-
-                    <!-- Strategy outlook -->
-                    <div id="remainingStintsPanel" class="hidden px-2 pt-2 pb-1">
-                        <div class="flex items-center justify-between mb-1.5">
-                            <span class="text-[9px] text-gray-500 font-bold uppercase tracking-widest" data-i18n="strategyOutlook">OUTLOOK</span>
-                            <div class="flex items-center gap-1.5">
-                                <button onclick="window.openLivePreview()" class="text-[9px] text-gray-400 hover:text-white bg-gray-700/50 hover:bg-gray-600/70 border border-gray-600 rounded px-1.5 py-0.5 transition font-bold uppercase tracking-wide leading-none" data-i18n="livePreviewBtn">▶ PLAN</button>
-                                <span id="remTimeText" class="text-[11px] text-white font-mono font-bold">--:--</span>
-                            </div>
-                        </div>
-                        <div id="remStintsText" class="flex flex-wrap gap-1 pb-1.5 border-b border-gray-700/50"></div>
-                    </div>
-
-                    <!-- Mode buttons -->
-                    <div class="p-1.5">
-                        <div class="grid gap-1.5" id="modeButtonsContainer" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));">
-                            <button id="btnPush" onclick="window.setMode('push')" class="btn-press bg-navy-800 border border-green-500/30 rounded-lg py-2 px-2 text-xs text-gray-300 font-bold shadow-md hover:bg-navy-700 transition flex flex-row items-center justify-center gap-1">
-                                <span>🔥</span><span data-i18n="push">PUSH</span>
-                            </button>
-                            <button id="btnBad" onclick="window.setMode('bad')" class="btn-press bg-navy-800 border border-red-500/30 rounded-lg py-2 px-2 text-xs text-gray-300 font-bold shadow-md hover:bg-navy-700 transition flex flex-row items-center justify-center gap-1">
-                                <span>🐢</span><span data-i18n="problem">PROBLEM</span>
-                            </button>
-                            <button id="btnNightMode" onclick="window.toggleNightMode()" class="hidden bg-navy-800 hover:bg-indigo-800 border border-indigo-500/50 text-indigo-200 text-xs font-bold py-2 px-2 rounded transition flex flex-row items-center justify-center gap-1 shadow-lg">
-                                <span>🌙</span><span id="nightModeText" data-i18n="nightMode">NIGHT</span>
-                            </button>
-                            <button id="btnSwitchSquad" onclick="window.switchNightSquad()" class="hidden bg-navy-800 hover:bg-squadA border border-squadB/50 text-squadB text-xs font-bold py-2 px-2 rounded transition flex flex-row items-center justify-center gap-1 shadow-lg">
-                                <span>🔄</span><span id="switchSquadText" data-i18n="squadSwitch">Switch Squad</span>
-                            </button>
-                        </div>
-                        <button id="btnResetMode" onclick="window.setMode('normal')" class="hidden w-full bg-gray-700/50 hover:bg-gray-600 border border-gray-500 text-white text-xs font-bold py-1.5 rounded mt-1.5 transition uppercase tracking-wider">
-                            🔄 <span data-i18n="resetMode">Reset Mode</span>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Driver stats table -->
-                <div class="bg-navy-900 border border-gray-700 rounded-lg overflow-hidden">
-                    <table class="w-full text-xs">
-                        <thead class="text-gray-400 text-[9px] bg-navy-950 border-b border-gray-700">
-                            <tr>
-                                <th class="w-5 p-1"></th>
-                                <th class="text-left p-1" data-i18n="driverHeader">DRIVER</th>
-                                <th class="text-center p-1" data-i18n="stops">ST</th>
-                                <th class="text-right p-1" data-i18n="totalHeader">TOTAL</th>
-                            </tr>
-                        </thead>
-                        <tbody id="statsTable" class="divide-y divide-gray-800"></tbody>
-                    </table>
-                </div>
-
             </div><!-- end raceInfoPanel -->
 
-                <!-- Controls: next driver + penalty + pit button -->
+                <!-- Controls: next driver + penalty + pit button + driver stats -->
                 <div id="raceControlDock" class="bg-navy-900 border border-gray-700 rounded-lg px-2 pt-1.5 pb-2 space-y-1.5">
 
-                    <!-- Next driver + penalty row -->
-                    <div class="flex items-center gap-2">
-                        <div class="flex items-center gap-1.5 min-w-0 flex-1">
-                            <span id="nextDriverDot" class="w-2.5 h-2.5 rounded-full shrink-0" style="background:#4ade80"></span>
-                            <span class="text-[9px] text-gray-500 uppercase font-bold shrink-0" data-i18n="nextDriverLabel">Next</span>
-                            <span id="nextDriverName" class="text-base font-bold text-neon cursor-pointer hover:text-white transition truncate" onclick="window.cycleNextDriver(false, true)">---</span>
+                    <!-- Strategy + current driver + stint timer — all in one compact row -->
+                    <div class="bg-navy-900 border border-gray-700 rounded-lg p-2">
+                        <div class="grid grid-cols-3 gap-2 items-center">
+                            <!-- Target stint -->
+                            <div class="text-center">
+                                <div class="text-[9px] text-gray-400 font-bold tracking-widest uppercase" data-i18n="targetStint">TARGET</div>
+                                <div class="flex items-baseline justify-center gap-1">
+                                    <span id="strategyTargetStint" class="text-xl font-bold text-white font-mono">--:--</span>
+                                    <span id="strategyDelta" class="text-[10px] font-bold text-gray-400"></span>
+                                </div>
+                                <div id="strategyAdvice" class="text-[9px] text-gray-500 font-bold uppercase truncate" data-i18n="buildTime">BUILD</div>
+                            </div>
+                            <!-- Current driver -->
+                            <div class="text-center">
+                                <div class="text-[9px] text-gray-500 uppercase" data-i18n="current">Current</div>
+                                <div class="flex items-center justify-center gap-1">
+                                    <span id="currentDriverDot" class="w-2.5 h-2.5 rounded-full shrink-0" style="background:#22d3ee"></span>
+                                    <div id="currentDriverName" class="text-base font-bold text-ice truncate">---</div>
+                                </div>
+                            </div>
+                            <!-- Stint timer -->
+                            <div class="text-center">
+                                <div class="text-[9px] text-gray-500 uppercase" data-i18n="stintTime">Stint</div>
+                                <div id="stintTimerDisplay" class="text-xl font-mono font-bold text-white">00:00</div>
+                            </div>
                         </div>
-                        <div class="flex items-center gap-1 bg-navy-950 px-1.5 py-1 rounded border border-gray-700 shrink-0">
-                            <span class="text-[9px] text-gray-500 uppercase font-bold" data-i18n="penalty">Pen</span>
-                            <button id="penaltyBtnMinus5" onclick="window.adjustPitTime(-5)" class="penalty-btn bg-green-900/30 hover:bg-green-800 text-green-400 border border-green-600/30 px-1.5 py-0.5 rounded text-xs font-bold transition">-5</button>
-                            <button id="penaltyBtnPlus5" onclick="window.adjustPitTime(5)" class="penalty-btn bg-red-900/30 hover:bg-red-800 text-red-400 border border-red-600/30 px-1.5 py-0.5 rounded text-xs font-bold transition">+5</button>
-                            <button id="penaltyBtnPlus10" onclick="window.adjustPitTime(10)" class="penalty-btn bg-red-900/30 hover:bg-red-800 text-red-400 border border-red-600/30 px-1.5 py-0.5 rounded text-xs font-bold transition">+10</button>
-                            <div id="dashboardPitAdjDisplay" class="bg-black/30 px-1.5 py-0.5 rounded text-ice font-mono font-bold text-xs min-w-[28px] text-center">0</div>
+                        <!-- Progress bar -->
+                        <div class="relative h-4 bg-navy-950 rounded-full overflow-hidden mt-2 border border-gray-600 shadow-inner">
+                            <div id="zoneForbidden" class="absolute top-0 left-0 h-full bg-red-900/40 w-0 border-r border-red-500 z-0"></div>
+                            <div id="minStintLine" class="absolute top-0 bottom-0 w-0.5 bg-white z-10 hidden"></div>
+                            <div id="targetStintLine" class="absolute top-0 bottom-0 w-0.5 bg-ice z-10 hidden"></div>
+                            <div id="stintProgressBar" class="absolute top-0 left-0 h-full bg-gradient-to-r from-green-600 to-neon transition-all duration-500 z-0 opacity-90" style="width: 0%"></div>
+                        </div>
+                        <div id="strategyScheduleBanner" class="hidden mt-1 pt-1 border-t border-gray-700/50 text-center text-[10px]"></div>
+                        <div id="squadStatusInfo" class="hidden mt-1 text-[10px]"></div>
+                    </div>
+
+                    <!-- Actions group: strategy panel + mode buttons — dragged together -->
+                    <div id="strategyGroup" class="bg-navy-900 border border-gray-700 rounded-lg overflow-hidden">
+
+                        <!-- Strategy outlook -->
+                        <div id="remainingStintsPanel" class="hidden px-2 pt-2 pb-1">
+                            <div class="flex items-center justify-between mb-1.5">
+                                <span class="text-[9px] text-gray-500 font-bold uppercase tracking-widest" data-i18n="strategyOutlook">OUTLOOK</span>
+                                <div class="flex items-center gap-1.5">
+                                    <button onclick="window.openLivePreview()" class="text-[9px] text-gray-400 hover:text-white bg-gray-700/50 hover:bg-gray-600/70 border border-gray-600 rounded px-1.5 py-0.5 transition font-bold uppercase tracking-wide leading-none" data-i18n="livePreviewBtn">▶ PLAN</button>
+                                    <span id="remTimeText" class="text-[11px] text-white font-mono font-bold">--:--</span>
+                                </div>
+                            </div>
+                            <div id="remStintsText" class="flex flex-wrap gap-1 pb-1.5 border-b border-gray-700/50"></div>
+                        </div>
+
+                        <!-- Mode buttons -->
+                        <div class="p-1.5">
+                            <div class="grid gap-1.5" id="modeButtonsContainer" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));">
+                                <button id="btnPush" onclick="window.setMode('push')" class="btn-press bg-navy-800 border border-green-500/30 rounded-lg py-2 px-2 text-xs text-gray-300 font-bold shadow-md hover:bg-navy-700 transition flex flex-row items-center justify-center gap-1">
+                                    <span>🔥</span><span data-i18n="push">PUSH</span>
+                                </button>
+                                <button id="btnBad" onclick="window.setMode('bad')" class="btn-press bg-navy-800 border border-red-500/30 rounded-lg py-2 px-2 text-xs text-gray-300 font-bold shadow-md hover:bg-navy-700 transition flex flex-row items-center justify-center gap-1">
+                                    <span>🐢</span><span data-i18n="problem">PROBLEM</span>
+                                </button>
+                                <button id="btnNightMode" onclick="window.toggleNightMode()" class="hidden bg-navy-800 hover:bg-indigo-800 border border-indigo-500/50 text-indigo-200 text-xs font-bold py-2 px-2 rounded transition flex flex-row items-center justify-center gap-1 shadow-lg">
+                                    <span>🌙</span><span id="nightModeText" data-i18n="nightMode">NIGHT</span>
+                                </button>
+                                <button id="btnSwitchSquad" onclick="window.switchNightSquad()" class="hidden bg-navy-800 hover:bg-squadA border border-squadB/50 text-squadB text-xs font-bold py-2 px-2 rounded transition flex flex-row items-center justify-center gap-1 shadow-lg">
+                                    <span>🔄</span><span id="switchSquadText" data-i18n="squadSwitch">Switch Squad</span>
+                                </button>
+                            </div>
+                            <button id="btnResetMode" onclick="window.setMode('normal')" class="hidden w-full bg-gray-700/50 hover:bg-gray-600 border border-gray-500 text-white text-xs font-bold py-1.5 rounded mt-1.5 transition uppercase tracking-wider">
+                                🔄 <span data-i18n="resetMode">Reset Mode</span>
+                            </button>
                         </div>
                     </div>
 
-                    <!-- Pit timer inline (visible only during pit) -->
-                    <div id="pitInlineDock" class="hidden bg-navy-950 border border-ice/30 rounded-xl px-2 py-1.5 flex items-center gap-3">
-                        <div class="text-center shrink-0">
-                            <div class="text-[9px] text-ice uppercase font-bold tracking-widest" data-i18n="inPit">IN PIT</div>
-                            <div id="pitInlineTimer" class="text-2xl font-mono font-black text-white tracking-tight leading-none">0.0</div>
+                    <!-- Driver stats table -->
+                    <div id="statsTableGroup" class="bg-navy-900 border border-gray-700 rounded-lg overflow-hidden">
+                        <table class="w-full text-xs">
+                            <thead class="text-gray-400 text-[9px] bg-navy-950 border-b border-gray-700">
+                                <tr>
+                                    <th class="w-5 p-1"></th>
+                                    <th class="text-left p-1" data-i18n="driverHeader">DRIVER</th>
+                                    <th class="text-center p-1" data-i18n="stops">ST</th>
+                                    <th class="text-right p-1" data-i18n="totalHeader">TOTAL</th>
+                                </tr>
+                            </thead>
+                        </table>
+                        <div id="statsTableScroll" class="stats-table-scroll">
+                            <table class="w-full text-xs">
+                                <tbody id="statsTable" class="divide-y divide-gray-800"></tbody>
+                            </table>
                         </div>
-                        <div id="pitInlineReadyBanner" class="hidden flex-1 py-1.5 rounded-lg text-center font-black text-base tracking-wider transition-all duration-300"></div>
                     </div>
 
-                    <button id="confirmRaceFinishBtn" onclick="window.confirmRaceFinish()" class="hidden w-full bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400 text-black font-black py-3 rounded-2xl text-base shadow-[0_0_20px_rgba(234,179,8,0.5)] transition active:scale-95 flex items-center justify-center gap-2 border border-yellow-300/50 animate-pulse">
-                        <i class="fas fa-flag-checkered text-xl"></i>
-                        <span data-i18n="confirmFinish">CONFIRM RACE FINISH</span>
-                    </button>
+                    <!-- Next driver + pit button group — always stay together and pinned to the
+                         bottom of whichever column holds them; other panels reorder/move above. -->
+                    <div id="pitActionGroup" class="space-y-1.5 mt-auto">
 
-                    <button id="pitEntryBtn" onclick="window.confirmPitEntry()" class="w-full bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white font-bold py-3 rounded-2xl text-lg shadow-lg transition transform active:scale-95 flex justify-between px-5 items-center border border-red-400/30">
-                        <span class="flex items-center gap-3">
+                        <!-- Next driver + penalty row -->
+                        <div class="flex items-center gap-2">
+                            <div class="flex items-center gap-1.5 min-w-0 flex-1">
+                                <span id="nextDriverDot" class="w-2.5 h-2.5 rounded-full shrink-0" style="background:#4ade80"></span>
+                                <span class="text-[9px] text-gray-500 uppercase font-bold shrink-0" data-i18n="nextDriverLabel">Next</span>
+                                <span id="nextDriverName" class="text-base font-bold text-neon cursor-pointer hover:text-white transition truncate" onclick="window.cycleNextDriver(false, true)">---</span>
+                            </div>
+                            <div class="flex items-center gap-1 bg-navy-950 px-1.5 py-1 rounded border border-gray-700 shrink-0">
+                                <span class="text-[9px] text-gray-500 uppercase font-bold" data-i18n="penalty">Pen</span>
+                                <button id="penaltyBtnMinus5" onclick="window.adjustPitTime(-5)" class="penalty-btn bg-green-900/30 hover:bg-green-800 text-green-400 border border-green-600/30 px-1.5 py-0.5 rounded text-xs font-bold transition">-5</button>
+                                <button id="penaltyBtnPlus5" onclick="window.adjustPitTime(5)" class="penalty-btn bg-red-900/30 hover:bg-red-800 text-red-400 border border-red-600/30 px-1.5 py-0.5 rounded text-xs font-bold transition">+5</button>
+                                <button id="penaltyBtnPlus10" onclick="window.adjustPitTime(10)" class="penalty-btn bg-red-900/30 hover:bg-red-800 text-red-400 border border-red-600/30 px-1.5 py-0.5 rounded text-xs font-bold transition">+10</button>
+                                <div id="dashboardPitAdjDisplay" class="bg-black/30 px-1.5 py-0.5 rounded text-ice font-mono font-bold text-xs min-w-[28px] text-center">0</div>
+                            </div>
+                        </div>
+
+                        <!-- Pit timer inline (visible only during pit) -->
+                        <div id="pitInlineDock" class="hidden bg-navy-950 border border-ice/30 rounded-xl px-2 py-1.5 flex items-center gap-3">
+                            <div class="text-center shrink-0">
+                                <div class="text-[9px] text-ice uppercase font-bold tracking-widest" data-i18n="inPit">IN PIT</div>
+                                <div id="pitInlineTimer" class="text-2xl font-mono font-black text-white tracking-tight leading-none">0.0</div>
+                            </div>
+                            <div id="pitInlineReadyBanner" class="hidden flex-1 py-1.5 rounded-lg text-center font-black text-base tracking-wider transition-all duration-300"></div>
+                        </div>
+
+                        <button id="confirmRaceFinishBtn" onclick="window.confirmRaceFinish()" class="hidden w-full bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400 text-black font-black py-3 rounded-2xl text-base shadow-[0_0_20px_rgba(234,179,8,0.5)] transition active:scale-95 flex items-center justify-center gap-2 border border-yellow-300/50 animate-pulse">
                             <i class="fas fa-flag-checkered text-xl"></i>
-                            <span id="pitEntryBtnLabel" class="tracking-wider" data-i18n="enterPit">ENTER PIT</span>
-                        </span>
-                        <span id="btnPitAdjBadge" class="hidden text-sm bg-black/40 px-2 py-1 rounded text-yellow-300 font-mono border border-yellow-500/50"></span>
-                    </button>
+                            <span data-i18n="confirmFinish">CONFIRM RACE FINISH</span>
+                        </button>
+
+                        <button id="pitEntryBtn" onclick="window.confirmPitEntry()" class="w-full bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white font-bold py-3 rounded-2xl text-lg shadow-lg transition transform active:scale-95 flex justify-between px-5 items-center border border-red-400/30">
+                            <span class="flex items-center gap-3">
+                                <i class="fas fa-flag-checkered text-xl"></i>
+                                <span id="pitEntryBtnLabel" class="tracking-wider" data-i18n="enterPit">ENTER PIT</span>
+                            </span>
+                            <span id="btnPitAdjBadge" class="hidden text-sm bg-black/40 px-2 py-1 rounded text-yellow-300 font-mono border border-yellow-500/50"></span>
+                        </button>
+                    </div>
 
                 </div>
 
-            <!-- hidden resizer kept for JS compatibility — no longer visible -->
-            <div id="dashPanelResizer" class="hidden"></div>
+            <!-- Drag handle between raceInfoPanel and raceControlDock — resizes their height split -->
+            <div id="dashPanelResizer" class="dash-resizer"><div class="dash-resizer-handle"></div></div>
 
         </div><!-- end racePanelsWrapper -->
     </div>
@@ -2383,12 +2418,12 @@
         </div>
     </div>
 
-    <script src="js/state.js?v=5"></script>
-    <script src="js/auth.js?v=5"></script>
-    <script src="js/network.js?v=5"></script>
-    <script src="js/strategy.js?v=5"></script>
-    <script src="js/live-timing.js?v=5"></script>
-    <script src="js/ui.js?v=5"></script>
-    <script src="js/main.js?v=5"></script>
+    <script src="js/state.js?v=7"></script>
+    <script src="js/auth.js?v=7"></script>
+    <script src="js/network.js?v=7"></script>
+    <script src="js/strategy.js?v=7"></script>
+    <script src="js/live-timing.js?v=7"></script>
+    <script src="js/ui.js?v=7"></script>
+    <script src="js/main.js?v=7"></script>
 </body>
 </html>

@@ -27,6 +27,15 @@ window._updateAutoPitUI = function() {
     }
 };
 
+// Single chokepoint for every place that wants live timing (real feed or demo
+// simulation) to force a pit entry/exit/penalty-adjustment. Every such call MUST go
+// through this guard instead of checking _autoPitEnabled inline — that's what let the
+// demo-mode pit bridge slip through ungated before. When Manual is selected this
+// always returns false and the caller must do nothing.
+window._liveTimingMayForcePit = function() {
+    return !!window._autoPitEnabled;
+};
+
 function getLapWord(count) {
     // Use translation system so all 12 languages are supported automatically
     return count === 1
@@ -105,6 +114,10 @@ window.updateSearchConfig = function() {
     } else if (searchType === 'driver') {
         window.searchConfig.driverName = searchValue;
     }
+
+    const wsPortInput = document.getElementById('wsPortOverride');
+    const wsPortVal = wsPortInput ? parseInt(wsPortInput.value, 10) : NaN;
+    window.liveTimingConfig.wsPortOverride = (Number.isFinite(wsPortVal) && wsPortVal > 0 && wsPortVal <= 65535) ? wsPortVal : null;
 };
 
 // פונקציית הבדיקה (Test Connection)
@@ -207,7 +220,8 @@ window.fetchLiveTimingFromProxy = async function() {
     // איחוד פרמטרים לחיפוש חכם
     const searchTerm = window.searchConfig.driverName || window.searchConfig.teamName || window.searchConfig.kartNumber || '';
     const searchType = window.searchConfig.kartNumber ? 'kart' : (window.searchConfig.driverName ? 'driver' : 'team');
-    const configSignature = `${url}|${searchType}|${searchTerm}`;
+    const wsPortOverride = window.liveTimingConfig.wsPortOverride || null;
+    const configSignature = `${url}|${searchType}|${searchTerm}|${wsPortOverride || ''}`;
     
     // Check if already running with same config - don't restart
     const stats = window.liveTimingManager.getStats();
@@ -228,8 +242,9 @@ window.fetchLiveTimingFromProxy = async function() {
     // התחלת הסקרייפר דרך המנהל
     window.liveTimingManager.start(url, searchTerm, {
         searchType: searchType,
-        updateInterval: 2000, 
-        
+        updateInterval: 2000,
+        wsPortOverride: wsPortOverride,
+
         onUpdate: (data) => {
             console.log('[LiveTiming] Data update:', { 
                 hasOurTeam: !!data.ourTeam, 
@@ -273,7 +288,7 @@ window.fetchLiveTimingFromProxy = async function() {
                 // Auto-detect pit entry from live timing — AUTHORITATIVE: live timing always wins
                 const now = Date.now();
 
-                if (window._autoPitEnabled && window.state && window.state.isRunning && !window.state.isInPit && data.ourTeam.inPit) {
+                if (window._liveTimingMayForcePit() && window.state && window.state.isRunning && !window.state.isInPit && data.ourTeam.inPit) {
                     // Live timing says we are in pit — override everything
                     console.log('[LiveTiming] 🛑 AUTHORITATIVE PIT ENTRY from live data (inPit=true)');
                     if (typeof window.confirmPitEntry === 'function') {
@@ -282,7 +297,7 @@ window.fetchLiveTimingFromProxy = async function() {
                     }
                 }
                 // Fallback: detect pit entry from pitCount increase (catches cases where inPit flag was missed between polls)
-                else if (window._autoPitEnabled && window.state && window.state.isRunning && !window.state.isInPit
+                else if (window._liveTimingMayForcePit() && window.state && window.state.isRunning && !window.state.isInPit
                     && prevPitCount != null && data.ourTeam.pitCount != null
                     && data.ourTeam.pitCount > prevPitCount) {
                     console.log(`[LiveTiming] 🛑 PIT ENTRY detected via pitCount increase (${prevPitCount} → ${data.ourTeam.pitCount})`);
@@ -297,7 +312,7 @@ window.fetchLiveTimingFromProxy = async function() {
                 // Fire when: (a) we were genuinely in pit and feed says out, OR
                 //            (b) entry was forced via pitCount increase (wasInPit=false case)
                 const entryWasForced = !!window.liveData._pitEntryForcedAt;
-                const exitCondition  = window._autoPitEnabled && window.state && window.state.isInPit && !data.ourTeam.inPit &&
+                const exitCondition  = window._liveTimingMayForcePit() && window.state && window.state.isInPit && !data.ourTeam.inPit &&
                                        (wasInPit === true || entryWasForced);
                 if (exitCondition) {
                     // Guard: don't auto-exit if pit time is too short (< 20s) — prevents false exits
@@ -336,8 +351,11 @@ window.fetchLiveTimingFromProxy = async function() {
                         window._fireStrategyNotification(msg, 'warning');
                     }
                     
-                    // Auto-adjust pit time if penalty has a time component
-                    if (newPenaltyTime > 0 && typeof window.adjustPitTime === 'function') {
+                    // Auto-adjust pit time if penalty has a time component — only when
+                    // auto-pit is enabled. In Manual mode the admin is notified above but
+                    // nothing is changed automatically; a false-positive penalty from a
+                    // noisy feed must not silently alter the pit time.
+                    if (window._liveTimingMayForcePit() && newPenaltyTime > 0 && typeof window.adjustPitTime === 'function') {
                         const addedSec = newPenaltyTime;
                         window.adjustPitTime(addedSec);
                         console.log(`[LiveTiming] ⏱️ Auto-adjusted pit time by +${addedSec}s for penalty`);
@@ -352,7 +370,9 @@ window.fetchLiveTimingFromProxy = async function() {
                     }
                 }
             }
-            window.liveData.competitors = dedupeLiveCompetitors(data.competitors || []);
+            const liveComps = dedupeLiveCompetitors(data.competitors || []);
+            window._trackCompetitorStints(liveComps);
+            window.liveData.competitors = liveComps;
 
             // === Race time from live timing (RaceFacer provides timeLeftSeconds) ===
             if (data.race && data.race.timeLeftSeconds != null) {
@@ -401,6 +421,12 @@ window.fetchLiveTimingFromProxy = async function() {
     });
 
     window._liveTimingConfigSignature = configSignature;
+
+    const apexBtn = document.getElementById('apexViewToggle');
+    if (apexBtn && window.liveTimingManager) {
+        const prov = window.liveTimingManager.provider;
+        apexBtn.style.display = prov === 'apex' ? '' : 'none';
+    }
 };
 
 window.parseTimeToMs = function(timeStr) {
@@ -708,7 +734,9 @@ window.updateCompetitorsTable = function() {
 
         const isDanger = !isUs && window.liveData.position && Math.abs(comp.position - window.liveData.position) <= 2;
         const isGoodPace = !isUs && goodPaceThreshold && comp.bestLap && comp.bestLap <= goodPaceThreshold;
-        const isPB = comp.lastLap && comp.bestLap && comp.lastLap > 0 && comp.lastLap <= comp.bestLap;
+        // PB glow is scoped to the current stint (since last pit), not the whole race —
+        // a driver going faster in stint 3 than their stint-1 best should still glow.
+        const isPB = comp.lastLap && comp.stintBestLap && comp.lastLap > 0 && comp.lastLap <= comp.stintBestLap;
         const kartKey = comp.kart || '';
         const isTopKart = kartKey && window._fastKarts && window._fastKarts.has(kartKey);
 
@@ -912,7 +940,9 @@ window.updateCompetitorsTable = function() {
         // ---- Avg lap (per-stint preferred; fall back to overall) ----
         const avgEl = row.querySelector('.cr-avg');
         if (avgEl) {
-            // Use per-stint average when available (demo mode sets stintAvgLap)
+            // stintAvgLap is set for both demo (updateDemoData) and real feed
+            // (_trackCompetitorStints), reset to empty laps every time a competitor exits
+            // the pit — so this is "average since their last pit stop", not the whole race.
             const stintAvgMs = comp.stintAvgLap || 0;
             const avgMs = stintAvgMs > 0 ? stintAvgMs : (comp.avgLap || 0);
             const avgTxt = avgMs > 0 ? window.formatLapTime(avgMs) : '';
@@ -929,6 +959,60 @@ window.updateCompetitorsTable = function() {
 
     // ---- Update kart ranking mini-panel ----
     window._updateKartRankingPanel();
+};
+
+// ==================== PER-STINT LAP TRACKING (real-feed) ====================
+// Demo mode already tracks stintLaps/stintAvgLap per competitor (reset on pit exit,
+// see updateDemoData). The real feed (apex/racefacer/alpha) only reports lastLap/
+// bestLap as fresh objects every update — no continuity across updates, no stint
+// concept, and bestLap is feed-reported as a lifetime value. This rebuilds the same
+// per-stint state (stintLaps, stintAvgLap, stintBestLap) for the real feed so AVG/BEST
+// in the competitor table reflect "since this driver's last pit stop", not the whole
+// race, matching what demo mode already does and what the table renderer expects.
+window._stintTrackerMap = window._stintTrackerMap || {};
+
+window._trackCompetitorStints = function(competitors) {
+    if (!competitors || competitors.length === 0) return;
+    const trackers = window._stintTrackerMap;
+
+    competitors.forEach(c => {
+        const key = c.rowId || c.kart || c.team || c.name;
+        if (!key) return;
+
+        if (!trackers[key]) {
+            trackers[key] = { stintLaps: [], recentLaps: [], lastSeenLapMs: 0, wasInPit: !!c.inPit };
+        }
+        const t = trackers[key];
+
+        // Pit exit (was in pit, now out) — new stint starts, drop the previous stint's laps.
+        const isInPit = !!c.inPit;
+        if (t.wasInPit && !isInPit) {
+            t.stintLaps = [];
+        }
+        t.wasInPit = isInPit;
+
+        // Record a newly-completed lap (avoid double-counting the same lap on repeat updates).
+        const lapMs = c.lastLapMs || 0;
+        if (lapMs > 0 && lapMs !== t.lastSeenLapMs && lapMs >= 20000 && lapMs <= 180000) {
+            t.lastSeenLapMs = lapMs;
+            t.stintLaps.push(lapMs);
+            // Lifetime average (bounded — used only as the trend-comparison baseline and
+            // as a fallback before a competitor's first stint lap of the race arrives).
+            t.recentLaps.push(lapMs);
+            if (t.recentLaps.length > 200) t.recentLaps.shift();
+        }
+
+        if (t.stintLaps.length > 0) {
+            c.stintAvgLap = Math.round(t.stintLaps.reduce((a, b) => a + b, 0) / t.stintLaps.length);
+            c.stintBestLap = Math.min(...t.stintLaps);
+        } else {
+            c.stintAvgLap = 0;
+            c.stintBestLap = 0;
+        }
+        c.avgLap = t.recentLaps.length > 0
+            ? Math.round(t.recentLaps.reduce((a, b) => a + b, 0) / t.recentLaps.length)
+            : 0;
+    });
 };
 
 // ==================== KART PERFORMANCE TRACKING ====================
@@ -1520,10 +1604,11 @@ window.updateDemoData = function() {
                 }
                 // Overall average
                 comp.avgLap = Math.round(comp.lapTimes.reduce((a, b) => a + b, 0) / comp.lapTimes.length);
-                // Per-stint average (only laps since last pit)
+                // Per-stint average + best (only laps since last pit)
                 comp.stintAvgLap = comp.stintLaps.length > 0
                     ? Math.round(comp.stintLaps.reduce((a, b) => a + b, 0) / comp.stintLaps.length)
                     : comp.avgLap;
+                comp.stintBestLap = comp.stintLaps.length > 0 ? Math.min(...comp.stintLaps) : 0;
             }
         }
     });
@@ -1629,8 +1714,10 @@ window.updateDemoData = function() {
         window.liveData.ourTeamPitCount = ourTeam.pitCount ?? null;
 
         // Case 1: Demo says team entered pit, but app doesn't know yet
-        // → trigger confirmPitEntry just like real live timing would
-        if (window.state && window.state.isRunning && !window.state.isInPit && ourTeam.inPit) {
+        // → trigger confirmPitEntry just like real live timing would (only when
+        //   auto-pit is enabled — this mirrors the real-feed path's gating exactly,
+        //   since this whole block exists specifically to mirror that path)
+        if (window._liveTimingMayForcePit() && window.state && window.state.isRunning && !window.state.isInPit && ourTeam.inPit) {
             console.log('[Demo] 🛑 AUTO PIT ENTRY from demo simulation');
             if (typeof window.confirmPitEntry === 'function') {
                 window.confirmPitEntry(true); // true = auto-detected, skip confirm dialog
@@ -1639,7 +1726,7 @@ window.updateDemoData = function() {
 
         // Case 2: Demo says team exited pit, but app still thinks we're in pit
         // → trigger confirmPitExit just like real live timing would
-        if (window.state && window.state.isRunning && window.state.isInPit && !ourTeam.inPit && wasInPit === true) {
+        if (window._liveTimingMayForcePit() && window.state && window.state.isRunning && window.state.isInPit && !ourTeam.inPit && wasInPit === true) {
             console.log('[Demo] ✅ AUTO PIT EXIT from demo simulation');
             window.liveData.stintLapHistory = [];
             window.liveData.stintBestLap = null;
@@ -1710,213 +1797,75 @@ window.toggleCompetitorsTable = function() {
     if (btn) btn.textContent = window._competitorsTableOpen ? '📋' : '🗂️';
 };
 
-// ==================== DRAGGABLE + RESIZABLE WIDGET ====================
+// ==================== LIVE-TIMING WIDGET HEIGHT RESIZE (≥1024px) ====================
+// The widget stays docked inside raceInfoPanel at all times — this only adjusts its
+// height within that column, dragging #liveTimingHeightHandle up/down. Width is fixed
+// at 50% by CSS regardless of this value.
 
-(function initLiveTimingWidget() {
-    const STORAGE_KEY = 'strateger_lt_widget_pos';
-    const MIN_W = 220, MIN_H = 120;
+(function initLiveTimingHeightResize() {
+    const STORAGE_KEY = 'strateger_lt_widget_h';
+    const MIN_H = 200;
 
-    let wrapper = null, dragHandle = null, resizeHandle = null;
-    let isDragging = false, isResizing = false;
-    let startX = 0, startY = 0, startLeft = 0, startTop = 0;
-    let startW = 0, startH = 0;
+    let handle = null, wrapper = null;
+    let dragging = false;
+    let startY = 0, startH = 0;
 
-    function clamp(val, lo, hi) { return Math.max(lo, Math.min(hi, val)); }
-
-    function savePos() {
-        if (!wrapper || !wrapper.classList.contains('lt-fixed')) return;
-        const pos = {
-            left: parseInt(wrapper.style.left) || 0,
-            top: parseInt(wrapper.style.top) || 0,
-            width: parseInt(wrapper.style.width) || 0,
-            height: parseInt(wrapper.style.height) || 0,
-            fixed: true
-        };
-        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(pos)); } catch(e) {}
+    function maxH() {
+        if (!wrapper || !wrapper.parentElement) return 800;
+        return Math.max(MIN_H, wrapper.parentElement.clientHeight - 16);
     }
 
-    function loadPos() {
-        try {
-            const raw = localStorage.getItem(STORAGE_KEY);
-            if (raw) return JSON.parse(raw);
-        } catch(e) {}
-        return null;
+    function applyH(h) {
+        const clamped = Math.max(MIN_H, Math.min(h, maxH()));
+        document.documentElement.style.setProperty('--lt-widget-h', clamped + 'px');
+        try { localStorage.setItem(STORAGE_KEY, clamped); } catch (e) {}
     }
 
-    function applyPos(pos) {
-        if (!wrapper || !pos || !pos.fixed) return;
-        const vw = window.innerWidth, vh = window.innerHeight;
-        const w = Math.max(MIN_W, Math.min(pos.width || 300, vw - 16));
-        const h = Math.max(MIN_H, Math.min(pos.height || 300, vh - 16));
-        const left = clamp(pos.left || 0, 0, vw - w - 8);
-        const top = clamp(pos.top || 0, 0, vh - h - 8);
-        wrapper.style.left = left + 'px';
-        wrapper.style.top = top + 'px';
-        wrapper.style.width = w + 'px';
-        wrapper.style.height = h + 'px';
-        wrapper.classList.add('lt-fixed');
-    }
-
-    function makeFixed() {
-        if (!wrapper || wrapper.classList.contains('lt-fixed')) return;
-        // Capture current position relative to viewport
-        const rect = wrapper.getBoundingClientRect();
-        wrapper.classList.add('lt-fixed');
-        wrapper.style.left = rect.left + 'px';
-        wrapper.style.top = rect.top + 'px';
-        wrapper.style.width = rect.width + 'px';
-        wrapper.style.height = Math.max(MIN_H, rect.height) + 'px';
-    }
-
-    // Re-clamp position whenever window is resized (handles maximise/restore)
-    window.addEventListener('resize', function() {
-        if (!wrapper || !wrapper.classList.contains('lt-fixed')) return;
-        const vw = window.innerWidth, vh = window.innerHeight;
-        const w = Math.max(MIN_W, Math.min(parseInt(wrapper.style.width) || 300, vw - 16));
-        const h = Math.max(MIN_H, Math.min(parseInt(wrapper.style.height) || 300, vh - 16));
-        const left = clamp(parseInt(wrapper.style.left) || 0, 0, vw - w - 8);
-        const top = clamp(parseInt(wrapper.style.top) || 0, 0, vh - h - 8);
-        wrapper.style.left = left + 'px';
-        wrapper.style.top = top + 'px';
-        wrapper.style.width = w + 'px';
-        wrapper.style.height = h + 'px';
-    }, { passive: true });
-
-    // ---- Snap-grid overlay helpers ----
-    function showSnapGrid() {
-        if (document.getElementById('ltSnapGridOverlay')) return;
-        const el = document.createElement('div');
-        el.id = 'ltSnapGridOverlay';
-        document.body.appendChild(el);
-    }
-    function hideSnapGrid() {
-        const el = document.getElementById('ltSnapGridOverlay');
-        if (el) el.remove();
-    }
-    // Snap to nearest 20px grid
-    function snapPos(x, y) {
-        const g = 20;
-        return { x: Math.round(x / g) * g, y: Math.round(y / g) * g };
-    }
-
-    // ---- Drag ----
-    function onDragStart(e) {
-        if (e.target.closest('button') || e.target.closest('select') || e.target.closest('input')) return;
-        makeFixed();
-        isDragging = true;
-        wrapper.classList.add('lt-dragging');
-        showSnapGrid();
-        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    function onMove(e) {
+        if (!dragging) return;
         const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-        startX = clientX;
-        startY = clientY;
-        startLeft = parseInt(wrapper.style.left) || 0;
-        startTop = parseInt(wrapper.style.top) || 0;
+        applyH(startH + (clientY - startY));
         e.preventDefault();
     }
-
-    function onDragMove(e) {
-        if (!isDragging) return;
-        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-        const vw = window.innerWidth, vh = window.innerHeight;
-        const w = parseInt(wrapper.style.width) || 300;
-        const h = parseInt(wrapper.style.height) || 200;
-        const newLeft = clamp(startLeft + (clientX - startX), 0, vw - w - 8);
-        const newTop = clamp(startTop + (clientY - startY), 0, vh - h - 8);
-        wrapper.style.left = newLeft + 'px';
-        wrapper.style.top = newTop + 'px';
+    function onEnd() {
+        if (!dragging) return;
+        dragging = false;
+        handle.classList.remove('active');
+        window.removeEventListener('mousemove', onMove);
+        window.removeEventListener('touchmove', onMove);
+        window.removeEventListener('mouseup', onEnd);
+        window.removeEventListener('touchend', onEnd);
     }
-
-    function onDragEnd() {
-        if (!isDragging) return;
-        isDragging = false;
-        wrapper.classList.remove('lt-dragging');
-        hideSnapGrid();
-        // Snap final position to grid
-        const rawLeft = parseInt(wrapper.style.left) || 0;
-        const rawTop  = parseInt(wrapper.style.top)  || 0;
-        const snapped = snapPos(rawLeft, rawTop);
-        const vw = window.innerWidth, vh = window.innerHeight;
-        const w = parseInt(wrapper.style.width) || wrapper.offsetWidth;
-        const h = parseInt(wrapper.style.height) || wrapper.offsetHeight;
-        wrapper.style.left = clamp(snapped.x, 0, vw - w - 8) + 'px';
-        wrapper.style.top  = clamp(snapped.y, 0, vh - h - 8) + 'px';
-        savePos();
-    }
-
-    // ---- Resize ----
-    function onResizeStart(e) {
-        isResizing = true;
-        wrapper.classList.add('lt-resizing');
-        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    function onStart(e) {
+        if (!window.matchMedia('(min-width:1024px)').matches) return;
+        dragging = true;
+        handle.classList.add('active');
         const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-        startX = clientX;
         startY = clientY;
-        startW = parseInt(wrapper.style.width) || wrapper.offsetWidth;
-        startH = parseInt(wrapper.style.height) || wrapper.offsetHeight;
+        startH = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--lt-widget-h')) || 420;
         e.preventDefault();
-        e.stopPropagation();
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('touchmove', onMove, { passive: false });
+        window.addEventListener('mouseup', onEnd);
+        window.addEventListener('touchend', onEnd);
     }
 
-    function onResizeMove(e) {
-        if (!isResizing) return;
-        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-        const vw = window.innerWidth, vh = window.innerHeight;
-        const left = parseInt(wrapper.style.left) || 0;
-        const top = parseInt(wrapper.style.top) || 0;
-        const newW = clamp(startW + (clientX - startX), MIN_W, vw - left - 8);
-        const newH = clamp(startH + (clientY - startY), MIN_H, vh - top - 8);
-        wrapper.style.width = newW + 'px';
-        wrapper.style.height = newH + 'px';
-    }
-
-    function onResizeEnd() {
-        if (!isResizing) return;
-        isResizing = false;
-        wrapper.classList.remove('lt-resizing');
-        savePos();
-    }
-
-    function attachHandlers() {
+    function attach() {
+        handle = document.getElementById('liveTimingHeightHandle');
         wrapper = document.getElementById('liveTimingWidgetWrapper');
-        dragHandle = document.getElementById('liveTimingDragHandle');
-        resizeHandle = document.getElementById('liveTimingResizeHandle');
-        if (!wrapper || !dragHandle || !resizeHandle) return;
+        if (!handle || !wrapper) return;
 
-        // Drag — mouse
-        dragHandle.addEventListener('mousedown', onDragStart);
-        document.addEventListener('mousemove', onDragMove);
-        document.addEventListener('mouseup', onDragEnd);
-        // Drag — touch
-        dragHandle.addEventListener('touchstart', onDragStart, { passive: false });
-        document.addEventListener('touchmove', function(e) {
-            if (isDragging) { e.preventDefault(); onDragMove(e); }
-        }, { passive: false });
-        document.addEventListener('touchend', onDragEnd);
+        const saved = parseInt(localStorage.getItem(STORAGE_KEY));
+        document.documentElement.style.setProperty('--lt-widget-h', (Number.isFinite(saved) && saved >= MIN_H ? saved : 420) + 'px');
 
-        // Resize — mouse
-        resizeHandle.addEventListener('mousedown', onResizeStart);
-        document.addEventListener('mousemove', function(e) { if (isResizing) onResizeMove(e); });
-        document.addEventListener('mouseup', onResizeEnd);
-        // Resize — touch
-        resizeHandle.addEventListener('touchstart', onResizeStart, { passive: false });
-        document.addEventListener('touchmove', function(e) {
-            if (isResizing) { e.preventDefault(); onResizeMove(e); }
-        }, { passive: false });
-        document.addEventListener('touchend', onResizeEnd);
-
-        // Restore saved position (only applies if previously fixed)
-        const saved = loadPos();
-        if (saved) applyPos(saved);
+        handle.addEventListener('mousedown', onStart);
+        handle.addEventListener('touchstart', onStart, { passive: false });
     }
 
-    // Attach after DOM is ready
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', attachHandlers);
+        document.addEventListener('DOMContentLoaded', attach);
     } else {
-        attachHandlers();
+        attach();
     }
 })();
 
@@ -1943,29 +1892,40 @@ window.toggleCompetitorsTable = function() {
         const el = document.getElementById(CLOCK_EL_ID);
         if (!el) return;
 
-        // Priority 1: live timing feed has provided a countdown (Apex/RaceFacer)
+        // Use synced clock throughout so live-timing widget and main race clock agree.
+        const syncedNow = (window.getSyncedNow && typeof window.getSyncedNow === 'function')
+            ? window.getSyncedNow() : Date.now();
+
+        const st = window.state;
+        const cfg = window.config;
+        const raceMs = cfg ? (cfg.raceMs || (parseFloat(cfg.duration) || 0) * 3600000) : 0;
+
+        // Priority 1: live timing feed has provided a countdown (Apex/RaceFacer).
+        // This MUST match window.renderFrame()'s computation in main.js exactly — both
+        // re-derive "remaining" through the app's own configured raceMs (not the feed's
+        // raw value directly), since the live feed's race duration can differ slightly
+        // from what was configured in Strateger. Using the feed's raw value directly (as
+        // this used to) made the widget clock and the main dashboard clock disagree.
         const ld = window.liveData;
-        if (ld && ld.raceTimeLeftMs != null && ld._raceTimeReceivedAt) {
-            // Count down locally between feed packets — DST-safe: only elapsed wall-clock delta
-            const elapsed = Date.now() - ld._raceTimeReceivedAt;
-            const adjusted = Math.max(0, ld.raceTimeLeftMs - elapsed);
-            el.textContent = formatRaceTime(adjusted);
+        if (ld && ld.raceTimeLeftMs != null && ld.raceTimeLeftMs >= 0 && raceMs > 0) {
+            const sinceReceived = ld._raceTimeReceivedAt ? (syncedNow - ld._raceTimeReceivedAt) : 0;
+            const raceRemainingRaw = Math.max(0, ld.raceTimeLeftMs - sinceReceived);
+            const effectiveElapsedMs = Math.max(0, raceMs - raceRemainingRaw);
+            const elapsedSec = Math.floor(effectiveElapsedMs / 1000);
+            const totalSec = Math.floor(raceMs / 1000);
+            const remainingSec = Math.max(0, totalSec - elapsedSec);
+            el.textContent = formatRaceTime(remainingSec * 1000);
             el.title = window.t ? window.t('raceClockLabel') : 'RACE TIME';
             return;
         }
 
-        // Priority 2: main app race timer (derived from window.state)
-        const st = window.state;
-        const cfg = window.config;
-        if (st && st.isRunning && st.startTime && cfg) {
-            const raceDurationMs = (parseFloat(cfg.duration) || 0) * 3600000;
-            if (raceDurationMs > 0) {
-                const elapsed = Date.now() - st.startTime;
-                const remaining = Math.max(0, raceDurationMs - elapsed);
-                el.textContent = formatRaceTime(remaining);
-                el.title = window.t ? window.t('raceClockLabel') : 'RACE TIME';
-                return;
-            }
+        // Priority 2: main app race timer (derived from window.state), no live feed yet
+        if (st && st.isRunning && st.startTime && raceMs > 0) {
+            const elapsed = syncedNow - st.startTime;
+            const remaining = Math.max(0, raceMs - elapsed);
+            el.textContent = formatRaceTime(remaining);
+            el.title = window.t ? window.t('raceClockLabel') : 'RACE TIME';
+            return;
         }
 
         // No data

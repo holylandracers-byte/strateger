@@ -157,6 +157,12 @@
                 <span class="hidden sm:inline" data-i18n="driverLink">Driver</span>
             </button>
 
+            <!-- Demo — visible on sm+ screens; always available, not just on first run -->
+            <button onclick="window.showDemoConfig()" class="hidden sm:flex bg-gradient-to-r from-ice/20 to-blue-500/20 hover:from-ice/30 hover:to-blue-500/30 text-ice text-xs font-bold px-2 py-1.5 rounded-full border border-ice/40 hover:border-ice/60 transition transform active:scale-95 items-center gap-1" title="Run Demo Race">
+                <i class="fas fa-play"></i>
+                <span class="hidden sm:inline" data-i18n="runDemo">Demo</span>
+            </button>
+
             <!-- Contact Us — visible on sm+ screens -->
             <button onclick="window.openContactUsModal()" class="hidden sm:flex bg-navy-800 hover:bg-navy-700 text-gray-300 hover:text-white text-xs font-bold px-2 py-1.5 rounded-full border border-gray-700 hover:border-gray-500 transition transform active:scale-95 items-center gap-1" title="Contact Us">
                 📝
@@ -183,6 +189,9 @@
                     <i class="fas fa-ellipsis-v"></i>
                 </button>
                 <div id="headerOverflowMenu" class="hidden absolute right-0 top-full mt-1 bg-navy-900 border border-gray-700 rounded-lg shadow-2xl p-1.5 min-w-[160px] z-50 animate-scale-in">
+                    <button onclick="window.showDemoConfig(); document.getElementById('headerOverflowMenu').classList.add('hidden')" class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm text-ice hover:bg-navy-800 transition text-left">
+                        <i class="fas fa-play w-4 text-center"></i> <span data-i18n="runDemo">Demo</span>
+                    </button>
                     <button onclick="window.toggleMute(); document.getElementById('headerOverflowMenu').classList.add('hidden')" class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:bg-navy-800 hover:text-white transition text-left">
                         <i class="fas fa-volume-up w-4 text-center text-gray-500" id="overflowMuteIcon"></i> <span data-i18n="mute">Sound</span>
                     </button>

@@ -76,9 +76,16 @@ class LiveTimingManager {
      * זיהוי אוטומטי של ספק Live Timing
      */
     detectProvider(url) {
+        const lower = String(url).toLowerCase();
+        // Branded/known-domain checks first — these are unambiguous.
         if (url.includes('racefacer')) return 'racefacer';
         if (url.includes('apex-timing') || url.includes('apex_timing') || url.includes('apextiming')) return 'apex';
         if (url.includes('alphatiming.co.uk')) return 'alpha';
+        // Hakafast has no fixed public domain, so it's detected by the "hakafast" keyword
+        // or, as a last resort, the generic "/live-timing/" path — but only once every
+        // branded provider above has already been ruled out (Apex URLs also contain
+        // "/live-timing/", so checking this first would misclassify every Apex race).
+        if (lower.includes('hakafast') || lower.includes('/live-timing/')) return 'hakafast';
         return 'unknown';
     }
 
@@ -106,7 +113,8 @@ class LiveTimingManager {
             onError: callbacks.onError || null,
             onFatalError: callbacks.onFatalError || null,
             onComment: callbacks.onComment || null,
-            updateInterval: callbacks.updateInterval || 5000
+            updateInterval: callbacks.updateInterval || 5000,
+            wsPortOverride: callbacks.wsPortOverride || null
         };
 
         // זהה ספק
@@ -116,6 +124,8 @@ class LiveTimingManager {
         // התחל scraper מתאים
         if (this.provider === 'racefacer') {
             this.startRaceFacerScraper(url);
+        } else if (this.provider === 'hakafast') {
+            this.startHakafastScraper(url);
         } else if (this.provider === 'apex') {
             this.startApexScraper(url);
         } else if (this.provider === 'alpha') {
@@ -251,13 +261,14 @@ class LiveTimingManager {
         return;
     }
 
-    console.log(`[LiveTimingManager] Starting Apex scraper with URL: ${url}`);
+    console.log(`[LiveTimingManager] Starting Apex scraper with URL: ${url}${this.config.wsPortOverride ? ` (WS port override: ${this.config.wsPortOverride})` : ''}`);
 
     this.currentScraper = new ApexTimingScraper({
         raceUrl: url,
         searchTerm: this.config.searchTerm,
         searchType: this.config.searchType || 'team',
         updateInterval: this.config.updateInterval,
+        wsPortOverride: this.config.wsPortOverride,
         debug: false,
 
         onUpdate: (data) => {
@@ -290,6 +301,42 @@ class LiveTimingManager {
     this.currentScraper.start();
     console.log('[LiveTimingManager] Apex scraper started');
 }
+
+    /**
+     * Hakafast HAKAFAST server — native WebSocket feed
+     */
+    startHakafastScraper(url) {
+        if (typeof HakafastTimingScraper === 'undefined') {
+            console.error('[LiveTimingManager] HakafastTimingScraper not loaded!');
+            if (this.config.onError) {
+                this.config.onError(new Error('HakafastTimingScraper not available'));
+            }
+            return;
+        }
+
+        console.log(`[LiveTimingManager] Starting Hakafast scraper: ${url}`);
+
+        this.currentScraper = new HakafastTimingScraper({
+            raceUrl: url,
+            searchTerm: this.config.searchTerm,
+            searchType: this.config.searchType || 'kart',
+            debug: false,
+            onUpdate: (data) => {
+                const strategerData = this.convertToStrategerFormat(data, 'hakafast');
+                if (this.config.onUpdate) this.config.onUpdate(strategerData);
+            },
+            onError: (error, consecutiveErrors) => {
+                console.error(`[LiveTimingManager] Hakafast error (${consecutiveErrors}):`, error);
+                if (this.config.onError) this.config.onError(error, consecutiveErrors);
+                if (consecutiveErrors >= 5 && this.config.onFatalError) {
+                    this.config.onFatalError(error);
+                }
+            },
+        });
+
+        this.currentScraper.start();
+        console.log('[LiveTimingManager] Hakafast scraper started');
+    }
 
     /**
      * עצירת scraper
@@ -455,7 +502,6 @@ class LiveTimingManager {
             };
         }
 
-        // עבור ספקים אחרים - פשוט החזר את הדאטה כמו שהיא
         if (provider === 'apex') {
             // Sort by position for interval computation (gap[n] - gap[n-1])
             const apexComps = (data.competitors || []).slice().sort((a, b) => (parseInt(a.position) || 0) - (parseInt(b.position) || 0));
@@ -508,6 +554,55 @@ class LiveTimingManager {
                 found: data.found,
                 provider: 'apex',
                 timestamp: Date.now()
+            };
+        }
+
+        if (provider === 'hakafast') {
+            const hfComps = (data.competitors || []).slice().sort((a, b) => (a.position || 0) - (b.position || 0));
+            return {
+                race: {
+                    timeLeftSeconds: data.race?.timeLeftSeconds ?? null,
+                    status: data.race?.status || null,
+                    isEndurance: data.race?.isEndurance || false,
+                    hasPits: data.race?.hasPits || false,
+                    heatNumber: data.race?.heatNumber ?? null,
+                    sessionName: data.race?.sessionName || '',
+                },
+                ourTeam: data.ourTeam ? {
+                    position: data.ourTeam.position,
+                    name: data.ourTeam.name || '',
+                    team: data.ourTeam.team || '',
+                    kart: data.ourTeam.kart || '',
+                    lastLap: data.ourTeam.lastLapMs || null,
+                    bestLap: data.ourTeam.bestLapMs || null,
+                    avgLap: data.ourTeam.avgLapMs || null,
+                    totalLaps: data.ourTeam.totalLaps || 0,
+                    gap: data.ourTeam.gapMs || 0,
+                    gapRaw: data.ourTeam.gap || '',
+                    inPit: data.ourTeam.inPit || false,
+                    pitCount: data.ourTeam.pitCount || 0,
+                } : null,
+                competitors: hfComps.map((c, idx) => ({
+                    position: c.position,
+                    name: c.name || '',
+                    team: c.team || '',
+                    kart: c.kart || '',
+                    lastLap: c.lastLapMs || null,
+                    bestLap: c.bestLapMs || null,
+                    avgLap: c.avgLapMs || null,
+                    laps: c.laps || c.totalLaps || 0,
+                    totalLaps: c.totalLaps || 0,
+                    gap: c.gapMs || 0,
+                    gapRaw: c.gap || '',
+                    interval: c.intervalMs || (idx === 0 ? 0 : Math.max(0, (c.gapMs || 0) - (hfComps[idx - 1].gapMs || 0))),
+                    inPit: c.inPit || false,
+                    pitCount: c.pitCount || 0,
+                    penalty: c.penalty || 0,
+                    isOurTeam: c.isOurTeam || false,
+                })),
+                found: data.found,
+                provider: 'hakafast',
+                timestamp: Date.now(),
             };
         }
 

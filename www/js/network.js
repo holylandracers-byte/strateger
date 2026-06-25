@@ -844,6 +844,7 @@ window.connectToHost = function(hostId) {
                     window.enforceViewerMode();
                     document.getElementById('setupScreen').classList.add('hidden');
                     document.getElementById('raceDashboard').classList.remove('hidden');
+                    if (typeof window.initDashPanelResizer === 'function') window.initDashPanelResizer();
 
                     // Show chat button for viewers (but NOT for driver mode)
                     if (!window._autoDriverMode) {

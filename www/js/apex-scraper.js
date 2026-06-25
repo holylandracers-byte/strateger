@@ -11,6 +11,9 @@ class ApexTimingScraper {
         this.maxConsecutiveErrors = 15;
         this.searchTerm = config.searchTerm || '';
         this.searchType = config.searchType || 'team';
+        // Manual override for the Apex WS port — set by the race admin in the Live Timing
+        // panel when auto-detection (global port 8523) doesn't connect for a given venue.
+        this.wsPortOverride = config.wsPortOverride || null;
         this.gridHtml = '';
         this.sessionId = '';
         this.debug = config.debug || false;
@@ -108,6 +111,20 @@ class ApexTimingScraper {
         return Number.isFinite(p) && p > 0 ? p : null;
     }
 
+    /**
+     * Apex's shared client script (javascript_live_timing.min.js) declares a default
+     * `configHost = "www.apex-timing.com"`, but many venues override it in their own
+     * config.js to point the WebSocket/data connection at a dedicated data host
+     * (e.g. "live-data.apex-timing.com") that differs from the race page's own domain.
+     * Using the race page's hostname instead of this override is why some venues never
+     * connect even with the right port.
+     */
+    extractConfigHost(text) {
+        if (!text) return null;
+        const m = text.match(/var\s+configHost\s*=\s*['"]([^'"]+)['"]/i);
+        return (m && m[1]) ? m[1].trim() : null;
+    }
+
     extractConfigScriptUrl(html, raceUrl) {
         if (!html) return null;
         const scriptMatch = html.match(/<script[^>]+src=["']([^"']*config\.js(?:\?[^"']*)?)["']/i);
@@ -123,23 +140,69 @@ class ApexTimingScraper {
         const raceProtocol = (urlObj.protocol || '').toLowerCase();
         const isSecureRace = raceProtocol === 'https:';
         const wsScheme = isSecureRace ? 'wss' : 'ws';
-        const wsOffset = isSecureRace ? 3 : 2;
 
-        const configPort = await this.fetchConfigPort(raceUrl);
-        const wsPort = configPort + wsOffset;
+        // Apex's shared client script declares a default configHost equal to the race
+        // page's own domain, but many venues override it in their config.js to point the
+        // WS/data connection at a dedicated host (e.g. live-data.apex-timing.com) instead
+        // of the page's own domain (e.g. www.apex-timing.com). Fetch it here so both the
+        // auto-detect path and the manual port-override path below use the correct host.
+        const APEX_GLOBAL_WS_PORT = 8523; // last-resort fallback if configPort can't be fetched at all
+        let configPort = null;
+        let configHost = null;
+        try {
+            const cfg = await this.fetchApexConfig(raceUrl);
+            configPort = cfg.port;
+            configHost = cfg.host;
+        } catch (e) {
+            this.log('WARN', `Apex config fetch failed, using global port ${APEX_GLOBAL_WS_PORT} and race page host: ${e.message}`);
+        }
+        const wsHost = configHost || urlObj.hostname;
+
+        // Manual override takes priority over the port auto-detection below — the race
+        // admin sets this in the Live Timing panel when neither the global port nor
+        // configPort+3 connects for a given venue. The host is still resolved from
+        // config.js above, since a wrong host fails regardless of which port is used.
+        if (this.wsPortOverride) {
+            return {
+                configPort: this.wsPortOverride,
+                wsPort: this.wsPortOverride,
+                wsUrl: `${wsScheme}://${wsHost}:${this.wsPortOverride}/`,
+                source: `manual override (port ${this.wsPortOverride}, host ${wsHost})`
+            };
+        }
+
+        // Apex's own client (javascript_live_timing.min.js) derives the WS port from the
+        // venue's configPort: configPort+3 for HTTPS pages, configPort+2 for HTTP pages.
+        // configPort/configHost are fetched fresh each time this runs (not cached) since a
+        // venue can be reassigned different values between sessions/events.
+        if (configPort) {
+            const wsPort = isSecureRace ? configPort + 3 : configPort + 2;
+            return {
+                configPort,
+                wsPort,
+                wsUrl: `${wsScheme}://${wsHost}:${wsPort}/`,
+                source: `configPort+${isSecureRace ? 3 : 2} (configPort=${configPort}, host=${wsHost})`
+            };
+        }
+
         return {
-            configPort,
-            wsPort,
-            wsUrl: `${wsScheme}://${urlObj.hostname}:${wsPort}/`,
-            source: isSecureRace ? 'config.js + HTTPS(+3)' : 'config.js + HTTP(+2)'
+            configPort: APEX_GLOBAL_WS_PORT,
+            wsPort: APEX_GLOBAL_WS_PORT,
+            wsUrl: `${wsScheme}://${wsHost}:${APEX_GLOBAL_WS_PORT}/`,
+            source: `global port ${APEX_GLOBAL_WS_PORT} (configPort fetch failed, host=${wsHost})`
         };
     }
 
     /**
-     * Fetch circuit-specific WebSocket port from javascript/config.js.
-     * Each Apex Timing circuit has a unique port stored in configPort.
+     * Fetch circuit-specific WebSocket port (configPort) and data host (configHost) from
+     * javascript/config.js. Each Apex Timing circuit has its own configPort, and some
+     * circuits also override configHost to point at a dedicated data server distinct from
+     * the race page's own domain (e.g. race page on www.apex-timing.com, but the WS/data
+     * host is live-data.apex-timing.com). Returns { port, host } — host is null if the
+     * config.js didn't declare an override, so callers should fall back to the race page's
+     * own hostname in that case.
      */
-    async fetchConfigPort(raceUrl) {
+    async fetchApexConfig(raceUrl) {
         const tried = [];
         const logTry = (label, cfgUrl) => {
             tried.push(cfgUrl);
@@ -155,8 +218,9 @@ class ApexTimingScraper {
             const text = await this.fetchWithProxy(defaultConfigUrl);
             const p = this.extractConfigPort(text);
             if (p) {
-                this.log('INFO', `✅ Detected configPort: ${p}`);
-                return p;
+                const h = this.extractConfigHost(text);
+                this.log('INFO', `✅ Detected configPort: ${p}${h ? `, configHost: ${h}` : ''}`);
+                return { port: p, host: h };
             }
             this.log('WARN', 'configPort not found in default config.js');
         } catch (e) {
@@ -171,8 +235,9 @@ class ApexTimingScraper {
             // Some deployments inline configPort directly.
             const inlinePort = this.extractConfigPort(html);
             if (inlinePort) {
-                this.log('INFO', `✅ Detected configPort inline in page HTML: ${inlinePort}`);
-                return inlinePort;
+                const inlineHost = this.extractConfigHost(html);
+                this.log('INFO', `✅ Detected configPort inline in page HTML: ${inlinePort}${inlineHost ? `, configHost: ${inlineHost}` : ''}`);
+                return { port: inlinePort, host: inlineHost };
             }
 
             const scriptUrl = this.extractConfigScriptUrl(html, raceUrl);
@@ -181,8 +246,9 @@ class ApexTimingScraper {
                 const scriptText = await this.fetchWithProxy(scriptUrl);
                 const p = this.extractConfigPort(scriptText);
                 if (p) {
-                    this.log('INFO', `✅ Detected configPort: ${p}`);
-                    return p;
+                    const h = this.extractConfigHost(scriptText);
+                    this.log('INFO', `✅ Detected configPort: ${p}${h ? `, configHost: ${h}` : ''}`);
+                    return { port: p, host: h };
                 }
                 this.log('WARN', 'configPort not found in discovered config.js');
             }
@@ -256,7 +322,27 @@ class ApexTimingScraper {
         if (!this.isRunning) return;
         const delay = Math.min(2000 * Math.pow(2, this.consecutiveErrors), 30000);
         this.log('INFO', `Reconnecting in ${delay / 1000}s...`);
-        setTimeout(() => this.connectWebSocket(), delay);
+        setTimeout(async () => {
+            if (!this.isRunning) return;
+            // Re-resolve the socket URL before every reconnect attempt (skip when the admin
+            // has set a manual port override — that should stay fixed). A venue's configPort
+            // can differ from what we resolved at start() if the page reloaded onto a new
+            // session/event, so re-fetching keeps the WS port correlated with the live race
+            // instead of retrying the same possibly-wrong port forever.
+            if (!this.wsPortOverride) {
+                try {
+                    const urlObj = new URL(this.raceUrl);
+                    const socketConfig = await this.resolveSocketConfig(this.raceUrl, urlObj);
+                    if (socketConfig.wsUrl !== this.wsUrl) {
+                        this.log('INFO', `🔁 Re-resolved WS URL: ${socketConfig.wsUrl} (${socketConfig.source})`);
+                    }
+                    this.wsUrl = socketConfig.wsUrl;
+                } catch (e) {
+                    this.log('WARN', `Re-resolve before reconnect failed, reusing previous WS URL: ${e.message}`);
+                }
+            }
+            this.connectWebSocket();
+        }, delay);
     }
 
     handleMessage(data) {
@@ -360,13 +446,20 @@ class ApexTimingScraper {
             return false;
         }
 
-        // Cell update: r<rowId>c<colIdx>|<value>|
-        const cellMatch = line.match(/^(r\d+)c(\d+)\|([^|]*)\|?$/);
+        // Cell update: r<rowId>c<colIdx>|<value>| OR r<rowId>c<colIdx>|<type>|<value>
+        // Real Apex feeds (e.g. live-data.apex-timing.com) send a short type code before
+        // the value (tn=new time, to=old/total time, etc., matching the grid's own
+        // data-type attributes) — r24600c6|tn|18.818 — not just a bare value. The type
+        // code isn't needed by updateCompetitorCell (colIdx alone resolves the field via
+        // columnMap), so it's matched and discarded. Without this, every real delta
+        // carrying an actual value failed to match and was silently dropped — only
+        // empty-value deltas (no-ops) matched the old 2-part-only pattern.
+        const cellMatch = line.match(/^(r\d+)c(\d+)\|(?:[a-z]{1,4}\|)?([^|]*)\|?$/i);
         if (cellMatch) {
             const rowId = cellMatch[1];
             const colIdx = parseInt(cellMatch[2]);
             const value = cellMatch[3];
-            
+
             const comp = this.competitors.get(rowId);
             if (comp) {
                 this.updateCompetitorCell(comp, colIdx, value);
@@ -609,8 +702,8 @@ class ApexTimingScraper {
             { field: 'driverName', re: /^(team|name|nom|nome|fahrer|driver|pilota|pilote|concurrent|concorrente|conductor|competitor|equipe|squadra|mannschaft|piloto)$/i },
             { field: 'totalLaps',  re: /^(giri|laps?|nbgiri|nbtrs?|tours?|rdn|runden|vueltas?|tr|rondes?|lap)$/i },
             { field: 'gap',        re: /^(distacco|gap|diff(erence)?|dist|abst(and)?|ecart|dif)$/i },
-            { field: 'lastLap',    re: /^(ultimo\s*t?|last(lap)?|dern(ier)?|dernier|letzte|ultimo|latest|ult|ltime|last\s*time)$/i },
-            { field: 'bestLap',    re: /^(giro\s*mig(liore)?|best(lap)?|meilleur|migliore|beste|mejor|melhor|btime|best\s*time|avg)$/i },
+            { field: 'lastLap',    re: /^(ultimo\s*t?|last\s*lap|last|dern(ier)?|dernier|letzte|ultimo|latest|ult|ltime|last\s*time)$/i },
+            { field: 'bestLap',    re: /^(giro\s*mig(liore)?|best\s*lap|best|meilleur|migliore|beste|mejor|melhor|btime|best\s*time|avg)$/i },
             { field: 'sector1',    re: /^s1(ector)?$/i },
             { field: 'sector2',    re: /^s2(ector)?$/i },
             { field: 'sector3',    re: /^s3(ector)?$/i },
@@ -627,7 +720,10 @@ class ApexTimingScraper {
         const normTexts   = [];
 
         for (let i = 0; i < headerCells.length; i++) {
-            const raw  = (headerCells[i].textContent || headerCells[i]).toString().trim();
+            const cell = headerCells[i];
+            // Collect text from all descendant text nodes; avoids [object HTMLTableCellElement]
+            // when a <th> contains only child elements (images, spans) with no direct text.
+            const raw  = (cell.innerText ?? cell.textContent ?? '').trim();
             const norm = this._normalizeHeader(raw);
             headerTexts.push(raw);
             normTexts.push(norm);
@@ -815,14 +911,28 @@ class ApexTimingScraper {
         }
     }
 
+    /**
+     * Apex venues vary in whether the row identifier is the standard `id` attribute
+     * (id="r1234") or, on some installs, only `data-id` (data-id="r1234" with no plain
+     * id at all). Always prefer the real id; data-id is the fallback. Critical: every
+     * WS delta packet (e.g. "r24574c9|tn|59.955") references the SAME identifier the
+     * live page uses, so if this falls through to a synthetic per-row counter instead,
+     * deltas can never find a matching competitor record and silently no-op forever —
+     * the symptom is laps/position/best-lap appearing frozen despite a live connection.
+     */
+    getRowId(row) {
+        return row.id || row.getAttribute('data-id') || '';
+    }
+
     parseGridHTML(html) {
         const parser = new DOMParser();
         const doc = parser.parseFromString(`<html><body><table>${html}</table></body></html>`, 'text/html');
 
         // ── Detect column mapping from header row ──
         if (!this.columnMap) {
-            // 1) Explicit header row by class
-            let headerRow = doc.querySelector('tr.titles') || doc.querySelector('thead tr');
+            // 1) Explicit header row by class — "titles" and "header" are seen on some
+            // installs, "head" on others (e.g. data-id="r0" class="head").
+            let headerRow = doc.querySelector('tr.titles') || doc.querySelector('tr.head') || doc.querySelector('thead tr');
             // 2) Scan all rows to find one whose cells match known header patterns
             if (!headerRow) {
                 const candidates = doc.querySelectorAll('tr');
@@ -852,12 +962,12 @@ class ApexTimingScraper {
 
         // ── Collect the header row's id so we can skip it later ──
         const headerRowId = (() => {
-            const hr = doc.querySelector('tr.titles') || doc.querySelector('thead tr');
-            return hr ? hr.id : null;
+            const hr = doc.querySelector('tr.titles') || doc.querySelector('tr.head') || doc.querySelector('thead tr');
+            return hr ? this.getRowId(hr) : null;
         })();
 
-        // ── Find data rows ──
-        let rows = doc.querySelectorAll('tr[id^="r"]');
+        // ── Find data rows ── (id first, data-id fallback — see getRowId)
+        let rows = doc.querySelectorAll('tr[id^="r"], tr[data-id^="r"]');
         if (rows.length === 0) {
             rows = Array.from(doc.querySelectorAll('tr')).filter(tr => {
                 const cells = tr.querySelectorAll('td');
@@ -873,10 +983,10 @@ class ApexTimingScraper {
             const tagNames = new Set();
             allTags.forEach(el => tagNames.add(el.tagName.toLowerCase()));
             this.log('WARN', `📋 HTML tags found: ${[...tagNames].join(', ')}`);
-            const rElements = doc.querySelectorAll('[id^="r"]');
-            this.log('WARN', `📋 Elements with id^="r": ${rElements.length}`);
+            const rElements = doc.querySelectorAll('[id^="r"], [data-id^="r"]');
+            this.log('WARN', `📋 Elements with id/data-id^="r": ${rElements.length}`);
             if (rElements.length > 0) {
-                this.log('WARN', `📋 First r-element: tag=${rElements[0].tagName}, id=${rElements[0].id}, children=${rElements[0].children.length}`);
+                this.log('WARN', `📋 First r-element: tag=${rElements[0].tagName}, rowId=${this.getRowId(rElements[0])}, children=${rElements[0].children.length}`);
             }
             this.parseGridHTMLRegex(html);
             return;
@@ -894,16 +1004,22 @@ class ApexTimingScraper {
         let skippedRows = 0;
         for (const row of rows) {
             // Skip header / titles rows explicitly
-            if (row.classList && (row.classList.contains('titles') || row.classList.contains('header'))) {
+            if (row.classList && (row.classList.contains('titles') || row.classList.contains('header') || row.classList.contains('head'))) {
                 skippedRows++;
                 continue;
             }
-            if (headerRowId && row.id === headerRowId) { skippedRows++; continue; }
+            const thisRowId = this.getRowId(row);
+            if (headerRowId && thisRowId === headerRowId) { skippedRows++; continue; }
 
             const cells = row.querySelectorAll('td');
             if (cells.length < 5) continue;
 
-            const rowId = row.id || `r${nextComps.size}`;
+            // No synthetic-counter fallback here: a row without a real id/data-id can't
+            // be correlated with future WS delta packets (which always reference the
+            // feed's real row identifier), so it would silently stop receiving updates
+            // forever. Better to skip it than to track it under a fake id.
+            if (!thisRowId) { skippedRows++; continue; }
+            const rowId = thisRowId;
 
             const comp = {
                 rowId: rowId,
@@ -1008,8 +1124,10 @@ class ApexTimingScraper {
 
             if (cells.length < 5) continue;
 
-            // Skip rows whose HTML class suggests header
-            if (/titles|header/i.test(match[0])) continue;
+            // Skip rows whose HTML class suggests header (some venues use class="head"
+            // rather than "titles"/"header" — match the class attribute specifically so
+            // this doesn't false-positive on unrelated "head" substrings elsewhere in the tag)
+            if (/class=["'][^"']*\b(titles|header|head)\b[^"']*["']/i.test(match[0])) continue;
 
             const getCell = (field, fallbackIdx) => {
                 const idx = cm ? cm[field] : fallbackIdx;
@@ -1176,33 +1294,81 @@ class ApexTimingScraper {
 
     async scrapeInitialGrid() {
         this.log('INFO', '🌐 Fetching initial grid via HTTP (with CORS proxy)');
+        await this._doHttpGridScrape();
+        // Start HTTP polling as fallback for when WS can't connect (cross-origin block).
+        // Polling runs every 4s regardless of WS state; WS messages take priority when
+        // they arrive (mergeCompetitor preserves all live WS state on top of HTTP snapshots).
+        this._startHttpPolling();
+    }
+
+    _startHttpPolling() {
+        if (this._httpPollTimer) return; // already running
+        const POLL_MS = 4000;
+        this._httpPollTimer = setInterval(async () => {
+            if (!this.isRunning) { this._stopHttpPolling(); return; }
+            await this._doHttpGridScrape();
+        }, POLL_MS);
+        this.log('INFO', `🔄 HTTP polling started (every ${POLL_MS / 1000}s as WS fallback)`);
+    }
+
+    _stopHttpPolling() {
+        if (this._httpPollTimer) {
+            clearInterval(this._httpPollTimer);
+            this._httpPollTimer = null;
+        }
+    }
+
+    async _doHttpGridScrape() {
         try {
             const html = await this.fetchWithProxy(this.raceUrl);
-            
-            // Extract the grid table from the full page HTML
-            // Look for the main timing table — Apex uses <table id="tbl"> or similar
-            const tableMatch = html.match(/<table[^>]*id=["']?tbl["']?[^>]*>([\s\S]*?)<\/table>/i) ||
-                               html.match(/<table[^>]*class=["'][^"']*live[^"']*["'][^>]*>([\s\S]*?)<\/table>/i);
-            
-            let gridContent = '';
-            if (tableMatch) {
-                gridContent = tableMatch[1];
-                this.log('INFO', `📋 Extracted table content (${gridContent.length} chars)`);
-            } else {
-                // Try to find rows directly in the full HTML
-                gridContent = html;
-                this.log('INFO', `📋 No table tag found, using full HTML (${html.length} chars)`);
-            }
-
-            this.log('INFO', `📋 Scraped grid HTML (${gridContent.length} chars)`);
-            
-            // Only use HTTP result if WS didn't already give us data
-            if (this.competitors.size === 0 && gridContent.length > 0) {
+            const gridContent = this._extractStandingsTable(html);
+            if (gridContent && gridContent.length > 0) {
                 this.parseGridHTML(gridContent);
             }
         } catch (e) {
             this.log('WARN', `HTTP grid scrape failed: ${e.message}`);
         }
+    }
+
+    /**
+     * Extract the race standings table from Apex full-page HTML.
+     *
+     * Apex serves multiple tables: the main standings table (rows with id="r<N>")
+     * and a lap-history/sector table (headers: Lap, S1, S2, S3, Time). We want the
+     * standings table, identified by:
+     *   1. <table id="tbl"> or <table id="grid"> (common Apex IDs)
+     *   2. The table containing the most rows with id^="r" (race competitor rows)
+     *   3. Fallback: full HTML (let parseGridHTML sort it out)
+     */
+    _extractStandingsTable(html) {
+        // Parse as DOM for reliable table selection
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+
+        // 1) Named standings tables — return innerHTML so parseGridHTML can wrap it in <table>
+        for (const id of ['tbl', 'grid', 'classifica', 'results', 'timing', 'ranking']) {
+            const el = doc.getElementById(id);
+            if (el) {
+                this.log('INFO', `📋 Found standings table by id="${id}"`);
+                return el.innerHTML;
+            }
+        }
+
+        // 2) Table with the most rows whose id starts with "r" (Apex race row IDs)
+        const tables = Array.from(doc.querySelectorAll('table'));
+        let bestTable = null, bestCount = 0;
+        for (const tbl of tables) {
+            const rRows = tbl.querySelectorAll('tr[id^="r"]').length;
+            if (rRows > bestCount) { bestCount = rRows; bestTable = tbl; }
+        }
+        if (bestTable && bestCount >= 2) {
+            this.log('INFO', `📋 Standings table selected by max r-rows (${bestCount} rows)`);
+            return bestTable.innerHTML;
+        }
+
+        // 3) Fallback to full HTML
+        this.log('INFO', `📋 No distinct standings table found, using full HTML (${html.length} chars)`);
+        return html;
     }
 
     async fetchWithProxy(url) {
@@ -1258,13 +1424,15 @@ class ApexTimingScraper {
             clearTimeout(this._emitTimer);
             this._emitTimer = null;
         }
-        
+
+        this._stopHttpPolling();
+
         // Abort any in-flight HTTP request
         if (this._activeController) {
             try { this._activeController.abort(); } catch(e) {}
             this._activeController = null;
         }
-        
+
         if (this.ws) {
             try { this.ws.close(); } catch (e) {}
             this.ws = null;
@@ -1273,7 +1441,7 @@ class ApexTimingScraper {
             clearInterval(this.pollInterval);
             this.pollInterval = null;
         }
-        
+
         this._errorLogThrottle = {};
     }
 

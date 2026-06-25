@@ -50,10 +50,6 @@
     --alert-push:       #a3e635;
     --alert-conserve:   #38bdf8;
     --alert-caution:    #eab308;
-
-    /* Layout two-zone widths (desktop) */
-    --lt-zone-w: 58%;
-    --ctrl-zone-w: 42%;
 }
 
 html {
@@ -310,7 +306,8 @@ body.strateger-page-hidden * {
         padding: 12px !important;
         gap: 10px !important;
     }
-    /* Right: control dock — takes remaining width, never scrolls */
+    /* Right: control dock — takes remaining width, scrolls if its content (now including
+       the driver stats table) grows past the viewport */
     #raceControlDock {
         flex: 1 1 0 !important;
         min-width: 200px !important;
@@ -318,7 +315,7 @@ body.strateger-page-hidden * {
         border-left: 1px solid rgba(55,65,81,0.6) !important;
         display: flex !important;
         flex-direction: column !important;
-        justify-content: flex-end !important;
+        justify-content: flex-start !important;
         padding: 12px !important;
         gap: 10px !important;
         overflow-y: auto;
@@ -487,6 +484,16 @@ body.strateger-page-hidden * {
 /* ==================== SCREEN TRANSITIONS ==================== */
 #setupScreen, #raceDashboard, #previewScreen {
     animation: fadeIn 0.25s ease-out;
+}
+
+/* Any full-screen modal opened over the race dashboard (#pitModal and friends use
+   Tailwind's z-50) was lower than the docked live-timing widget's z-index:100, so the
+   widget could render through the modal during pit stops. Match the project's other
+   full-screen modals (#demoModal z-200, #liveAdjustModal z-190 — both keep their own
+   higher specificity #id rule below and so still win over this). */
+#pitModal,
+[id$="Modal"] {
+    z-index: 190;
 }
 
 /* ==================== MODAL BACKDROP + CONTENT ANIMATION ==================== */
@@ -2138,38 +2145,33 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     white-space: nowrap;
 }
 
-/* ==================== LIVE-TIMING WIDGET: DRAGGABLE + RESIZABLE ==================== */
+/* Driver-stats table body scrolls on its own — previously the wrapper around the whole
+   table was overflow:hidden (needed to clip the rounded corners around the sticky header),
+   which silently clipped extra driver rows with no scrollbar at all instead of scrolling. */
+.stats-table-scroll {
+    max-height: 260px;
+    overflow-y: auto;
+}
 
-/*
- * The widget wrapper is positioned fixed by default (overlapping mode) once the
- * user starts dragging.  Before any drag the wrapper sits inline in the normal
- * document flow and the inner panel keeps its current appearance.
- *
- * Maximised/minimised window support: we clamp the widget to the viewport so it
- * never goes off-screen.  CSS min-width/min-height stop it from collapsing to
- * zero during resize.  overflow:hidden on the wrapper clips anything that would
- * otherwise scroll outside the visible area.
- */
+/* #pitActionGroup must win over raceControlDock's own Tailwind `space-y-1.5` sibling-margin
+   rule (`.space-y-1\.5 > :not([hidden]) ~ :not([hidden])`), which has higher specificity
+   than a single `.mt-auto` class and would otherwise override it back to a fixed 6px gap,
+   leaving the group NOT pinned to the bottom despite the class being present. */
+#raceControlDock > #pitActionGroup {
+    margin-top: auto;
+}
+
+/* ==================== LIVE-TIMING WIDGET ==================== */
+/* Always docked inline inside #raceInfoPanel — never floats. At ≥1024px its height is
+   adjustable via #liveTimingHeightHandle (see js/live-timing.js); at narrower
+   breakpoints it just sizes to its content. */
 
 .lt-widget-wrapper {
-    /* Inline by default — takes part in normal page flow */
     position: relative;
     z-index: 100;
     min-width: 220px;
     min-height: 80px;
-    /* Visible overflow guard: the resize handle protrudes slightly */
     overflow: visible;
-}
-
-/* Once the user has dragged the widget it becomes fixed */
-.lt-widget-wrapper.lt-fixed {
-    position: fixed;
-    overflow: hidden;
-    border-radius: 8px;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 0 0 1px rgba(239,68,68,0.25);
-    /* Clamp inside the viewport so it never leaves the screen */
-    max-width: calc(100vw - 16px);
-    max-height: calc(100vh - 16px);
 }
 
 .lt-widget-inner {
@@ -2181,72 +2183,41 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     border-radius: inherit;
 }
 
-/* Table area fills remaining vertical space when the widget is resized */
 .lt-table-scroll {
     flex: 1 1 0;
     overflow-y: auto;
     min-height: 60px;
-    max-height: none; /* override the old inline max-height once we're in fixed mode */
-}
-.lt-widget-wrapper:not(.lt-fixed) .lt-table-scroll {
-    max-height: 180px; /* keep original behaviour in inline mode */
+    max-height: 180px;
 }
 
-/* ---- Drag handle ---- */
-.lt-drag-handle {
-    touch-action: none; /* prevent scroll interference on touch devices */
-    -webkit-touch-callout: none;
-}
-.lt-widget-wrapper.lt-fixed .lt-drag-handle {
-    cursor: grab;
-}
-.lt-widget-wrapper.lt-fixed .lt-drag-handle:active {
-    cursor: grabbing;
-}
-
-/* ---- Resize handle ---- */
-.lt-resize-handle {
-    position: absolute;
-    bottom: 0;
-    right: 0;
-    width: 18px;
-    height: 18px;
-    cursor: se-resize;
-    touch-action: none;
-    background: linear-gradient(135deg, transparent 50%, rgba(239,68,68,0.35) 50%);
-    border-bottom-right-radius: 8px;
-    z-index: 10;
-}
-/* Only show the resize handle when in fixed (floating) mode */
-.lt-widget-wrapper:not(.lt-fixed) .lt-resize-handle {
+/* ---- Live-timing widget height-resize handle (≥1024px only) ---- */
+.lt-height-handle {
     display: none;
 }
-
-/* ---- RTL: flip resize handle to bottom-left ---- */
-[dir="rtl"] .lt-resize-handle {
-    right: auto;
-    left: 0;
-    cursor: sw-resize;
-    transform: scaleX(-1);
-    border-bottom-right-radius: 0;
-    border-bottom-left-radius: 8px;
-}
-
-/* ---- During active drag: disable pointer events on inner content ---- */
-.lt-widget-wrapper.lt-dragging .lt-widget-inner * {
-    pointer-events: none;
-}
-/* ---- During active resize: same ---- */
-.lt-widget-wrapper.lt-resizing .lt-widget-inner * {
-    pointer-events: none;
-}
-
-/* Resize hint icon only visible in floating mode */
-.lt-resize-hint {
-    display: none;
-}
-.lt-widget-wrapper.lt-fixed .lt-resize-hint {
-    display: inline;
+@media (min-width: 1024px) {
+    .lt-height-handle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 14px;
+        margin-top: 2px;
+        cursor: row-resize;
+        user-select: none;
+        -webkit-user-select: none;
+        touch-action: none;
+        flex-shrink: 0;
+    }
+    .lt-height-handle span {
+        width: 40px;
+        height: 4px;
+        border-radius: 2px;
+        background: rgba(255,255,255,0.15);
+        transition: background 0.2s;
+    }
+    .lt-height-handle:hover span,
+    .lt-height-handle.active span {
+        background: rgba(239,68,68,0.6);
+    }
 }
 
 /* ==================== TEAM LOGO (PRO) ==================== */
@@ -2290,25 +2261,36 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 /* ==================== LIVE TIMING FULL OVERHAUL ==================== */
 
-/* ---- Two-zone dashboard layout (wide screens ≥ 1024px) ---- */
+/* ---- Two-zone dashboard layout (wide screens ≥ 1024px) ----
+   Side-by-side, each column fixed at exactly 50% width (not adjustable). Height is
+   independent per column: raceInfoPanel's height is set by the user via the drag
+   handle on the live-timing widget itself; raceControlDock sizes to its own content
+   (no forced stretch/split) and only scrolls internally if its content overflows the
+   row's height. */
 @media (min-width: 1024px) {
     #racePanelsWrapper {
         flex-direction: row !important;
-        align-items: stretch;
+        /* stretch: both columns share the same outer height (the row's available
+           height) for visual symmetry. Each column scrolls internally — via its own
+           overflow-y:auto — only if its actual content exceeds that shared height;
+           otherwise it just sits at the top with empty space below (no forced split). */
+        align-items: stretch !important;
     }
-    /* Left zone: full live timing panel */
     #raceInfoPanel {
-        flex: 0 0 var(--lt-zone-w, 58%) !important;
-        min-width: 320px !important;
-        max-width: 820px !important;
+        flex: 0 0 50% !important;
+        width: 50% !important;
+        max-width: 50% !important;
+        min-width: 0 !important;
         border-right: 1px solid rgba(55,65,81,0.5) !important;
+        border-bottom: none !important;
         overflow-y: auto !important;
         padding: 10px 12px !important;
     }
-    /* Right zone: pit entry + control widgets */
     #raceControlDock {
-        flex: 1 1 0 !important;
-        min-width: 280px !important;
+        flex: 0 0 50% !important;
+        width: 50% !important;
+        max-width: 50% !important;
+        min-width: 0 !important;
         border-top: none !important;
         border-left: none !important;
         display: flex !important;
@@ -2318,16 +2300,29 @@ input[type="date"]::-webkit-calendar-picker-indicator {
         gap: 8px !important;
         overflow-y: auto !important;
     }
-    /* Resizer becomes a vertical divider */
-    #dashPanelResizer {
-        width: 8px !important;
-        height: 100% !important;
-        cursor: col-resize !important;
-        flex-direction: column !important;
+    /* Live timing widget height is user-controlled via #liveTimingHeightHandle
+       (see js/live-timing.js) — driven by the --lt-widget-h CSS var. */
+    #raceInfoPanel #liveTimingWidgetWrapper {
+        height: var(--lt-widget-h, 420px);
+        min-height: 200px;
+        max-height: calc(100% - 16px);
+        display: flex;
+        flex-direction: column;
     }
-    /* Live timing widget fills the left zone, no floating by default */
-    #raceInfoPanel #liveTimingWidgetWrapper:not(.lt-fixed) {
-        min-height: 300px;
+    #raceInfoPanel #liveTimingPanel {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+    }
+    #raceInfoPanel #liveTimingPanel .lt-table-scroll {
+        flex: 1 1 0;
+        max-height: none;
+    }
+    /* The generic panel-split resizer has no job at the fixed 50/50 width — the
+       live-timing widget's own height handle is the relevant control here instead. */
+    #dashPanelResizer {
+        display: none !important;
     }
 }
 
@@ -2725,11 +2720,6 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 /* ---- 1920×1080 / wide desktop ---- */
 @media (min-width: 1400px) {
-    :root {
-        --lt-zone-w: 60%;
-        --ctrl-zone-w: 40%;
-    }
-    #raceInfoPanel { max-width: 960px !important; }
     .cr-name { max-width: 160px; }
     .competitor-row { height: 36px; min-height: 36px; }
     .cr-sectors { display: flex; }
@@ -2737,9 +2727,6 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 /* ---- 1366×768 / 1280×800 — tighter ---- */
 @media (min-width: 1024px) and (max-width: 1366px) {
-    :root {
-        --lt-zone-w: 56%;
-    }
     .cr-avg, .cr-int { display: none; }
     .cr-name { max-width: 100px; }
 }
@@ -2757,12 +2744,12 @@ input[type="date"]::-webkit-calendar-picker-indicator {
         max-height: calc(100vh - 320px) !important;
         overflow-y: auto;
     }
-    .lt-widget-wrapper:not(.lt-fixed) {
+    .lt-widget-wrapper {
         display: flex;
         flex-direction: column;
         min-height: 300px;
     }
-    .lt-widget-wrapper:not(.lt-fixed) .lt-widget-inner {
+    .lt-widget-wrapper .lt-widget-inner {
         flex: 1;
     }
 }

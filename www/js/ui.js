@@ -2624,12 +2624,17 @@ window.initDashPanelResizer = function() {
     if (!resizer || !wrapper || !infoPanel) return;
 
     const STORAGE_KEY = 'strateger_dash_split';
-    const isLandscape = () => window.matchMedia('(min-width:768px) and (orientation:landscape)').matches;
+    // Side-by-side (width-drag) in the 768-1023px landscape tablet range. Portrait stacks
+    // top/bottom (height-drag). ≥1024px is also side-by-side, but at a fixed 50/50 split —
+    // this resizer is inert there (see _isFixedSplitWidth below).
+    const isSideBySide = () => window.matchMedia('(min-width:768px) and (orientation:landscape)').matches;
+    const isFixedSplitWidth = () => window.matchMedia('(min-width:1024px)').matches;
+    const minPct = () => 15;
 
     // Restore saved split
     const saved = parseFloat(localStorage.getItem(STORAGE_KEY));
     const initialPct = (saved >= 15 && saved <= 85) ? saved : 60;
-    document.documentElement.style.setProperty('--dash-info-pct', initialPct + '%');
+    document.documentElement.style.setProperty('--dash-info-pct', Math.max(initialPct, minPct()) + '%');
 
     let dragging = false;
     let startPos = 0;
@@ -2637,12 +2642,13 @@ window.initDashPanelResizer = function() {
 
     function getPct(e) {
         const rect = wrapper.getBoundingClientRect();
-        if (isLandscape()) {
+        const lo = minPct();
+        if (isSideBySide()) {
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-            return Math.min(85, Math.max(15, ((clientX - rect.left) / rect.width) * 100));
+            return Math.min(85, Math.max(lo, ((clientX - rect.left) / rect.width) * 100));
         } else {
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            return Math.min(85, Math.max(15, ((clientY - rect.top) / rect.height) * 100));
+            return Math.min(85, Math.max(lo, ((clientY - rect.top) / rect.height) * 100));
         }
     }
 
@@ -2678,32 +2684,29 @@ window.initDashPanelResizer = function() {
         window.addEventListener('touchend', onEnd);
     }
 
-    resizer.addEventListener('mousedown', onStart);
-    resizer.addEventListener('touchstart', onStart, { passive: false });
+    function guardedStart(e) {
+        // ≥1024px uses a fixed 50/50 split — this resizer has nothing to do there.
+        // The live-timing widget's own height handle (see initLiveTimingHeightResize)
+        // is the relevant control at that breakpoint instead.
+        if (isFixedSplitWidth()) return;
+        onStart(e);
+    }
+    resizer.addEventListener('mousedown', guardedStart);
+    resizer.addEventListener('touchstart', guardedStart, { passive: false });
 
     // Double-tap / double-click to reset to 50/50
     let lastTap = 0;
-    resizer.addEventListener('dblclick', () => applyPct(50));
+    resizer.addEventListener('dblclick', () => { if (!isFixedSplitWidth()) applyPct(50); });
     resizer.addEventListener('touchend', () => {
+        if (isFixedSplitWidth()) return;
         const now = Date.now();
         if (now - lastTap < 350) applyPct(50);
         lastTap = now;
     });
 
-    // Auto-hide resizer when info panel content fits without scrolling.
-    // Use a debounced ResizeObserver only — no MutationObserver (avoids self-trigger loops).
-    let _resizerRafId = null;
-    function _syncResizerVisibility() {
-        if (_resizerRafId) return; // already queued
-        _resizerRafId = requestAnimationFrame(() => {
-            _resizerRafId = null;
-            const fits = infoPanel.scrollHeight <= infoPanel.clientHeight + 8;
-            resizer.style.display = fits ? 'none' : '';
-            // Don't touch infoPanel.style.flex here — it would cause layout thrash
-        });
-    }
-    _syncResizerVisibility();
-    new ResizeObserver(_syncResizerVisibility).observe(infoPanel);
+    // Resizer is visible/draggable at narrower breakpoints; CSS hides it at ≥1024px
+    // (fixed 50/50 split — see .dash-resizer media query).
+    resizer.style.display = '';
 };
 
 // ==========================================
@@ -2713,14 +2716,24 @@ window.initDashPanelResizer = function() {
 window.initDashboardDrag = function() {
     // Support both dashboardScrollArea (Streger) and raceInfoPanel (Strateger)
     const area = document.getElementById('dashboardScrollArea') || document.getElementById('raceInfoPanel');
+    if (area) window._initDashboardDragArea(area);
+
+    // raceControlDock gets the same drag-to-reorder treatment, so panels moved there via
+    // the ⇥ button (e.g. the stats table) can be reordered against each other too.
+    // pitActionGroup is excluded — it's pinned to the bottom via margin-top:auto and
+    // always stays together as a single unit, never reordered.
+    const dock = document.getElementById('raceControlDock');
+    if (dock) window._initDashboardDragArea(dock, ['pitActionGroup']);
+};
+
+window._initDashboardDragArea = function(area, skipIds) {
     if (!area) return;
-    // Keep the active drag container so handlers always target the correct window/layout.
-    window._dashDragArea = area;
+    const skip = new Set(['strategyToastContainer', ...(skipIds || [])]);
 
     // Mark direct child panels as draggable
     const markDraggable = () => {
         Array.from(area.children).forEach(child => {
-            if (child.id === 'strategyToastContainer') return; // skip toasts
+            if (skip.has(child.id)) return; // skip toasts / pinned groups
             if (child.tagName === 'DIV' && !child.classList.contains('drag-handle-added')) {
                 child.setAttribute('draggable', 'true');
                 child.classList.add('drag-handle-added');
@@ -2739,16 +2752,15 @@ window.initDashboardDrag = function() {
                     }, 400);
                 }, { passive: true });
                 child.addEventListener('touchmove', (e) => {
-                    if (!window._dashDragging) return;
+                    if (!window._dashDragging || !area.contains(window._dashDragging)) return;
                     const t = e.touches[0];
-                    const activeArea = window._dashDragArea || area;
                     const target = document
                         .elementFromPoint(t.clientX, t.clientY)
-                        ?.closest(`#${activeArea.id} > div`);
+                        ?.closest(`#${area.id} > div`);
                     if (target && target !== window._dashDragging) {
                         const rect = target.getBoundingClientRect();
                         const after = t.clientY > rect.top + rect.height / 2;
-                        activeArea.insertBefore(window._dashDragging, after ? target.nextSibling : target);
+                        area.insertBefore(window._dashDragging, after ? target.nextSibling : target);
                     }
                 }, { passive: true });
                 child.addEventListener('touchend', () => {
@@ -2756,7 +2768,7 @@ window.initDashboardDrag = function() {
                     if (window._dashDragging) {
                         window._dashDragging.style.opacity = '';
                         window._dashDragging = null;
-                        window._saveDashboardOrder();
+                        window._saveDashboardOrder(area);
                     }
                 });
             }
@@ -2768,13 +2780,17 @@ window.initDashboardDrag = function() {
     new MutationObserver(markDraggable).observe(area, { childList: true });
 
     // Restore saved order
-    window._restoreDashboardOrder();
+    window._restoreDashboardOrder(area);
 };
 
 window._dashDragSrc = null;
 
 function _onDashPanelDragStart(e) {
     window._dashDragSrc = this;
+    // Capture the element's own parent at drag-start — dragover/drop must always
+    // target this, not the last-initialized area, since raceInfoPanel and
+    // raceControlDock both run independent drag-to-reorder areas at the same time.
+    window._dashDragSrcArea = this.parentElement;
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', this.id || '');
     setTimeout(() => { if (this) this.style.opacity = '0.4'; }, 0);
@@ -2783,8 +2799,9 @@ function _onDashPanelDragStart(e) {
 function _onDashPanelDragOver(e) {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
-    const area = window._dashDragArea || document.getElementById('dashboardScrollArea') || document.getElementById('raceInfoPanel');
-    if (!area || !window._dashDragSrc || this === window._dashDragSrc) return;
+    if (!window._dashDragSrc || this === window._dashDragSrc) return;
+    const area = window._dashDragSrcArea;
+    if (!area || this.parentElement !== area) return; // ignore drop targets outside the source's own area
     const rect = this.getBoundingClientRect();
     const after = e.clientY > rect.top + rect.height / 2;
     area.insertBefore(window._dashDragSrc, after ? this.nextSibling : this);
@@ -2793,7 +2810,7 @@ function _onDashPanelDragOver(e) {
 function _onDashPanelDrop(e) {
     e.stopPropagation();
     e.preventDefault();
-    window._saveDashboardOrder();
+    window._saveDashboardOrder(window._dashDragSrcArea);
 }
 
 function _onDashPanelDragEnd() {
@@ -2801,18 +2818,24 @@ function _onDashPanelDragEnd() {
     window._dashDragSrc = null;
 }
 
-window._saveDashboardOrder = function() {
-    const area = document.getElementById('dashboardScrollArea') || document.getElementById('raceInfoPanel');
+// Each draggable area persists its own child order under its own key, so
+// raceInfoPanel and raceControlDock don't clobber each other's saved order.
+function _dashOrderStorageKey(area) {
+    return area.id === 'raceControlDock' ? 'strateger_dashboard_order_dock' : 'strateger_dashboard_order';
+}
+
+window._saveDashboardOrder = function(area) {
+    area = area || document.getElementById('dashboardScrollArea') || document.getElementById('raceInfoPanel');
     if (!area) return;
     const order = Array.from(area.children).map(c => c.id || c.className.slice(0, 30));
-    try { localStorage.setItem('strateger_dashboard_order', JSON.stringify(order)); } catch(e) {}
+    try { localStorage.setItem(_dashOrderStorageKey(area), JSON.stringify(order)); } catch(e) {}
 };
 
-window._restoreDashboardOrder = function() {
-    const area = document.getElementById('dashboardScrollArea') || document.getElementById('raceInfoPanel');
+window._restoreDashboardOrder = function(area) {
+    area = area || document.getElementById('dashboardScrollArea') || document.getElementById('raceInfoPanel');
     if (!area) return;
     try {
-        const order = JSON.parse(localStorage.getItem('strateger_dashboard_order') || 'null');
+        const order = JSON.parse(localStorage.getItem(_dashOrderStorageKey(area)) || 'null');
         if (!Array.isArray(order) || order.length === 0) return;
         order.forEach(id => {
             const el = id ? document.getElementById(id) : null;
@@ -2898,8 +2921,9 @@ window.initHorizontalPanels = function() {
     });
 
     // Add move-to-other-panel button to moveable children
-    // raceControlDock's own fixed action rows (pitEntryBtn, penalty, pit timer) are NOT moveable.
-    const SKIP_IDS = new Set(['strategyToastContainer', 'pitInlineDock', 'confirmRaceFinishBtn', 'pitEntryBtn']);
+    // pitActionGroup (next-driver row + pit button, grouped together and pinned to the
+    // bottom via margin-top:auto) is NOT moveable — it always stays put as a single unit.
+    const SKIP_IDS = new Set(['strategyToastContainer', 'pitActionGroup']);
     const SKIP_CLASSES = new Set(['penalty-btn']);
 
     const addMoveBtn = (panel, targetPanel, targetKey) => {
@@ -3037,6 +3061,24 @@ window.openDemoModal = function() {
     if (!modal) { window.showDemoConfig && window.showDemoConfig(); return; }
     modal.classList.remove('hidden');
     window._renderDemoCharts();
+};
+
+// Entry point for the small "start demo" button shown in the live race header.
+// launchSelectedDemo() destructively overwrites window.drivers/config — calling it while
+// a real race is running would corrupt that race's data without ever stopping the clock
+// or hiding the dashboard, so this confirms first instead of opening the picker directly.
+window.openDemoModalFromLiveRace = function() {
+    if (window.state && window.state.isRunning) {
+        const t = window.t || ((k) => k);
+        window.showConfirmModal(
+            `🎭 ${t('startDemoTooltip') || 'Start Demo'}`,
+            t('startDemoMidRaceWarning') || 'This will end your current race and replace it with a demo. This cannot be undone.',
+            t('startDemoConfirm') || 'Start Demo',
+            () => window.openDemoModal()
+        );
+        return;
+    }
+    window.openDemoModal();
 };
 
 window.closeDemoModal = function() {
@@ -3657,296 +3699,6 @@ if (_origRunSimForHero) {
         return result;
     };
 }
-
-// ==========================================
-// 🏁 RIGHT-ZONE WIDGET SYSTEM
-// ==========================================
-
-;(function() {
-    'use strict';
-
-    const WIDGET_ORDER_KEY = 'strateger_widget_order';
-    const WIDGET_COLLAPSED_KEY = 'strateger_widget_collapsed';
-    const LAYOUT_TPL_KEY = 'strateger_layout_tpl';
-    const SNAP_GRID = 20;
-
-    // ---- Layout templates ----
-    // Each template describes: lt-zone-w percentage, which widgets are visible/collapsed,
-    // and order of widgets in the right zone.
-    const TEMPLATES = {
-        classic: {
-            ltZoneW: '58%',
-            widgets: ['widgetLayoutTemplates','widgetDriverInfo','widgetStintData','widgetStrategy'],
-            collapsed: [],
-        },
-        pit: {
-            ltZoneW: '42%',
-            widgets: ['widgetLayoutTemplates','widgetDriverInfo','widgetStintData','widgetStrategy'],
-            collapsed: ['widgetStrategy'],
-        },
-        strategy: {
-            ltZoneW: '50%',
-            widgets: ['widgetLayoutTemplates','widgetStrategy','widgetStintData','widgetDriverInfo'],
-            collapsed: [],
-        },
-        compact: {
-            ltZoneW: '65%',
-            widgets: ['widgetLayoutTemplates','widgetDriverInfo','widgetStintData','widgetStrategy'],
-            collapsed: ['widgetStintData','widgetStrategy'],
-        },
-    };
-
-    // Show/hide right-widgets-area on wide screens
-    function updateWidgetAreaVisibility() {
-        const area = document.getElementById('rightWidgetsArea');
-        if (!area) return;
-        const wide = window.matchMedia('(min-width: 1024px)').matches;
-        if (wide) {
-            area.classList.remove('hidden');
-            area.style.display = 'flex';
-        } else {
-            area.classList.add('hidden');
-            area.style.display = '';
-        }
-    }
-
-    // Apply a layout template
-    window.applyLayoutTemplate = function(tplName) {
-        const tpl = TEMPLATES[tplName];
-        if (!tpl) return;
-        // Save
-        try { localStorage.setItem(LAYOUT_TPL_KEY, tplName); } catch(e) {}
-        // Update CSS var
-        document.documentElement.style.setProperty('--lt-zone-w', tpl.ltZoneW);
-        // Reorder widgets
-        const area = document.getElementById('rightWidgetsArea');
-        if (area) {
-            tpl.widgets.forEach(id => {
-                const el = document.getElementById(id);
-                if (el) area.appendChild(el);
-            });
-        }
-        // Apply collapsed states
-        tpl.widgets.forEach(id => {
-            const el = document.getElementById(id);
-            if (!el) return;
-            if (tpl.collapsed.includes(id)) {
-                el.classList.add('collapsed');
-                const btn = el.querySelector('.widget-collapse-btn');
-                if (btn) btn.textContent = '▸';
-            } else {
-                el.classList.remove('collapsed');
-                const btn = el.querySelector('.widget-collapse-btn');
-                if (btn) btn.textContent = '▾';
-            }
-        });
-        // Update active template button
-        document.querySelectorAll('.layout-tpl-btn').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.tpl === tplName);
-        });
-    };
-
-    // Collapse/expand a widget
-    window.toggleWidget = function(widgetId) {
-        const el = document.getElementById(widgetId);
-        if (!el) return;
-        const collapsed = el.classList.toggle('collapsed');
-        const btn = el.querySelector('.widget-collapse-btn');
-        if (btn) btn.textContent = collapsed ? '▸' : '▾';
-        // Persist
-        try {
-            const saved = JSON.parse(localStorage.getItem(WIDGET_COLLAPSED_KEY) || '{}');
-            saved[widgetId] = collapsed;
-            localStorage.setItem(WIDGET_COLLAPSED_KEY, JSON.stringify(saved));
-        } catch(e) {}
-    };
-
-    // ---- Widget drag reorder (within right zone) ----
-    let _wDragSrc = null;
-    let _wDropZone = null;
-
-    function initWidgetDragReorder() {
-        const area = document.getElementById('rightWidgetsArea');
-        if (!area) return;
-
-        area.addEventListener('mousedown', onWidgetDragStart, true);
-        area.addEventListener('touchstart', onWidgetTouchStart, { passive: false });
-    }
-
-    function onWidgetDragStart(e) {
-        const handle = e.target.closest('.widget-drag-handle');
-        if (!handle) return;
-        const widget = handle.closest('.right-zone-widget');
-        if (!widget) return;
-        e.preventDefault();
-
-        _wDragSrc = widget;
-        const originalRect = widget.getBoundingClientRect();
-        const offsetX = e.clientX - originalRect.left;
-        const offsetY = e.clientY - originalRect.top;
-
-        // Ghost element
-        const ghost = widget.cloneNode(true);
-        ghost.style.cssText = `position:fixed;left:${originalRect.left}px;top:${originalRect.top}px;width:${originalRect.width}px;opacity:0.85;pointer-events:none;z-index:9999;border:1px solid rgba(34,211,238,0.6);border-radius:10px;`;
-        document.body.appendChild(ghost);
-
-        // Drop zone placeholder
-        const ph = document.createElement('div');
-        ph.className = 'widget-drop-zone active';
-        ph.style.height = originalRect.height + 'px';
-        widget.parentNode.insertBefore(ph, widget);
-        widget.style.display = 'none';
-        _wDropZone = ph;
-
-        function onMove(me) {
-            const cx = me.clientX ?? me.touches?.[0]?.clientX;
-            const cy = me.clientY ?? me.touches?.[0]?.clientY;
-            if (cx == null) return;
-            ghost.style.left = (cx - offsetX) + 'px';
-            ghost.style.top  = (cy - offsetY) + 'px';
-            // Find drop target
-            const area2 = document.getElementById('rightWidgetsArea');
-            if (!area2) return;
-            const siblings = [...area2.querySelectorAll('.right-zone-widget:not([style*="display: none"])')];
-            let inserted = false;
-            for (const sib of siblings) {
-                const sr = sib.getBoundingClientRect();
-                if (cy < sr.top + sr.height / 2) {
-                    area2.insertBefore(_wDropZone, sib);
-                    inserted = true;
-                    break;
-                }
-            }
-            if (!inserted) area2.appendChild(_wDropZone);
-        }
-
-        function onUp() {
-            document.removeEventListener('mousemove', onMove);
-            document.removeEventListener('mouseup', onUp);
-            document.removeEventListener('touchmove', onMove);
-            document.removeEventListener('touchend', onUp);
-            // Place widget where placeholder is
-            if (_wDropZone && _wDropZone.parentNode) {
-                _wDropZone.parentNode.insertBefore(_wDragSrc, _wDropZone);
-                _wDropZone.remove();
-            }
-            _wDragSrc.style.display = '';
-            ghost.remove();
-            _wDragSrc = null;
-            _wDropZone = null;
-        }
-
-        document.addEventListener('mousemove', onMove);
-        document.addEventListener('mouseup', onUp);
-        document.addEventListener('touchmove', onMove, { passive: false });
-        document.addEventListener('touchend', onUp);
-    }
-
-    function onWidgetTouchStart(e) {
-        const handle = e.target.closest('.widget-drag-handle');
-        if (!handle) return;
-        e.preventDefault();
-        onWidgetDragStart({ target: e.target, clientX: e.touches[0].clientX, clientY: e.touches[0].clientY, preventDefault: () => {} });
-    }
-
-    // ---- Snap-to-grid for the live timing floating widget ----
-    // Overrides the raw pixel position with the nearest grid multiple.
-    window._snapToGrid = function(x, y) {
-        return {
-            x: Math.round(x / SNAP_GRID) * SNAP_GRID,
-            y: Math.round(y / SNAP_GRID) * SNAP_GRID,
-        };
-    };
-
-    function observeLtWrapper() {
-        // Snap logic is handled directly in live-timing.js onDragEnd.
-        // This function is kept as a no-op so init() still calls it without error.
-    }
-
-    // ---- Mirror key values from left-panel to right-zone widgets ----
-    window._syncRightZoneWidgets = function() {
-        // Driver info
-        const driverNameEl = document.getElementById('currentDriverName');
-        const stintTimerEl = document.getElementById('stintTimerDisplay');
-        const dotEl        = document.getElementById('currentDriverDot');
-        if (driverNameEl) {
-            const wn = document.getElementById('wDriverName');
-            if (wn) wn.textContent = driverNameEl.textContent;
-        }
-        if (dotEl) {
-            const wd = document.getElementById('wDriverDot');
-            if (wd) wd.style.background = dotEl.style.background;
-        }
-        if (stintTimerEl) {
-            const wt = document.getElementById('wStintTimer');
-            if (wt) wt.textContent = stintTimerEl.textContent;
-        }
-        // Stint data
-        const targetEl = document.getElementById('strategyTargetStint');
-        if (targetEl) {
-            const wts = document.getElementById('wTargetStint');
-            if (wts) wts.textContent = targetEl.textContent;
-        }
-        const pitCountEl = document.getElementById('pitCountDisplay');
-        if (pitCountEl) {
-            const wpc = document.getElementById('wPitCount');
-            if (wpc) wpc.innerHTML = pitCountEl.innerHTML;
-        }
-        const statusEl = document.getElementById('pitStatusIndicator');
-        if (statusEl) {
-            const ws = document.getElementById('wStatus');
-            if (ws) ws.textContent = statusEl.textContent;
-        }
-        // Strategy outlook pills — mirror from remStintsText
-        const outlookEl = document.getElementById('remStintsText');
-        const wOutlook  = document.getElementById('wStrategyOutlook');
-        if (outlookEl && wOutlook) {
-            wOutlook.innerHTML = outlookEl.innerHTML;
-        }
-    };
-
-    // ---- Persist / restore collapsed state ----
-    function restoreCollapsedState() {
-        try {
-            const saved = JSON.parse(localStorage.getItem(WIDGET_COLLAPSED_KEY) || '{}');
-            Object.entries(saved).forEach(([id, collapsed]) => {
-                const el = document.getElementById(id);
-                if (!el) return;
-                if (collapsed) {
-                    el.classList.add('collapsed');
-                    const btn = el.querySelector('.widget-collapse-btn');
-                    if (btn) btn.textContent = '▸';
-                }
-            });
-        } catch(e) {}
-    }
-
-    // ---- Init ----
-    function init() {
-        updateWidgetAreaVisibility();
-        window.addEventListener('resize', updateWidgetAreaVisibility);
-        initWidgetDragReorder();
-        restoreCollapsedState();
-        observeLtWrapper();
-        // Apply saved layout template
-        try {
-            const saved = localStorage.getItem(LAYOUT_TPL_KEY);
-            if (saved && TEMPLATES[saved]) window.applyLayoutTemplate(saved);
-        } catch(e) {}
-        // Sync right zone every second during race
-        setInterval(() => {
-            if (document.getElementById('raceDashboard')?.classList.contains('hidden') === false) {
-                window._syncRightZoneWidgets();
-            }
-        }, 1000);
-    }
-
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
-    } else {
-        init();
-    }
-})();
 
 // ==========================================
 // ↕ DRIVER LIST DRAG-TO-REORDER

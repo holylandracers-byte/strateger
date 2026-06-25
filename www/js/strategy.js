@@ -15,16 +15,20 @@ window.updateDriversFromUI = function() {
     const SQUAD_LABELS = ['A','B','C','D'];
     const squadValues = realRows.map(row => row.querySelector('.squad-value')).filter(Boolean);
     const colorPickers = realRows.map(row => row.querySelector('.driver-color-picker')).filter(Boolean);
+    const staminaInputs = realRows.map(row => row.querySelector('.driver-stamina-input'));
     window.drivers = inputs.map((input, i) => {
         const existingColor = colorPickers[i]?.value ||
             ((window.drivers && window.drivers[i]) ? window.drivers[i].color : `hsl(${(i * 360 / inputs.length)}, 70%, 50%)`);
         const sqIdx = parseInt(squadValues[i]?.value) || 0;
+        // staminaMin: per-driver max stint in minutes. 0 = no personal limit.
+        const staminaMin = parseFloat(staminaInputs[i]?.value || '0') || 0;
         return {
             name: input.value || `${window.t('ltDriver')} ${i+1}`,
             isStarter: i === starterIdx,
             squad: SQUAD_LABELS[sqIdx] || 'A',
             squadIdx: sqIdx,
             color: existingColor,
+            staminaMin,
             totalTime: 0,
             stints: 0,
             logs: []
@@ -115,17 +119,31 @@ window.selectDriverFromSquad = function(squadLetter, currentTime, driverStats, c
 
 window.calculateStintDurations = function(config) {
     const raceMs = config.raceMs;
-    // Pit cycle duration is treated as entry + outlap together.
-    const pitTimeMs = config.pitTime * 1000;
-    const totalStints = config.stops + 1;
-    const totalPitTime = config.stops * pitTimeMs;
-    const totalNetDriveTime = raceMs - totalPitTime;
+    const pitTimeMs = (config.pitTime || 0) * 1000;
+
+    // Kart-change interval: organizer mandates a pit every N minutes.
+    // Compute number of mandatory stops from interval, then use that as the stop count.
+    let derivedStops = config.stops || 0;
+    if (config.kartChangeIntervalMin > 0) {
+        const intervalMs = config.kartChangeIntervalMin * 60000;
+        // Number of mandatory kart-change pits = floor(raceMs / intervalMs)
+        // minus 1 because the last segment doesn't need another change after it
+        const mandatoryChanges = Math.max(0, Math.floor(raceMs / intervalMs) - 1);
+        // Take the larger of user-entered stops or organizer-derived stops
+        derivedStops = Math.max(derivedStops, mandatoryChanges);
+    }
+
+    // NLE with no required stops: treat as single stint covering the full race
+    const totalStints = Math.max(1, derivedStops + 1);
+    const totalPitTime = derivedStops * pitTimeMs;
+    const totalNetDriveTime = Math.max(raceMs - totalPitTime, raceMs * 0.5);
 
     const closedStartMs = (config.closedStart || 0) * 60000;
     const closedEndMs = (config.closedEnd || 0) * 60000;
-    const minStintMs = Math.max(60000, config.minStint * 60000);
-    // Add 30s safety buffer above minimum so drivers can pit without penalty risk.
-    const safeMinStintMs = minStintMs + 30000;
+    // minStint 0 = no minimum (driver can do one lap and exit)
+    const minStintMs = config.minStint > 0 ? config.minStint * 60000 : 0;
+    const safeMinStintMs = minStintMs > 0 ? minStintMs + 30000 : 60000;
+    // maxStint 0 = unlimited — use fuel limit, per-driver stamina, or full race time
     const maxStintMs = config.maxStint > 0 ? config.maxStint * 60000 : raceMs;
     const fuelLimitMs = config.fuel > 0 ? config.fuel * 60000 : Infinity;
     
@@ -346,7 +364,7 @@ window.calculateStintDurations = function(config) {
         weatherPerStint.fill(liveRain ? 'heavy' : 'light');
     }
 
-    return { durations: rounded, weatherPerStint };
+    return { durations: rounded, weatherPerStint, derivedStops };
 };
 
 // Determine if a given time falls inside the squad window.
@@ -366,19 +384,20 @@ window.getScheduledSquad = function(dateTime, squadWindow, allSquadLabels) {
 
 window.calculateStrategyLogic = function(config) {
     const raceMs = config.raceMs || (config.duration * 3600000);
-    const pitTimeMs = config.pitTime * 1000;
-    const totalStints = config.stops + 1;
+    const pitTimeMs = (config.pitTime || 0) * 1000;
     const maxDriverTotalMs = (config.maxDriverTotal || 0) * 60000;
     const extendedConfig = { ...config, maxDriverTotalMs };
-    
+
     const durationResult = window.calculateStintDurations(config);
-    
+
     if (durationResult.error) {
         return { error: durationResult.error };
     }
-    
+
     const stintDurations = durationResult.durations;
     const weatherPerStint = durationResult.weatherPerStint || new Array(stintDurations.length).fill('dry');
+    // Use derivedStops from duration calc (may be higher than config.stops when kartChangeInterval is set)
+    const totalStints = stintDurations.length;
 
     console.log(`📋 Planned stint durations: ${stintDurations.map(d => (d/60000).toFixed(1) + 'm').join(', ')}`);
     
@@ -471,13 +490,21 @@ window.calculateStrategyLogic = function(config) {
         // Update consecutive count
         consecutiveCount = (selectedIdx === currentDriverIdx) ? consecutiveCount + 1 : 1;
         currentDriverIdx = selectedIdx;
-        driverStats[selectedIdx].driven += duration;
+
+        // NLE: apply per-driver stamina cap if global maxStint is 0
+        let actualDuration = duration;
+        if (!config.maxStint || config.maxStint === 0) {
+            const staminaMs = (window.drivers[selectedIdx]?.staminaMin || 0) * 60000;
+            if (staminaMs > 0) actualDuration = Math.min(actualDuration, staminaMs);
+        }
+
+        driverStats[selectedIdx].driven += actualDuration;
         driverStats[selectedIdx].stintCount++;
         
         const start = new Date(currentTime);
-        const end = new Date(start.getTime() + duration);
+        const end = new Date(start.getTime() + actualDuration);
         driverStats[selectedIdx].lastStintEnd = new Date(end);
-        
+
         const stintWeather = weatherPerStint[i] || 'dry';
         timeline.push({
             type: 'stint',
@@ -490,11 +517,11 @@ window.calculateStrategyLogic = function(config) {
             squadModeActive: activeSquad !== null,
             activeSquad: activeSquad,
             weather: stintWeather,
-            start, end, startTime: start, endTime: end, duration
+            start, end, startTime: start, endTime: end, duration: actualDuration
         });
-        
+
         currentTime = end;
-        accumulatedRaceTime += duration;
+        accumulatedRaceTime += actualDuration;
         
         if (!isLast) {
             const pitEnd = new Date(currentTime.getTime() + pitTimeMs);
@@ -535,11 +562,33 @@ window.scheduleRunSim = function(delayMs) {
 
 window.runSim = function() {
     const durationHours = parseFloat(document.getElementById('raceDuration').value) || 12;
-    const reqStops = parseInt(document.getElementById('reqPitStops').value) || 15;
-    const minStintMin = parseFloat(document.getElementById('minStint').value) || 10;
-    const maxStintMin = parseFloat(document.getElementById('maxStint').value) || 45;
-    // Input value is full pit cycle (entry + outlap).
-    const pitTimeSec = parseInt(document.getElementById('minPitTime').value) || 120;
+
+    // Read raw string values so we can distinguish "empty/zero" from "filled"
+    const _reqStopsRaw  = document.getElementById('reqPitStops')?.value?.trim();
+    const _maxStintRaw  = document.getElementById('maxStint')?.value?.trim();
+    const _pitTimeRaw   = document.getElementById('minPitTime')?.value?.trim();
+
+    const reqStops    = parseInt(_reqStopsRaw) || 0;
+    const minStintMin = parseFloat(document.getElementById('minStint').value) || 0;
+    const maxStintMin = parseFloat(_maxStintRaw) || 0;
+    // 0 = no minimum pit time (driver swaps as fast as possible — non-pro format)
+    const pitTimeSec  = parseInt(_pitTimeRaw) || 0;
+
+    // No Limit Endurance: any of the 3 key params is zero/missing
+    // sprint ≤ 2 h with all params filled → 'sprint'
+    // all params filled, duration > 2 h  → 'endurance'
+    // any param missing                  → 'noLimitEndurance'
+    const _hasStops   = reqStops > 0;
+    const _hasMaxSt   = maxStintMin > 0;
+    const _hasPitT    = pitTimeSec > 0;
+    const _isNLE      = !_hasStops || !_hasMaxSt || !_hasPitT;
+    const raceType    = _isNLE ? 'noLimitEndurance' : (durationHours <= 2 ? 'sprint' : 'endurance');
+
+    // Sync per-driver stamina visibility (show when maxStint = 0)
+    if (typeof window._syncStaminaVisibility === 'function') window._syncStaminaVisibility();
+    // Sync NLE section visibility (auto-show when any key param is 0)
+    if (typeof window._syncNLESection === 'function') window._syncNLESection();
+
     const fuelMin = parseFloat(document.getElementById('fuelTime').value) || 0;
     const closedStartMin = parseFloat(document.getElementById('pitClosedStart').value) || 0;
     const closedEndMin = parseFloat(document.getElementById('pitClosedEnd').value) || 0;
@@ -591,34 +640,40 @@ window.runSim = function() {
     const raceMs = durationHours * 3600000;
     const pitTimeMs = pitTimeSec * 1000;
     const totalPitTimeMs = reqStops * pitTimeMs;
-    const totalNetDriveTime = raceMs - totalPitTimeMs; 
+    const totalNetDriveTime = raceMs - totalPitTimeMs;
 
-    const reqExtraPits = parseInt(document.getElementById('reqExtraPits')?.value || '0') || 0;
-    const minPitLapSec = parseInt(document.getElementById('minPitLapSec')?.value || '0') || 0;
+    // NLE extra pits: organizer-mandated kart-change pits, only relevant in noLimitEndurance
+    const reqExtraPits   = parseInt(document.getElementById('reqExtraPits')?.value  || '0') || 0;
+    const minPitLapSec   = parseInt(document.getElementById('minPitLapSec')?.value  || '0') || 0;
+    // Kart-change interval: organizer tells teams the frequency (minutes). 0 = not set.
+    const kartChangeIntervalMin = parseFloat(document.getElementById('kartChangeInterval')?.value || '0') || 0;
 
     const config = {
         duration: durationHours,
-        raceMs: raceMs,
+        raceMs,
         stops: reqStops,
-        reqStops: reqStops,
+        reqStops,
         minStint: minStintMin,
-        maxStint: maxStintMin,
-        pitTime: pitTimeSec,
+        maxStint: maxStintMin,   // 0 = unlimited — engine stretches by fuel/stamina
+        pitTime: pitTimeSec,     // 0 = as-fast-as-possible swap (non-pro format)
         fuel: fuelMin,
         closedStart: closedStartMin,
         closedEnd: closedEndMin,
-        useSquads: useSquads,
-        numSquads: numSquads,
-        squadWindowStart: squadWindowStart,
-        squadWindowEnd: squadWindowEnd,
-        allowDouble: allowDouble,
-        maxConsecutive: maxConsecutive,
+        useSquads,
+        numSquads,
+        squadWindowStart,
+        squadWindowEnd,
+        allowDouble,
+        maxConsecutive,
         minDriverTotal: minDriverMin,
         maxDriverTotal: maxDriverMin,
-        totalNetDriveTime: totalNetDriveTime,
+        totalNetDriveTime,
         totalPitTime: totalPitTimeMs,
-        reqExtraPits: reqExtraPits,
-        minPitLapSec: minPitLapSec
+        raceType,                // 'sprint' | 'endurance' | 'noLimitEndurance'
+        // NLE-specific
+        reqExtraPits,
+        minPitLapSec,
+        kartChangeIntervalMin,   // organizer kart-change frequency (min). 0 = disabled.
     };
 
     window.config = config;
@@ -683,7 +738,9 @@ window.runSim = function() {
     const avgStint = stints.length > 0 ? (actualDriveTime / stints.length / 60000).toFixed(1) : 0;
 
     // === Check if average stint is within bounds ===
-    const isAverageStintValid = avgStint >= minStintMin && avgStint <= maxStintMin;
+    // maxStint: 0 means unlimited (no-limit endurance) — skip the upper bound check.
+    const isAverageStintValid = (minStintMin <= 0 || avgStint >= minStintMin) &&
+                                (maxStintMin <= 0 || avgStint <= maxStintMin);
     const invalidStrategyWarning = document.getElementById('invalidStrategyWarning');
     
     if (!isAverageStintValid) {
@@ -736,17 +793,17 @@ window.runSim = function() {
         const pitMin = (actualPitTime/60000).toFixed(0);
         const totalMin = (totalRaceTime/60000).toFixed(0);
         const totalH = (totalRaceTime/3600000).toFixed(2);
+        const modeTag = { sprint: '⚡', endurance: '🏁', noLimitEndurance: '∞' }[config.raceType] || '';
 
         if (isRTL) {
-            // RTL: wrap every numeric+unit chunk in <bdi> so BiDi doesn't reorder them
             resEl.innerHTML = `
-                <span dir="rtl">✅ <b><bdi>${stints.length} ${t('stints')}</bdi></b> | ${t('avgStint')}: <bdi>${avgStint}${um}</bdi></span><br>
+                <span dir="rtl">${modeTag} ✅ <b><bdi>${stints.length} ${t('stints')}</bdi></b> | ${t('avgStint')}: <bdi>${avgStint}${um}</bdi></span><br>
                 <span dir="rtl">🏁 ${t('driveNoun')}: <bdi>${driveMin}${um}</bdi> + ${t('pitNoun')}: <bdi>${pitMin}${um}</bdi> = <b><bdi>${totalMin}${um}</bdi></b> (<bdi>${totalH}${uh}</bdi>)</span>
                 ${pitClosedInfo ? `<br><span dir="ltr">${pitClosedInfo.trim()}</span>` : ''}${squadInfo ? `<br><span dir="ltr">${squadInfo.trim()}</span>` : ''}
             `;
         } else {
             resEl.innerHTML = `
-                ✅ <b>${stints.length} ${t('stints')}</b> | ${t('avgStint')}: ${avgStint}${um}<br>
+                ${modeTag} ✅ <b>${stints.length} ${t('stints')}</b> | ${t('avgStint')}: ${avgStint}${um}<br>
                 🏁 ${t('driveNoun')}: ${driveMin}${um} + ${t('pitNoun')}: ${pitMin}${um} = <b>${totalMin}${um}</b> (${totalH}${uh})
                 ${pitClosedInfo}${squadInfo}
             `;
@@ -805,6 +862,11 @@ window.initRace = function() {
     window.state.isFinished = false; // Reset finish flag from any previous race
     window.state.startTime = startTime;
     window.state.stintStart = startTime;
+    // Snap raceStartTime to the ACTUAL millisecond start so the strategy timeline
+    // (which is built from raceStartTime in calculateStrategyLogic) stays aligned
+    // with the race clock. Without this the strategy would be off by up to 59s
+    // because runSim truncates start-time seconds to :00.
+    window.raceStartTime = new Date(startTime).toISOString();
     window.state.pitCount = 0;
     window.state.extraPitCount = 0;   // reset extra pit counter
     window.state.isInPit = false;
@@ -858,7 +920,7 @@ window.initRace = function() {
     document.getElementById('previewScreen').classList.add('hidden');
     document.getElementById('raceDashboard').classList.remove('hidden');
 
-    // Init draggable panels and resizer after dashboard is visible
+    // Init draggable panels + the raceInfoPanel/raceControlDock height-split resizer
     if (typeof window.initDashboardDrag === 'function') window.initDashboardDrag();
     if (typeof window.initDashPanelResizer === 'function') window.initDashPanelResizer();
     // Init horizontal panel pinning (only active in landscape/wide layout)
@@ -913,7 +975,13 @@ window.initRace = function() {
 
 window.recalculateTimelineTimes = function() {
     if (!window.previewData?.timeline) return;
-    let currentTime = new Date(window.previewData.startTime);
+    // Once the race is actually running, anchor the timeline to the real start time
+    // instead of the pre-race planned start — they can differ by the lag between
+    // planning and the actual green flag, and during a live race the real one is ground truth.
+    const anchor = (window.state && window.state.isRunning && window.state.startTime)
+        ? window.state.startTime
+        : window.previewData.startTime;
+    let currentTime = new Date(anchor);
     window.previewData.timeline.forEach(item => {
         item.startTime = new Date(currentTime);
         item.endTime = new Date(currentTime.getTime() + item.duration);
