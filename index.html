@@ -704,6 +704,17 @@
                     </button>
                 </div>
 
+                <!-- Demo + Contact Us — always visible here, not just in header (header copies are sm+ only) -->
+                <div class="flex gap-2">
+                    <button onclick="window.showDemoConfig()" class="flex-1 bg-gradient-to-r from-ice/20 to-blue-500/20 hover:from-ice/30 hover:to-blue-500/30 text-ice text-xs font-bold py-2 rounded-lg border border-ice/40 hover:border-ice/60 transition transform active:scale-95 flex items-center justify-center gap-1.5" title="Run Demo Race">
+                        <i class="fas fa-play text-xs"></i>
+                        <span data-i18n="runDemo">Demo</span>
+                    </button>
+                    <button onclick="window.openContactUsModal()" class="flex-1 bg-navy-800 hover:bg-navy-700 text-gray-300 hover:text-white text-xs font-bold py-2 rounded-lg border border-gray-700 hover:border-gray-500 transition transform active:scale-95 flex items-center justify-center gap-1.5" title="Contact Us">
+                        📝 <span data-i18n="contactUs">Contact Us</span>
+                    </button>
+                </div>
+
                 <!-- Race Rules PDF (Pro) -->
                 <button onclick="window.openRulesPdfModalGated()" id="rulesPdfBtn" class="w-full bg-navy-800/60 border border-gray-700/40 hover:border-purple-500/50 hover:bg-purple-900/10 hover:text-purple-300 text-gray-500 font-medium py-2 rounded-lg transition text-xs flex items-center justify-center gap-2 active:scale-95 transform">
                     <i class="fas fa-file-pdf text-[11px]"></i>
