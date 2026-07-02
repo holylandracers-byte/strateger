@@ -3422,6 +3422,9 @@ window._applyHeroState = function() {
         icon && icon.classList.replace('fa-chevron-down', 'fa-chevron-up');
         if (label) label.setAttribute('data-i18n', 'heroCollapse'), label.textContent = t('heroCollapse') || 'Hide';
     }
+    if (typeof window._refreshWalkthroughStep === 'function') {
+        window._refreshWalkthroughStep();
+    }
 };
 
 window.setQuickMode = function(mode) {

@@ -14,6 +14,9 @@
     let _steps = [];
     let _timeBoostInterval = null;
     let _resizeObserver = null;
+    let _highlightResizeObserver = null;
+    let _highlightMutationObserver = null;
+    let _repositionTimer = null;
 
     const PRIMARY_LANGS = ['en', 'he', 'fr', 'pt'];
 
@@ -30,11 +33,15 @@
             target: '#setupHeroCard',
             titleKey: 'wtTitleHero',
             descKey: 'wtDescHero',
-            before: () => scrollToEl('#setupHeroCard')
+            before: () => {
+                ensureHeroExpanded();
+                scrollToEl('#setupHeroCard');
+            }
         },
         {
             id: 'rules',
             target: '#raceDuration',
+            wrap: 'collapsible',
             titleKey: 'wtTitleRules',
             descKey: 'wtDescRules',
             before: () => {
@@ -46,6 +53,7 @@
         {
             id: 'liveTiming',
             target: '#liveTimingUrl',
+            wrap: 'collapsible',
             titleKey: 'wtTitleLT',
             descKey: 'wtDescLT',
             before: () => {
@@ -56,6 +64,7 @@
         {
             id: 'drivers',
             target: '#driversList',
+            wrap: 'collapsible',
             titleKey: 'wtTitleDrivers',
             descKey: 'wtDescDrivers',
             before: () => {
@@ -65,10 +74,10 @@
         },
         {
             id: 'preview',
-            target: '#wtPreviewBtn',
+            target: '#setupActionCard',
             titleKey: 'wtTitlePreview',
             descKey: 'wtDescPreview',
-            before: () => scrollToEl('#wtPreviewBtn')
+            before: () => scrollToEl('#setupActionCard')
         },
         {
             id: 'simulation',
@@ -92,6 +101,7 @@
         {
             id: 'strategy',
             target: '#remainingStintsPanel',
+            wrap: 'parent-panel',
             titleKey: 'wtTitleStrategy',
             descKey: 'wtDescStrategy',
             before: () => {
@@ -103,9 +113,14 @@
         {
             id: 'liveTimingRace',
             target: '#liveTimingWidgetWrapper',
+            wrap: 'self',
             titleKey: 'wtTitleLTRace',
             descKey: 'wtDescLTRace',
-            before: () => scrollToEl('#liveTimingWidgetWrapper')
+            before: () => {
+                const wrapper = document.getElementById('liveTimingWidgetWrapper');
+                if (wrapper) wrapper.classList.remove('hidden');
+                scrollToEl('#liveTimingWidgetWrapper');
+            }
         },
         {
             id: 'pit',
@@ -129,11 +144,71 @@
         return (window.t && window.t(key)) || key;
     }
 
+    function ensureHeroExpanded() {
+        if (window._heroCollapsed && typeof window.toggleHero === 'function') {
+            window.toggleHero();
+        } else {
+            const body = document.getElementById('heroBody');
+            if (body) body.classList.remove('hidden');
+        }
+    }
+
     function expandCollapsible(fromSelector) {
         const el = document.querySelector(fromSelector);
         if (!el) return;
         const section = el.closest('.collapsible-section');
         if (section) section.classList.remove('collapsed');
+    }
+
+    /** Resolve the outer container to highlight (full section, not inner input). */
+    function resolveHighlightEl(step) {
+        const inner = step.target ? document.querySelector(step.target) : null;
+        if (!inner) return null;
+
+        if (step.target === '#setupHeroCard') return inner;
+
+        switch (step.wrap) {
+            case 'collapsible': {
+                const section = inner.closest('.collapsible-section');
+                return section || inner;
+            }
+            case 'action-card': {
+                return inner.closest('.rounded-xl.border') || inner.closest('[class*="rounded-xl"]') || inner.parentElement?.parentElement || inner;
+            }
+            case 'parent-panel': {
+                return inner.closest('#raceInfoPanel') || inner.parentElement || inner;
+            }
+            default:
+                return inner;
+        }
+    }
+
+    function isElementVisible(el) {
+        if (!el || el.classList.contains('hidden')) return false;
+        const rect = el.getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0;
+    }
+
+    function getElementRect(el) {
+        const rect = el.getBoundingClientRect();
+        // Include visible descendants when wrapper rect is suspiciously small
+        if (rect.height < 40 && el.querySelector) {
+            const kids = el.querySelectorAll(':scope > *');
+            let top = rect.top, left = rect.left, bottom = rect.bottom, right = rect.right;
+            kids.forEach(k => {
+                if (k.classList?.contains('hidden')) return;
+                const kr = k.getBoundingClientRect();
+                if (kr.width <= 0 || kr.height <= 0) return;
+                top = Math.min(top, kr.top);
+                left = Math.min(left, kr.left);
+                bottom = Math.max(bottom, kr.bottom);
+                right = Math.max(right, kr.right);
+            });
+            if (bottom > top && right > left) {
+                return { top, left, width: right - left, height: bottom - top, bottom, right };
+            }
+        }
+        return rect;
     }
 
     function scrollToEl(selector) {
@@ -255,26 +330,64 @@
 
     // ── Spotlight positioning ──
 
-    function positionSpotlight(targetSelector) {
+    function disconnectHighlightObservers() {
+        if (_highlightResizeObserver) {
+            _highlightResizeObserver.disconnect();
+            _highlightResizeObserver = null;
+        }
+        if (_highlightMutationObserver) {
+            _highlightMutationObserver.disconnect();
+            _highlightMutationObserver = null;
+        }
+        if (_repositionTimer) {
+            clearTimeout(_repositionTimer);
+            _repositionTimer = null;
+        }
+    }
+
+    function observeHighlightEl(el, step) {
+        disconnectHighlightObservers();
+        if (!el || !window.ResizeObserver) return;
+
+        _highlightResizeObserver = new ResizeObserver(() => {
+            positionSpotlightForStep(step);
+        });
+        _highlightResizeObserver.observe(el);
+
+        // Also watch collapse-body transitions inside the wrapper
+        el.querySelectorAll('.collapse-body, #heroBody').forEach(body => {
+            _highlightResizeObserver.observe(body);
+        });
+
+        _highlightMutationObserver = new MutationObserver(() => {
+            scheduleSpotlightRefresh(step, [50, 320]);
+        });
+        _highlightMutationObserver.observe(el, {
+            attributes: true,
+            attributeFilter: ['class', 'style'],
+            subtree: true
+        });
+    }
+
+    function scheduleSpotlightRefresh(step, delays) {
+        delays.forEach(ms => {
+            setTimeout(() => positionSpotlightForStep(step), ms);
+        });
+    }
+
+    function positionSpotlightForStep(step) {
+        if (!step || step.center || !step.target) return;
+        const el = resolveHighlightEl(step);
+        if (!el || !isElementVisible(el)) return;
+        applySpotlightRect(getElementRect(el));
+    }
+
+    function applySpotlightRect(rect) {
         const spotlight = document.getElementById('wtSpotlight');
         const ring = document.getElementById('wtSpotlightRing');
-        if (!spotlight || !ring) return;
+        if (!ring) return;
 
-        if (!targetSelector) {
-            spotlight.classList.add('hidden');
-            ring.classList.add('hidden');
-            return;
-        }
-
-        const el = document.querySelector(targetSelector);
-        if (!el || el.offsetParent === null && !el.getBoundingClientRect().width) {
-            spotlight.classList.add('hidden');
-            ring.classList.add('hidden');
-            return;
-        }
-
-        const rect = el.getBoundingClientRect();
-        const pad = 8;
+        const pad = 10;
         const top = Math.max(0, rect.top - pad);
         const left = Math.max(0, rect.left - pad);
         const width = rect.width + pad * 2;
@@ -288,6 +401,29 @@
         ring.classList.remove('hidden');
 
         positionTooltip(rect, width, height);
+    }
+
+    function positionSpotlight(step) {
+        const spotlight = document.getElementById('wtSpotlight');
+        const ring = document.getElementById('wtSpotlightRing');
+        if (!spotlight || !ring) return;
+
+        if (!step || !step.target) {
+            spotlight.classList.add('hidden');
+            ring.classList.add('hidden');
+            disconnectHighlightObservers();
+            return;
+        }
+
+        const el = resolveHighlightEl(step);
+        if (!el || !isElementVisible(el)) {
+            spotlight.classList.add('hidden');
+            ring.classList.add('hidden');
+            return;
+        }
+
+        applySpotlightRect(getElementRect(el));
+        observeHighlightEl(el, step);
     }
 
     function positionTooltip(targetRect, tw, th) {
@@ -367,9 +503,12 @@
         if (tooltip) tooltip.style.transform = '';
 
         if (step.center || !step.target) {
+            disconnectHighlightObservers();
             positionCenterTooltip();
         } else {
-            setTimeout(() => positionSpotlight(step.target), 350);
+            scheduleSpotlightRefresh(step, [80, 350, 450]);
+            const el = resolveHighlightEl(step);
+            if (el) observeHighlightEl(el, step);
         }
 
         if (actionBtn) {
@@ -407,10 +546,18 @@
         const onReposition = () => {
             const step = _steps[_stepIndex];
             if (!step || step.center || !step.target) return;
-            positionSpotlight(step.target);
+            positionSpotlightForStep(step);
         };
         window.addEventListener('resize', onReposition);
         window.addEventListener('scroll', onReposition, true);
+        // Reposition when user toggles hero or collapsible sections during tour
+        document.addEventListener('click', (e) => {
+            if (!document.getElementById('walkthroughOverlay')?.classList.contains('hidden')) {
+                if (e.target.closest('.collapsible-section h2, .setup-hero, [onclick*="toggleHero"]')) {
+                    scheduleSpotlightRefresh(_steps[_stepIndex], [50, 320]);
+                }
+            }
+        }, true);
         _resizeObserver = { disconnect: () => {
             window.removeEventListener('resize', onReposition);
             window.removeEventListener('scroll', onReposition, true);
@@ -464,11 +611,14 @@
 
     window._refreshWalkthroughStep = function () {
         if (document.getElementById('walkthroughOverlay')?.classList.contains('hidden')) return;
-        showStep(_stepIndex);
+        const step = _steps[_stepIndex];
+        if (!step) return;
+        scheduleSpotlightRefresh(step, [0, 80, 320]);
     };
 
     function finishWalkthrough() {
         hideWalkthroughUI();
+        disconnectHighlightObservers();
         window.stopWalkthroughTimeBoost();
         window._walkthroughMode = false;
         localStorage.setItem(DONE_KEY, 'true');

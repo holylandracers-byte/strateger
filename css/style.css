@@ -2006,8 +2006,10 @@ body.wt-active {
     border: 2px solid rgba(34, 211, 238, 0.85);
     border-radius: 12px;
     box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.72), 0 0 24px rgba(34, 211, 238, 0.35);
-    transition: top 0.25s ease, left 0.25s ease, width 0.25s ease, height 0.25s ease;
+    transition: top 0.28s ease, left 0.28s ease, width 0.28s ease, height 0.28s ease;
     z-index: 151;
+    box-sizing: border-box;
+    pointer-events: none;
 }
 .wt-tooltip {
     position: fixed;
