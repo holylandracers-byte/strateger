@@ -242,7 +242,7 @@ body:has(#qualifyingDashboard:not(.hidden)) {
     min-height: 0;
 }
 
-/* Portrait: raceInfoPanel height driven by CSS var (set by resizer JS) */
+/* Portrait: raceInfoPanel height driven by CSS var (set by resizer JS) — overridden below on narrow portrait */
 #racePanelsWrapper { display: flex !important; flex-direction: column !important; }
 #raceInfoPanel {
     flex: 0 0 var(--dash-info-pct, 60%) !important;
@@ -255,29 +255,97 @@ body:has(#qualifyingDashboard:not(.hidden)) {
     overflow-y: auto !important;
 }
 
-/* Portrait tablet: sticky pit dock, scrollable info above */
-@media (min-width: 600px) and (max-width: 1023px) and (orientation: portrait) {
+/* Phone + tablet portrait: ONE scrollable column so every panel is reachable */
+@media (max-width: 1023px) and (orientation: portrait) {
     #racePanelsWrapper {
-        flex-direction: column !important;
+        flex: 1 1 0 !important;
         min-height: 0 !important;
-    }
-    #raceInfoPanel {
-        flex: 1 1 auto !important;
-        min-height: 0 !important;
-        max-height: none !important;
+        overflow-x: hidden !important;
         overflow-y: auto !important;
         -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+        padding-bottom: max(8px, env(safe-area-inset-bottom));
+    }
+    #raceInfoPanel {
+        flex: none !important;
+        width: 100% !important;
+        height: auto !important;
+        max-height: none !important;
+        min-height: 0 !important;
+        overflow: visible !important;
     }
     #raceControlDock {
-        flex: 0 0 auto !important;
-        position: sticky;
-        bottom: 0;
-        z-index: 15;
-        margin-top: auto;
-        box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.45);
-        border-top: 1px solid rgba(34, 211, 238, 0.25) !important;
-        padding-bottom: max(8px, env(safe-area-inset-bottom)) !important;
+        flex: none !important;
+        width: 100% !important;
+        height: auto !important;
+        min-height: 0 !important;
+        overflow: visible !important;
+        position: static !important;
+        box-shadow: none !important;
+        margin-top: 0 !important;
+        padding-bottom: max(12px, env(safe-area-inset-bottom)) !important;
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 8px !important;
     }
+    #raceControlDock > #pitActionGroup {
+        margin-top: 0 !important;
+    }
+    #dashPanelResizer {
+        display: none !important;
+    }
+    /* Live timing: compact — leave room for stint/strategy/pit below */
+    #raceInfoPanel #liveTimingWidgetWrapper {
+        height: auto !important;
+        max-height: min(36vh, 280px) !important;
+        min-height: 100px !important;
+    }
+    #liveTimingWidgetWrapper .lt-table-scroll {
+        max-height: min(110px, 18vh) !important;
+        flex: none !important;
+    }
+    /* Driver stats: flow with page scroll, no nested trap */
+    .stats-table-scroll {
+        max-height: none !important;
+        overflow: visible !important;
+    }
+}
+
+/* Short landscape phones: same unified scroll (split leaves no room) */
+@media (max-width: 767px) and (orientation: landscape) {
+    #racePanelsWrapper {
+        flex: 1 1 0 !important;
+        min-height: 0 !important;
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch;
+        flex-direction: column !important;
+    }
+    #raceInfoPanel,
+    #raceControlDock {
+        flex: none !important;
+        height: auto !important;
+        max-height: none !important;
+        overflow: visible !important;
+    }
+    #raceControlDock > #pitActionGroup {
+        margin-top: 0 !important;
+    }
+    #dashPanelResizer {
+        display: none !important;
+    }
+    #raceInfoPanel #liveTimingWidgetWrapper {
+        height: auto !important;
+        max-height: min(45vh, 220px) !important;
+    }
+    .stats-table-scroll {
+        max-height: none !important;
+        overflow: visible !important;
+    }
+}
+
+/* Portrait tablet (600–1023): sticky pit dock when side-by-side NOT active — kept for wide portrait only if needed; unified scroll above wins */
+@media (min-width: 600px) and (max-width: 1023px) and (orientation: portrait) {
     #pitEntryBtn {
         min-height: 52px;
         font-size: 1.125rem;
@@ -552,6 +620,121 @@ header {
     background-color: var(--navy-900);
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
     width: 100%;
+}
+
+/* Mobile / narrow: compact header — logo + team + chips + menu */
+@media (max-width: 767px) {
+    :root { --header-h: 44px; }
+
+    header.header-bar {
+        padding: 4px 6px;
+        gap: 4px;
+        min-height: var(--header-h);
+    }
+
+    /* Left: logo only — lang & login moved to ⋮ menu */
+    .header-left {
+        gap: 0 !important;
+    }
+    .header-lang-desktop {
+        display: none !important;
+    }
+    /* Logged-in avatar only; login button lives in ⋮ menu */
+    .header-auth-desktop #googleSignInBtn {
+        display: none !important;
+    }
+    .header-auth-desktop #googleUserDisplay:not(.hidden) {
+        display: flex !important;
+        margin-left: 0 !important;
+        padding: 2px 4px !important;
+        min-height: 28px !important;
+    }
+    .header-logo-link svg {
+        width: 26px;
+        height: 26px;
+    }
+
+    /* Center: team name gets priority */
+    .header-center {
+        flex: 1 1 auto;
+        min-width: 0;
+        padding: 0 4px;
+    }
+    .header-center .team-identity-input {
+        font-size: 0.8125rem;
+        line-height: 1.2;
+        padding-top: 1px;
+        padding-bottom: 1px;
+    }
+    #headerTeamLogoImg {
+        width: 1.25rem !important;
+        height: 1.25rem !important;
+    }
+
+    /* Right: race chips scroll horizontally, menu stays fixed */
+    .header-right {
+        flex: 0 1 auto;
+        max-width: 46vw;
+        gap: 2px;
+    }
+    .header-race-chips {
+        flex: 1 1 auto;
+        min-width: 0;
+        max-width: calc(46vw - 40px);
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+        mask-image: linear-gradient(to right, transparent 0, #000 6px, #000 calc(100% - 10px), transparent 100%);
+    }
+    .header-race-chips::-webkit-scrollbar {
+        display: none;
+    }
+
+    /* Icon-only chips during race */
+    .header-chip {
+        min-width: 34px !important;
+        min-height: 34px !important;
+        width: 34px;
+        height: 34px;
+        padding: 0 !important;
+        justify-content: center;
+        border-radius: 9999px;
+    }
+    .header-chip .header-chip-label {
+        display: none !important;
+    }
+    .header-chip i {
+        margin: 0 !important;
+        font-size: 0.875rem;
+    }
+    #proStatusBtn.header-chip {
+        width: auto;
+        min-width: 34px !important;
+        padding: 0 8px !important;
+    }
+    #proStatusBtn .header-chip-label {
+        display: inline !important;
+        font-size: 9px;
+    }
+
+    .header-overflow-wrap button {
+        width: 34px;
+        height: 34px;
+        min-width: 34px !important;
+        min-height: 34px !important;
+    }
+
+    /* Logged-in: hide mobile login row */
+    body:has(#googleUserDisplay:not(.hidden)) #googleSignInMobileBtn {
+        display: none;
+    }
+}
+
+.scrollbar-none {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+    display: none;
 }
 
 /* ==================== WIDE SCREEN SUPPORT ==================== */
@@ -1285,10 +1468,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
         max-width: none !important;
     }
     
-    /* Header buttons: smaller padding for tight fit */
-    header button {
-        min-height: 36px;
-        min-width: 36px;
+    /* Header buttons: compact on small phones (detailed rules in 767px block) */
+    header.header-bar button:not(#pitEntryBtn) {
+        min-height: 34px;
+        min-width: 34px;
     }
     
     /* Preview footer: wrap buttons */
@@ -2836,16 +3019,15 @@ body.wt-active {
 
 /* ── Global touch-target floor for all action buttons on mobile ── */
 @media (max-width: 767px) {
-    /* Any tappable button in the race dashboard gets min 44 px height */
-    #raceControlDock button,
-    #pitModal button,
-    #pitInlineDock button,
-    header button {
-        min-height: 44px;
-        min-width: 44px;
+    /* Header buttons: compact icon targets on mobile (not full 44px bar) */
+    header button,
+    #headerOverflowMenu button {
+        min-height: 34px;
+        min-width: 34px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
     }
-
-    /* Pit entry / exit CTAs: larger touch area, clear visual hierarchy */
     #pitEntryBtn {
         min-height: 56px !important;
         font-size: 1.1rem !important;
@@ -2879,14 +3061,19 @@ body.wt-active {
         font-size: 2rem !important;
     }
 
-    /* Header buttons: ensure consistent size */
-    header button,
+    #raceControlDock button,
+    #pitModal button,
+    #pitInlineDock button {
+        min-height: 44px;
+        min-width: 44px;
+    }
+
+    /* Header buttons: ensure consistent size in overflow menu */
     #headerOverflowMenu button {
         min-height: 40px;
-        min-width: 40px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
+        min-width: auto;
+        width: 100%;
+        justify-content: flex-start;
     }
 
     /* Bottom-dock control row: give each action button breathing room */

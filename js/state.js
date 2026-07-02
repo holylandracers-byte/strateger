@@ -472,18 +472,26 @@ window.translations = {
         wtTitleDrivers: "Drivers",
         wtDescDrivers: "Add your driver pool, pick who starts, and assign squads for night shifts. Minimum 2 drivers required.",
         wtTitlePreview: "Strategy Preview",
-        wtDescPreview: "See the full stint timeline before the race. Drag to reorder, adjust durations, or save to the cloud.",
+        wtDescPreview: "The full stint timeline before the race — each bar is a driver shift. You can drag to reorder or adjust durations.",
         wtTitleSim: "Guided Simulation",
-        wtDescSim: "Launch a sprint demo with simulated live timing. Time runs ~90× faster so you can watch strategy update in seconds.",
+        wtDescSim: "A 6-hour endurance demo with simulated live timing. The clock ticks briefly, then jumps forward hours between stints to show pit stops and strategy updates.",
         wtStartSim: "▶ Start Simulation",
-        wtTitleRaceTimer: "Race Clock",
-        wtDescRaceTimer: "Elapsed or remaining race time. Tap to switch modes. During the tour, time accelerates so you see the race progress quickly.",
+        wtTitleRaceTimer: "6-Hour Race Clock",
+        wtDescRaceTimer: "A real endurance race — 6 hours on the clock. Click Next to watch a few seconds tick, then we'll skip ahead through the race.",
+        wtTitleTimeSkip: "Fast-Forward",
+        wtDescTimeSkip1: "In a 6-hour race, hours pass between driver changes. We jump +2h 30m ahead — the clock and stint timer update instantly.",
+        wtDescTimeSkip2: "Another +1h 30m forward — now deep into the race. The live timing grid reflects the later stage.",
+        wtSkipToast: "{delta} — skipping ahead in the race",
+        wtTitleStintDriver: "Stint & Driver",
+        wtDescStintDriver: "Mid-race: current driver, stint timer (~25–55 min stints), and progress bar. Click Next for a short live tick.",
         wtTitleStrategy: "Strategy Outlook",
-        wtDescStrategy: "Live pills show remaining stints. If the plan breaks after actual stops, you'll see IMPOSSIBLE or ADD STOP warnings here.",
+        wtDescStrategy: "Live pills show remaining stints for the rest of this 6-hour race. After each pit, times recalculate from actual stops.",
+        wtTitleLivePreview: "Updated Plan",
+        wtDescLivePreview: "▶ PLAN after a pit stop: completed stints show real durations, future stints are redistributed across the remaining hours.",
         wtTitleLTRace: "Live Timing Grid",
-        wtDescLTRace: "Your dedicated timing space — scrolls inside its panel without covering pit buttons. Collapse the table (📋) when you only need your row.",
+        wtDescLTRace: "Simulated leaderboard late in the race. Collapse the table (📋) when you only need your row.",
         wtTitlePit: "Pit Stop",
-        wtDescPit: "ENTER PIT when it's time. Strateger recalculates remaining stints from actual timestamps after each stop.",
+        wtDescPit: "Demo pit stop: entry, minimum pit time, exit, and driver swap — then the 6-hour plan recalculates.",
         wtTitleDone: "You're Ready!",
         wtDescDone: "Set up your real race, connect live timing, and go. Replay this guide anytime from the Guide button in the header.",
         wtFinishedToast: "Tour complete — good luck in the race!",
@@ -659,18 +667,26 @@ window.translations = {
         wtTitleDrivers: "נהגים",
         wtDescDrivers: "הוסף את מאגר הנהגים, בחר מי מתחיל, והקצה חוליות למשמרות לילה. נדרשים לפחות 2 נהגים.",
         wtTitlePreview: "תצוגה מקדימה",
-        wtDescPreview: "ראה את ציר הזמן המלא לפני המירוץ. גרור לסידור מחדש, התאם משכים, או שמור בענן.",
+        wtDescPreview: "ציר הזמן המלא לפני המירוץ — כל פס הוא סטינט של נהג. אפשר לגרור, לשנות משכים ולשמור.",
         wtTitleSim: "סימולציה מודרכת",
-        wtDescSim: "הפעל דמו ספרינט עם תזמון חי מדומה. הזמן רץ ~90× מהר כדי שתראה את האסטרטגיה מתעדכנת בשניות.",
+        wtDescSim: "דמו סיבולת 6 שעות עם תזמון חי מדומה. השעון זז רגע, ואז קופצים שעות קדימה בין סטינטים — פיטס, החלפת נהג ועדכון תוכנית.",
         wtStartSim: "▶ התחל סימולציה",
-        wtTitleRaceTimer: "שעון מירוץ",
-        wtDescRaceTimer: "זמן שחלף או שנותר. לחץ להחלפת מצב. בסיור, הזמן מאיץ כדי שתראה את המירוץ מתקדם.",
+        wtTitleRaceTimer: "שעון מירוץ 6 שעות",
+        wtDescRaceTimer: "מירוץ סיבולת אמיתי — 6 שעות על השעון. לחץ הבא לראות כמה שניות של ספירה, ואז נקפוץ קדימה במירוץ.",
+        wtTitleTimeSkip: "דילוג קדימה",
+        wtDescTimeSkip1: "במירוץ של 6 שעות עוברות שעות בין החלפות. קופצים +2:30 שעות — השעון וטיימר הסטינט מתעדכנים מיד.",
+        wtDescTimeSkip2: "עוד +1:30 שעות קדימה — עכשיו בשלב מאוחר של המירוץ. טבלת התזמון החי משקפת את המצב.",
+        wtSkipToast: "{delta} — מדלגים קדימה במירוץ",
+        wtTitleStintDriver: "סטינט ונהג",
+        wtDescStintDriver: "אמצע מירוץ: נהג נוכחי, שעון סטינט (25–55 דק'), ופס התקדמות. לחץ הבא לטיק קצר חי.",
         wtTitleStrategy: "תחזית אסטרטגיה",
-        wtDescStrategy: "Pills חיים מציגים סטינטים שנותרו. אם התוכנית נשברת אחרי עצירות בפועל — תראה בלתי אפשרי או הוסף עצירה.",
+        wtDescStrategy: "Pills חיים מציגים סטינטים שנותרו לשאר ה-6 שעות. אחרי כל פיטס — חישוב מחדש מזמנים בפועל.",
+        wtTitleLivePreview: "תוכנית מעודכנת",
+        wtDescLivePreview: "▶ תוכנית אחרי פיטס: סטינטים שהושלמו בזמן אמת, העתידים מחולקים מחדש על השעות שנותרו.",
         wtTitleLTRace: "טבלת תזמון חי",
-        wtDescLTRace: "מקום ייעודי לתזמון — גולל בתוך הפאנל בלי לכסות כפתורי פיט. כווץ את הטבלה (📋) כשצריך רק את השורה שלך.",
+        wtDescLTRace: "טבלת מובילים מדומה בשלב מאוחר של המירוץ. כווץ (📋) כשצריך רק את השורה שלך.",
         wtTitlePit: "עצירת פיט",
-        wtDescPit: "כניסה לפיטס כשהגיע הזמן. Strateger מחשב מחדש סטינטים שנותרו לפי זמנים בפועל אחרי כל עצירה.",
+        wtDescPit: "פיטס דמו: כניסה, זמן מינימום, יציאה והחלפת נהג — ואז תוכנית ה-6 שעות מתעדכנת.",
         wtTitleDone: "מוכנים!",
         wtDescDone: "הגדר את המירוץ האמיתי, חבר תזמון חי, וצא לדרך. אפשר להפעיל מחדש מהכפתור מדריך בכותרת.",
         wtFinishedToast: "הסיור הושלם — בהצלחה במירוץ!",
@@ -2192,6 +2208,13 @@ window.setLanguage = function(lang) {
     const langSelect = document.getElementById('langSelect');
     if (langSelect && langSelect.value !== lang) {
         langSelect.value = lang;
+    }
+    const langSelectMobile = document.getElementById('langSelectMobile');
+    if (langSelectMobile) {
+        if (langSelectMobile.options.length === 0 && langSelect) {
+            langSelectMobile.innerHTML = langSelect.innerHTML;
+        }
+        if (langSelectMobile.value !== lang) langSelectMobile.value = lang;
     }
 
     document.querySelectorAll('[data-i18n]').forEach(el => {

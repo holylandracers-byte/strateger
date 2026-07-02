@@ -46,7 +46,7 @@
     <script src="js/live-timing-manager.js?v=7"></script>
     <script src="js/qualifying.js?v=7"></script>
 
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/style.css?v=12">
 
     <script>
         tailwind.config = {
@@ -68,10 +68,10 @@
     </script>
 </head>
 <body class="bg-navy-950 text-gray-200 flex flex-col">
-    <header class="bg-navy-900 border-b border-gray-800 px-3 py-2 flex justify-between items-center shadow-md sticky top-0 z-20">
-        <div class="flex items-center gap-2">
+    <header class="header-bar bg-navy-900 border-b border-gray-800 px-3 py-2 flex justify-between items-center shadow-md sticky top-0 z-20">
+        <div class="header-left flex items-center gap-1.5 shrink-0 min-w-0">
             <!-- Logo mark -->
-            <a href="/" style="text-decoration:none;flex-shrink:0" title="Strateger">
+            <a href="/" class="header-logo-link" style="text-decoration:none;flex-shrink:0" title="Strateger">
                 <svg viewBox="0 0 34 34" width="30" height="30" xmlns="http://www.w3.org/2000/svg">
                     <rect width="34" height="34" rx="7" fill="#070f1e"/>
                     <rect x="23" y="2" width="5" height="5" rx="1" fill="#22d3ee"/>
@@ -87,10 +87,10 @@
                     <rect x="25" y="28" width="5" height="4" rx="1" fill="#22d3ee"/>
                 </svg>
             </a>
-            <span class="font-black tracking-widest text-white text-sm leading-none hidden xs:block">STRAT<span style="color:#22d3ee">EGER</span></span>
+            <span class="font-black tracking-widest text-white text-sm leading-none hidden sm:block">STRAT<span style="color:#22d3ee">EGER</span></span>
 
             <select id="langSelect" onchange="window.setLanguage(this.value)"
-                    class="text-xs bg-navy-800 px-1 py-0.5 rounded border border-gray-700 text-white cursor-pointer ml-1">
+                    class="header-lang-desktop text-xs bg-navy-800 px-1 py-0.5 rounded border border-gray-700 text-white cursor-pointer ml-1">
                 <option value="en">🇬🇧 EN</option>
                 <option value="he">🇮🇱 HE</option>
                 <option value="fr">🇫🇷 FR</option>
@@ -105,10 +105,10 @@
                 <option value="el">🇬🇷 EL</option>
             </select>
             
-            <div id="googleAuthCompact" class="flex items-center ml-2 min-h-[28px]">
-                <button id="googleSignInBtn" onclick="window.googleSignIn()" class="flex items-center gap-2 bg-white text-gray-700 hover:bg-gray-100 border border-gray-300 px-2 py-1 rounded text-[10px] font-bold transition min-h-[28px]" data-i18n="googleLoginBtn">
-                    <img src="https://www.google.com/favicon.ico" class="w-3 h-3">
-                    Login
+            <div id="googleAuthCompact" class="header-auth-desktop flex items-center ml-1 min-h-[28px]">
+                <button id="googleSignInBtn" onclick="window.googleSignIn()" class="flex items-center gap-1.5 bg-white text-gray-700 hover:bg-gray-100 border border-gray-300 px-2 py-1 rounded text-[10px] font-bold transition min-h-[28px]" data-i18n="googleLoginBtn">
+                    <img src="https://www.google.com/favicon.ico" class="w-3 h-3" alt="">
+                    <span class="header-auth-label">Login</span>
                 </button>
 
                 <div id="googleUserDisplay" class="hidden flex items-center gap-2 bg-navy-800 border border-gray-600 px-2 py-1 rounded-full min-h-[28px]">
@@ -122,43 +122,45 @@
         </div>
 
         <!-- Team name — always visible in header center -->
-        <div class="flex-1 flex flex-col items-center justify-center px-2 min-w-0">
-            <div class="flex items-center gap-1.5 max-w-[240px] w-full justify-center">
+        <div class="header-center flex-1 flex flex-col items-center justify-center px-1 min-w-0">
+            <div class="flex items-center gap-1 max-w-full w-full justify-center min-w-0">
                 <!-- Team logo preview (shown when logo set) -->
                 <img id="headerTeamLogoImg" class="hidden w-7 h-7 rounded object-contain cursor-pointer shrink-0" onclick="window.openTeamLogoUpload && window.openTeamLogoUpload()" title="Change logo" alt="">
                 <input type="text" id="teamNameInput"
                        data-i18n="lblTeamName"
                        oninput="window.applyTeamName && window.applyTeamName(this.value)"
-                       class="team-identity-input bg-transparent border-b border-gray-600 focus:border-ice text-base font-bold text-center placeholder-gray-500 outline-none w-full transition py-0.5" autocomplete="off">
+                       class="team-identity-input bg-transparent border-b border-gray-600 focus:border-ice text-sm sm:text-base font-bold text-center placeholder-gray-500 outline-none w-full min-w-0 transition py-0.5" autocomplete="off">
                 <!-- Logo upload button (Pro only) -->
                 <button id="headerTeamLogoBtn" class="hidden shrink-0 text-gray-500 hover:text-ice transition text-sm leading-none" onclick="window.openTeamLogoUpload && window.openTeamLogoUpload()" title="Upload team logo">📷</button>
             </div>
         </div>
 
-        <div class="flex items-center gap-1 sm:gap-2">
-            <div id="syncControls" class="hidden flex items-center gap-1 bg-navy-800 px-2 py-1 rounded border border-gray-700">
+        <div class="header-right flex items-center gap-0.5 sm:gap-2 shrink-0 min-w-0">
+            <div id="headerRaceChips" class="header-race-chips flex items-center gap-0.5 sm:gap-1 overflow-x-auto overflow-y-hidden shrink min-w-0">
+            <div id="syncControls" class="hidden flex items-center gap-1 bg-navy-800 px-1.5 py-0.5 rounded border border-gray-700 shrink-0">
                 <span id="syncDot" class="sync-dot bg-green-500"></span>
-                <span id="syncText" class="text-[10px] text-gray-400" data-i18n="synced">Synced</span>
+                <span id="syncText" class="text-[10px] text-gray-400 hidden sm:inline" data-i18n="synced">Synced</span>
             </div>
             
-            <div id="liveIndicator" class="hidden sync-dot live-dot"></div>
+            <div id="liveIndicator" class="hidden sync-dot live-dot shrink-0"></div>
 
-            <button id="proStatusBtn" onclick="window.showProStatus()" class="hidden bg-gradient-to-r from-gold/20 to-amber-500/20 hover:from-gold/30 hover:to-amber-500/30 text-gold text-[10px] font-bold px-2 py-1 rounded-full border border-gold/50 transition flex items-center gap-1">
-                <i class="fas fa-star text-[10px]"></i> <span data-i18n="proBadge">PRO</span>
+            <button id="proStatusBtn" onclick="window.showProStatus()" class="header-chip hidden bg-gradient-to-r from-gold/20 to-amber-500/20 hover:from-gold/30 hover:to-amber-500/30 text-gold text-[10px] font-bold px-2 py-1 rounded-full border border-gold/50 transition flex items-center gap-1 shrink-0">
+                <i class="fas fa-star text-[10px]"></i> <span class="header-chip-label hidden sm:inline" data-i18n="proBadge">PRO</span>
             </button>
 
-            <button id="shareRaceBtn" onclick="window.copyInviteLink()" class="hidden bg-gradient-to-r from-ice to-blue-500 hover:from-blue-400 hover:to-ice text-navy-950 text-xs font-bold px-3 py-1.5 rounded-full shadow-lg transition transform active:scale-95 flex items-center gap-1">
+            <button id="shareRaceBtn" onclick="window.copyInviteLink()" class="header-chip hidden bg-gradient-to-r from-ice to-blue-500 hover:from-blue-400 hover:to-ice text-navy-950 text-xs font-bold px-2 sm:px-3 py-1.5 rounded-full shadow-lg transition transform active:scale-95 flex items-center gap-1 shrink-0">
                 <i class="fas fa-link"></i>
-                <span class="hidden sm:inline" data-i18n="invite">Invite</span>
+                <span class="header-chip-label hidden sm:inline" data-i18n="invite">Invite</span>
             </button>
 
-            <button id="driverLinkBtn" onclick="window.copyDriverLink()" class="hidden bg-gradient-to-r from-orange-500 to-amber-500 hover:from-amber-400 hover:to-orange-400 text-navy-950 text-xs font-bold px-3 py-1.5 rounded-full shadow-lg transition transform active:scale-95 flex items-center gap-1" title="Copy Driver Link">
+            <button id="driverLinkBtn" onclick="window.copyDriverLink()" class="header-chip hidden bg-gradient-to-r from-orange-500 to-amber-500 hover:from-amber-400 hover:to-orange-400 text-navy-950 text-xs font-bold px-2 sm:px-3 py-1.5 rounded-full shadow-lg transition transform active:scale-95 flex items-center gap-1 shrink-0" title="Copy Driver Link">
                 <i class="fas fa-car-side"></i>
-                <span class="hidden sm:inline" data-i18n="driverLink">Driver</span>
+                <span class="header-chip-label hidden sm:inline" data-i18n="driverLink">Driver</span>
             </button>
+            </div>
 
-            <!-- Guided tour — replay anytime -->
-            <button id="guideBtn" onclick="window.restartWalkthrough()" class="flex bg-navy-800 hover:bg-navy-700 text-gray-300 hover:text-ice text-xs font-bold px-2 py-1.5 rounded-full border border-gray-700 hover:border-ice/40 transition transform active:scale-95 items-center gap-1" data-i18n-title="wtGuideBtn" title="Guided Tour">
+            <!-- Guided tour — desktop; mobile → overflow menu -->
+            <button id="guideBtn" onclick="window.restartWalkthrough()" class="header-desktop-extra hidden sm:flex bg-navy-800 hover:bg-navy-700 text-gray-300 hover:text-ice text-xs font-bold px-2 py-1.5 rounded-full border border-gray-700 hover:border-ice/40 transition transform active:scale-95 items-center gap-1 shrink-0" data-i18n-title="wtGuideBtn" title="Guided Tour">
                 <i class="fas fa-route"></i>
                 <span class="hidden md:inline" data-i18n="wtGuideBtn">Guide</span>
             </button>
@@ -174,8 +176,8 @@
                 📝
             </button>
 
-            <!-- Theme button: hidden on small screens (moved to ⋮ menu) -->
-            <button id="themeToggleBtn" onclick="window.toggleThemePanel()" class="flex bg-navy-800 hover:bg-navy-700 text-gray-300 hover:text-white text-xs font-bold px-2 py-1.5 rounded-full border border-gray-700 hover:border-gray-500 transition transform active:scale-95 items-center gap-1" title="Theme">
+            <!-- Theme button: desktop only (mobile → ⋮ menu) -->
+            <button id="themeToggleBtn" onclick="window.toggleThemePanel()" class="header-desktop-extra hidden sm:flex bg-navy-800 hover:bg-navy-700 text-gray-300 hover:text-white text-xs font-bold px-2 py-1.5 rounded-full border border-gray-700 hover:border-gray-500 transition transform active:scale-95 items-center gap-1 shrink-0" title="Theme">
                 <i class="fas fa-palette"></i>
             </button>
 
@@ -190,12 +192,20 @@
             </button>
 
             <!-- ⋮ Overflow menu (mobile only) -->
-            <div class="hidden sm:hidden">
-                <button onclick="document.getElementById('headerOverflowMenu').classList.toggle('hidden')" class="bg-navy-800 hover:bg-navy-700 text-gray-300 hover:text-white text-sm font-bold w-9 h-9 rounded-full border border-gray-700 flex items-center justify-center">
+            <div class="header-overflow-wrap relative shrink-0 sm:hidden">
+                <button type="button" onclick="document.getElementById('headerOverflowMenu').classList.toggle('hidden')" class="bg-navy-800 hover:bg-navy-700 text-gray-300 hover:text-white text-sm font-bold w-9 h-9 rounded-full border border-gray-700 flex items-center justify-center" aria-label="Menu">
                     <i class="fas fa-ellipsis-v"></i>
                 </button>
-                <div id="headerOverflowMenu" class="hidden absolute right-0 top-full mt-1 bg-navy-900 border border-gray-700 rounded-lg shadow-2xl p-1.5 min-w-[160px] z-50 animate-scale-in">
-                    <button onclick="window.restartWalkthrough(); document.getElementById('headerOverflowMenu').classList.add('hidden')" class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:bg-navy-800 hover:text-ice transition text-left">
+                <div id="headerOverflowMenu" class="hidden absolute right-0 top-full mt-1 bg-navy-900 border border-gray-700 rounded-lg shadow-2xl p-1.5 min-w-[180px] z-50 animate-scale-in">
+                    <div class="px-3 py-2 border-b border-gray-700/50 mb-1">
+                        <label class="text-[10px] text-gray-500 uppercase font-bold block mb-1">🌍 Language</label>
+                        <select id="langSelectMobile" onchange="window.setLanguage(this.value)" class="w-full text-xs bg-navy-800 px-2 py-1.5 rounded border border-gray-600 text-white cursor-pointer"></select>
+                    </div>
+                    <button type="button" id="googleSignInMobileBtn" onclick="window.googleSignIn(); document.getElementById('headerOverflowMenu').classList.add('hidden')" class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:bg-navy-800 hover:text-white transition text-left">
+                        <img src="https://www.google.com/favicon.ico" class="w-4 h-4" alt="">
+                        <span data-i18n="googleLoginBtn">Login with Google</span>
+                    </button>
+                    <button type="button" onclick="window.restartWalkthrough(); document.getElementById('headerOverflowMenu').classList.add('hidden')" class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:bg-navy-800 hover:text-ice transition text-left">
                         <i class="fas fa-route w-4 text-center text-gray-500"></i> <span data-i18n="wtGuideBtn">Guide</span>
                     </button>
                     <button onclick="window.showDemoConfig(); document.getElementById('headerOverflowMenu').classList.add('hidden')" class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm text-ice hover:bg-navy-800 transition text-left">
@@ -2452,7 +2462,7 @@
     <script src="js/strategy.js?v=7"></script>
     <script src="js/live-timing.js?v=7"></script>
     <script src="js/ui.js?v=7"></script>
-    <script src="js/walkthrough.js?v=9"></script>
+    <script src="js/walkthrough.js?v=11"></script>
     <script src="js/main.js?v=8"></script>
 </body>
 </html>

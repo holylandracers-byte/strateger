@@ -8,11 +8,17 @@
 
     const LANG_KEY = 'strateger_lang_explicit';
     const DONE_KEY = 'strateger_onboarded';
-    const TIME_MULT = 90; // race clock runs ~90× faster during guided sim
+    // 6h endurance demo: brief clock ticks + big time jumps between stints
+    const TIME_MULT_TICK = 22;
+    const TICK_RACE_MS = 8000;
+    const TICK_STINT_MS = 10000;
+    const TICK_LT_MS = 8000;
 
     let _stepIndex = 0;
     let _steps = [];
     let _timeBoostInterval = null;
+    let _simSegmentTimer = null;
+    let _pitSimTimer = null;
     let _resizeObserver = null;
     let _highlightResizeObserver = null;
     let _highlightMutationObserver = null;
@@ -74,10 +80,18 @@
         },
         {
             id: 'preview',
-            target: '#setupActionCard',
+            target: '#driverScheduleList',
             titleKey: 'wtTitlePreview',
             descKey: 'wtDescPreview',
-            before: () => scrollToEl('#setupActionCard')
+            before: () => {
+                if (typeof window.runSim === 'function') window.runSim();
+                if (typeof window.generatePreview === 'function') window.generatePreview(false, true);
+                setTimeout(() => scrollToEl('#driverScheduleList'), 350);
+            },
+            onLeave: () => {
+                document.getElementById('previewScreen')?.classList.add('hidden');
+                document.getElementById('setupScreen')?.classList.remove('hidden');
+            }
         },
         {
             id: 'simulation',
@@ -89,14 +103,33 @@
         }
     ];
 
-    // ── Race dashboard steps (after sim starts) ──
+    // ── Race dashboard — 6h endurance with ⏩ stint jumps ──
     const RACE_STEPS = [
         {
             id: 'raceTimer',
             target: '#raceTimerDisplay',
             titleKey: 'wtTitleRaceTimer',
             descKey: 'wtDescRaceTimer',
-            before: () => scrollToEl('#raceTimerDisplay')
+            pauseTime: true,
+            before: () => scrollToEl('#raceTimerDisplay'),
+            onAdvance: (done) => runBriefTick(TICK_RACE_MS, done)
+        },
+        {
+            id: 'timeSkip1',
+            center: true,
+            titleKey: 'wtTitleTimeSkip',
+            descKey: 'wtDescTimeSkip1',
+            pauseTime: true,
+            before: () => skipRaceTime(2.5)
+        },
+        {
+            id: 'stintDriver',
+            target: '#raceControlDock',
+            titleKey: 'wtTitleStintDriver',
+            descKey: 'wtDescStintDriver',
+            pauseTime: true,
+            before: () => scrollToEl('#raceControlDock'),
+            onAdvance: (done) => runBriefTick(TICK_STINT_MS, done)
         },
         {
             id: 'strategy',
@@ -104,22 +137,12 @@
             wrap: 'parent-panel',
             titleKey: 'wtTitleStrategy',
             descKey: 'wtDescStrategy',
+            pauseTime: true,
             before: () => {
+                advanceToStintFraction(0.78);
                 const panel = document.getElementById('remainingStintsPanel');
                 if (panel) panel.classList.remove('hidden');
                 scrollToEl('#remainingStintsPanel');
-            }
-        },
-        {
-            id: 'liveTimingRace',
-            target: '#liveTimingWidgetWrapper',
-            wrap: 'self',
-            titleKey: 'wtTitleLTRace',
-            descKey: 'wtDescLTRace',
-            before: () => {
-                const wrapper = document.getElementById('liveTimingWidgetWrapper');
-                if (wrapper) wrapper.classList.remove('hidden');
-                scrollToEl('#liveTimingWidgetWrapper');
             }
         },
         {
@@ -127,14 +150,55 @@
             target: '#pitEntryBtn',
             titleKey: 'wtTitlePit',
             descKey: 'wtDescPit',
+            pauseTime: true,
             before: () => scrollToEl('#pitEntryBtn')
+        },
+        {
+            id: 'livePreview',
+            target: '#driverScheduleList',
+            titleKey: 'wtTitleLivePreview',
+            descKey: 'wtDescLivePreview',
+            pauseTime: true,
+            before: () => {
+                if (window.state?.isInPit && typeof window.confirmPitExit === 'function') {
+                    window.confirmPitExit(true);
+                }
+                if (typeof window.openLivePreview === 'function') window.openLivePreview();
+                setTimeout(() => scrollToEl('#driverScheduleList'), 400);
+            },
+            onLeave: () => {
+                if (typeof window.closeLivePreview === 'function') window.closeLivePreview();
+            }
+        },
+        {
+            id: 'timeSkip2',
+            center: true,
+            titleKey: 'wtTitleTimeSkip',
+            descKey: 'wtDescTimeSkip2',
+            pauseTime: true,
+            before: () => skipRaceTime(1.5)
+        },
+        {
+            id: 'liveTimingRace',
+            target: '#liveTimingWidgetWrapper',
+            wrap: 'self',
+            titleKey: 'wtTitleLTRace',
+            descKey: 'wtDescLTRace',
+            pauseTime: true,
+            before: () => {
+                const wrapper = document.getElementById('liveTimingWidgetWrapper');
+                if (wrapper) wrapper.classList.remove('hidden');
+                scrollToEl('#liveTimingWidgetWrapper');
+            },
+            onAdvance: (done) => runBriefTick(TICK_LT_MS, done)
         },
         {
             id: 'done',
             titleKey: 'wtTitleDone',
             descKey: 'wtDescDone',
             center: true,
-            done: true
+            done: true,
+            pauseTime: true
         }
     ];
 
@@ -217,6 +281,121 @@
         el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
     }
 
+    function clearSimSegmentTimer() {
+        if (_simSegmentTimer) {
+            clearTimeout(_simSegmentTimer);
+            _simSegmentTimer = null;
+        }
+    }
+
+    function clearPitSimTimer() {
+        if (_pitSimTimer) {
+            clearTimeout(_pitSimTimer);
+            _pitSimTimer = null;
+        }
+    }
+
+    function pauseSimTime() {
+        window.stopWalkthroughTimeBoost();
+    }
+
+    function resumeSimTime(mult) {
+        window.startWalkthroughTimeBoost(mult || TIME_MULT_TICK);
+    }
+
+    function formatSkipLabel(hours) {
+        const h = Math.floor(hours);
+        const m = Math.round((hours - h) * 60);
+        if (h && m) return `+${h}h ${m}m`;
+        if (h) return `+${h}h`;
+        return `+${m}m`;
+    }
+
+    /** Jump race clock forward (simulates hours passing between stints) */
+    function skipRaceTime(hours) {
+        if (!hours || hours <= 0) return;
+        advanceRaceTimeMs(hours * 3600000);
+        if (typeof window.showToast === 'function') {
+            const label = t('wtSkipToast').replace('{delta}', formatSkipLabel(hours));
+            window.showToast(`⏩ ${label}`, 'info', 3200);
+        }
+    }
+
+    /** Short accelerated tick so the user sees clocks move before a jump */
+    function runBriefTick(durationMs, done) {
+        hideWalkthroughUI();
+        resumeSimTime(TIME_MULT_TICK);
+        clearSimSegmentTimer();
+        _simSegmentTimer = setTimeout(() => {
+            pauseSimTime();
+            if (typeof done === 'function') done();
+        }, durationMs);
+    }
+
+    function advanceRaceTimeMs(ms) {
+        if (!ms || ms <= 0) return;
+        window._walkthroughTimeOffset = (window._walkthroughTimeOffset || 0) + ms;
+        if (typeof window.renderFrame === 'function') window.renderFrame();
+    }
+
+    function getStintElapsedMs() {
+        if (!window.state?.stintStart) return 0;
+        const now = window.getSyncedNow ? window.getSyncedNow() : Date.now();
+        return (now - window.state.stintStart) + (window.state.stintOffset || 0);
+    }
+
+    function advanceToStintFraction(fraction) {
+        const targetMs = window.state?.targetStintMs
+            || ((window.config?.maxStint || 15) * 60000);
+        const want = Math.max(0, targetMs * fraction);
+        const elapsed = getStintElapsedMs();
+        if (want > elapsed) advanceRaceTimeMs(want - elapsed);
+    }
+
+    /** Scripted pit stop for the tour: entry → min pit time → exit + driver swap */
+    function simulateWalkthroughPitStop(done) {
+        pauseSimTime();
+        clearPitSimTimer();
+        advanceToStintFraction(0.94);
+
+        const prevName = window.drivers[window.state?.currentDriverIdx]?.name || '?';
+
+        if (!window.state?.isInPit && typeof window.confirmPitEntry === 'function') {
+            window.confirmPitEntry(true);
+        }
+
+        const minPitSec = parseInt(window.config?.minPitTime || window.config?.pitTime, 10) || 60;
+
+        _pitSimTimer = setTimeout(() => {
+            advanceRaceTimeMs(minPitSec * 1000 + 8000);
+            if (typeof window.updatePitModalLogic === 'function') window.updatePitModalLogic();
+
+            _pitSimTimer = setTimeout(() => {
+                if (typeof window.confirmPitExit === 'function') window.confirmPitExit(true);
+                if (typeof window.renderFrame === 'function') window.renderFrame();
+
+                const newName = window.drivers[window.state?.currentDriverIdx]?.name || '?';
+                if (prevName !== newName && typeof window.showToast === 'function') {
+                    window.showToast(`🔄 ${prevName} → ${newName}`, 'success', 4000);
+                }
+                if (typeof done === 'function') done();
+            }, 1400);
+        }, 1600);
+    }
+
+    function applyStepTimePolicy(step) {
+        if (!window._walkthroughMode || !step) return;
+        if (step.pauseTime !== false) pauseSimTime();
+        else resumeSimTime();
+    }
+
+    function leaveCurrentStep() {
+        const step = _steps[_stepIndex];
+        if (step?.onLeave) {
+            try { step.onLeave(); } catch (e) { console.warn('walkthrough onLeave', e); }
+        }
+    }
+
     function shouldShowWalkthrough() {
         if (window.role !== 'host') return false;
         if (localStorage.getItem(DONE_KEY) === 'true') return false;
@@ -275,7 +454,7 @@
 
     window.startWalkthroughTimeBoost = function (multiplier) {
         window.stopWalkthroughTimeBoost();
-        window._walkthroughTimeMultiplier = multiplier || TIME_MULT;
+        window._walkthroughTimeMultiplier = multiplier || TIME_MULT_TICK;
         _timeBoostInterval = setInterval(() => {
             const mult = window._walkthroughTimeMultiplier || 1;
             if (mult <= 1) return;
@@ -292,14 +471,17 @@
         window._walkthroughTimeMultiplier = 1;
     };
 
-    // ── Guided demo race (sprint, simulated live timing) ──
+    // ── Guided demo: 6-hour endurance + simulated live timing ──
 
     function launchGuidedSimulation() {
         hideWalkthroughUI();
         window._walkthroughMode = true;
+        clearSimSegmentTimer();
+        clearPitSimTimer();
 
+        // 6h endurance (10 stops, ~25–55 min stints) — tour uses ⏩ jumps between key moments
         window.demoConfig = {
-            raceLength: 'sprint',
+            raceLength: 'pro',
             gridSize: 20,
             chaosLevel: 'normal',
             rain: false,
@@ -312,9 +494,9 @@
         };
 
         if (typeof window.startDemoRace === 'function') window.startDemoRace();
-        window.startWalkthroughTimeBoost(TIME_MULT);
+        pauseSimTime();
 
-        _steps = RACE_STEPS.slice();
+        _steps = RACE_STEPS.map(s => ({ ...s }));
         _stepIndex = 0;
 
         const waitForRace = () => {
@@ -499,6 +681,14 @@
             try { step.before(); } catch (e) { console.warn('walkthrough before hook', e); }
         }
 
+        applyStepTimePolicy(step);
+
+        // After strategy step: show pit spotlight and run a demo pit stop in the background
+        if (window._walkthroughMode && step.id === 'pit' && !step._pitSimStarted) {
+            step._pitSimStarted = true;
+            simulateWalkthroughPitStop();
+        }
+
         const tooltip = document.getElementById('wtTooltip');
         if (tooltip) tooltip.style.transform = '';
 
@@ -573,14 +763,36 @@
         window._walkthroughTimeOffset = 0;
         window._walkthroughMode = false;
 
-        _steps = fromRace ? RACE_STEPS.slice() : SETUP_STEPS.slice();
+        _steps = fromRace ? RACE_STEPS.map(s => ({ ...s })) : SETUP_STEPS.slice();
         _stepIndex = 0;
         bindResize();
         showStep(0);
     };
 
     window.nextWalkthroughStep = function () {
-        showStep(_stepIndex + 1);
+        const step = _steps[_stepIndex];
+        leaveCurrentStep();
+
+        const nextIdx = _stepIndex + 1;
+
+        if (window._walkthroughMode && step?.id === 'strategy') {
+            showStep(nextIdx);
+            return;
+        }
+
+        // Brief tick or custom transition, then next milestone
+        if (window._walkthroughMode && typeof step?.onAdvance === 'function') {
+            step.onAdvance(() => showStep(nextIdx));
+            return;
+        }
+
+        // Legacy: fixed-duration accelerated segment
+        if (window._walkthroughMode && step?.playTimeMs > 0) {
+            runBriefTick(step.playTimeMs, () => showStep(nextIdx));
+            return;
+        }
+
+        showStep(nextIdx);
     };
 
     window.skipWalkthrough = function () {
@@ -589,6 +801,8 @@
 
     window.restartWalkthrough = function () {
         localStorage.removeItem(DONE_KEY);
+        clearSimSegmentTimer();
+        clearPitSimTimer();
         window.stopWalkthroughTimeBoost();
         window._walkthroughTimeOffset = 0;
 
@@ -617,10 +831,17 @@
     };
 
     function finishWalkthrough() {
+        leaveCurrentStep();
         hideWalkthroughUI();
         disconnectHighlightObservers();
+        clearSimSegmentTimer();
+        clearPitSimTimer();
         window.stopWalkthroughTimeBoost();
         window._walkthroughMode = false;
+        window._walkthroughTimeOffset = 0;
+        if (typeof window.closeLivePreview === 'function') window.closeLivePreview();
+        document.getElementById('previewScreen')?.classList.add('hidden');
+        document.getElementById('setupScreen')?.classList.remove('hidden');
         localStorage.setItem(DONE_KEY, 'true');
         if (_resizeObserver) {
             _resizeObserver.disconnect();

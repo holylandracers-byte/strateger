@@ -36,6 +36,9 @@ document.addEventListener('DOMContentLoaded', () => {
         savedLang = (['he', 'fr', 'pt'].includes(browserLang)) ? browserLang : 'en';
         window.setLanguage(savedLang);
     }
+    const _langMob = document.getElementById('langSelectMobile');
+    const _langSrc = document.getElementById('langSelect');
+    if (_langMob && _langSrc && _langMob.options.length === 0) _langMob.innerHTML = _langSrc.innerHTML;
 
     // Restore saved page background
     const savedBg = localStorage.getItem('strateger_bg');
