@@ -1259,14 +1259,23 @@ function _maybeRecalcAfterDrift() {
     const clampedAvg = Math.max(safMin, Math.min(safMax, avgMs));
 
     const newTargets = [...(window.state.stintTargets || [])];
-    // Fix current stint to actual elapsed so far
     newTargets[currentStintIdx] = elapsed;
-    // Spread remaining evenly
-    for (let i = currentStintIdx + 1; i < currentStintIdx + 1 + futureStints && i < newTargets.length; i++) {
-        newTargets[i] = clampedAvg;
+    const remainingSlice = newTargets.slice(currentStintIdx + 1, currentStintIdx + 1 + futureStints);
+    if (remainingSlice.length > 0 && typeof window.normalizeStintDurationsMs === 'function') {
+        const norm = window.normalizeStintDurationsMs(remainingSlice, {
+            totalTargetMs: futurePool,
+            bounds: window.getStintBoundsMs(window.config)
+        });
+        for (let i = 0; i < norm.durations.length; i++) {
+            newTargets[currentStintIdx + 1 + i] = norm.durations[i];
+        }
+    } else {
+        for (let i = currentStintIdx + 1; i < currentStintIdx + 1 + futureStints && i < newTargets.length; i++) {
+            newTargets[i] = clampedAvg;
+        }
     }
     window.state.stintTargets = newTargets;
-    console.log(`♻️ Stint drift ${(drift/60000).toFixed(1)}m — recalculated remaining targets`);
+    console.log(`♻️ Stint overrun ${(overrun/60000).toFixed(1)}m — recalculated remaining targets`);
 }
 
 function updateRemainingStrategyLogic(raceRemainingMs) {
@@ -1280,6 +1289,9 @@ function updateRemainingStrategyLogic(raceRemainingMs) {
 
     // Check if actual stint diverged from plan and update targets accordingly
     _maybeRecalcAfterDrift();
+    if (typeof window.fixRemainingStintTargets === 'function') {
+        window.fixRemainingStintTargets(true);
+    }
 
     // Support optional min/max — if not set, treat as unconstrained
     const maxStintRaw = parseFloat(window.config.maxStint);
@@ -2099,7 +2111,14 @@ window.confirmPitExit = function(autoDetected) {
         const newTotal = totalPlannedRemaining + timeSaved;
         if (newTotal <= 0) return;
         const scale = newTotal / totalPlannedRemaining;
-        const newRemaining = remaining.map(t => Math.round(t * scale));
+        let newRemaining = remaining.map(t => Math.round(t * scale));
+        if (typeof window.normalizeStintDurationsMs === 'function') {
+            const norm = window.normalizeStintDurationsMs(newRemaining, {
+                totalTargetMs: newTotal,
+                bounds: window.getStintBoundsMs(window.config)
+            });
+            newRemaining = norm.durations;
+        }
         for (let i = 0; i < newRemaining.length; i++) {
             targets[completedIdx + 1 + i] = newRemaining[i];
         }

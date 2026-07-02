@@ -738,6 +738,13 @@ window.runSim = function() {
 
     window.recalculateDriverStatsFromTimeline();
 
+    // Auto-fix individual stints outside min/max (e.g. after closed-pit rounding)
+    if (typeof window.countStintViolations === 'function' &&
+        window.countStintViolations(window.previewData.timeline, config) > 0 &&
+        typeof window.fixPreviewStintViolations === 'function') {
+        window.fixPreviewStintViolations(true);
+    }
+
     const stints = result.timeline.filter(t => t.type === 'stint');
     const pits = result.timeline.filter(t => t.type === 'pit');
     const actualDriveTime = stints.reduce((a, s) => a + s.duration, 0);
@@ -980,6 +987,190 @@ window.initRace = function() {
     
     if (typeof window.renderFrame === 'function') window.renderFrame(); 
     if (typeof window.broadcast === 'function') window.broadcast();
+};
+
+/** Min/max stint bounds in ms from config (0 max = unlimited). */
+window.getStintBoundsMs = function(config) {
+    const c = config || window.config || {};
+    const minStintMs = c.minStint > 0 ? c.minStint * 60000 : 0;
+    const maxStintMs = c.maxStint > 0 ? c.maxStint * 60000 : Infinity;
+    const fuelLimitMs = c.fuel > 0 ? c.fuel * 60000 : Infinity;
+    const effectiveMaxStint = Math.min(maxStintMs, fuelLimitMs);
+    return { minStintMs, maxStintMs, effectiveMaxStint, fuelLimitMs };
+};
+
+/** Clamp stints to min/max and redistribute overflow so total drive time is preserved. */
+window.normalizeStintDurationsMs = function(durations, opts) {
+    opts = opts || {};
+    const bounds = opts.bounds || window.getStintBoundsMs(window.config);
+    const minMs = bounds.minStintMs > 0 ? bounds.minStintMs : 0;
+    const maxMs = bounds.effectiveMaxStint === Infinity ? Infinity : bounds.effectiveMaxStint;
+    const totalTargetMs = opts.totalTargetMs != null
+        ? opts.totalTargetMs
+        : durations.reduce((a, b) => a + b, 0);
+
+    let d = durations.map(x => Math.round((Number(x) || 0) / 1000) * 1000);
+    const n = d.length;
+    if (n === 0) return { durations: d, ok: true, violations: 0 };
+
+    if (maxMs !== Infinity || minMs > 0) {
+        for (let pass = 0; pass < 6; pass++) {
+            let overflow = 0;
+            let adjustable = 0;
+            for (let i = 0; i < n; i++) {
+                if (maxMs !== Infinity && d[i] > maxMs) {
+                    overflow += d[i] - maxMs;
+                    d[i] = maxMs;
+                } else if (minMs > 0 && d[i] < minMs) {
+                    overflow -= minMs - d[i];
+                    d[i] = minMs;
+                } else {
+                    adjustable++;
+                }
+            }
+            if (Math.abs(overflow) < 1000 || adjustable === 0) break;
+            const perStint = overflow / adjustable;
+            for (let i = 0; i < n; i++) {
+                const inRange = (minMs <= 0 || d[i] >= minMs) && (maxMs === Infinity || d[i] <= maxMs);
+                const canAdjust = minMs > 0 ? d[i] > minMs : true;
+                const belowMax = maxMs === Infinity || d[i] < maxMs;
+                if (inRange && canAdjust && belowMax) {
+                    d[i] = Math.round((d[i] + perStint) / 1000) * 1000;
+                }
+            }
+        }
+    }
+
+    let sum = d.reduce((a, b) => a + b, 0);
+    let diff = totalTargetMs - sum;
+    const steps = Math.min(Math.abs(Math.round(diff / 1000)), 500);
+    for (let step = 0; step < steps && diff !== 0; step++) {
+        let applied = false;
+        if (diff > 0) {
+            for (let i = n - 1; i >= 0; i--) {
+                if (maxMs === Infinity || d[i] + 1000 <= maxMs) {
+                    d[i] += 1000;
+                    diff -= 1000;
+                    applied = true;
+                    break;
+                }
+            }
+        } else {
+            for (let i = n - 1; i >= 0; i--) {
+                if (minMs <= 0 || d[i] - 1000 >= minMs) {
+                    d[i] -= 1000;
+                    diff += 1000;
+                    applied = true;
+                    break;
+                }
+            }
+        }
+        if (!applied) break;
+    }
+
+    if (n > 0) {
+        const finalSum = d.reduce((a, b) => a + b, 0);
+        const tailDiff = totalTargetMs - finalSum;
+        if (tailDiff !== 0) {
+            const tail = n - 1;
+            let next = d[tail] + tailDiff;
+            if (maxMs !== Infinity) next = Math.min(maxMs, next);
+            if (minMs > 0) next = Math.max(minMs, next);
+            d[tail] = Math.round(next / 1000) * 1000;
+        }
+    }
+
+    const violations = d.filter(x =>
+        (minMs > 0 && x < minMs) || (maxMs !== Infinity && x > maxMs)
+    ).length;
+    return { durations: d, violations, ok: violations === 0 };
+};
+
+window.countStintViolations = function(timeline, config) {
+    if (!timeline) return 0;
+    const bounds = window.getStintBoundsMs(config || window.config);
+    if (bounds.effectiveMaxStint === Infinity && bounds.minStintMs <= 0) return 0;
+    return timeline.filter(t => t.type === 'stint').filter(s => {
+        if (bounds.effectiveMaxStint !== Infinity && s.duration > bounds.effectiveMaxStint) return true;
+        if (bounds.minStintMs > 0 && s.duration < bounds.minStintMs) return true;
+        return false;
+    }).length;
+};
+
+/** Redistribute preview timeline stints to respect min/max. Returns true if fully fixed. */
+window.fixPreviewStintViolations = function(silent) {
+    if (!window.previewData?.timeline || !window.config) return false;
+    const stints = window.previewData.timeline.filter(t => t.type === 'stint');
+    if (stints.length === 0) return false;
+    if (window.countStintViolations(window.previewData.timeline, window.config) === 0) return false;
+
+    const pits = window.previewData.timeline.filter(t => t.type === 'pit');
+    const totalPitMs = pits.reduce((a, p) => a + p.duration, 0);
+    const raceMs = window.config.raceMs || 0;
+    const targetDriveMs = raceMs - totalPitMs;
+    const result = window.normalizeStintDurationsMs(
+        stints.map(s => s.duration),
+        { totalTargetMs: targetDriveMs, bounds: window.getStintBoundsMs(window.config) }
+    );
+    stints.forEach((s, i) => { s.duration = result.durations[i]; });
+
+    if (Array.isArray(window.state?.stintTargets) && window.state.stintTargets.length === stints.length) {
+        window.state.stintTargets = [...result.durations];
+    }
+
+    if (typeof window.recalculateTimelineTimes === 'function') window.recalculateTimelineTimes();
+    if (typeof window.renderPreview === 'function') window.renderPreview();
+
+    if (!silent && typeof window.showToast === 'function') {
+        const t = window.t || (k => k);
+        window.showToast(
+            result.ok ? t('stintFixApplied') : t('stintFixPartial'),
+            result.ok ? 'success' : 'warning',
+            3500
+        );
+    }
+    return result.ok;
+};
+
+/** During race: normalize remaining stint targets only (keeps completed stints as-is). */
+window.fixRemainingStintTargets = function(silent) {
+    if (!window.state?.isRunning || !Array.isArray(window.state.stintTargets)) return false;
+    const bounds = window.getStintBoundsMs(window.config);
+    if (bounds.effectiveMaxStint === Infinity && bounds.minStintMs <= 0) return false;
+
+    const currentIdx = Math.max(0, (window.state.globalStintNumber || 1) - 1);
+    const targets = window.state.stintTargets;
+    const remaining = targets.slice(currentIdx + 1);
+    if (remaining.length === 0) return false;
+
+    const hasViolation = remaining.some(ms =>
+        (bounds.effectiveMaxStint !== Infinity && ms > bounds.effectiveMaxStint) ||
+        (bounds.minStintMs > 0 && ms < bounds.minStintMs)
+    );
+    if (!hasViolation) return false;
+
+    const totalRemaining = remaining.reduce((a, b) => a + b, 0);
+    const result = window.normalizeStintDurationsMs(remaining, {
+        totalTargetMs: totalRemaining,
+        bounds
+    });
+    for (let i = 0; i < result.durations.length; i++) {
+        targets[currentIdx + 1 + i] = result.durations[i];
+    }
+    window.state.stintTargets = targets;
+
+    if (window.previewData?.timeline) {
+        const stints = window.previewData.timeline.filter(s => s.type === 'stint');
+        for (let i = currentIdx + 1; i < stints.length; i++) {
+            if (targets[i] != null) stints[i].duration = targets[i];
+        }
+        if (typeof window.recalculateTimelineTimes === 'function') window.recalculateTimelineTimes();
+    }
+
+    if (!silent && typeof window.showToast === 'function') {
+        window.showToast(window.t('stintFixApplied'), 'info', 3000);
+    }
+    return true;
 };
 
 window.recalculateTimelineTimes = function() {

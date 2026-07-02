@@ -1029,9 +1029,19 @@ window.renderPreview = function() {
         </div>
     `;
     
+    const violationCount = typeof window.countStintViolations === 'function'
+        ? window.countStintViolations(timeline, window.config)
+        : 0;
+    const violationBanner = violationCount > 0 ? `
+        <div class="bg-red-950/80 border border-red-500/60 rounded px-2 py-1.5 mb-1 flex items-center justify-between gap-2">
+            <span class="text-[9px] text-red-300 font-bold leading-tight">${(window.t ? window.t('stintViolationsBanner') : 'Stints outside min/max rules').replace('{{count}}', violationCount)}</span>
+            <button type="button" onclick="window.fixPreviewStintViolations()" class="shrink-0 text-[9px] font-bold bg-red-600 hover:bg-red-500 text-white px-2 py-0.5 rounded transition">${window.t ? window.t('stintFixBtn') : 'Auto-fix'}</button>
+        </div>
+    ` : '';
+
     const scheduleEl = document.getElementById('driverScheduleList');
     if (scheduleEl) {
-        scheduleEl.innerHTML = listHtml + totalBar;
+        scheduleEl.innerHTML = violationBanner + listHtml + totalBar;
         // Re-init touch drag for mobile reorder
         window.initTouchDrag(scheduleEl);
     }
@@ -1467,40 +1477,20 @@ window.updateStintDuration = function(idx, val) {
     const totalPitMs = pits.reduce((a, p) => a + p.duration, 0);
     const raceMs = window.config ? (window.config.raceMs || 0) : 0;
     const targetDriveMs = raceMs - totalPitMs;
+    const bounds = typeof window.getStintBoundsMs === 'function'
+        ? window.getStintBoundsMs(window.config)
+        : { minStintMs: (window.config?.minStint || 1) * 60000, effectiveMaxStint: (window.config?.maxStint || 999) * 60000 };
 
-    const minMs = (window.config?.minStint || 1) * 60000;
-    const maxMs = (window.config?.maxStint || 999) * 60000;
+    const minMs = bounds.minStintMs > 0 ? bounds.minStintMs : 0;
+    const maxMs = bounds.effectiveMaxStint === Infinity ? newMs : bounds.effectiveMaxStint;
+    stints[idx].duration = Math.max(minMs, Math.min(maxMs, newMs));
 
-    // Clamp to bounds
-    const clampedMs = Math.max(minMs, Math.min(maxMs, newMs));
-    const oldMs = stints[idx].duration;
-    const delta = clampedMs - oldMs;
-
-    stints[idx].duration = clampedMs;
-
-    // Rebalance: distribute the delta across the other stints proportionally
-    if (delta !== 0 && stints.length > 1) {
-        const others = stints.filter((_, i) => i !== idx);
-        const othersTotal = others.reduce((a, s) => a + s.duration, 0);
-        const newOthersTarget = targetDriveMs - clampedMs;
-
-        if (othersTotal > 0 && newOthersTarget > 0) {
-            const scale = newOthersTarget / othersTotal;
-            let distributed = 0;
-            others.forEach((s, i) => {
-                if (i < others.length - 1) {
-                    let adjusted = Math.round((s.duration * scale) / 1000) * 1000;
-                    adjusted = Math.max(minMs, Math.min(maxMs, adjusted));
-                    distributed += adjusted;
-                    s.duration = adjusted;
-                } else {
-                    // Last stint absorbs remainder
-                    let remainder = newOthersTarget - distributed;
-                    remainder = Math.max(minMs, Math.min(maxMs, Math.round(remainder / 1000) * 1000));
-                    s.duration = remainder;
-                }
-            });
-        }
+    if (typeof window.normalizeStintDurationsMs === 'function') {
+        const result = window.normalizeStintDurationsMs(
+            stints.map(s => s.duration),
+            { totalTargetMs: targetDriveMs, bounds }
+        );
+        stints.forEach((s, i) => { s.duration = result.durations[i]; });
     }
 
     window.recalculateTimelineTimes();
