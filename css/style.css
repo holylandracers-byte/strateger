@@ -632,9 +632,16 @@ header {
         min-height: var(--header-h);
     }
 
-    /* Left: logo only — lang & login moved to ⋮ menu */
+    /* Left: logo + guide (always visible) */
     .header-left {
-        gap: 0 !important;
+        gap: 4px !important;
+    }
+    #guideBtn {
+        width: 34px;
+        height: 34px;
+        min-width: 34px !important;
+        min-height: 34px !important;
+        padding: 0 !important;
     }
     .header-lang-desktop {
         display: none !important;
