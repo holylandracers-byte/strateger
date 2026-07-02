@@ -647,6 +647,9 @@ window.runSim = function() {
     const minPitLapSec   = parseInt(document.getElementById('minPitLapSec')?.value  || '0') || 0;
     // Kart-change interval: organizer tells teams the frequency (minutes). 0 = not set.
     const kartChangeIntervalMin = parseFloat(document.getElementById('kartChangeInterval')?.value || '0') || 0;
+    const releaseBufferSec = parseInt(document.getElementById('releaseBuffer')?.value || '5') || 5;
+    const pitNotifyLeadMin = parseFloat(document.getElementById('pitNotifyLeadMin')?.value || '3') || 3;
+    const inLapSecRaw = parseInt(document.getElementById('inLapSec')?.value || '0') || 0;
 
     const config = {
         duration: durationHours,
@@ -670,6 +673,10 @@ window.runSim = function() {
         totalNetDriveTime,
         totalPitTime: totalPitTimeMs,
         raceType,                // 'sprint' | 'endurance' | 'noLimitEndurance'
+        buffer: releaseBufferSec,
+        pitNotifyLeadMin,
+        inLapSec: inLapSecRaw,
+        outlap: inLapSecRaw,     // 0 = auto-detect from circuit in _getOutlapSec
         // NLE-specific
         reqExtraPits,
         minPitLapSec,
@@ -677,6 +684,7 @@ window.runSim = function() {
     };
 
     window.config = config;
+    if (typeof window._updatePitNotifyPreview === 'function') window._updatePitNotifyPreview();
 
     const durationResult = window.calculateStintDurations(config);
 

@@ -634,16 +634,30 @@
                         <input type="number" id="maxDriverTime" placeholder="0" onchange="window.runSim(); window.updateDriverMaxTimeWarnings && window.updateDriverMaxTimeWarnings()" class="input-field">
                     </div>
                 </div>
+                <div class="grid grid-cols-2 gap-4 mb-3">
+                    <div>
+                        <label class="text-xs text-yellow-400 font-bold" data-i18n="lblBuffer">Pit Exit Buffer (s)</label>
+                        <input type="number" id="releaseBuffer" value="5" min="0" onchange="window.runSim()" class="input-field border-yellow-600/50">
+                        <p class="text-[9px] text-gray-600 mt-0.5" data-i18n="lblBufferHint">Seconds before min pit time ends — driver walks to exit</p>
+                    </div>
+                    <div>
+                        <label class="text-xs text-orange-400 font-bold" data-i18n="lblPitNotifyLead">Notify Lead Time (min)</label>
+                        <input type="number" id="pitNotifyLeadMin" value="3" min="0" step="0.5" onchange="window.runSim(); window._updatePitNotifyPreview && window._updatePitNotifyPreview()" class="input-field border-orange-600/50">
+                        <p class="text-[9px] text-gray-600 mt-0.5" data-i18n="lblPitNotifyLeadHint">Minutes before max stint (minus in-lap) to warn driver</p>
+                    </div>
+                </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="text-xs text-yellow-400 font-bold" data-i18n="lblBuffer">Pit Alert / Buffer (s)</label>
-                        <input type="number" id="releaseBuffer" value="5" onchange="window.runSim()" class="input-field border-yellow-600/50">
+                        <label class="text-xs text-orange-400 font-bold" data-i18n="lblInLapSec">In-Lap to Pits (sec, dry)</label>
+                        <input type="number" id="inLapSec" value="0" min="0" step="5" placeholder="0 = auto" onchange="window.runSim(); window._updatePitNotifyPreview && window._updatePitNotifyPreview()" class="input-field border-orange-600/50">
+                        <p class="text-[9px] text-gray-600 mt-0.5" data-i18n="lblInLapHint">Track time to reach pit entry. 0 = auto from circuit name.</p>
                     </div>
                     <div id="fuelInputDiv" class="hidden">
                         <label class="text-xs text-fuel font-bold" data-i18n="lblFuelTank">Fuel Tank (min)</label>
                         <input type="number" id="fuelTime" onchange="window.runSim()" class="input-field border-fuel/50">
                     </div>
                 </div>
+                <div id="pitNotifyPreview" class="hidden text-[9px] text-orange-400/80 mt-2 px-1 font-mono"></div>
                 <hr class="border-gray-700/50 my-3">
                 </div>
             </div>
@@ -1077,6 +1091,20 @@
             <span id="nextDriverBannerName" class="text-white font-bold text-sm"></span>
         </div>
 
+        <!-- Stint pit-entry notify banner (max stint + in-lap timing) -->
+        <div id="stintNotifyBanner" class="hidden bg-orange-950/90 border-b border-orange-500/50 px-3 py-2 shrink-0">
+            <div class="flex items-center justify-between gap-2">
+                <div class="min-w-0 flex-1">
+                    <div id="stintNotifyTitle" class="text-orange-300 text-sm font-bold truncate">⏳ Pit notify window</div>
+                    <div id="stintNotifySub" class="text-[10px] text-orange-400/70 font-mono truncate"></div>
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                    <span id="stintNotifyCountdown" class="text-orange-200 font-mono font-bold text-sm"></span>
+                    <button id="stintNotifyBtn" onclick="window.notifyDriverForPit()" class="hidden bg-fuel hover:bg-yellow-400 text-black font-bold text-xs px-3 py-1.5 rounded-lg shadow transition animate-pulse" data-i18n="notifyDriver">📢 Notify Driver</button>
+                </div>
+            </div>
+        </div>
+
         <!-- SINGLE RACE DASHBOARD PANEL: all content in one scrollable area -->
         <div id="racePanelsWrapper" class="flex-1 flex flex-col min-h-0 overflow-hidden">
 
@@ -1201,6 +1229,8 @@
                             <div id="zoneForbidden" class="absolute top-0 left-0 h-full bg-red-900/40 w-0 border-r border-red-500 z-0"></div>
                             <div id="minStintLine" class="absolute top-0 bottom-0 w-0.5 bg-white z-10 hidden"></div>
                             <div id="targetStintLine" class="absolute top-0 bottom-0 w-0.5 bg-ice z-10 hidden"></div>
+                            <div id="maxStintLine" class="absolute top-0 bottom-0 w-0.5 bg-red-400 z-10 hidden" title="Max stint"></div>
+                            <div id="notifyStintLine" class="absolute top-0 bottom-0 w-0.5 bg-orange-400 z-10 hidden opacity-80" title="Notify from"></div>
                             <div id="stintProgressBar" class="absolute top-0 left-0 h-full bg-gradient-to-r from-green-600 to-neon transition-all duration-500 z-0 opacity-90" style="width: 0%"></div>
                         </div>
                         <div id="strategyScheduleBanner" class="hidden mt-1 pt-1 border-t border-gray-700/50 text-center text-[10px]"></div>
@@ -2458,10 +2488,10 @@
     <script src="js/state.js?v=7"></script>
     <script src="js/auth.js?v=7"></script>
     <script src="js/network.js?v=7"></script>
-    <script src="js/strategy.js?v=7"></script>
+    <script src="js/strategy.js?v=8"></script>
     <script src="js/live-timing.js?v=7"></script>
     <script src="js/ui.js?v=7"></script>
     <script src="js/walkthrough.js?v=11"></script>
-    <script src="js/main.js?v=8"></script>
+    <script src="js/main.js?v=9"></script>
 </body>
 </html>

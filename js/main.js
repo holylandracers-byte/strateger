@@ -444,6 +444,8 @@ window.startDemoRace = function() {
     setVal('minDriverTime', '0');
     setVal('maxDriverTime', String(Math.max(15, Math.round((profile.duration * 60) / 2))));
     setVal('releaseBuffer', '5');
+    setVal('pitNotifyLeadMin', '3');
+    setVal('inLapSec', '0');
     setChecked('allowDouble', false);
     setChecked('trackFuel', window.demoConfig?.fuel ?? false);
     if (window.demoConfig?.fuel) {
@@ -1104,6 +1106,25 @@ window.renderFrame = function() {
                 targetLine.classList.remove('hidden');
                 targetLine.style.left = `${targetPct}%`;
             }
+
+            const notifyTimings = window._getStintNotifyTimings ? window._getStintNotifyTimings() : null;
+            const maxLine = document.getElementById('maxStintLine');
+            const notifyLine = document.getElementById('notifyStintLine');
+            if (notifyTimings && cfgMax > 0) {
+                const maxPct = Math.min(100, (notifyTimings.maxStintMs / maxStintMs) * 100);
+                const notifyPct = Math.min(100, (notifyTimings.notifyStartMs / maxStintMs) * 100);
+                if (maxLine) {
+                    maxLine.classList.remove('hidden');
+                    maxLine.style.left = `${maxPct}%`;
+                }
+                if (notifyLine) {
+                    notifyLine.classList.remove('hidden');
+                    notifyLine.style.left = `${notifyPct}%`;
+                }
+            } else {
+                if (maxLine) maxLine.classList.add('hidden');
+                if (notifyLine) notifyLine.classList.add('hidden');
+            }
         }
 
         updateRemainingStrategyLogic(raceRemaining);
@@ -1132,6 +1153,7 @@ window.renderFrame = function() {
 
         // === Update new dashboard overlays ===
         window.updatePitWindowBanner();
+        window.updateStintNotifyBanner();
         window.updateNextDriverBanner();
         window.updateDriverColourDots();
 
@@ -2081,9 +2103,12 @@ window.confirmPitExit = function(autoDetected) {
     if (window._strategyNotifState) {
         window._strategyNotifState.pitAlert5Fired = false;
         window._strategyNotifState.pitAlert2Fired = false;
+        window._strategyNotifState.stintNotifyFired = false;
         window._strategyNotifState.squadChangeNotified = false;
         window._strategyNotifState.driverChangeNotified = false;
     }
+    window.state.driverPitNotified = false;
+    window.state.driverPitNotifiedAt = 0;
 
     if (typeof window.saveRaceState === 'function') window.saveRaceState();
     if (typeof window.broadcast === 'function') window.broadcast();
@@ -2138,6 +2163,58 @@ window._getOutlapSec = function() {
         if (key !== '_default' && trackName.includes(key)) return sec;
     }
     return window.CIRCUIT_OUTLAP_SEC._default;
+};
+
+/** In-lap travel time (track → pit entry), seconds. Uses config override or circuit auto-detect. */
+window._getInlapSec = function() {
+    const fromConfig = parseInt(window.config?.inLapSec) || parseInt(window.config?.outlap) || 0;
+    if (fromConfig > 0) return fromConfig;
+    return window._getOutlapSec();
+};
+
+/**
+ * Pit-entry notification timings based on max stint limit.
+ * Returns null when max stint is unlimited (0).
+ */
+window._getStintNotifyTimings = function() {
+    const cfg = window.config || {};
+    const cfgMax = cfg.maxStint || 0;
+    if (cfgMax <= 0) return null;
+
+    const maxStintMs = cfgMax * 60000;
+    const inLapMs = window._getInlapSec() * 1000;
+    const leadMs = (parseFloat(cfg.pitNotifyLeadMin) || 3) * 60000;
+    const pitEntryDeadlineMs = Math.max(0, maxStintMs - inLapMs);
+    const notifyStartMs = Math.max(0, pitEntryDeadlineMs - leadMs);
+    const targetMs = window.state?.targetStintMs || maxStintMs;
+
+    return { maxStintMs, inLapMs, leadMs, pitEntryDeadlineMs, notifyStartMs, targetMs, inLapSec: Math.round(inLapMs / 1000) };
+};
+
+/** Setup preview: show when admin should start notifying the driver. */
+window._updatePitNotifyPreview = function() {
+    const el = document.getElementById('pitNotifyPreview');
+    if (!el) return;
+    const t = window.t || (k => k);
+    const maxMin = parseFloat(document.getElementById('maxStint')?.value) || 0;
+    if (maxMin <= 0) { el.classList.add('hidden'); return; }
+
+    const tmpCfg = {
+        maxStint: maxMin,
+        pitNotifyLeadMin: parseFloat(document.getElementById('pitNotifyLeadMin')?.value || '3') || 3,
+        inLapSec: parseInt(document.getElementById('inLapSec')?.value || '0') || 0,
+        outlap: parseInt(document.getElementById('inLapSec')?.value || '0') || 0
+    };
+    const prevCfg = window.config;
+    window.config = { ...(prevCfg || {}), ...tmpCfg };
+    const timings = window._getStintNotifyTimings();
+    window.config = prevCfg;
+    if (!timings) { el.classList.add('hidden'); return; }
+
+    let timeStr = window.formatTimeHMS(timings.notifyStartMs);
+    if (timeStr.startsWith('00:')) timeStr = timeStr.substring(3);
+    el.innerText = (t('pitNotifyPreview') || '→ Notify driver at stint {{time}}').replace('{{time}}', timeStr);
+    el.classList.remove('hidden');
 };
 
 /**
@@ -2869,6 +2946,7 @@ window._strategyNotifState = {
     lastNotifiedStint: 0,
     pitAlert5Fired: false,
     pitAlert2Fired: false,
+    stintNotifyFired: false,
     squadChangeNotified: false,
     driverChangeNotified: false
 };
@@ -2893,11 +2971,14 @@ window.updateStrategyNotifications = function() {
         window._strategyNotifState.lastNotifiedStint = currentStintIdx;
         window._strategyNotifState.pitAlert5Fired = false;
         window._strategyNotifState.pitAlert2Fired = false;
+        window._strategyNotifState.stintNotifyFired = false;
         window._strategyNotifState.squadChangeNotified = false;
         window._strategyNotifState.driverChangeNotified = false;
+        window.state.driverPitNotified = false;
+        window.state.driverPitNotifiedAt = 0;
     }
     
-    // No next stint in schedule? Nothing to notify about
+    // No next stint in schedule? Skip next-driver alerts only.
     if (nextStintIdx >= schedule.length) return;
     
     const nextPlanned = schedule[nextStintIdx];
@@ -4393,6 +4474,148 @@ window.closeLivePreview = function() {
     if (backBtn) backBtn.classList.add('hidden');
     if (window.previewData && window.previewData.timeline) {
         window.previewData.timeline.forEach(s => { delete s._done; delete s._current; });
+    }
+};
+
+// ==========================================
+// 📢 STINT PIT-ENTRY NOTIFY (max stint + in-lap)
+// ==========================================
+
+window.notifyDriverForPit = function() {
+    if (window.role !== 'host' || !window.state?.isRunning || window.state.isInPit) return;
+    const t = window.t || (k => k);
+    window.haptic('medium');
+
+    const minStintMs = (window.config?.minStint || 0) * 60000;
+    const now = window.getSyncedNow();
+    const currentStintMs = (now - window.state.stintStart) + (window.state.stintOffset || 0);
+    const belowMin = minStintMs > 0 && currentStintMs < minStintMs;
+
+    window.state.driverPitNotified = true;
+    window.state.driverPitNotifiedAt = now;
+
+    if (!belowMin && window.state.mode !== 'bad') {
+        window.state.mode = 'bad';
+        updateModeUI();
+    }
+
+    const driver = window.drivers[window.state.currentDriverIdx];
+    const driverName = driver?.name || 'Driver';
+    const boxMsg = belowMin ? t('orangeZone') : window.getBoxMessage();
+    window._fireStrategyNotification(`📢 ${driverName} — ${boxMsg}`, 'warning');
+    window.playAlertBeep('warning');
+
+    if (typeof window.broadcast === 'function') window.broadcast();
+    if (typeof window.saveRaceState === 'function') window.saveRaceState();
+    if (typeof window.updateStintNotifyBanner === 'function') window.updateStintNotifyBanner();
+};
+
+window.updateStintNotifyBanner = function() {
+    const banner = document.getElementById('stintNotifyBanner');
+    const titleEl = document.getElementById('stintNotifyTitle');
+    const subEl = document.getElementById('stintNotifySub');
+    const countdownEl = document.getElementById('stintNotifyCountdown');
+    const notifyBtn = document.getElementById('stintNotifyBtn');
+    if (!banner || !titleEl) return;
+
+    const t = window.t || (k => k);
+    const hide = () => {
+        banner.classList.add('hidden');
+        if (notifyBtn) notifyBtn.classList.add('hidden');
+    };
+
+    if (window.role === 'client') { hide(); return; }
+    if (!window.state?.isRunning || window.state?.isFinished || window.state?.isInPit) { hide(); return; }
+
+    const timings = window._getStintNotifyTimings ? window._getStintNotifyTimings() : null;
+    if (!timings) { hide(); return; }
+
+    const now = window.getSyncedNow();
+    const currentStintMs = (now - window.state.stintStart) + (window.state.stintOffset || 0);
+
+    // Auto alert when pit-entry notify window opens
+    if (currentStintMs >= timings.notifyStartMs && !window._strategyNotifState.stintNotifyFired) {
+        window._strategyNotifState.stintNotifyFired = true;
+        const driver = window.drivers[window.state.currentDriverIdx];
+        const driverName = driver?.name || 'Driver';
+        const msg = `📢 ${driverName} — ${t('stintNotifyNow') || 'NOTIFY DRIVER — Pit entry window open'}`;
+        window._fireStrategyNotification(msg, 'warning');
+        window.playAlertBeep('warning');
+    }
+
+    const fmtStint = (ms) => {
+        let s = window.formatTimeHMS(Math.max(0, ms));
+        if (s.startsWith('00:')) s = s.substring(3);
+        return s;
+    };
+
+    const maxMin = Math.round(timings.maxStintMs / 60000);
+    const inLapSec = timings.inLapSec;
+    const leadMin = Math.round(timings.leadMs / 60000);
+    const infoTpl = t('stintNotifyInfo') || 'Notify from {{time}} (max {{max}}m − {{inlap}}s in-lap − {{lead}}m lead)';
+    const infoLine = infoTpl
+        .replace('{{time}}', fmtStint(timings.notifyStartMs))
+        .replace('{{max}}', String(maxMin))
+        .replace('{{inlap}}', String(inLapSec))
+        .replace('{{lead}}', String(leadMin));
+
+    const showBtn = () => {
+        if (!notifyBtn) return;
+        notifyBtn.classList.remove('hidden');
+        if (window.state.driverPitNotified) {
+            notifyBtn.innerText = t('driverNotifiedShort') || '✓ Notified';
+            notifyBtn.classList.remove('animate-pulse', 'bg-fuel');
+            notifyBtn.classList.add('bg-green-700', 'text-white');
+            notifyBtn.disabled = true;
+        } else {
+            notifyBtn.innerText = t('notifyDriver') || '📢 Notify Driver';
+            notifyBtn.classList.add('animate-pulse', 'bg-fuel');
+            notifyBtn.classList.remove('bg-green-700', 'text-white');
+            notifyBtn.disabled = false;
+        }
+    };
+
+    // Approaching notify window (within 10 min before)
+    const approachMs = 10 * 60000;
+    if (currentStintMs < timings.notifyStartMs - approachMs) {
+        hide();
+        return;
+    }
+
+    banner.classList.remove('hidden');
+
+    if (currentStintMs >= timings.maxStintMs) {
+        banner.className = 'bg-red-950/95 border-b border-red-500/60 px-3 py-2 shrink-0 animate-pulse';
+        titleEl.className = 'text-red-300 text-sm font-bold truncate';
+        titleEl.innerText = `🚨 ${t('stintNotifyLate') || 'MAX STINT RISK — Driver must pit now'}`;
+        subEl.innerText = infoLine;
+        if (countdownEl) countdownEl.innerText = fmtStint(currentStintMs);
+        showBtn();
+    } else if (currentStintMs >= timings.pitEntryDeadlineMs) {
+        banner.className = 'bg-red-950/90 border-b border-red-500/50 px-3 py-2 shrink-0 animate-pulse';
+        titleEl.className = 'text-red-300 text-sm font-bold truncate';
+        titleEl.innerText = `🚨 ${t('stintNotifyLate') || 'MAX STINT RISK — Driver must pit now'}`;
+        subEl.innerText = infoLine;
+        if (countdownEl) {
+            const over = currentStintMs - timings.pitEntryDeadlineMs;
+            countdownEl.innerText = `+${fmtStint(over)}`;
+        }
+        showBtn();
+    } else if (currentStintMs >= timings.notifyStartMs) {
+        banner.className = 'bg-orange-950/90 border-b border-orange-500/50 px-3 py-2 shrink-0';
+        titleEl.className = 'text-orange-300 text-sm font-bold truncate';
+        titleEl.innerText = `🟠 ${t('stintNotifyNow') || 'NOTIFY DRIVER — Pit entry window open'}`;
+        subEl.innerText = infoLine;
+        if (countdownEl) countdownEl.innerText = fmtStint(currentStintMs);
+        showBtn();
+    } else {
+        banner.className = 'bg-amber-950/80 border-b border-amber-500/40 px-3 py-2 shrink-0';
+        titleEl.className = 'text-amber-300 text-sm font-bold truncate';
+        titleEl.innerText = `⏳ ${t('stintNotifySoon') || 'Start notifying driver in'}`;
+        subEl.innerText = infoLine;
+        const until = timings.notifyStartMs - currentStintMs;
+        if (countdownEl) countdownEl.innerText = fmtStint(until);
+        if (notifyBtn) notifyBtn.classList.add('hidden');
     }
 };
 
