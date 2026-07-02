@@ -986,21 +986,23 @@ window.renderPreview = function() {
         const borderWarning = outOfBounds ? 'ring-1 ring-red-500' : '';
 
         const checkeredFlag = isLast ? `<svg width="11" height="8" viewBox="0 0 14 10" aria-hidden="true" style="flex-shrink:0;vertical-align:middle"><rect x="0.5" y="0.5" width="13" height="9" rx="1" fill="#111" stroke="#666"/><rect x="1" y="1" width="3" height="4" fill="#fff"/><rect x="4" y="1" width="3" height="4" fill="#111"/><rect x="7" y="1" width="3" height="4" fill="#fff"/><rect x="10" y="1" width="3" height="4" fill="#111"/><rect x="1" y="5" width="3" height="4" fill="#111"/><rect x="4" y="5" width="3" height="4" fill="#fff"/><rect x="7" y="5" width="3" height="4" fill="#111"/><rect x="10" y="5" width="3" height="4" fill="#fff"/></svg>` : '';
+        const touchDev = window._isTouchDevice;
+        const dragAttrs = touchDev ? '' : ` draggable="true" ondragstart="window.handleDragStart(event)" ondragover="window.handleDragOver(event)" ondragleave="window.handleDragLeave(event)" ondrop="window.handleDrop(event)"`;
+        const driverTap = touchDev ? '' : ` onclick="event.stopPropagation();window.openStintDriverPicker(${index}, this)"`;
+        const driverTitle = touchDev
+            ? (window.t ? window.t('holdToSwapDriver') : 'Hold 3 sec to swap driver')
+            : 'Tap to swap driver';
         // Reorder arrows inline so row stays single-line height (~24px)
         return `
-            <div class="flex items-center gap-1 bg-navy-950 rounded border-l-4 cursor-grab active:cursor-grabbing ${borderWarning}" style="border-left-color:${stint.color};height:24px;padding:0 4px 0 0;overflow:hidden"
-                 draggable="true" data-index="${index}"
-                 ondragstart="window.handleDragStart(event)"
-                 ondragover="window.handleDragOver(event)"
-                 ondragleave="window.handleDragLeave(event)"
-                 ondrop="window.handleDrop(event)">
+            <div class="flex items-center gap-1 bg-navy-950 rounded border-l-4 cursor-grab active:cursor-grabbing stint-row ${borderWarning}" style="border-left-color:${stint.color};height:24px;padding:0 4px 0 0;overflow:hidden"
+                 data-index="${index}"${dragAttrs}>
                 <div class="flex items-center shrink-0" style="gap:0;width:28px">
                     <button onclick="window.moveStint(${index}, -1)" class="text-gray-600 hover:text-white ${isFirst ? 'invisible' : ''}" style="font-size:7px;padding:0 2px;line-height:1;background:none;border:none;cursor:pointer" title="Up">▲</button>
                     <span class="text-gray-600 font-mono" style="font-size:8px;min-width:10px;text-align:center">${index+1}</span>
                     <button onclick="window.moveStint(${index}, 1)" class="text-gray-600 hover:text-white ${isLast ? 'invisible' : ''}" style="font-size:7px;padding:0 2px;line-height:1;background:none;border:none;cursor:pointer" title="Down">▼</button>
                 </div>
                 <div class="flex-1 min-w-0 flex items-center gap-1" style="overflow:hidden;white-space:nowrap">
-                    <span class="font-bold text-white hover:text-neon cursor-pointer underline decoration-dotted" style="font-size:11px;max-width:4.5rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0" title="Tap to swap driver" onclick="event.stopPropagation();window.openStintDriverPicker(${index}, this)">${stint.driverName}</span>
+                    <span class="stint-driver-swap font-bold text-white hover:text-neon cursor-pointer underline decoration-dotted" style="font-size:11px;max-width:4.5rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0" title="${driverTitle}" data-stint-index="${index}"${driverTap}>${stint.driverName}</span>
                     <span class="text-gray-500" style="font-size:9px;flex-shrink:0">${startTimeStr}${arrow}${endTimeStr}</span>
                     ${checkeredFlag}${pitIndicator}${stintForecastTag}
                 </div>
@@ -1197,7 +1199,6 @@ window.updateStats = function(currentStintMs) {
         
         // Driver % share
         const pct = grandTotal > 0 ? Math.round((displayTotalTime / grandTotal) * 100) : 0;
-        const pctBar = `<div class="w-full bg-gray-800 rounded-full h-1.5 mt-0.5"><div class="h-1.5 rounded-full" style="width:${pct}%;background:${d.color || '#3b82f6'}"></div></div>`;
         
         // Driver max-time indicator
         const maxDriverMin = parseFloat(document.getElementById('maxDriverTime')?.value || '0');
@@ -1213,9 +1214,10 @@ window.updateStats = function(currentStintMs) {
         }
 
         mainRow.innerHTML = `
-            <td class="text-center cursor-pointer p-2 hover:text-ice" onclick="window.toggleLog(${i})">${d.isExpanded ? '▲' : '▼'}</td>
-            <td class="py-2 pr-2"><div class="flex items-center">${colorDot}${d.name} ${isCurrent ? '🏎️' : ''}${squadBadge}${maxTimeIndicator}</div></td>
-            <td class="py-2 text-center">${d.stints || 0}</td> <td class="py-2 text-right font-mono"><div data-stat-time>${window.formatTimeHMS(displayTotalTime)}${maxDriverMin > 0 ? `<span class="text-[8px] text-gray-600 ml-1">/${window.formatTimeHMS(maxDriverMin*60000)}</span>` : ''}</div><div class="flex items-center gap-1 justify-end"><span class="text-[9px] text-gray-500">${pct}%</span><div class="w-10">${pctBar}</div></div></td>
+            <td class="text-center cursor-pointer p-1.5 hover:text-ice" onclick="window.toggleLog(${i})">${d.isExpanded ? '▲' : '▼'}</td>
+            <td class="py-1.5 pr-1"><div class="stat-driver-wrap">${colorDot}<span class="stat-driver-name">${d.name}${isCurrent ? ' 🏎️' : ''}</span>${squadBadge}${maxTimeIndicator}</div></td>
+            <td class="py-1.5 text-center">${d.stints || 0}</td>
+            <td class="py-1.5 text-right font-mono stat-total-cell"><div class="stat-time" data-stat-time>${window.formatTimeHMS(displayTotalTime)}</div><div class="stat-pct">${pct}%</div></td>
         `;
         tb.appendChild(mainRow);
 
@@ -1225,16 +1227,16 @@ window.updateStats = function(currentStintMs) {
             logCell.colSpan = 4;
             logCell.className = "bg-navy-950 p-2 text-[10px]";
             
-            let logsHtml = '<div class="flex justify-between text-gray-500 border-b border-gray-700 pb-1 mb-1"><span>#</span><span>Drive</span><span>Pit</span></div>';
+            let logsHtml = '<div class="stat-log-grid text-gray-500 border-b border-gray-700 pb-1 mb-1"><span>#</span><span>Drive</span><span>Pit</span></div>';
             
             // לוגים היסטוריים (מה שנשמר ב-main.js)
             if (d.logs && d.logs.length > 0) {
                 d.logs.forEach((log, idx) => {
                     logsHtml += `
-                        <div class="flex justify-between items-center py-1 border-b border-gray-800">
+                        <div class="stat-log-grid py-1 border-b border-gray-800">
                             <span class="text-gray-500">${idx + 1}</span>
-                            <span class="text-ice font-mono">${window.formatTimeHMS(log.drive)}</span>
-                            <span class="text-fuel font-mono">${log.pit ? window.formatTimeHMS(log.pit) : '--'}</span>
+                            <span class="text-ice font-mono truncate">${window.formatTimeHMS(log.drive)}</span>
+                            <span class="text-fuel font-mono truncate">${log.pit ? window.formatTimeHMS(log.pit) : '--'}</span>
                         </div>
                     `;
                 });
@@ -1243,9 +1245,9 @@ window.updateStats = function(currentStintMs) {
             // סטינט נוכחי (רץ) - לא נכנס ללוג הקבוע, רק מוצג כ"חי"
             if (isCurrent && !window.state.isInPit) {
                 logsHtml += `
-                    <div class="flex justify-between items-center py-1 bg-ice/10 text-white font-bold animate-pulse">
+                    <div class="stat-log-grid py-1 bg-ice/10 text-white font-bold animate-pulse">
                         <span class="text-ice">LIVE</span>
-                        <span class="text-ice font-mono">${window.formatTimeHMS(currentStintMs)}</span>
+                        <span class="text-ice font-mono truncate">${window.formatTimeHMS(currentStintMs)}</span>
                         <span class="text-gray-500">...</span>
                     </div>
                 `;
@@ -1293,88 +1295,148 @@ window.handleDrop = function(e) {
     window.draggedStintIndex = null;
 };
 
+// === Touch: scroll-safe long-press actions (3 sec hold) ===
+window._bindLongPressAction = function(el, opts) {
+    if (!el) return;
+    const ms = opts.ms || window.LONG_PRESS_MS || 3000;
+    const threshold = window.SCROLL_MOVE_THRESHOLD || 12;
+    let timer = null;
+    let startX = 0, startY = 0;
+    let activated = false;
+
+    const cancel = () => { clearTimeout(timer); timer = null; };
+
+    el.addEventListener('touchstart', (e) => {
+        if (opts.skipIf && opts.skipIf(e)) return;
+        activated = false;
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+        timer = setTimeout(() => {
+            activated = true;
+            window.haptic && window.haptic('medium');
+            if (opts.activeKey && window.showToast) {
+                window.showToast(window.t(opts.activeKey), 'success', 2000);
+            }
+            if (opts.onActivate) opts.onActivate(e);
+        }, ms);
+    }, { passive: true });
+
+    el.addEventListener('touchmove', (e) => {
+        if (!timer && !activated) return;
+        const dx = e.touches[0].clientX - startX;
+        const dy = e.touches[0].clientY - startY;
+        if (!activated && (Math.abs(dx) > threshold || Math.abs(dy) > threshold)) {
+            cancel();
+        }
+    }, { passive: true });
+
+    el.addEventListener('touchend', () => { cancel(); activated = false; }, { passive: true });
+    el.addEventListener('touchcancel', () => { cancel(); activated = false; }, { passive: true });
+};
+
 // === Touch-based reorder (long-press on mobile) ===
 window._touchDragState = null;
 
 window.initTouchDrag = function(container) {
-    if (!container) return;
-    
+    if (!container || !window._isTouchDevice) return;
+    if (container.dataset.touchDragInit === '1') return;
+    container.dataset.touchDragInit = '1';
+
+    const holdMs = window.LONG_PRESS_MS || 3000;
+    const threshold = window.SCROLL_MOVE_THRESHOLD || 12;
     let longPressTimer = null;
     let touchItem = null;
-    
+    let pressMode = null; // 'reorder' | 'swap'
+    let startX = 0, startY = 0;
+
+    const cancelPress = () => {
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
+        touchItem = null;
+        pressMode = null;
+    };
+
     container.addEventListener('touchstart', function(e) {
-        const item = e.target.closest('[data-index]');
-        if (!item) return;
-        // Don't start drag on input elements or buttons
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') return;
 
+        const swapEl = e.target.closest('.stint-driver-swap');
+        const item = swapEl || e.target.closest('[data-index]');
+        if (!item) return;
+
         touchItem = item;
+        pressMode = swapEl ? 'swap' : 'reorder';
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+
         longPressTimer = setTimeout(() => {
-            // Long press activated — start drag
+            if (pressMode === 'swap') {
+                window.haptic && window.haptic('medium');
+                const idx = parseInt(swapEl.getAttribute('data-stint-index'), 10);
+                window.openStintDriverPicker(idx, swapEl);
+                cancelPress();
+                return;
+            }
             window.haptic && window.haptic('medium');
-            const idx = parseInt(item.getAttribute('data-index'));
+            const idx = parseInt(item.getAttribute('data-index'), 10);
             window._touchDragState = { fromIdx: idx, el: item };
             item.style.opacity = '0.5';
             item.style.outline = '2px solid #22d3ee';
-            window.showToast('🔀 Drag to reorder, or use ▲▼', 'info', 2000);
-        }, 500); // 500ms long press
-    }, { passive: false });
+            if (window.showToast) window.showToast(window.t('dragToPosition'), 'info', 3000);
+        }, holdMs);
+    }, { passive: true });
 
     container.addEventListener('touchmove', function(e) {
-        // Cancel long-press if finger moves before drag is activated (user is scrolling)
+        const dx = e.touches[0].clientX - startX;
+        const dy = e.touches[0].clientY - startY;
+
         if (longPressTimer && !window._touchDragState) {
-            clearTimeout(longPressTimer);
-            longPressTimer = null;
-            return; // Let the scroll happen normally
+            if (Math.abs(dx) > threshold || Math.abs(dy) > threshold) {
+                cancelPress();
+            }
+            return;
         }
 
         if (!window._touchDragState) return;
-        e.preventDefault(); // Safe: only called after drag is confirmed active
-        
-        // Find which item we're over
+        e.preventDefault();
+
         const touch = e.touches[0];
         const el = document.elementFromPoint(touch.clientX, touch.clientY);
         const targetItem = el?.closest('[data-index]');
-        
-        // Highlight drop target
+
         container.querySelectorAll('[data-index]').forEach(i => i.classList.remove('drag-over'));
         if (targetItem && targetItem !== window._touchDragState.el) {
             targetItem.classList.add('drag-over');
         }
     }, { passive: false });
-    
+
     container.addEventListener('touchend', function(e) {
-        clearTimeout(longPressTimer);
-        longPressTimer = null;
-        
+        cancelPress();
+
         if (!window._touchDragState) return;
-        
-        // Find drop target
+
         const touch = e.changedTouches[0];
         const el = document.elementFromPoint(touch.clientX, touch.clientY);
         const targetItem = el?.closest('[data-index]');
-        
-        // Clean up highlights
+
         container.querySelectorAll('[data-index]').forEach(i => {
             i.classList.remove('drag-over');
             i.style.opacity = '';
             i.style.outline = '';
         });
-        
+
         if (targetItem) {
-            const toIdx = parseInt(targetItem.getAttribute('data-index'));
+            const toIdx = parseInt(targetItem.getAttribute('data-index'), 10);
             if (toIdx !== window._touchDragState.fromIdx) {
                 window.haptic && window.haptic('light');
                 window.swapStints(window._touchDragState.fromIdx, toIdx);
             }
         }
-        
+
         window._touchDragState = null;
     }, { passive: true });
-    
+
     container.addEventListener('touchcancel', function() {
-        clearTimeout(longPressTimer);
-        longPressTimer = null;
+        cancelPress();
         if (window._touchDragState) {
             window._touchDragState.el.style.opacity = '';
             window._touchDragState.el.style.outline = '';
@@ -2737,23 +2799,42 @@ window._initDashboardDragArea = function(area, skipIds) {
         Array.from(area.children).forEach(child => {
             if (skip.has(child.id)) return; // skip toasts / pinned groups
             if (child.tagName === 'DIV' && !child.classList.contains('drag-handle-added')) {
-                child.setAttribute('draggable', 'true');
                 child.classList.add('drag-handle-added');
                 child.style.cursor = 'grab';
-                child.addEventListener('dragstart', _onDashPanelDragStart);
-                child.addEventListener('dragover', _onDashPanelDragOver);
-                child.addEventListener('drop', _onDashPanelDrop);
-                child.addEventListener('dragend', _onDashPanelDragEnd);
+                if (!window._isTouchDevice) {
+                    child.setAttribute('draggable', 'true');
+                    child.addEventListener('dragstart', _onDashPanelDragStart);
+                    child.addEventListener('dragover', _onDashPanelDragOver);
+                    child.addEventListener('drop', _onDashPanelDrop);
+                    child.addEventListener('dragend', _onDashPanelDragEnd);
+                }
 
-                // Touch support via long-press
-                let touchTimer;
+                // Touch: 3 sec hold to reorder panels (scroll always wins on movement)
+                let touchTimer = null;
+                let dashStartX = 0, dashStartY = 0;
+                const dashHoldMs = window.LONG_PRESS_MS || 3000;
+                const dashThreshold = window.SCROLL_MOVE_THRESHOLD || 12;
+
                 child.addEventListener('touchstart', (e) => {
+                    dashStartX = e.touches[0].clientX;
+                    dashStartY = e.touches[0].clientY;
                     touchTimer = setTimeout(() => {
                         window._dashDragging = child;
                         child.style.opacity = '0.5';
-                    }, 400);
+                        window.haptic && window.haptic('medium');
+                        if (window.showToast) window.showToast(window.t('dragToPosition'), 'info', 3000);
+                    }, dashHoldMs);
                 }, { passive: true });
                 child.addEventListener('touchmove', (e) => {
+                    const dx = e.touches[0].clientX - dashStartX;
+                    const dy = e.touches[0].clientY - dashStartY;
+                    if (touchTimer && !window._dashDragging) {
+                        if (Math.abs(dx) > dashThreshold || Math.abs(dy) > dashThreshold) {
+                            clearTimeout(touchTimer);
+                            touchTimer = null;
+                        }
+                        return;
+                    }
                     if (!window._dashDragging || !area.contains(window._dashDragging)) return;
                     const t = e.touches[0];
                     const target = document
@@ -2767,6 +2848,7 @@ window._initDashboardDragArea = function(area, skipIds) {
                 }, { passive: true });
                 child.addEventListener('touchend', () => {
                     clearTimeout(touchTimer);
+                    touchTimer = null;
                     if (window._dashDragging) {
                         window._dashDragging.style.opacity = '';
                         window._dashDragging = null;

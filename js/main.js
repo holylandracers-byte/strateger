@@ -4,6 +4,51 @@
 
 // Touch device detection — used to disable HTML5 drag on mobile (allows native scroll)
 window._isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+window.LONG_PRESS_MS = 3000;
+window.SCROLL_MOVE_THRESHOLD = 12;
+window._suppressClickUntil = 0;
+
+// Suppress ghost-clicks after scroll gestures so taps on interactive elements don't fire accidentally
+(function() {
+    if (!window._isTouchDevice) return;
+    let startX = 0, startY = 0, moved = false;
+    document.addEventListener('touchstart', (e) => {
+        if (e.touches.length !== 1) return;
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+        moved = false;
+    }, { passive: true, capture: true });
+    document.addEventListener('touchmove', (e) => {
+        if (e.touches.length !== 1) return;
+        const dx = e.touches[0].clientX - startX;
+        const dy = e.touches[0].clientY - startY;
+        if (Math.abs(dx) > window.SCROLL_MOVE_THRESHOLD || Math.abs(dy) > window.SCROLL_MOVE_THRESHOLD) {
+            moved = true;
+        }
+    }, { passive: true, capture: true });
+    document.addEventListener('touchend', () => {
+        if (moved) window._suppressClickUntil = Date.now() + 450;
+    }, { passive: true, capture: true });
+    document.addEventListener('click', (e) => {
+        if (Date.now() < window._suppressClickUntil) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+        }
+    }, true);
+})();
+
+window._initTouchLongPressActions = function() {
+    if (!window._isTouchDevice) return;
+    const nextEl = document.getElementById('nextDriverName');
+    if (nextEl && !nextEl.dataset.longPressBound) {
+        nextEl.dataset.longPressBound = '1';
+        nextEl.removeAttribute('onclick');
+        window._bindLongPressAction(nextEl, {
+            onActivate: () => { if (typeof window.cycleNextDriver === 'function') window.cycleNextDriver(false, true); },
+            activeKey: 'nextDriverChanged'
+        });
+    }
+};
 
 document.addEventListener('DOMContentLoaded', () => {
     console.log("🚀 Strateger Initializing...");
@@ -67,6 +112,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (typeof window.initVenueLocationPicker === 'function') {
         window.initVenueLocationPicker();
+    }
+    if (typeof window._initTouchLongPressActions === 'function') {
+        window._initTouchLongPressActions();
     }
     // runSim is triggered once by checkForSavedRace (called below) — no separate call needed
     

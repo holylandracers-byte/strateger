@@ -247,12 +247,22 @@ body:has(#qualifyingDashboard:not(.hidden)) {
 #raceInfoPanel {
     flex: 0 0 var(--dash-info-pct, 60%) !important;
     min-height: 80px !important;
+    overflow-x: hidden !important;
     overflow-y: auto !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
 }
 #raceControlDock {
     flex: 0 0 auto !important;
     min-height: 80px !important;
+    overflow-x: hidden !important;
     overflow-y: auto !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+}
+#racePanelsWrapper {
+    overflow-x: hidden !important;
+    max-width: 100% !important;
 }
 
 /* Phone + tablet portrait: ONE scrollable column so every panel is reachable */
@@ -844,6 +854,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 /* Drag & Drop Stint Reorder */
 .draggable-source { opacity: 0.4; }
 .drag-over { outline: 2px dashed var(--ice); outline-offset: -2px; border-radius: 4px; }
+#driverScheduleList .stint-row,
+#driverScheduleList .stint-driver-swap {
+    touch-action: pan-y;
+}
 
 /* ==================== DASHBOARD PANEL RESIZER ==================== */
 /* Portrait (default): horizontal bar between top and bottom panels */
@@ -2373,7 +2387,53 @@ body.wt-active {
    which silently clipped extra driver rows with no scrollbar at all instead of scrolling. */
 .stats-table-scroll {
     max-height: 260px;
+    overflow-x: hidden;
     overflow-y: auto;
+}
+#statsTableGroup {
+    min-width: 0;
+    max-width: 100%;
+}
+#statsTableGroup table {
+    table-layout: fixed;
+    width: 100%;
+}
+#statsTableGroup col.toggle-col { width: 24px; }
+#statsTableGroup col.stops-col { width: 28px; }
+#statsTableGroup col.total-col { width: 76px; }
+#statsTable .stat-driver-wrap {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    overflow: hidden;
+}
+#statsTable .stat-driver-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+#statsTable .stat-total-cell {
+    min-width: 0;
+    overflow: hidden;
+}
+#statsTable .stat-time {
+    font-size: 10px;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+#statsTable .stat-pct {
+    font-size: 8px;
+    color: #6b7280;
+    line-height: 1.1;
+}
+#statsTable .stat-log-grid {
+    display: grid;
+    grid-template-columns: 1.5rem 1fr 1fr;
+    gap: 4px;
+    align-items: center;
 }
 
 /* #pitActionGroup must win over raceControlDock's own Tailwind `space-y-1.5` sibling-margin

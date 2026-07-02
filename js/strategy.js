@@ -930,6 +930,7 @@ window.initRace = function() {
 
     // Init draggable panels + the raceInfoPanel/raceControlDock height-split resizer
     if (typeof window.initDashboardDrag === 'function') window.initDashboardDrag();
+    if (typeof window._initTouchLongPressActions === 'function') window._initTouchLongPressActions();
     if (typeof window.initDashPanelResizer === 'function') window.initDashPanelResizer();
     // Init horizontal panel pinning (only active in landscape/wide layout)
     if (typeof window.initHorizontalPanels === 'function') {
