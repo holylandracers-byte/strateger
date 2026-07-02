@@ -13,16 +13,29 @@ document.addEventListener('DOMContentLoaded', () => {
     // a single deferred run fires at the end via checkForSavedRace → scheduleRunSim.
     window._initRunSimSuppressed = true;
 
-    // 🟢 Load viewer's own language preference if available
+    // 🟢 Language — explicit pick on first visit; migrate existing users
+    if (localStorage.getItem('strateger_onboarded') === 'true' && !localStorage.getItem('strateger_lang_explicit')) {
+        localStorage.setItem('strateger_lang_explicit', 'true');
+    }
+
+    const langExplicit = localStorage.getItem('strateger_lang_explicit');
     let savedLang = window.role === 'viewer'
         ? localStorage.getItem('strateger_viewer_lang') || localStorage.getItem('strateger_lang')
         : localStorage.getItem('strateger_lang');
-    
-    if (!savedLang) {
+
+    if (langExplicit && savedLang && typeof window.setLanguage === 'function') {
+        window.setLanguage(savedLang);
+    } else if (!langExplicit && savedLang && typeof window.setLanguage === 'function') {
+        // Returning user before explicit flag existed — keep their language
+        localStorage.setItem('strateger_lang_explicit', 'true');
+        window.setLanguage(savedLang);
+    } else if (!langExplicit) {
+        // First visit: language picker will run; HTML defaults stay until chosen
+    } else if (typeof window.setLanguage === 'function') {
         const browserLang = navigator.language.split('-')[0];
         savedLang = (['he', 'fr', 'pt'].includes(browserLang)) ? browserLang : 'en';
+        window.setLanguage(savedLang);
     }
-    if (typeof window.setLanguage === 'function') window.setLanguage(savedLang);
 
     // Restore saved page background
     const savedBg = localStorage.getItem('strateger_bg');
@@ -131,9 +144,9 @@ document.addEventListener('DOMContentLoaded', () => {
         muteBtn.title = 'Unmute';
     }
 
-    // Start onboarding for first-time visitors (host only, no join code)
-    if (window.role === 'host' && typeof window.startOnboarding === 'function') {
-        setTimeout(() => window.startOnboarding(), 800);
+    // First-visit language picker + guided walkthrough (host only)
+    if (window.role === 'host' && typeof window.initWalkthroughFlow === 'function') {
+        setTimeout(() => window.initWalkthroughFlow(), 800);
     }
 });
 
@@ -913,8 +926,9 @@ window.stopAllClocks = function() {
 };
 
 // Returns Date.now() adjusted by host clock offset (for viewers/drivers)
+// and walkthrough time boost during guided simulation
 window.getSyncedNow = function() {
-    return Date.now() + (window._hostTimeOffset || 0);
+    return Date.now() + (window._hostTimeOffset || 0) + (window._walkthroughTimeOffset || 0);
 };
 
 window.renderFrame = function() {
@@ -3451,22 +3465,7 @@ window.updateProUI = function() {
     if (typeof window._refreshTeamLogoBtn === 'function') window._refreshTeamLogoBtn();
 };
 
-// ==========================================
-// 🎓 ONBOARDING TUTORIAL
-// ==========================================
-
-window._onboardStep = 0;
-window.startOnboarding = function() {
-    if (localStorage.getItem('strateger_onboarded') === 'true') return;
-    const savedRaceModal = document.getElementById('savedRaceModal');
-    if (savedRaceModal && !savedRaceModal.classList.contains('hidden')) return;
-    document.getElementById('onboardingOverlay').classList.remove('hidden');
-};
-
-window.skipOnboarding = function() {
-    localStorage.setItem('strateger_onboarded', 'true');
-    document.getElementById('onboardingOverlay').classList.add('hidden');
-};
+// Onboarding / walkthrough — see js/walkthrough.js
 
 // ==========================================
 // 📄 PDF / IMAGE EXPORT

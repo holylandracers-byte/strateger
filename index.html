@@ -157,6 +157,12 @@
                 <span class="hidden sm:inline" data-i18n="driverLink">Driver</span>
             </button>
 
+            <!-- Guided tour — replay anytime -->
+            <button id="guideBtn" onclick="window.restartWalkthrough()" class="flex bg-navy-800 hover:bg-navy-700 text-gray-300 hover:text-ice text-xs font-bold px-2 py-1.5 rounded-full border border-gray-700 hover:border-ice/40 transition transform active:scale-95 items-center gap-1" data-i18n-title="wtGuideBtn" title="Guided Tour">
+                <i class="fas fa-route"></i>
+                <span class="hidden md:inline" data-i18n="wtGuideBtn">Guide</span>
+            </button>
+
             <!-- Demo — visible on sm+ screens; always available, not just on first run -->
             <button onclick="window.showDemoConfig()" class="hidden sm:flex bg-gradient-to-r from-ice/20 to-blue-500/20 hover:from-ice/30 hover:to-blue-500/30 text-ice text-xs font-bold px-2 py-1.5 rounded-full border border-ice/40 hover:border-ice/60 transition transform active:scale-95 items-center gap-1" title="Run Demo Race">
                 <i class="fas fa-play"></i>
@@ -189,6 +195,9 @@
                     <i class="fas fa-ellipsis-v"></i>
                 </button>
                 <div id="headerOverflowMenu" class="hidden absolute right-0 top-full mt-1 bg-navy-900 border border-gray-700 rounded-lg shadow-2xl p-1.5 min-w-[160px] z-50 animate-scale-in">
+                    <button onclick="window.restartWalkthrough(); document.getElementById('headerOverflowMenu').classList.add('hidden')" class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:bg-navy-800 hover:text-ice transition text-left">
+                        <i class="fas fa-route w-4 text-center text-gray-500"></i> <span data-i18n="wtGuideBtn">Guide</span>
+                    </button>
                     <button onclick="window.showDemoConfig(); document.getElementById('headerOverflowMenu').classList.add('hidden')" class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm text-ice hover:bg-navy-800 transition text-left">
                         <i class="fas fa-play w-4 text-center"></i> <span data-i18n="runDemo">Demo</span>
                     </button>
@@ -679,7 +688,7 @@
             <div class="bg-navy-900/80 border border-gray-700/60 rounded-xl p-3 space-y-2 shadow-sm">
                 <!-- Primary actions row -->
                 <div class="flex gap-2">
-                    <button onclick="window.generatePreview(false, true)" class="flex-1 bg-gradient-to-br from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 text-white font-bold py-3 rounded-lg shadow-md transition text-sm active:scale-95 transform">
+                    <button id="wtPreviewBtn" onclick="window.generatePreview(false, true)" class="flex-1 bg-gradient-to-br from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 text-white font-bold py-3 rounded-lg shadow-md transition text-sm active:scale-95 transform">
                         <i class="fas fa-chart-bar mr-1.5"></i><span data-i18n="previewStrategy">Preview</span>
                     </button>
                     <button id="startRaceBtn" onclick="window.initRace()" class="flex-1 bg-ice hover:bg-cyan-300 text-navy-950 font-black py-3 rounded-lg text-sm shadow-[0_0_14px_rgba(34,211,238,0.35)] hover:shadow-[0_0_20px_rgba(34,211,238,0.5)] transition uppercase tracking-wide active:scale-95 transform" data-i18n="startRace">
@@ -2181,25 +2190,33 @@
         </div>
     </div>
 
-    <!-- ONBOARDING OVERLAY -->
-    <div id="onboardingOverlay" class="hidden fixed inset-0 bg-black/85 z-[140] flex items-center justify-center p-4">
-        <div class="bg-navy-900 border border-ice/50 rounded-2xl p-6 max-w-sm w-full shadow-2xl text-center">
-            <div class="text-5xl mb-3">🏁</div>
-            <h2 class="text-xl font-bold text-ice mb-2" data-i18n="onboardWelcome">Welcome to Strateger!</h2>
-            <p class="text-sm text-gray-400 mb-5" data-i18n="onboardDemoHint">
-                The best way to get started is to run a quick demo race — it takes 30 seconds and shows you exactly how everything works.
-            </p>
+    <!-- LANGUAGE PICKER (first visit) -->
+    <div id="languageOverlay" class="hidden fixed inset-0 bg-black/90 z-[145] flex items-center justify-center p-4">
+        <div class="bg-navy-900 border border-ice/50 rounded-2xl p-6 max-w-md w-full shadow-2xl">
+            <div class="text-center mb-4">
+                <div class="text-4xl mb-2">🌍</div>
+                <h2 class="text-xl font-bold text-ice" data-i18n="wtLangTitle">Choose Your Language</h2>
+                <p class="text-sm text-gray-400 mt-1" data-i18n="wtLangSub">More languages available in the header after setup.</p>
+            </div>
+            <div id="langPickerGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[50vh] overflow-y-auto"></div>
+        </div>
+    </div>
 
-            <button onclick="window.skipOnboarding(); window.showDemoConfig();"
-                class="w-full bg-gradient-to-r from-neon to-green-500 hover:from-green-400 hover:to-green-600 text-black font-bold py-3 rounded-xl shadow-lg transition text-base flex items-center justify-center gap-2 mb-3">
-                <i class="fas fa-play-circle"></i>
-                <span data-i18n="onboardRunDemo">Run Demo Race</span>
-            </button>
-
-            <button onclick="window.skipOnboarding()"
-                class="w-full bg-navy-800 hover:bg-navy-700 text-gray-400 py-2 rounded-lg transition text-sm" data-i18n="onboardSkip">
-                I'll explore on my own
-            </button>
+    <!-- WALKTHROUGH SPOTLIGHT OVERLAY -->
+    <div id="walkthroughOverlay" class="hidden fixed inset-0 z-[150] pointer-events-none">
+        <div id="wtSpotlight" class="wt-spotlight-backdrop pointer-events-auto"></div>
+        <div id="wtSpotlightRing" class="wt-spotlight-ring hidden pointer-events-none"></div>
+        <div id="wtTooltip" class="wt-tooltip hidden pointer-events-auto">
+            <div class="flex items-center justify-between gap-2 mb-2">
+                <span id="wtProgress" class="text-[10px] font-mono text-ice/70">1 / 7</span>
+                <button type="button" id="wtSkipBtn" onclick="window.skipWalkthrough()" class="text-[10px] text-gray-500 hover:text-gray-300 transition" data-i18n="onboardSkip">Skip</button>
+            </div>
+            <h3 id="wtTitle" class="text-base font-bold text-ice mb-1"></h3>
+            <p id="wtDesc" class="text-sm text-gray-400 mb-4 leading-relaxed"></p>
+            <div class="flex flex-col gap-2">
+                <button type="button" id="wtActionBtn" class="hidden w-full bg-gradient-to-r from-neon to-green-500 hover:from-green-400 hover:to-green-600 text-black font-bold py-2.5 rounded-xl transition text-sm"></button>
+                <button type="button" id="wtNextBtn" class="w-full bg-ice hover:bg-cyan-300 text-navy-950 font-bold py-2.5 rounded-xl transition text-sm" data-i18n="onboardNext">Next</button>
+            </div>
         </div>
     </div>
 
@@ -2435,6 +2452,7 @@
     <script src="js/strategy.js?v=7"></script>
     <script src="js/live-timing.js?v=7"></script>
     <script src="js/ui.js?v=7"></script>
-    <script src="js/main.js?v=7"></script>
+    <script src="js/walkthrough.js?v=8"></script>
+    <script src="js/main.js?v=8"></script>
 </body>
 </html>
