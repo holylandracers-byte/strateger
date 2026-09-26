@@ -422,6 +422,15 @@ window.fetchLiveTimingFromProxy = async function() {
                     window.liveData._raceTimeReceivedAt = Date.now();
                 }
                 window.liveData._lastFeedRaceMs = feedMs;
+                // The app derives elapsed = configured duration - feed remaining. If the feed has MORE
+                // time left than the configured race length, that is clamped and the clock sits frozen
+                // at full time -- tell the admin once instead of failing silently.
+                const cfgMs = window.config && (window.config.raceMs || (parseFloat(window.config.duration) || 0) * 3600000);
+                if (cfgMs > 0 && feedMs > cfgMs * 1.02 && !window._durationMismatchWarned && window.state && window.state.isRunning) {
+                    window._durationMismatchWarned = true;
+                    const fmt = ms => (ms / 3600000).toFixed(1) + 'h';
+                    if (window.showToast) window.showToast(`⚠️ ${window.t('durationMismatch')} (${fmt(feedMs)} vs ${fmt(cfgMs)})`, 'warning', 12000);
+                }
             }
             
             // Force enable if data arrived
