@@ -3271,8 +3271,8 @@ html { touch-action: manipulation; }   /* no double-tap-zoom delay; pinch-zoom s
     outline-offset: 2px;
 }
 
-/* Font floor for the race screen on tablets/laptops (was 8-9px in many labels) */
-@media (min-width: 768px) {
+/* Font floor for the race screen on every screen size (was 8-9px in many labels) */
+@media all {
     #racePanelsWrapper .text-\[8px\]  { font-size: 10px !important; }
     #racePanelsWrapper .text-\[9px\]  { font-size: 11px !important; }
     #racePanelsWrapper .text-\[10px\] { font-size: 11.5px !important; }
@@ -3350,3 +3350,6 @@ body.watcher-mode #dashPanelResizer { display: none !important; }
     }
     body.watcher-mode .competitor-row { min-height: 44px; }
 }
+
+body.watcher-mode #liveTeamHint { display: none !important; }
+#liveTeamHint { cursor: pointer; }

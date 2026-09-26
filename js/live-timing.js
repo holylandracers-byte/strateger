@@ -1857,6 +1857,65 @@ window.toggleCompetitorsTable = function() {
     if (btn) btn.textContent = window._competitorsTableOpen ? '📋' : '🗂️';
 };
 
+// ==================== TEAM PICKER ====================
+// When the feed is connected but none of its rows matched the typed team/kart/driver, the
+// admin can tap the warning and pick their team straight from the feed's own list.
+window.openTeamPicker = function() {
+    if (window.role === 'client') return;   // spectators cannot change what the admin follows
+    const comps = dedupeLiveCompetitors(window.liveData.competitors || []);
+    if (!comps.length) { if (window.showToast) window.showToast(window.t('waitingData'), 'info', 2500); return; }
+    document.getElementById('teamPickerOverlay')?.remove();
+    const t = window.t || (k => k);
+    const ov = document.createElement('div');
+    ov.id = 'teamPickerOverlay';
+    ov.className = 'fixed inset-0 z-[120] bg-navy-950/95 flex flex-col p-3';
+    ov.setAttribute('role', 'dialog');
+    ov.setAttribute('aria-modal', 'true');
+    ov.innerHTML = `<div class="flex items-center justify-between mb-2">
+            <h3 class="text-ice font-bold text-lg">${t('pickYourTeam')}</h3>
+            <button type="button" id="teamPickerClose" class="w-11 h-11 rounded-full text-gray-300 text-2xl" aria-label="Close">&times;</button>
+        </div>
+        <input id="teamPickerFilter" type="search" class="input-field mb-2" placeholder="${t('pickTeamFilter')}" autocomplete="off">
+        <div id="teamPickerList" class="flex-1 overflow-y-auto space-y-1.5 overscroll-contain"></div>`;
+    document.body.appendChild(ov);
+    const listEl = ov.querySelector('#teamPickerList');
+    const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    const render = q => {
+        const needle = (q || '').trim().toLowerCase();
+        listEl.innerHTML = '';
+        comps.filter(c => !needle || (String(c.name || '') + ' #' + String(c.kart || '')).toLowerCase().includes(needle)).forEach(c => {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'w-full flex items-center gap-3 text-start bg-navy-900 border border-gray-700 rounded-lg px-3 py-2 min-h-[48px] active:scale-[0.99]';
+            b.innerHTML = `<span class="w-8 text-gray-400 font-mono">${esc(c.position)}</span><span class="w-10 text-gray-500 font-mono">#${esc(c.kart)}</span><span class="flex-1 font-bold text-white truncate">${esc(c.name)}</span>`;
+            b.onclick = () => window._selectOurTeam(c);
+            listEl.appendChild(b);
+        });
+        if (!listEl.children.length) listEl.innerHTML = `<div class="text-gray-500 text-center py-4">${t('notFound')}</div>`;
+    };
+    render('');
+    ov.querySelector('#teamPickerFilter').addEventListener('input', e => render(e.target.value));
+    ov.querySelector('#teamPickerClose').onclick = () => ov.remove();
+    ov.addEventListener('keydown', e => { if (e.key === 'Escape') ov.remove(); });
+    ov.querySelector('#teamPickerFilter').focus();
+};
+
+window._selectOurTeam = function(c) {
+    // Kart number is the unambiguous key (team names can repeat or be renamed by the feed)
+    const useKart = !!(c.kart && String(c.kart).trim());
+    window.searchConfig.teamName = useKart ? '' : (c.name || '');
+    window.searchConfig.driverName = '';
+    window.searchConfig.kartNumber = useKart ? String(c.kart).trim() : '';
+    const input = document.getElementById('searchValue');
+    if (input) input.value = useKart ? window.searchConfig.kartNumber : window.searchConfig.teamName;
+    const radio = document.querySelector('input[name="searchType"][value="' + (useKart ? 'kart' : 'team') + '"]');
+    if (radio) radio.checked = true;
+    document.getElementById('teamPickerOverlay')?.remove();
+    if (window.showToast) window.showToast('✓ ' + (c.name || '') + (useKart ? ' #' + c.kart : ''), 'success', 2500);
+    if (typeof window.saveRaceState === 'function') window.saveRaceState();
+    window.fetchLiveTimingFromProxy();   // signature changed -> scraper restarts with the new target
+};
+
 // ==================== LIVE-TIMING WIDGET HEIGHT RESIZE (≥1024px) ====================
 // The widget stays docked inside raceInfoPanel at all times — this only adjusts its
 // height within that column, dragging #liveTimingHeightHandle up/down. Width is fixed

@@ -46,7 +46,7 @@
     <script src="js/live-timing-manager.js?v=8"></script>
     <script src="js/qualifying.js?v=7"></script>
 
-    <link rel="stylesheet" href="css/style.css?v=19">
+    <link rel="stylesheet" href="css/style.css?v=21">
 
     <script>
         tailwind.config = {
@@ -1173,7 +1173,7 @@
                     <!-- Heartbeat + flag status row -->
                     <div class="flex justify-between items-center mt-1 px-0.5 gap-2">
                         <span id="liveHeartbeat" class="text-[10px] text-gray-400">HB --</span>
-                        <span id="liveTeamHint" class="hidden text-[10px] text-amber-400 font-bold truncate"></span>
+                        <button id="liveTeamHint" type="button" onclick="window.openTeamPicker()" class="hidden text-[10px] text-amber-400 font-bold truncate underline decoration-dotted underline-offset-2 text-start"></button>
                         <div id="flagStatusBar" class="flag-green hidden"></div>
                     </div>
                     <!-- Competitor table header -->
@@ -2505,11 +2505,11 @@
         </div>
     </div>
 
-    <script src="js/state.js?v=15"></script>
+    <script src="js/state.js?v=16"></script>
     <script src="js/auth.js?v=7"></script>
     <script src="js/network.js?v=9"></script>
     <script src="js/strategy.js?v=10"></script>
-    <script src="js/live-timing.js?v=8"></script>
+    <script src="js/live-timing.js?v=9"></script>
     <script src="js/ui.js?v=10"></script>
     <script src="js/walkthrough.js?v=11"></script>
     <script src="js/main.js?v=14"></script>
