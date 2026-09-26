@@ -46,7 +46,7 @@
     <script src="js/live-timing-manager.js?v=8"></script>
     <script src="js/qualifying.js?v=7"></script>
 
-    <link rel="stylesheet" href="css/style.css?v=16">
+    <link rel="stylesheet" href="css/style.css?v=18">
 
     <script>
         tailwind.config = {
@@ -1379,6 +1379,8 @@
             </div>
             <!-- Tap hint -->
             <div id="driverTapHint" class="absolute bottom-3 inset-x-0 text-center text-white/25 text-[10px] font-bold uppercase tracking-widest" data-i18n="tapToPit">TAP TO ENTER PIT</div>
+            <!-- Connection / stale-feed warning (weak signal outdoors) -->
+            <div id="driverStaleBanner" class="hidden absolute bottom-9 inset-x-0 mx-4 z-10 rounded-lg px-3 py-2 text-center text-sm font-bold bg-red-900/90 border border-red-500 text-white" role="status" aria-live="polite"></div>
             <!-- Next stint notification banner -->
             <div id="driverNextStintBanner" class="hidden absolute top-10 inset-x-0 mx-4 z-10 bg-black/80 border border-amber-500/50 rounded-lg px-3 py-2 text-center">
                 <div id="driverNextStintText" class="text-amber-400 text-sm font-bold"></div>
@@ -2498,13 +2500,13 @@
         </div>
     </div>
 
-    <script src="js/state.js?v=11"></script>
+    <script src="js/state.js?v=12"></script>
     <script src="js/auth.js?v=7"></script>
     <script src="js/network.js?v=7"></script>
     <script src="js/strategy.js?v=10"></script>
     <script src="js/live-timing.js?v=8"></script>
     <script src="js/ui.js?v=10"></script>
     <script src="js/walkthrough.js?v=11"></script>
-    <script src="js/main.js?v=12"></script>
+    <script src="js/main.js?v=14"></script>
 </body>
 </html>

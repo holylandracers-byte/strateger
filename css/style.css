@@ -3309,3 +3309,12 @@ html { touch-action: manipulation; }   /* no double-tap-zoom delay; pinch-zoom s
         scroll-behavior: auto !important;
     }
 }
+
+/* Driver mode is a full-screen takeover: nothing from the admin dashboard may show through */
+body.driver-mode-on #racePanelsWrapper,
+body.driver-mode-on #setupScreen { visibility: hidden !important; }
+
+/* Driver screen: readable minimums on small phones (were 3vw / 2.5vw = 9-11px at 375px) */
+.driver-race-timer { font-size: max(3vw, 17px); }
+.driver-label { font-size: max(2.5vw, 11px); letter-spacing: 0.08em; }
+#driverTapHint { font-size: 12px; color: rgba(255,255,255,0.6); }

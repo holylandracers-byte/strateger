@@ -2791,6 +2791,7 @@ window.toggleDriverMode = function() {
     if (!panel) return;
     
     const isActive = !panel.classList.contains('hidden');
+    document.body.classList.toggle('driver-mode-on', !isActive);   // hides the admin dashboard (its widgets out-stack the fixed driver panel)
     if (isActive) {
         panel.classList.add('hidden');
         window.alertState.driverModeActive = false;
@@ -3189,6 +3190,23 @@ window.updateDriverMode = function() {
     
     const now = window.getSyncedNow();
     const t = window.t || (k => k);
+
+    // Stale-data / lost-connection warning: a driver must know when the numbers are not live.
+    try {
+        const staleEl = document.getElementById('driverStaleBanner');
+        if (staleEl) {
+            let msg = '';
+            const lt = window.liveTimingConfig || {};
+            const hbAt = window.liveData && window.liveData.heartbeatAt;
+            if (window.role === 'client' && window.conn && window.conn.open === false) {
+                msg = t('connLost') || '⚠️ Connection lost — reconnecting…';
+            } else if (lt.enabled && !lt.demoMode && hbAt && (Date.now() - hbAt) > 15000) {
+                msg = (t('feedStale') || '⚠️ Live timing stale') + ' (' + Math.round((Date.now() - hbAt) / 1000) + 's)';
+            }
+            staleEl.textContent = msg;
+            staleEl.classList.toggle('hidden', !msg);
+        }
+    } catch (e) {}
     const raceMs = window.config.raceMs || (parseFloat(window.config.duration) * 3600000);
     let raceRemaining = raceMs - (now - window.state.startTime);
     // Use live timing race clock when available — interpolate between API updates
