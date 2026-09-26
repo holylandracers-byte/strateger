@@ -2393,6 +2393,21 @@ window._handlePitInOnly = function() {
         outlap
     };
 
+    // Minimum pit time not yet served -> leaving now would be an EARLY exit, never "late".
+    // (latestExit = pitIn + minPit - outlap can precede the end of the minimum, so the
+    // overdue/leave-now states only make sense once the minimum has been served.)
+    const reqMs = Math.max(0, minPitMs + (window.currentPitAdjustment || 0) * 1000);
+    if ((now - pitInAt) < reqMs) {
+        window._pitAdvice.scenario = 'inOnlyEarly';
+        const earlyEl = document.getElementById('pitAdviceStatus');
+        if (earlyEl) {
+            earlyEl.textContent = t('pitEarlyExit') || '⚠️ EARLY EXIT';
+            earlyEl.className   = 'pit-advice-status text-yellow-300 font-bold';
+            earlyEl.classList.remove('hidden');
+        }
+        return;
+    }
+
     const statusEl = document.getElementById('pitAdviceStatus');
     if (statusEl) {
         if (secsToRec > 0) {

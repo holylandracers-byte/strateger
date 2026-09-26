@@ -2473,6 +2473,26 @@ body.wt-active {
     max-height: 180px;
 }
 
+/* Original Apex view: fixed height on narrow screens; on wide screens it fills the
+   widget's user-resizable height (drag handle) instead of staying a 240px strip. */
+#apexIframe {
+    height: 240px;
+    border: none;
+    background: #0a1120;
+}
+@media (min-width: 1024px) {
+    #raceInfoPanel #apexIframeContainer:not(.hidden) {
+        flex: 1 1 0;
+        min-height: 0;
+        display: flex;
+    }
+    #raceInfoPanel #apexIframe {
+        flex: 1 1 auto;
+        height: 100%;
+        min-height: 0;
+    }
+}
+
 /* ---- Live-timing widget height-resize handle (≥1024px only) ---- */
 .lt-height-handle {
     display: none;
@@ -3230,4 +3250,62 @@ body.wt-active {
     border: 1px solid rgba(34,211,238,0.3);
     border-radius: 12px;
     background: rgba(2,6,23,0.85);
+}
+
+/* ==================== ADMIN / TABLET ERGONOMICS ====================
+   Admin runs on tablets + laptops, often with gloves/outdoors. Rules: comfortable touch
+   targets (>=44px on touch devices), no sub-11px text, steady digits for timers,
+   visible keyboard focus, and reduced motion when the OS asks for it. */
+html { touch-action: manipulation; }   /* no double-tap-zoom delay; pinch-zoom stays allowed */
+
+.font-mono,
+#raceTimerDisplay,
+#liveRaceClock,
+#pitTimerDisplay,
+.competitor-row {
+    font-variant-numeric: tabular-nums;
+}
+
+:where(button, [role="button"], select, input, a):focus-visible {
+    outline: 2px solid #22d3ee;
+    outline-offset: 2px;
+}
+
+/* Font floor for the race screen on tablets/laptops (was 8-9px in many labels) */
+@media (min-width: 768px) {
+    #racePanelsWrapper .text-\[8px\]  { font-size: 10px !important; }
+    #racePanelsWrapper .text-\[9px\]  { font-size: 11px !important; }
+    #racePanelsWrapper .text-\[10px\] { font-size: 11.5px !important; }
+}
+
+/* Touch targets: 44px minimum for the controls the admin taps mid-race */
+@media (pointer: coarse) and (min-width: 768px) {
+    .penalty-btn,
+    #autoPitToggleBtn,
+    #apexViewToggle,
+    #forcePitOutBtn,
+    #teamLogoUploadBtn,
+    #liveTimingPanel button[onclick*="stopLiveTiming"],
+    #btnPush, #btnBad, #btnResetMode,
+    .header-bar button {
+        min-height: 44px;
+        min-width: 44px;
+        padding-inline: 12px;
+        font-size: 14px;
+    }
+    #raceControlDock .flex.items-center.gap-1 > .penalty-btn,
+    #raceControlDock .penalty-btn + .penalty-btn { margin-inline-start: 8px; }   /* >=8px between targets */
+    #liveTimingPanel .flex.items-center.gap-1 { gap: 8px; }
+    #pitEntryBtn { min-height: 60px; }
+    .competitor-row { min-height: 44px; height: 44px; }
+    .driver-drag-handle { min-width: 44px; min-height: 44px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
 }

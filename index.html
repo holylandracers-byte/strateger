@@ -2,7 +2,7 @@
 <html lang="en" dir="ltr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Strateger - Race Strategy Manager</title>
     
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%2322d3ee' width='100' height='100' rx='15'/><text x='50' y='70' text-anchor='middle' font-size='60' fill='black' font-weight='bold'>S</text></svg>">
@@ -40,13 +40,13 @@
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js" defer></script>
 
     <script src="js/racefacer-scraper.js?v=7"></script>
-    <script src="js/apex-scraper.js?v=7"></script>
+    <script src="js/apex-scraper.js?v=8"></script>
     <script src="js/hakafast-scraper.js?v=7"></script>
     <script src="js/alpha-scraper.js?v=7"></script>
-    <script src="js/live-timing-manager.js?v=7"></script>
+    <script src="js/live-timing-manager.js?v=8"></script>
     <script src="js/qualifying.js?v=7"></script>
 
-    <link rel="stylesheet" href="css/style.css?v=15">
+    <link rel="stylesheet" href="css/style.css?v=16">
 
     <script>
         tailwind.config = {
@@ -1168,6 +1168,7 @@
                     <!-- Heartbeat + flag status row -->
                     <div class="flex justify-between items-center mt-1 px-0.5 gap-2">
                         <span id="liveHeartbeat" class="text-[10px] text-gray-400">HB --</span>
+                        <span id="liveTeamHint" class="hidden text-[10px] text-amber-400 font-bold truncate"></span>
                         <div id="flagStatusBar" class="flag-green hidden"></div>
                     </div>
                     <!-- Competitor table header -->
@@ -1182,7 +1183,7 @@
                     </div>
                     <div id="competitorsTable" class="mt-1 overflow-y-auto lt-table-scroll"></div>
                     <div id="apexIframeContainer" class="hidden mt-1">
-                        <iframe id="apexIframe" src="" class="w-full rounded" style="height:240px;border:none;background:#0a1120;" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
+                        <iframe id="apexIframe" src="" class="w-full rounded" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
                     </div>
                     <div id="kartRankingPanel" class="hidden mt-1 p-2 bg-navy-950 rounded border border-gray-700/50"></div>
                 </div>
@@ -2497,13 +2498,13 @@
         </div>
     </div>
 
-    <script src="js/state.js?v=10"></script>
+    <script src="js/state.js?v=11"></script>
     <script src="js/auth.js?v=7"></script>
     <script src="js/network.js?v=7"></script>
     <script src="js/strategy.js?v=10"></script>
-    <script src="js/live-timing.js?v=7"></script>
+    <script src="js/live-timing.js?v=8"></script>
     <script src="js/ui.js?v=10"></script>
     <script src="js/walkthrough.js?v=11"></script>
-    <script src="js/main.js?v=11"></script>
+    <script src="js/main.js?v=12"></script>
 </body>
 </html>

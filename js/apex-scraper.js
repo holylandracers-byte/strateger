@@ -526,6 +526,7 @@ class ApexTimingScraper {
                     this.log('INFO', `✅ Pit exit detected for ${comp.driverName || rowId}`);
                 }
                 comp.inPit = inPit;
+                comp._pitStateAt = Date.now();
                 if (!deferEmit) this.emitUpdate();
                 return true;
             }
@@ -575,6 +576,15 @@ class ApexTimingScraper {
         if (!next.bestLapMs && prev.bestLapMs) merged.bestLapMs = prev.bestLapMs;
         if ((!next.pitCount || next.pitCount < 0) && prev.pitCount) merged.pitCount = prev.pitCount;
         if (next.inPit == null && prev.inPit != null) merged.inPit = prev.inPit;
+
+        // WebSocket pit events (*in / *out / p|1) are authoritative. An HTTP snapshot (often
+        // served stale through the CORS proxy) must not flip inPit back or move pitCount for a
+        // few seconds after one — that flapping produced phantom pit entries/exits downstream.
+        if (prev._pitStateAt && (Date.now() - prev._pitStateAt) < 12000) {
+            merged.inPit = prev.inPit;
+            merged.pitCount = prev.pitCount;
+            merged._pitStateAt = prev._pitStateAt;
+        }
 
         // Track when this competitor's record was last updated (for out-of-order packet detection)
         merged._updatedAt = Date.now();
@@ -636,10 +646,12 @@ class ApexTimingScraper {
         let sec;
         if (type === 'countdown' && /^\d+\.\d+$/.test(timePart)) {
             sec = parseFloat(timePart); // Apex sends decimal seconds for countdown type
+        } else if (type === 'countdown' && /^\d{5,}$/.test(timePart) && parseInt(timePart, 10) > 90000) {
+            sec = parseInt(timePart, 10) / 1000; // integer milliseconds (e.g. 86400000 = 24h)
         } else {
             sec = this._timerStringToSeconds(timePart);
         }
-        if (sec !== null && sec > 0 && sec < 86400) {
+        if (sec !== null && sec > 0 && sec <= 86400) {
             this.raceTimeLeftSec = sec;
             this._raceTimeReceivedAt = Date.now();
             this.log('INFO', `⏱️ Race time from ${key}|${type}: ${Math.round(sec)}s`);
@@ -697,17 +709,17 @@ class ApexTimingScraper {
     detectColumnMapping(headerCells) {
         // Extended patterns: each field has a broad regex tested against the _normalised_ token
         const patterns = [
-            { field: 'position',   re: /^(cla(ssifica)?|pos(ition)?|rnk|rank|platz|p|#|nr\.?)$/i },
+            { field: 'position',   re: /^(cla(ssifica)?|clt|clas(s|sement)?|pos(ition)?|rnk|rank|platz|p|#|nr\.?)$/i },
             { field: 'kartNumber', re: /^(kart|no|n|num(ber)?|nr|startnr|cart|vehicle)$/i },
             { field: 'driverName', re: /^(team|name|nom|nome|fahrer|driver|pilota|pilote|concurrent|concorrente|conductor|competitor|equipe|squadra|mannschaft|piloto)$/i },
             { field: 'totalLaps',  re: /^(giri|laps?|nbgiri|nbtrs?|tours?|rdn|runden|vueltas?|tr|rondes?|lap)$/i },
             { field: 'gap',        re: /^(distacco|gap|diff(erence)?|dist|abst(and)?|ecart|dif)$/i },
-            { field: 'lastLap',    re: /^(ultimo\s*t?|last\s*lap|last|dern(ier)?|dernier|letzte|ultimo|latest|ult|ltime|last\s*time)$/i },
-            { field: 'bestLap',    re: /^(giro\s*mig(liore)?|best\s*lap|best|meilleur|migliore|beste|mejor|melhor|btime|best\s*time|avg)$/i },
+            { field: 'lastLap',    re: /^(ultimo\s*t?|last\s*lap|last|dern(ier)?(\s*t(our)?)?|letzte|ultimo|latest|ult|ltime|last\s*time)$/i },
+            { field: 'bestLap',    re: /^(giro\s*mig(liore)?|best\s*lap|best|meilleur(\s*t(our)?)?|migliore|beste|mejor|melhor|btime|best\s*time|avg)$/i },
             { field: 'sector1',    re: /^s1(ector)?$/i },
             { field: 'sector2',    re: /^s2(ector)?$/i },
             { field: 'sector3',    re: /^s3(ector)?$/i },
-            { field: 'pitCount',   re: /^(pit\s*stop|pits?|pitstops?|box|arrets?|parada)$/i },
+            { field: 'pitCount',   re: /^(pit\s*stops?|pits?|pitstops?|box|stands?|arrets?|parada)$/i },
             { field: 'penalty',    re: /^(pena(lty)?|pen|penal|penalite|strafe)$/i },
             { field: 'category',   re: /^(categoria|category|cat|classe|klasse|class)$/i },
             { field: 'country',    re: /^(paese|country|land|pays|pais|nation|nat)$/i },
@@ -857,14 +869,14 @@ class ApexTimingScraper {
                     case 'onTrack': {
                         // 'in'/'si' = in pit, 'out'/'so' = on track
                         const v = value.toLowerCase().trim();
-                        if (v === 'in' || v === 'si') comp.inPit = true;
-                        else if (v === 'out' || v === 'so') comp.inPit = false;
+                        if (v === 'in' || v === 'si') { comp.inPit = true; comp._pitStateAt = Date.now(); }
+                        else if (v === 'out' || v === 'so') { comp.inPit = false; comp._pitStateAt = Date.now(); }
                         break;
                     }
                     case 'sector1':    if (value && value !== '-' && value !== '--') comp.sector1 = value; break;
                     case 'sector2':    if (value && value !== '-' && value !== '--') comp.sector2 = value; break;
                     case 'sector3':    if (value && value !== '-' && value !== '--') comp.sector3 = value; break;
-                    case 'pitCount':   comp.pitCount = parseInt(value) || 0; break;
+                    case 'pitCount': { const pc = parseInt(value, 10); if (Number.isFinite(pc) && pc >= (comp.pitCount || 0)) comp.pitCount = pc; break; }  // empty/blank delta or a lower value must not reset the counter (looked like a new pit stop on rebound)
                     case 'penalty': {
                         const penSec = parseInt(value);
                         if (!isNaN(penSec) && penSec > 0) {
@@ -1274,7 +1286,7 @@ class ApexTimingScraper {
         });
 
         const result = {
-            race: { timeLeftSeconds: this.raceTimeLeftSec },
+            race: { timeLeftSeconds: this.raceTimeLeftSec, receivedAt: this._raceTimeReceivedAt },
             competitors: allCompetitors.map(mapComp),
             ourTeam: ourTeam ? {
                 ...mapComp(ourTeam),

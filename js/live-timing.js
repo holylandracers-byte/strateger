@@ -237,6 +237,16 @@ window.fetchLiveTimingFromProxy = async function() {
         window.liveTimingManager.stop();
     }
     
+    // New feed or a different tracked team: pit baselines from the previous target are meaningless
+    // and would make the first real pitCount look like a fresh pit stop.
+    if (window._liveTimingConfigSignature !== configSignature) {
+        window.liveData._pitCountMax = null;
+        window.liveData.ourTeamPitCount = null;
+        window.liveData.ourTeamInPit = null;
+        window.liveData._lastFeedInPit = undefined;
+        window.liveData._lastFeedPitCount = undefined;
+    }
+
     window.updateProxyStatus("🔄 " + window.t('connecting'));
 
     // התחלת הסקרייפר דרך המנהל
@@ -261,6 +271,29 @@ window.fetchLiveTimingFromProxy = async function() {
             }
 
             if (data.ourTeam) {
+                // Pit event log (diagnostics): every inPit / pitCount change with source + state,
+                // so a phantom auto pit can be traced afterwards via window._pitEventLog.
+                if (!window._pitEventLog) window._pitEventLog = [];
+                if (data.ourTeam.inPit !== window.liveData._lastFeedInPit || data.ourTeam.pitCount !== window.liveData._lastFeedPitCount) {
+                    window._pitEventLog.push({
+                        at: new Date().toISOString(), provider: data.provider || 'http',
+                        inPit: !!data.ourTeam.inPit, pitCount: data.ourTeam.pitCount ?? null,
+                        appInPit: !!(window.state && window.state.isInPit),
+                        auto: !!window._autoPitEnabled, lap: data.ourTeam.totalLaps ?? null
+                    });
+                    if (window._pitEventLog.length > 200) window._pitEventLog.shift();
+                    window.liveData._lastFeedInPit = data.ourTeam.inPit;
+                    window.liveData._lastFeedPitCount = data.ourTeam.pitCount;
+                }
+                // A pit stop cannot start within 30 s of leaving the previous one, and pitCount
+                // can only legitimately grow past its high-water mark; anything else is feed noise.
+                const sinceStintStart = (window.state && window.state.stintStart) ? (Date.now() - window.state.stintStart) : Infinity;
+                const pitEntryCooldownOk = sinceStintStart > 30000;
+                const pcNow = data.ourTeam.pitCount;
+                const pcMax = window.liveData._pitCountMax;
+                const pitCountIsNewHigh = pcNow != null && (pcMax == null || pcNow > pcMax);
+                if (pcNow != null && pitCountIsNewHigh) window.liveData._pitCountMax = pcNow;
+
                 window.liveData.previousPosition = window.liveData.position;
                 window.liveData.position = data.ourTeam.position;
                 window.liveData.lastLap = data.ourTeam.lastLap;
@@ -288,7 +321,7 @@ window.fetchLiveTimingFromProxy = async function() {
                 // Auto-detect pit entry from live timing — AUTHORITATIVE: live timing always wins
                 const now = Date.now();
 
-                if (window._liveTimingMayForcePit() && window.state && window.state.isRunning && !window.state.isInPit && data.ourTeam.inPit) {
+                if (window._liveTimingMayForcePit() && window.state && window.state.isRunning && !window.state.isInPit && data.ourTeam.inPit && pitEntryCooldownOk) {
                     // Live timing says we are in pit — override everything
                     console.log('[LiveTiming] 🛑 AUTHORITATIVE PIT ENTRY from live data (inPit=true)');
                     if (typeof window.confirmPitEntry === 'function') {
@@ -299,7 +332,7 @@ window.fetchLiveTimingFromProxy = async function() {
                 // Fallback: detect pit entry from pitCount increase (catches cases where inPit flag was missed between polls)
                 else if (window._liveTimingMayForcePit() && window.state && window.state.isRunning && !window.state.isInPit
                     && prevPitCount != null && data.ourTeam.pitCount != null
-                    && data.ourTeam.pitCount > prevPitCount) {
+                    && data.ourTeam.pitCount > prevPitCount && pitCountIsNewHigh && pitEntryCooldownOk) {
                     console.log(`[LiveTiming] 🛑 PIT ENTRY detected via pitCount increase (${prevPitCount} → ${data.ourTeam.pitCount})`);
                     window.liveData.ourTeamInPit = true; // Force so exit detection works
                     window.liveData._pitEntryForcedAt = now; // Track when we forced entry
@@ -376,9 +409,19 @@ window.fetchLiveTimingFromProxy = async function() {
 
             // === Race time from live timing (RaceFacer provides timeLeftSeconds) ===
             if (data.race && data.race.timeLeftSeconds != null) {
-                window.liveData.raceTimeLeftMs = data.race.timeLeftSeconds * 1000;
-                // Store the timestamp when we received this so we can count down locally between API updates
-                window.liveData._raceTimeReceivedAt = Date.now();
+                const feedMs = data.race.timeLeftSeconds * 1000;
+                const feedAt = data.race.receivedAt || null;
+                // Only re-stamp when the feed value actually changed; otherwise every poll would
+                // reset the interpolation origin and freeze the clock at a stale value.
+                // Providers that report their own receive time (Apex) keep that origin.
+                if (feedAt) {
+                    window.liveData.raceTimeLeftMs = feedMs;
+                    window.liveData._raceTimeReceivedAt = feedAt;
+                } else if (feedMs !== window.liveData._lastFeedRaceMs) {
+                    window.liveData.raceTimeLeftMs = feedMs;
+                    window.liveData._raceTimeReceivedAt = Date.now();
+                }
+                window.liveData._lastFeedRaceMs = feedMs;
             }
             
             // Force enable if data arrived
@@ -568,6 +611,23 @@ window.updateLiveTimingUI = function() {
             : 'text-[10px] text-gray-400';
     }
     
+    // Feed is alive but none of its rows matched our team/kart/driver -> the top cells can
+    // never fill. Say so instead of leaving silent dashes.
+    const hintEl = document.getElementById('liveTeamHint');
+    if (hintEl) {
+        const comps = window.liveData.competitors || [];
+        const sc = window.searchConfig || {};
+        const term = (sc.kartNumber || sc.driverName || sc.teamName || '').trim();
+        const unmatched = comps.length > 0 && !comps.some(c => c.isOurTeam);
+        if (unmatched) {
+            const tt = window.t || (k => k);
+            hintEl.textContent = term ? `⚠️ "${term}" ${tt('ltTeamNotFound')}` : `⚠️ ${tt('ltNoTeamSet')}`;
+            hintEl.classList.remove('hidden');
+        } else {
+            hintEl.classList.add('hidden');
+        }
+    }
+
     const posEl = document.getElementById('livePosition');
     if (posEl) posEl.innerText = window.liveData.position || '-';
     
@@ -1916,6 +1976,17 @@ window.toggleCompetitorsTable = function() {
             const remainingSec = Math.max(0, totalSec - elapsedSec);
             el.textContent = formatRaceTime(remainingSec * 1000);
             el.title = window.t ? window.t('raceClockLabel') : 'RACE TIME';
+            // Verify against the app's own start-based timer: if the two differ by >3s the
+            // feed clock is winning (the app follows the feed) — flag it so it is visible.
+            window.clockDriftSec = null;
+            if (st && st.isRunning && st.startTime) {
+                const ownRemainingMs = Math.max(0, raceMs - (syncedNow - st.startTime));
+                window.clockDriftSec = Math.round((ownRemainingMs - remainingSec * 1000) / 1000);
+                if (Math.abs(window.clockDriftSec) > 3) {
+                    el.textContent += ' ⚠';
+                    el.title += ' — app timer differs from live timing by ' + window.clockDriftSec + 's (following live timing)';
+                }
+            }
             return;
         }
 

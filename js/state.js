@@ -541,7 +541,7 @@ window.translations = {
         teamLogoInvalidType: "Only JPG, PNG or SVG allowed",
         stintAvg: "Stint Avg",
         norm: "NORM",
-        pitLatestExitIn: "Latest exit in", pitLeaveNow: "⚠️ Leave now!", pitLatestExitPassed: "🚨 EXIT OVERDUE",
+        pitLatestExitIn: "Latest exit in", pitLeaveNow: "⚠️ Leave now!", ltNoTeamSet: "No team set — enter team/kart/driver", ltTeamNotFound: "not found in feed", pitEarlyExit: "⚠️ EARLY EXIT — min pit time not served", pitLatestExitPassed: "🚨 EXIT OVERDUE",
         autoPit: "Auto", autoPitOn: "Auto", autoPitOff: "Manual",
     },
     he: {
@@ -753,7 +753,7 @@ window.translations = {
         teamLogoInvalidType: "רק JPG, PNG או SVG",
         stintAvg: "ממוצע סטינט",
         norm: "רגיל",
-        pitLatestExitIn: "יציאה אחרונה בעוד", pitLeaveNow: "⚠️ צא עכשיו!", pitLatestExitPassed: "🚨 יציאה באיחור",
+        pitLatestExitIn: "יציאה אחרונה בעוד", pitLeaveNow: "⚠️ צא עכשיו!", ltNoTeamSet: "לא הוגדרה קבוצה — הזן קבוצה/קארט/נהג", ltTeamNotFound: "לא נמצא בפיד", pitEarlyExit: "⚠️ יציאה מוקדמת", pitLatestExitPassed: "🚨 יציאה באיחור",
         autoPit: "אוטו", autoPitOn: "אוטו", autoPitOff: "ידני",
     },
     fr: {
@@ -910,7 +910,7 @@ window.translations = {
         teamLogoInvalidType: "Seulement JPG, PNG ou SVG",
         stintAvg: "Moy. Relais",
         norm: "NORM",
-        pitLatestExitIn: "Sortie max dans", pitLeaveNow: "⚠️ Sortez maintenant!", pitLatestExitPassed: "🚨 SORTIE EN RETARD",
+        pitLatestExitIn: "Sortie max dans", pitLeaveNow: "⚠️ Sortez maintenant!", pitEarlyExit: "⚠️ SORTIE ANTICIPÉE", pitLatestExitPassed: "🚨 SORTIE EN RETARD",
     },
     pt: {
         ltSearchType: "Filtrar por:", ltTeam: "Equipe", ltDriver: "Piloto", ltKart: "Kart nº", ltPlaceholder: "Pesquisar...",
@@ -1067,7 +1067,7 @@ window.translations = {
         teamLogoInvalidType: "Apenas JPG, PNG ou SVG",
         stintAvg: "Méd. Stint",
         norm: "NORM",
-        pitLatestExitIn: "Saída máx. em", pitLeaveNow: "⚠️ Saia agora!", pitLatestExitPassed: "🚨 SAÍDA ATRASADA",
+        pitLatestExitIn: "Saída máx. em", pitLeaveNow: "⚠️ Saia agora!", pitEarlyExit: "⚠️ SAÍDA ANTECIPADA", pitLatestExitPassed: "🚨 SAÍDA ATRASADA",
     },
     ru: {
         ltSearchType: "Фильтр по:", ltTeam: "Команда", ltDriver: "Пилот", ltKart: "Карт №", ltPlaceholder: "Поиск...",
@@ -1225,7 +1225,7 @@ window.translations = {
         teamLogoInvalidType: "Только JPG, PNG или SVG",
         stintAvg: "Ср. Стинт",
         norm: "НОРМ",
-        pitLatestExitIn: "Выезд не позднее", pitLeaveNow: "⚠️ Выезжай!", pitLatestExitPassed: "🚨 ВЫЕЗД ПРОСРОЧЕН",
+        pitLatestExitIn: "Выезд не позднее", pitLeaveNow: "⚠️ Выезжай!", pitEarlyExit: "⚠️ РАННИЙ ВЫЕЗД", pitLatestExitPassed: "🚨 ВЫЕЗД ПРОСРОЧЕН",
     },
     ar: {
         ltSearchType: "تصفية حسب:", ltTeam: "الفريق", ltDriver: "السائق", ltKart: "رقم الكارت", ltPlaceholder: "البحث...",
@@ -1385,7 +1385,7 @@ window.translations = {
         teamLogoInvalidType: "JPG أو PNG أو SVG فقط",
         stintAvg: "متوسط الشوط",
         norm: "عادي",
-        pitLatestExitIn: "أقصى وقت للخروج", pitLeaveNow: "⚠️ اخرج الآن!", pitLatestExitPassed: "🚨 تأخر الخروج",
+        pitLatestExitIn: "أقصى وقت للخروج", pitLeaveNow: "⚠️ اخرج الآن!", pitEarlyExit: "⚠️ خروج مبكر", pitLatestExitPassed: "🚨 تأخر الخروج",
     },
     es: {
         ltSearchType: "Filtrar por:", ltTeam: "Equipo", ltDriver: "Piloto", ltKart: "Kart nº", ltPlaceholder: "Buscar...",
@@ -1545,7 +1545,7 @@ window.translations = {
         teamLogoInvalidType: "Solo JPG, PNG o SVG",
         stintAvg: "Prom. Stint",
         norm: "NORM",
-        pitLatestExitIn: "Salida máx. en", pitLeaveNow: "⚠️ ¡Sal ahora!", pitLatestExitPassed: "🚨 SALIDA TARDÍA",
+        pitLatestExitIn: "Salida máx. en", pitLeaveNow: "⚠️ ¡Sal ahora!", pitEarlyExit: "⚠️ SALIDA ANTICIPADA", pitLatestExitPassed: "🚨 SALIDA TARDÍA",
     },
     it: {
         ltSearchType: "Filtra per:", ltTeam: "Squadra", ltDriver: "Pilota", ltKart: "Kart n°", ltPlaceholder: "Ricerca...", previewTitle: "Anteprima strategia", addToCalendar: "Aggiungi al calendario", timeline: "Cronologia", driverSchedule: "Riepilogo Stint", totalTime: "Tempo totale", close: "Chiudi",
@@ -1649,7 +1649,7 @@ window.translations = {
         teamLogoInvalidType: "Solo JPG, PNG o SVG",
         stintAvg: "Media Stint",
         norm: "NORM",
-        pitLatestExitIn: "Uscita max tra", pitLeaveNow: "⚠️ Esci ora!", pitLatestExitPassed: "🚨 USCITA IN RITARDO",
+        pitLatestExitIn: "Uscita max tra", pitLeaveNow: "⚠️ Esci ora!", pitEarlyExit: "⚠️ USCITA ANTICIPATA", pitLatestExitPassed: "🚨 USCITA IN RITARDO",
     },
     ka: {
         ltSearchType: "ფილტრი:", ltTeam: "გუნდი", ltDriver: "მძღოლი", ltKart: "კარტი #", ltPlaceholder: "ძებნა...",
@@ -1808,7 +1808,7 @@ window.translations = {
         teamLogoInvalidType: "მხოლოდ JPG, PNG ან SVG",
         stintAvg: "სტინტის საშ.",
         norm: "NORM",
-        pitLatestExitIn: "გასვლა მაქს.", pitLeaveNow: "⚠️ გადი ახლავე!", pitLatestExitPassed: "🚨 გასვლა ვადაგასული",
+        pitLatestExitIn: "გასვლა მაქს.", pitLeaveNow: "⚠️ გადი ახლავე!", pitEarlyExit: "⚠️ ადრეული გასვლა", pitLatestExitPassed: "🚨 გასვლა ვადაგასული",
     },
     de: {
         ltSearchType: "Filter nach:", ltTeam: "Team", ltDriver: "Fahrer", ltKart: "Kart Nr.", ltPlaceholder: "Suchen...", previewTitle: "Strategievorschau", addToCalendar: "Zum Kalender hinzufügen", timeline: "Zeitleiste", driverSchedule: "Stint-Übersicht", totalTime: "Gesamtzeit", close: "Schließen",
@@ -1913,7 +1913,7 @@ window.translations = {
         teamLogoInvalidType: "Nur JPG, PNG oder SVG",
         stintAvg: "Stint Ø",
         norm: "NORM",
-        pitLatestExitIn: "Spätestausfahrt in", pitLeaveNow: "⚠️ Jetzt ausfahren!", pitLatestExitPassed: "🚨 AUSFAHRT ÜBERFÄLLIG",
+        pitLatestExitIn: "Spätestausfahrt in", pitLeaveNow: "⚠️ Jetzt ausfahren!", pitEarlyExit: "⚠️ AUSFAHRT ZU FRÜH", pitLatestExitPassed: "🚨 AUSFAHRT ÜBERFÄLLIG",
     },
     ja: {
         ltSearchType: "フィルタリング:", ltTeam: "チーム", ltDriver: "ドライバー", ltKart: "カート番号", ltPlaceholder: "検索...", previewTitle: "戦略プレビュー", addToCalendar: "カレンダーに追加", timeline: "タイムライン", driverSchedule: "スティント概要", totalTime: "総時間", close: "閉じる",
@@ -2018,7 +2018,7 @@ window.translations = {
         teamLogoInvalidType: "JPG、PNG、または SVG のみ",
         stintAvg: "スティント平均",
         norm: "NORM",
-        pitLatestExitIn: "最遅出発まで", pitLeaveNow: "⚠️ 今すぐ出発!", pitLatestExitPassed: "🚨 出発超過",
+        pitLatestExitIn: "最遅出発まで", pitLeaveNow: "⚠️ 今すぐ出発!", pitEarlyExit: "⚠️ 早期出発", pitLatestExitPassed: "🚨 出発超過",
     },
     el: {
         ltSearchType: "Φιλτράρισμα:", ltTeam: "Ομάδα", ltDriver: "Οδηγός", ltKart: "Καρτ αρ.", ltPlaceholder: "Αναζήτηση...",
@@ -2171,7 +2171,7 @@ window.translations = {
         teamLogoInvalidType: "Μόνο JPG, PNG ή SVG",
         stintAvg: "Μέσος Stint",
         norm: "ΚΑΝΟΝ",
-        pitLatestExitIn: "Ύστατη έξοδος σε", pitLeaveNow: "⚠️ Βγες τώρα!", pitLatestExitPassed: "🚨 ΕΞΟΔΟΣ ΕΚΠΡΌΘΕΣΜΗ",
+        pitLatestExitIn: "Ύστατη έξοδος σε", pitLeaveNow: "⚠️ Βγες τώρα!", pitEarlyExit: "⚠️ ΠΡΩΪΜΗ ΕΞΟΔΟΣ", pitLatestExitPassed: "🚨 ΕΞΟΔΟΣ ΕΚΠΡΌΘΕΣΜΗ",
     }
 };
 
