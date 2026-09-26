@@ -46,7 +46,7 @@
     <script src="js/live-timing-manager.js?v=8"></script>
     <script src="js/qualifying.js?v=7"></script>
 
-    <link rel="stylesheet" href="css/style.css?v=18">
+    <link rel="stylesheet" href="css/style.css?v=19">
 
     <script>
         tailwind.config = {
@@ -1043,6 +1043,11 @@
 
     <div id="raceDashboard" class="hidden flex flex-col h-full min-h-0 bg-navy-950 w-full relative">
 
+        <!-- Watcher (read-only) badge: shown only for spectators, see body.watcher-mode -->
+        <div id="watcherBadge" class="hidden shrink-0 items-center justify-between gap-2 px-3 py-1.5 bg-navy-900 border-b border-gray-800 text-xs font-bold" role="status" aria-live="off">
+            <span class="flex items-center gap-1.5 text-ice"><span class="w-2 h-2 rounded-full bg-neon animate-pulse" aria-hidden="true"></span><span data-i18n="watchingLive">Watching live &middot; read-only</span></span>
+            <span id="watcherFresh" class="font-mono text-gray-400">--</span>
+        </div>
         <div id="dashboardInfoBar" class="relative bg-navy-900 border-b border-gray-800 shrink-0 p-2 grid grid-cols-4 gap-1 items-center z-[15] shadow-md">
             <button id="liveDemoStartBtn" onclick="window.openDemoModalFromLiveRace()" title="Start Demo" class="absolute top-1 ltr:right-1 rtl:left-1 bg-navy-800 hover:bg-navy-700 border border-neon/40 text-neon w-6 h-6 rounded-full flex items-center justify-center text-[11px] z-20">
                 🎭
@@ -2500,9 +2505,9 @@
         </div>
     </div>
 
-    <script src="js/state.js?v=12"></script>
+    <script src="js/state.js?v=15"></script>
     <script src="js/auth.js?v=7"></script>
-    <script src="js/network.js?v=7"></script>
+    <script src="js/network.js?v=9"></script>
     <script src="js/strategy.js?v=10"></script>
     <script src="js/live-timing.js?v=8"></script>
     <script src="js/ui.js?v=10"></script>

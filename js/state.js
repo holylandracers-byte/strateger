@@ -541,7 +541,7 @@ window.translations = {
         teamLogoInvalidType: "Only JPG, PNG or SVG allowed",
         stintAvg: "Stint Avg",
         norm: "NORM",
-        pitLatestExitIn: "Latest exit in", pitLeaveNow: "⚠️ Leave now!", ltNoTeamSet: "No team set — enter team/kart/driver", ltTeamNotFound: "not found in feed", connLost: "⚠️ Connection lost — reconnecting…", feedStale: "⚠️ Live timing stale", pitEarlyExit: "⚠️ EARLY EXIT — min pit time not served", pitLatestExitPassed: "🚨 EXIT OVERDUE",
+        pitLatestExitIn: "Latest exit in", pitLeaveNow: "⚠️ Leave now!", ltNoTeamSet: "No team set — enter team/kart/driver", ltTeamNotFound: "not found in feed", connLost: "⚠️ Connection lost — reconnecting…", feedStale: "⚠️ Live timing stale", watchingLive: "Watching live · read-only", pitClosed: "PIT CLOSED", watchStale: "No update", pitEarlyExit: "⚠️ EARLY EXIT — min pit time not served", pitLatestExitPassed: "🚨 EXIT OVERDUE",
         autoPit: "Auto", autoPitOn: "Auto", autoPitOff: "Manual",
     },
     he: {
@@ -753,7 +753,7 @@ window.translations = {
         teamLogoInvalidType: "רק JPG, PNG או SVG",
         stintAvg: "ממוצע סטינט",
         norm: "רגיל",
-        pitLatestExitIn: "יציאה אחרונה בעוד", pitLeaveNow: "⚠️ צא עכשיו!", ltNoTeamSet: "לא הוגדרה קבוצה — הזן קבוצה/קארט/נהג", ltTeamNotFound: "לא נמצא בפיד", connLost: "⚠️ החיבור אבד — מתחבר מחדש…", feedStale: "⚠️ הנתונים החיים אינם מתעדכנים", pitEarlyExit: "⚠️ יציאה מוקדמת", pitLatestExitPassed: "🚨 יציאה באיחור",
+        pitLatestExitIn: "יציאה אחרונה בעוד", pitLeaveNow: "⚠️ צא עכשיו!", ltNoTeamSet: "לא הוגדרה קבוצה — הזן קבוצה/קארט/נהג", ltTeamNotFound: "לא נמצא בפיד", connLost: "⚠️ החיבור אבד — מתחבר מחדש…", feedStale: "⚠️ הנתונים החיים אינם מתעדכנים", watchingLive: "צפייה חיה · לקריאה בלבד", pitClosed: "הפיטס סגור", watchStale: "אין עדכון", pitEarlyExit: "⚠️ יציאה מוקדמת", pitLatestExitPassed: "🚨 יציאה באיחור",
         autoPit: "אוטו", autoPitOn: "אוטו", autoPitOff: "ידני",
     },
     fr: {

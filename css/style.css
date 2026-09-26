@@ -3318,3 +3318,35 @@ body.driver-mode-on #setupScreen { visibility: hidden !important; }
 .driver-race-timer { font-size: max(3vw, 17px); }
 .driver-label { font-size: max(2.5vw, 11px); letter-spacing: 0.08em; }
 #driverTapHint { font-size: 12px; color: rgba(255,255,255,0.6); }
+
+/* ==================== WATCHER (READ-ONLY SPECTATOR) MODE ====================
+   Joined clients that are not drivers. Everything that acts on the race is hidden; what is
+   left is what a person standing outside wants: position, gap, laps, clock, who is driving. */
+body.watcher-mode #pitActionGroup,
+body.watcher-mode #btnPush,
+body.watcher-mode #btnBad,
+body.watcher-mode #btnResetMode,
+body.watcher-mode #autoPitToggleBtn,
+body.watcher-mode #forcePitOutBtn,
+body.watcher-mode #teamLogoUploadBtn,
+body.watcher-mode #liveTimingPanel button[onclick*="stopLiveTiming"],
+body.watcher-mode #headerTeamLogoBtn,
+body.watcher-mode #driverLinkBtn,
+body.watcher-mode #shareRaceBtn,
+body.watcher-mode #viewerManageBtn,
+body.watcher-mode .driver-drag-handle,
+body.watcher-mode #liveTimingHeightHandle,
+body.watcher-mode #dashPanelResizer { display: none !important; }
+
+/* Phones: the standings are the point — give them the room the admin layout spends on controls */
+@media (max-width: 767px) {
+    body.watcher-mode #raceInfoPanel #liveTimingWidgetWrapper {
+        max-height: none !important;
+        height: auto !important;
+    }
+    body.watcher-mode #liveTimingWidgetWrapper .lt-table-scroll {
+        max-height: 46vh !important;
+        flex: none !important;
+    }
+    body.watcher-mode .competitor-row { min-height: 44px; }
+}

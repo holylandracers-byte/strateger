@@ -803,6 +803,7 @@ window.connectToHost = function(hostId) {
             window.conn.on('data', (data) => {
                 if (data.type === 'UPDATE' || data.type === 'INIT') {
                     // Always absorb state data
+                    window._lastHostUpdateAt = Date.now();   // spectator freshness indicator
                     if (data.state) window.state = data.state;
                     if (data.config) window.config = data.config;
                     if (data.drivers) window.drivers = data.drivers;
@@ -1152,3 +1153,24 @@ window.broadcast = function(specificPayload = null) {
         window.updateViewerDropdown();
         console.log('Cleared reserved viewer names');
     };
+
+
+// === Spectator (watcher) mode ===
+// A spectator is a joined client that is not a driver: read-only UI, no controls, and a
+// freshness badge so they know the numbers are live. Styling lives in css (body.watcher-mode).
+setInterval(function () {
+    const isWatcher = window.role === 'client' && !window._autoDriverMode;
+    document.body.classList.toggle('watcher-mode', isWatcher);
+    const badge = document.getElementById('watcherBadge');
+    if (!badge) return;
+    badge.classList.toggle('hidden', !isWatcher);
+    badge.classList.toggle('flex', isWatcher);
+    if (!isWatcher) return;
+    const fresh = document.getElementById('watcherFresh');
+    if (!fresh) return;
+    const age = window._lastHostUpdateAt ? Math.round((Date.now() - window._lastHostUpdateAt) / 1000) : null;
+    const t = window.t || (k => k);
+    if (age == null) { fresh.textContent = t('connecting') || 'Connecting…'; fresh.className = 'font-mono text-gray-400'; }
+    else if (age > 20) { fresh.textContent = '⚠ ' + (t('watchStale') || 'No update') + ' ' + age + 's'; fresh.className = 'font-mono text-red-400'; }
+    else { fresh.textContent = age + 's'; fresh.className = 'font-mono text-gray-400'; }
+}, 1000);
