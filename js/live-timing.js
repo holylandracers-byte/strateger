@@ -1162,25 +1162,41 @@ window._updateKartStats = function(competitors) {
         s.inPit = !!c.inPit;
         if (c.pitCount != null) s.pitCount = c.pitCount;
 
-        if (c.bestLap && c.bestLap > 0 && c.bestLap < s.bestLapMs && c.bestLap >= 20000 && c.bestLap <= 180000) {
+        // Outlier guard: a value inside the 20-180s absolute band can still be a sector time
+        // mistaken for a full lap on a longer circuit (e.g. a leaked "On track"/type-code mixup
+        // upstream -- seen live on more than one feed). A real personal best is rarely
+        // dramatically faster than the kart's own recent pace, so once there's history, reject
+        // anything under 80% of it instead of trusting the absolute band alone.
+        const recentAvg = s.recentLaps.length >= 3
+            ? s.recentLaps.slice(-8).reduce((a, b) => a + b, 0) / Math.min(s.recentLaps.length, 8)
+            : null;
+        const plausibleFloor = recentAvg ? recentAvg * 0.8 : 20000;
+        if (c.bestLap && c.bestLap > 0 && c.bestLap < s.bestLapMs && c.bestLap >= plausibleFloor && c.bestLap <= 180000) {
             s.bestLapMs = c.bestLap;
         }
-        if (c.lastLap && c.lastLap > 0 && c.lastLap >= 20000 && c.lastLap <= 180000) {
+        if (c.lastLap && c.lastLap > 0 && c.lastLap >= plausibleFloor && c.lastLap <= 180000) {
             s.recentLaps.push(c.lastLap);
             if (s.recentLaps.length > 30) s.recentLaps.shift();
         }
     });
 
-    // Determine fast karts: within 101.5% of the best kart's best lap
-    let bestKartLap = Infinity;
+    // Determine fast karts by real recent-lap AVERAGE, not a single best lap -- a "best lap"
+    // can be one leaked sector time or a lucky tow, and says nothing about who is actually
+    // quick over a run. Needs at least 3 recorded laps before a kart is judged at all.
+    const avgOf = s => s.recentLaps.length >= 3
+        ? s.recentLaps.slice(-8).reduce((a, b) => a + b, 0) / Math.min(s.recentLaps.length, 8)
+        : null;
+    let bestKartAvg = Infinity;
     Object.values(stats).forEach(s => {
-        if (s.bestLapMs < bestKartLap) bestKartLap = s.bestLapMs;
+        const avg = avgOf(s);
+        if (avg != null && avg < bestKartAvg) bestKartAvg = avg;
     });
-    const threshold = bestKartLap < Infinity ? bestKartLap * 1.015 : null;
+    const threshold = bestKartAvg < Infinity ? bestKartAvg * 1.015 : null;
     const fastSet = new Set();
     if (threshold) {
         Object.entries(stats).forEach(([kart, s]) => {
-            if (s.bestLapMs <= threshold) fastSet.add(kart);
+            const avg = avgOf(s);
+            if (avg != null && avg <= threshold) fastSet.add(kart);
         });
     }
     window._fastKarts = fastSet;
@@ -1189,15 +1205,24 @@ window._updateKartStats = function(competitors) {
     // A kart that's fast once could be a fluke or a car about to be lapped through traffic; one
     // that's fast with tight spread is a genuine strong, stable pace -- worth watching for a
     // strategic pit-entry opportunity (see window._checkConsistentFastPitEntries).
-    const consistentFastSet = new Set();
-    Object.entries(stats).forEach(([kart, s]) => {
-        if (!fastSet.has(kart) || s.recentLaps.length < 4) return;
+    // A fixed pace-vs-best percentage band (the original approach) flags nearly half a tight
+    // spec-kart field as "fast" -- useless as a standout signal. Rank by average pace instead
+    // and cap it to a small top slice of the field, so it stays a short, meaningful list
+    // regardless of how bunched up a given race's times are.
+    const consistencyOf = s => {
+        if (s.recentLaps.length < 4) return null;
         const sample = s.recentLaps.slice(-6);
         const mean = sample.reduce((a, b) => a + b, 0) / sample.length;
         const variance = sample.reduce((a, b) => a + (b - mean) ** 2, 0) / sample.length;
-        const stdDevPct = mean > 0 ? Math.sqrt(variance) / mean : 1;
-        if (stdDevPct <= 0.015) consistentFastSet.add(kart);   // within ~1.5% lap-to-lap
-    });
+        return mean > 0 ? Math.sqrt(variance) / mean : 1;
+    };
+    const CONSISTENCY_MAX = 0.01;   // within ~1% lap-to-lap
+    const rankedByPace = Object.entries(stats)
+        .map(([kart, s]) => ({ kart, avg: avgOf(s), stdDevPct: consistencyOf(s) }))
+        .filter(x => x.avg != null && x.stdDevPct != null && x.stdDevPct <= CONSISTENCY_MAX)
+        .sort((a, b) => a.avg - b.avg);
+    const cap = Math.max(1, Math.min(5, Math.ceil(rankedByPace.length * 0.1)));   // top ~10%, 1-5 karts
+    const consistentFastSet = new Set(rankedByPace.slice(0, cap).map(x => x.kart));
     window._consistentFastKarts = consistentFastSet;
 };
 

@@ -426,8 +426,14 @@ class ApexTimingScraper {
     }
 
     handleRowUpdate(line, deferEmit = false) {
-        // Pit in/out via Apex *in/*out/*i1/*i2 markers: r<rowId>|*in| or r<rowId>|*out|
-        const starPitMatch = line.match(/^(r\d+)\|\*(in|i1|i2|out)\|?/i);
+        // Pit in/out via Apex *in/*out markers: r<rowId>|*in| or r<rowId>|*out|.
+        // *i1 / *i2 are NOT pit markers -- they are intermediate split-time checkpoints
+        // (r<rowId>|*i2|22177 = intermediate-2 split, 22.177s), fired continuously for every
+        // car as it crosses those points mid-lap. Treating them as pit-entry events (the
+        // previous behaviour) meant almost every car on track flapped in and out of "in pit"
+        // within seconds, with no matching *out ever arriving to clear it -- observed live as
+        // literally every row showing a PIT badge at once (karting-events-bulgaria and others).
+        const starPitMatch = line.match(/^(r\d+)\|\*(in|out)\|?/i);
         if (starPitMatch) {
             const rowId = starPitMatch[1];
             const dir = starPitMatch[2].toLowerCase();

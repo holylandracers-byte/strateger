@@ -2463,6 +2463,14 @@ window.loadSavedSettings = function() {
 
 window.saveRaceState = function() {
     if (window.role !== 'host' || (!window.state.isRunning && !window.state.isFinished)) return;
+    // Cross-tab guard: if this race was just discarded (e.g. from a different tab/window still
+    // open on the same race -- its own autosave interval, or its beforeunload/pagehide hook,
+    // would otherwise re-write the very key that was just deleted, which is exactly what made
+    // Discard need several attempts before it actually stuck).
+    try {
+        const discardedAt = parseInt(localStorage.getItem('strateger_race_discarded_at') || '0', 10);
+        if (discardedAt && (Date.now() - discardedAt) < 10000) return;
+    } catch (e) {}
     const snapshot = {
         config: window.config,
         state: window.state,
@@ -2674,6 +2682,7 @@ window.cancelDiscard = function() {
 };
 
 window.finalDiscardRace = function() {
+    try { localStorage.setItem('strateger_race_discarded_at', String(Date.now())); } catch (e) {}
     localStorage.removeItem(window.RACE_STATE_KEY);
     // Delete Host ID
     localStorage.removeItem('strateger_host_id');
