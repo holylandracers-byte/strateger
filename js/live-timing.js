@@ -2254,7 +2254,13 @@ window.toggleOutlookCollapse = function() {
         window.removeEventListener('touchend', onEnd);
     }
     function onStart(e) {
-        if (!window.matchMedia('(min-width:1024px)').matches) return;
+        // Drag-to-resize works wherever the CSS actually binds the widget's height to
+        // --lt-widget-h: always at ≥1024px, and on tablet landscape (768–1023px) too
+        // (see style.css) — but not in the portrait/phone single-scroll-column layout,
+        // where raceInfoPanel has no bounded height for this to resize against.
+        const resizable = window.matchMedia('(min-width:1024px)').matches
+            || window.matchMedia('(min-width:768px) and (orientation:landscape)').matches;
+        if (!resizable) return;
         dragging = true;
         handle.classList.add('active');
         const clientY = e.touches ? e.touches[0].clientY : e.clientY;
