@@ -941,6 +941,12 @@ window.initRace = function() {
     document.getElementById('previewScreen').classList.add('hidden');
     document.getElementById('raceDashboard').classList.remove('hidden');
 
+    // "Start Demo" only makes sense as an entry point into a demo, or to relaunch/
+    // reconfigure one already running — hide it once a regular (non-demo) race is live,
+    // since launching a demo from there would destructively end that real race.
+    const liveDemoStartBtn = document.getElementById('liveDemoStartBtn');
+    if (liveDemoStartBtn) liveDemoStartBtn.classList.toggle('hidden', !window.liveTimingConfig.demoMode);
+
     // Init draggable panels + the raceInfoPanel/raceControlDock height-split resizer
     if (typeof window.initDashboardDrag === 'function') window.initDashboardDrag();
     if (typeof window._initTouchLongPressActions === 'function') window._initTouchLongPressActions();

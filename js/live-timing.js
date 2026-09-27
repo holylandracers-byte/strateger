@@ -836,10 +836,12 @@ window.updateCompetitorsTable = function() {
         const isUs = comp.isOurTeam;
         if (isUs) ourTeamRow = row;
 
-        const isGoodPace = !isUs && goodPaceThreshold && comp.bestLap && comp.bestLap <= goodPaceThreshold;
+        const compBestMs = _lapMs(comp, 'bestLap');
+        const compLastMs = _lapMs(comp, 'lastLap');
+        const isGoodPace = !isUs && goodPaceThreshold && compBestMs > 0 && compBestMs <= goodPaceThreshold;
         // PB glow is scoped to the current stint (since last pit), not the whole race —
         // a driver going faster in stint 3 than their stint-1 best should still glow.
-        const isPB = comp.lastLap && comp.stintBestLap && comp.lastLap > 0 && comp.lastLap <= comp.stintBestLap;
+        const isPB = compLastMs > 0 && comp.stintBestLap && compLastMs <= comp.stintBestLap;
         const kartKey = comp.kart || '';
         const isTopKart = kartKey && window._fastKarts && window._fastKarts.has(kartKey);
 
@@ -1040,7 +1042,7 @@ window.updateCompetitorsTable = function() {
         // ---- Last lap + personal best glow ----
         const lapEl = row.querySelector('.cr-lap');
         if (lapEl) {
-            const lapTxt = comp.lastLap ? window.formatLapTime(comp.lastLap) : '';
+            const lapTxt = _lapDisplayText(comp, 'lastLap');
             if (lapEl.textContent !== lapTxt) lapEl.textContent = lapTxt;
             const lapCls = isPB ? 'cr-lap lap-pb' : 'cr-lap';
             if (lapEl.className !== lapCls) lapEl.className = lapCls;
@@ -1122,6 +1124,30 @@ window._trackCompetitorStints = function(competitors) {
     });
 };
 
+// Real-feed competitors carry the raw display string in .lastLap/.bestLap and the parsed
+// milliseconds separately in .lastLapMs/.bestLapMs; demo-mode competitors only ever set
+// .lastLap/.bestLap directly as plain ms numbers. Reading .lastLap/.bestLap as if they were
+// always numeric (as several call sites below used to) works by accident in demo mode but
+// on a real feed compares/concatenates display strings ("17.818" + "18.201" via Array#reduce
+// becomes string concatenation, not addition) — that's what was flagging nearly every kart as
+// "fast" and glowing every row green on a real feed (reported live on Karting Events Bulgaria).
+function _lapMs(c, field) {
+    const msField = c[field + 'Ms'];
+    if (typeof msField === 'number' && msField > 0) return msField;
+    return typeof c[field] === 'number' ? c[field] : 0;
+}
+
+// Same real-feed-vs-demo split for display text: a real-feed .lastLap/.bestLap is already
+// a formatted string ("17.818") and must be shown as-is — re-running it through
+// formatLapTime() (which expects raw ms) silently mangled it into a near-zero time.
+// Demo mode's .lastLap/.bestLap are raw ms numbers and still need formatting.
+function _lapDisplayText(c, field) {
+    const raw = c[field];
+    if (typeof raw === 'string') return raw;
+    if (typeof raw === 'number' && raw > 0) return window.formatLapTime(raw);
+    return '';
+}
+
 // ==================== KART PERFORMANCE TRACKING ====================
 window._kartStatsMap = window._kartStatsMap || {};
 window._fastKarts = window._fastKarts || new Set();
@@ -1153,11 +1179,13 @@ window._updateKartStats = function(competitors) {
             ? s.recentLaps.slice(-8).reduce((a, b) => a + b, 0) / Math.min(s.recentLaps.length, 8)
             : null;
         const plausibleFloor = recentAvg ? recentAvg * 0.8 : 20000;
-        if (c.bestLap && c.bestLap > 0 && c.bestLap < s.bestLapMs && c.bestLap >= plausibleFloor && c.bestLap <= 180000) {
-            s.bestLapMs = c.bestLap;
+        const bestMs = _lapMs(c, 'bestLap');
+        const lastMs = _lapMs(c, 'lastLap');
+        if (bestMs > 0 && bestMs < s.bestLapMs && bestMs >= plausibleFloor && bestMs <= 180000) {
+            s.bestLapMs = bestMs;
         }
-        if (c.lastLap && c.lastLap > 0 && c.lastLap >= plausibleFloor && c.lastLap <= 180000) {
-            s.recentLaps.push(c.lastLap);
+        if (lastMs > 0 && lastMs >= plausibleFloor && lastMs <= 180000) {
+            s.recentLaps.push(lastMs);
             if (s.recentLaps.length > 30) s.recentLaps.shift();
         }
     });
@@ -1323,8 +1351,9 @@ window._calcGoodPaceThreshold = function(competitors) {
 
     let overallBest = Infinity;
     competitors.forEach(c => {
-        if (c.bestLap && c.bestLap > 0 && c.bestLap < overallBest) {
-            overallBest = c.bestLap;
+        const bestMs = _lapMs(c, 'bestLap');
+        if (bestMs > 0 && bestMs < overallBest) {
+            overallBest = bestMs;
         }
     });
 
@@ -2111,15 +2140,19 @@ window._updateSecondaryTeamCard = function() {
     card.classList.remove('hidden');
     document.getElementById('secondaryTeamName').textContent = (match?.name || w.name || '?') + (w.kart ? ' #' + w.kart : '');
     document.getElementById('secondaryPos').textContent = match?.position ?? '-';
-    document.getElementById('secondaryLast').textContent = match?.lastLap ? window.formatLapTime(match.lastLap) : '-';
-    document.getElementById('secondaryBest').textContent = match?.bestLap ? window.formatLapTime(match.bestLap) : '-';
+    document.getElementById('secondaryLast').textContent = match ? (_lapDisplayText(match, 'lastLap') || '-') : '-';
+    document.getElementById('secondaryBest').textContent = match ? (_lapDisplayText(match, 'bestLap') || '-') : '-';
     document.getElementById('secondaryGap').textContent = _formatGapCell(match);
 };
 
 // === Category filter (laptop): jump to SK1/SK2/AM etc. instead of scanning every row ===
 // Category comes from the feed's own column when present; otherwise this falls back to a
 // leading all-caps/alnum token shared by many rows (seen live: "SK1 TEAM FDP", "AM AMS", ...),
-// which is the only place the category actually appears for that particular event.
+// which is the only place the category actually appears for that particular event. On feeds
+// with no real class column (seen live on Karting Events Bulgaria), that fallback regex just
+// matches each team's own name prefix, giving one "category" per team — a filter with as many
+// options as there are teams isn't a class filter, so a token only counts as a real category
+// once it's shared by at least 2 competitors.
 window._categoryFilter = null;   // null = show all
 
 function _competitorCategory(c) {
@@ -2132,7 +2165,12 @@ window._updateCategoryFilterChips = function() {
     const row = document.getElementById('categoryFilterRow');
     if (!row) return;
     const comps = dedupeLiveCompetitors(window.liveData.competitors || window._lastKnownCompetitors || []);
-    const cats = [...new Set(comps.map(_competitorCategory).filter(Boolean))].sort();
+    const counts = new Map();
+    comps.forEach(c => {
+        const cat = _competitorCategory(c);
+        if (cat) counts.set(cat, (counts.get(cat) || 0) + 1);
+    });
+    const cats = [...counts.keys()].filter(cat => counts.get(cat) >= 2).sort();
     if (cats.length < 2) { row.classList.add('hidden'); row.innerHTML = ''; window._categoryFilter = null; return; }
     if (window._categoryFilter && !cats.includes(window._categoryFilter)) window._categoryFilter = null;
     row.classList.remove('hidden');
