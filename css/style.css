@@ -84,6 +84,26 @@ body {
     #chatPanel { bottom: calc(64px + var(--safe-bottom)); }
 }
 
+/* ==================== RACE CHAT — responsive sizing ==================== */
+/* Laptop/desktop: more screen to spare, so give the panel room to breathe */
+@media (min-width: 1024px) {
+    #chatPanel { width: 22rem; height: 26rem; }
+}
+/* Tablet: a bit larger than the mobile default, still compact */
+@media (min-width: 601px) and (max-width: 1023px) {
+    #chatPanel { width: 20rem; height: 24rem; }
+}
+/* Phones: a narrow fixed-width box wastes space and can crowd the screen edge —
+   widen it into a near-full-width sheet instead of a small floating box */
+@media (max-width: 600px) {
+    #chatPanel {
+        left: 12px;
+        right: 12px;
+        width: auto;
+        height: min(65vh, 26rem);
+    }
+}
+
 /* ==================== HEADER PROTECTION ==================== */
 
 /* ==================== RTL LAYOUT ==================== */

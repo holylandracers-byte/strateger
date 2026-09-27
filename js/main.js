@@ -4666,24 +4666,31 @@ window.openLivePreview = function() {
     }
 
     if (typeof window.renderPreview === 'function') window.renderPreview();
-    // Disable editing while in live-preview mode
-    document.querySelectorAll('#previewScreen input, #previewScreen button:not(#livePreviewBackBtn)').forEach(el => {
-        el._wasDisabled = el.disabled;
-        el.disabled = true;
-        el.style.pointerEvents = 'none';
-        el.style.opacity = '0.5';
-    });
+    // Mid-race the plan can still be adjusted — but only for stints that haven't
+    // happened yet (renderPreview locks the rest to read-only). The one control that
+    // never makes sense here is starting a race that's already running.
+    const startBtn = document.getElementById('previewStartRaceBtn');
+    if (startBtn) startBtn.classList.add('hidden');
+    // The chat bubble/panel sit bottom-right, same corner as this screen's action bar
+    // (Start Race/Save/Export) — hide them while the plan preview covers that area.
+    const chatBtn = document.getElementById('chatToggleBtn');
+    const chatPanel = document.getElementById('chatPanel');
+    if (chatBtn) chatBtn.style.display = 'none';
+    if (chatPanel) chatPanel.classList.add('hidden');
 };
 
 window.closeLivePreview = function() {
     const previewScreen = document.getElementById('previewScreen');
     const raceDashboard = document.getElementById('raceDashboard');
     if (!previewScreen || !raceDashboard) return;
-    document.querySelectorAll('#previewScreen input, #previewScreen button:not(#livePreviewBackBtn)').forEach(el => {
-        el.disabled = !!el._wasDisabled;
-        el.style.pointerEvents = '';
-        el.style.opacity = '';
-    });
+    const startBtn = document.getElementById('previewStartRaceBtn');
+    if (startBtn) startBtn.classList.remove('hidden');
+    // Restore the chat bubble now that the plan preview (and its action bar) is gone —
+    // unless driver mode is active, which hides it for its own reasons.
+    if (!document.body.classList.contains('driver-mode-on')) {
+        const chatBtn = document.getElementById('chatToggleBtn');
+        if (chatBtn) chatBtn.style.display = 'block';
+    }
     previewScreen.classList.add('hidden');
     raceDashboard.classList.remove('hidden');
     const backBtn = document.getElementById('livePreviewBackBtn');

@@ -1014,22 +1014,49 @@ window.renderPreview = function() {
         const borderWarning = outOfBounds ? 'ring-1 ring-red-500' : '';
 
         const checkeredFlag = isLast ? `<svg width="11" height="8" viewBox="0 0 14 10" aria-hidden="true" style="flex-shrink:0;vertical-align:middle"><rect x="0.5" y="0.5" width="13" height="9" rx="1" fill="#111" stroke="#666"/><rect x="1" y="1" width="3" height="4" fill="#fff"/><rect x="4" y="1" width="3" height="4" fill="#111"/><rect x="7" y="1" width="3" height="4" fill="#fff"/><rect x="10" y="1" width="3" height="4" fill="#111"/><rect x="1" y="5" width="3" height="4" fill="#111"/><rect x="4" y="5" width="3" height="4" fill="#fff"/><rect x="7" y="5" width="3" height="4" fill="#111"/><rect x="10" y="5" width="3" height="4" fill="#fff"/></svg>` : '';
+
+        // Stints that already happened (real driver + real duration recorded by
+        // _syncPreviewWithActuals, or flagged _done by openLivePreview) are history —
+        // render them read-only instead of via the disable-everything blanket that used
+        // to freeze the whole preview screen mid-race.
+        const isLocked = !!(stint._actual || stint._done);
+        if (isLocked) {
+            return `
+                <div class="flex items-center gap-1 bg-navy-950/50 rounded border-l-4 stint-row stint-row-locked" style="border-left-color:${stint.color};height:24px;padding:0 4px;overflow:hidden;opacity:0.6" data-index="${index}">
+                    <div class="flex items-center justify-center shrink-0" style="width:24px">
+                        <span class="text-neon" style="font-size:9px" title="${window.t ? window.t('stintActualDone') : 'Actual — done'}">✓</span>
+                    </div>
+                    <div class="flex-1 min-w-0 flex items-center gap-1" style="overflow:hidden;white-space:nowrap">
+                        <span class="font-bold text-gray-300" style="font-size:11px;max-width:4.5rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0">${stint.driverName}</span>
+                        <span class="text-gray-500" style="font-size:9px;flex-shrink:0">${startTimeStr}${arrow}${endTimeStr}</span>
+                        ${checkeredFlag}${pitIndicator}${stintForecastTag}
+                    </div>
+                    <span class="text-gray-400 font-mono shrink-0" style="font-size:10px;padding:1px 2px" title="${window.t ? window.t('actualDuration') : 'Actual duration'}">${durationMin}m</span>
+                </div>
+            `;
+        }
+
         const touchDev = window._isTouchDevice;
         const dragAttrs = touchDev ? '' : ` draggable="true" ondragstart="window.handleDragStart(event)" ondragover="window.handleDragOver(event)" ondragleave="window.handleDragLeave(event)" ondrop="window.handleDrop(event)"`;
         const driverTap = touchDev ? '' : ` onclick="event.stopPropagation();window.openStintDriverPicker(${index}, this)"`;
         const driverTitle = touchDev
             ? (window.t ? window.t('holdToSwapDriver') : 'Hold 3 sec to swap driver')
             : 'Tap to swap driver';
+        // A stint can't be reordered past a locked (already-run) stint — only among
+        // the current/future ones — so Up is disabled right after the lock boundary.
+        const prevLocked = index > 0 && !!(stints[index - 1]._actual || stints[index - 1]._done);
+        const canMoveUp = !isFirst && !prevLocked;
         // Reorder arrows inline so row stays single-line height (~24px)
         return `
             <div class="flex items-center gap-1 bg-navy-950 rounded border-l-4 cursor-grab active:cursor-grabbing stint-row ${borderWarning}" style="border-left-color:${stint.color};height:24px;padding:0 4px 0 0;overflow:hidden"
                  data-index="${index}"${dragAttrs}>
                 <div class="flex items-center shrink-0" style="gap:0;width:28px">
-                    <button onclick="window.moveStint(${index}, -1)" class="text-gray-600 hover:text-white ${isFirst ? 'invisible' : ''}" style="font-size:7px;padding:0 2px;line-height:1;background:none;border:none;cursor:pointer" title="Up">▲</button>
+                    <button onclick="window.moveStint(${index}, -1)" class="text-gray-600 hover:text-white ${canMoveUp ? '' : 'invisible'}" style="font-size:7px;padding:0 2px;line-height:1;background:none;border:none;cursor:pointer" title="Up">▲</button>
                     <span class="text-gray-600 font-mono" style="font-size:8px;min-width:10px;text-align:center">${index+1}</span>
                     <button onclick="window.moveStint(${index}, 1)" class="text-gray-600 hover:text-white ${isLast ? 'invisible' : ''}" style="font-size:7px;padding:0 2px;line-height:1;background:none;border:none;cursor:pointer" title="Down">▼</button>
                 </div>
                 <div class="flex-1 min-w-0 flex items-center gap-1" style="overflow:hidden;white-space:nowrap">
+                    ${stint._current ? `<span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse shrink-0" title="${window.t ? window.t('stintInProgress') : 'In progress'}"></span>` : ''}
                     <span class="stint-driver-swap font-bold text-white hover:text-neon cursor-pointer underline decoration-dotted" style="font-size:11px;max-width:4.5rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0" title="${driverTitle}" data-stint-index="${index}"${driverTap}>${stint.driverName}</span>
                     <span class="text-gray-500" style="font-size:9px;flex-shrink:0">${startTimeStr}${arrow}${endTimeStr}</span>
                     ${checkeredFlag}${pitIndicator}${stintForecastTag}
@@ -1489,6 +1516,9 @@ window.swapStints = function(fromIdx, toIdx) {
     const stints = window.previewData.timeline.filter(t => t.type === 'stint');
     const source = stints[fromIdx];
     const target = stints[toIdx];
+    if (!source || !target) return;
+    // Stints that already happened are locked — never overwrite recorded history.
+    if (source._actual || source._done || target._actual || target._done) return;
     const temp = { name: source.driverName, idx: source.driverIdx, col: source.color, sq: source.squad };
     source.driverName = target.driverName; source.driverIdx = target.driverIdx; source.color = target.color; source.squad = target.squad;
     target.driverName = temp.name; target.driverIdx = temp.idx; target.color = temp.col; target.squad = temp.sq;
@@ -1500,6 +1530,7 @@ window.updateStintDuration = function(idx, val) {
 
     const stints = window.previewData.timeline.filter(t => t.type === 'stint');
     if (!stints[idx]) return;
+    if (stints[idx]._actual || stints[idx]._done) return; // locked — already ran
 
     const pits = window.previewData.timeline.filter(t => t.type === 'pit');
     const totalPitMs = pits.reduce((a, p) => a + p.duration, 0);
