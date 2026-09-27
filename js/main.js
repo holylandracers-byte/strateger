@@ -1324,9 +1324,12 @@ function updateRemainingStrategyLogic(raceRemainingMs) {
 
     timeField.innerText = window.formatTimeHMS(raceRemainingMs);
 
-    // Helper: build one stint pill
-    function pill(label, cls, title) {
-        return `<span class="stint-outlook-pill ${cls}" title="${title || ''}">${label}</span>`;
+    // Helper: build one stint pill. Pass idx to make it tap-to-edit (current/future
+    // stints only — completed stints are flagged via pill-done and never get an idx).
+    function pill(label, cls, title, idx) {
+        const editable = idx != null ? ' pill-editable' : '';
+        const onclick = idx != null ? ` onclick="window.editLiveStintTarget(${idx})"` : '';
+        return `<span class="stint-outlook-pill ${cls}${editable}" title="${title || ''}"${onclick}>${label}</span>`;
     }
 
     // Classify a stint duration in ms using 2-minute tolerance bands
@@ -1370,10 +1373,10 @@ function updateRemainingStrategyLogic(raceRemainingMs) {
     const upcomingTargets = stintTargets.slice(currentStintIdx + 1, currentStintIdx + 1 + futureStints);
 
     if (upcomingTargets.length === futureStints) {
-        upcomingTargets.forEach(ms => {
+        upcomingTargets.forEach((ms, i) => {
             const safeMs = Math.max(0, Number(ms) || 0);
             const type = classifyStint(safeMs);
-            stintDescriptors.push({ type, ms: safeMs, min: Math.round(safeMs / 60000) });
+            stintDescriptors.push({ type, ms: safeMs, min: Math.round(safeMs / 60000), idx: currentStintIdx + 1 + i });
         });
     } else {
         const avgMs = futurePoolMs / futureStints;
@@ -1403,31 +1406,49 @@ function updateRemainingStrategyLogic(raceRemainingMs) {
         }
     }
 
-    // Collapse consecutive identical pills into "Nx" groups, then render
+    // Collapse consecutive identical pills into "Nx" groups (keeping each group's
+    // underlying stint indices so a tap can still target a real stint), then render.
     const groups = [];
     stintDescriptors.forEach(s => {
         const last = groups[groups.length - 1];
         const key = (s.type === 'normal' || s.type === 'min') ? `${s.type}-${s.min}` : s.type;
-        if (last && last.key === key) {
+        if (last && last.key === key && s.idx != null) {
             last.count++;
+            last.idxs.push(s.idx);
         } else {
-            groups.push({ key, type: s.type, min: s.min, count: 1 });
+            groups.push({ key, type: s.type, min: s.min, count: 1, idxs: s.idx != null ? [s.idx] : [] });
         }
     });
 
     let phtml = '';
+
+    // Flag already-completed stints so it's clear they're locked — they never
+    // appear below and can't be edited from here, only the current stint and
+    // whatever comes after it can.
+    if (stopsDone > 0) {
+        phtml += pill(`✓ ${stopsDone} done`, 'pill-done', 'Completed stints — locked');
+    }
+
+    // Current (in-progress) stint — editable, changing it only reflows the pool
+    // for the stints after it, never the completed ones above.
+    const currentTargetMs = window.state?.targetStintMs || stintTargets[currentStintIdx] || 0;
+    if (currentTargetMs > 0) {
+        phtml += pill(`NOW ${Math.round(currentTargetMs / 60000)}m`, 'pill-normal pill-current', "Tap to change this stint's target", currentStintIdx);
+    }
+
     groups.forEach(g => {
         const prefix = g.count > 1 ? `${g.count}× ` : '';
+        const idx = g.idxs.length === 1 ? g.idxs[0] : null; // only single-stint groups are unambiguous to edit
         if (g.type === 'max') {
             const label = hasMaxStint ? ` (${maxStintVal}m)` : '';
-            phtml += pill(`${prefix}${t('max')}${label}`, 'pill-max');
+            phtml += pill(`${prefix}${t('max')}${label}`, 'pill-max', null, idx);
         } else if (g.type === 'min') {
             const label = hasMinStint ? ` (${minStintVal}m)` : '';
-            phtml += pill(`${prefix}${t('min') || 'MIN'}${label}`, 'pill-min');
+            phtml += pill(`${prefix}${t('min') || 'MIN'}${label}`, 'pill-min', null, idx);
         } else if (g.type === 'normal') {
-            phtml += pill(`${prefix}${t('norm') || 'NORM'} ${g.min}m`, 'pill-normal');
+            phtml += pill(`${prefix}${t('norm') || 'NORM'} ${g.min}m`, 'pill-normal', null, idx);
         } else {
-            phtml += pill(`${prefix}${g.min}m ⚠`, 'pill-impossible');
+            phtml += pill(`${prefix}${g.min}m ⚠`, 'pill-impossible', null, idx);
         }
     });
 
@@ -1441,6 +1462,91 @@ function updateRemainingStrategyLogic(raceRemainingMs) {
 
     pillsEl.innerHTML = phtml;
 }
+
+// ==========================================
+// ✏️ LIVE STRATEGY OUTLOOK — TAP TO EDIT (mid-race)
+// ==========================================
+// Lets the strategist tap the current or a future stint pill in the outlook to
+// override its target duration mid-race. Completed stints are flagged (pill-done)
+// above and never reachable here — only the current stint and stints after it can
+// change, and every edit is re-clamped to config min/max and redistributes the
+// remaining future pool so total race time stays consistent (same pattern as the
+// drift auto-recalc in _maybeRecalcAfterDrift above).
+window.editLiveStintTarget = function(stintIdx) {
+    if (!window.state?.isRunning || window.role !== 'host' || stintIdx == null) return;
+    const currentStintIdx = Math.max(0, (window.state.globalStintNumber || 1) - 1);
+    if (stintIdx < currentStintIdx) return; // completed stint — flagged, not editable
+
+    const bounds = typeof window.getStintBoundsMs === 'function'
+        ? window.getStintBoundsMs(window.config)
+        : { minStintMs: (parseFloat(window.config?.minStint) || 0) * 60000, effectiveMaxStint: (parseFloat(window.config?.maxStint) || 0) > 0 ? window.config.maxStint * 60000 : Infinity };
+
+    const stintTargets = Array.isArray(window.state.stintTargets) ? window.state.stintTargets : [];
+    const existingMs = stintIdx === currentStintIdx
+        ? (window.state.targetStintMs || stintTargets[stintIdx])
+        : stintTargets[stintIdx];
+    const input = prompt('Set target stint duration (minutes):', existingMs ? String(Math.round(existingMs / 60000)) : '');
+    if (input == null) return; // cancelled
+    const mins = parseFloat(input);
+    if (!(mins > 0)) return;
+
+    const minMs = bounds.minStintMs > 0 ? bounds.minStintMs : 0;
+    let newMs = mins * 60000;
+    const maxMs = bounds.effectiveMaxStint === Infinity ? newMs : bounds.effectiveMaxStint;
+    newMs = Math.max(minMs, Math.min(maxMs, newMs));
+
+    const now = (window.getSyncedNow && typeof window.getSyncedNow === 'function') ? window.getSyncedNow() : Date.now();
+    const raceMs = window.config?.raceMs || (parseFloat(window.config?.duration) || 0) * 3600000;
+    const raceStartMs = window.state.startTime || now;
+    const raceRemainingMs = Math.max(0, raceMs - (now - raceStartMs));
+
+    const pitTimeSec = parseFloat(window.config?.minPitSec) || parseFloat(window.config?.pitTime) || 0;
+    const pitTimeMs = pitTimeSec * 1000;
+    const stopsDone = window.state.pitCount || 0;
+    const totalStops = parseInt(window.config?.reqStops) || 0;
+    const futureStints = Math.max(0, totalStops - stopsDone);
+    if (futureStints === 0 || stintIdx >= currentStintIdx + 1 + futureStints) return; // nothing to redistribute into beyond the required stops
+
+    const newTargets = [...stintTargets];
+    newTargets[stintIdx] = newMs;
+
+    const elapsed = (now - window.state.stintStart) + (window.state.stintOffset || 0);
+
+    if (stintIdx === currentStintIdx) {
+        window.state.targetStintMs = newMs;
+        const timeToFinishCurrent = Math.max(0, newMs - elapsed);
+        const futurePool = raceRemainingMs - timeToFinishCurrent - futureStints * pitTimeMs;
+        const remainingSlice = newTargets.slice(currentStintIdx + 1, currentStintIdx + 1 + futureStints);
+        if (remainingSlice.length > 0 && futurePool > 0 && typeof window.normalizeStintDurationsMs === 'function') {
+            const norm = window.normalizeStintDurationsMs(remainingSlice, { totalTargetMs: futurePool, bounds });
+            for (let i = 0; i < norm.durations.length; i++) newTargets[currentStintIdx + 1 + i] = norm.durations[i];
+        }
+    } else {
+        // Editing a future stint: hold it fixed, redistribute only the *other*
+        // future stints across whatever pool is left — current stint and every
+        // completed stint stay untouched.
+        const currentTargetMs = window.state.targetStintMs || newTargets[currentStintIdx] || 0;
+        const timeToFinishCurrent = Math.max(0, currentTargetMs - elapsed);
+        const futurePool = raceRemainingMs - timeToFinishCurrent - futureStints * pitTimeMs;
+        const otherFuturePool = futurePool - newMs;
+
+        const otherIdxs = [];
+        for (let i = currentStintIdx + 1; i < currentStintIdx + 1 + futureStints; i++) {
+            if (i !== stintIdx) otherIdxs.push(i);
+        }
+        if (otherIdxs.length > 0 && otherFuturePool > 0 && typeof window.normalizeStintDurationsMs === 'function') {
+            const norm = window.normalizeStintDurationsMs(otherIdxs.map(i => newTargets[i]), { totalTargetMs: otherFuturePool, bounds });
+            otherIdxs.forEach((i, k) => { newTargets[i] = norm.durations[k]; });
+        }
+    }
+
+    window.state.stintTargets = newTargets;
+    if (typeof window.showToast === 'function') {
+        window.showToast(`✏️ Stint target set to ${Math.round(newMs / 60000)}m`, 'info', 1800);
+    }
+    if (typeof window.broadcast === 'function') window.broadcast();
+    updateRemainingStrategyLogic(raceRemainingMs);
+};
 
 
 window.updatePitModalLogic = function() {
@@ -1590,7 +1696,13 @@ window.confirmPitEntry = function(autoDetected) {
     if (window.state.isInPit) return;
 
     // Note: when live timing is active it will also auto-detect pits, but manual entry is always allowed.
-    
+    if (!autoDetected && window.liveTimingConfig && window.liveTimingConfig.enabled && window.liveTimingManager) {
+        const stats = window.liveTimingManager.getStats();
+        if (stats && stats.isRunning && typeof window._fireStrategyNotification === 'function') {
+            window._fireStrategyNotification('ℹ️ Live timing is tracking pits automatically — manual entry may drift from the feed', 'info');
+        }
+    }
+
     // Guard: cooldown to prevent rapid pit cycling (min 10s between manual pit entries)
     // Skip cooldown if auto-detected from live timing — live timing is authoritative
     const now = (window.getSyncedNow && typeof window.getSyncedNow === 'function') ? window.getSyncedNow() : Date.now();
@@ -2035,9 +2147,8 @@ window.confirmPitExit = function(autoDetected) {
     // Guard: only exit if actually in pit
     if (!window.state.isInPit) return;
 
-    // Guard: when live timing is active AND set to Auto, block manual pit exit — live
-    // timing is authoritative. When the user has switched to Manual (_autoPitEnabled
-    // false), they always get full manual control regardless of live-timing connection.
+    // Guard: while live timing is connected and running, block manual pit exit — live
+    // timing is authoritative for exit (use the "Force Pit Out" override if it's wrong).
     if (!autoDetected && window._liveTimingMayForcePit() && window.liveTimingConfig && window.liveTimingConfig.enabled && window.liveTimingManager) {
         const stats = window.liveTimingManager.getStats();
         if (stats && stats.isRunning) {

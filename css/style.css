@@ -946,6 +946,11 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .pill-rest     { background: rgba(107,114,128,0.15); color: #9ca3af; border: 1px solid rgba(107,114,128,0.3); }
 .pill-impossible { background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.4); animation: pulse 1.5s infinite; }
 .pill-add-stop   { background: rgba(239,68,68,0.12); color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
+.pill-done       { background: rgba(107,114,128,0.1); color: #6b7280; border: 1px dashed rgba(107,114,128,0.35); }
+.pill-current    { box-shadow: 0 0 0 1px rgba(34,211,238,0.5) inset; }
+.stint-outlook-pill.pill-editable { cursor: pointer; }
+.stint-outlook-pill.pill-editable:active { transform: scale(0.94); }
+.stint-outlook-pill.pill-editable:hover { filter: brightness(1.25); }
 
 /* ==================== DRIVER COLOR PICKER ==================== */
 .driver-color-picker {
@@ -1307,7 +1312,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 
 /* Row highlights */
 .competitor-row.our-team { background: rgba(34, 211, 238, 0.15); border: 1px solid var(--ice); }
-.competitor-row.danger-zone { background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.35); }
 .competitor-row:hover { background: rgba(255, 255, 255, 0.05); }
 
 /* Kart ranking panel — foldable header */
@@ -2647,12 +2651,6 @@ body.wt-active {
     border-color: rgba(34,211,238,0.4) !important;
     box-shadow: inset 2px 0 0 var(--ice);
 }
-.competitor-row.danger-zone {
-    background: rgba(239,68,68,0.10) !important;
-    border-color: rgba(239,68,68,0.3) !important;
-    box-shadow: inset 2px 0 0 var(--danger);
-}
-
 /* ---- Position badge ---- */
 .cr-pos {
     width: 22px;
@@ -3281,7 +3279,6 @@ html { touch-action: manipulation; }   /* no double-tap-zoom delay; pinch-zoom s
 /* Touch targets: 44px minimum for the controls the admin taps mid-race */
 @media (pointer: coarse) and (min-width: 768px) {
     .penalty-btn,
-    #autoPitToggleBtn,
     #apexViewToggle,
     #forcePitOutBtn,
     #teamLogoUploadBtn,
@@ -3326,7 +3323,6 @@ body.watcher-mode #pitActionGroup,
 body.watcher-mode #btnPush,
 body.watcher-mode #btnBad,
 body.watcher-mode #btnResetMode,
-body.watcher-mode #autoPitToggleBtn,
 body.watcher-mode #forcePitOutBtn,
 body.watcher-mode #teamLogoUploadBtn,
 body.watcher-mode #liveTimingPanel button[onclick*="stopLiveTiming"],
@@ -3403,7 +3399,7 @@ body.watcher-mode #liveTeamHint { display: none !important; }
     margin-left: 6px !important;
 }
 
-/* Small gap between competitor rows so a red (danger-zone) row never visually touches a
+/* Small gap between competitor rows so a row never visually touches a
    blue (our-team) row's border. */
 .competitor-row { margin-bottom: 2px; }
 

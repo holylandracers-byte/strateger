@@ -2,38 +2,18 @@
 // ⏱️ LIVE TIMING CONTROLLER
 // ==========================================
 
-// Auto-pit: when true, live timing automatically confirms pit entry/exit.
-// When false, the user handles pit manually and live timing is display-only for pits.
-window._autoPitEnabled = (function() {
-    return localStorage.getItem('strateger_auto_pit') !== 'false'; // on by default
-})();
-
-window.toggleAutoPit = function() {
-    window._autoPitEnabled = !window._autoPitEnabled;
-    localStorage.setItem('strateger_auto_pit', window._autoPitEnabled ? 'true' : 'false');
-    window._updateAutoPitUI();
-};
-
-window._updateAutoPitUI = function() {
-    const btn = document.getElementById('autoPitToggleBtn');
-    const lbl = document.getElementById('autoPitLabel');
-    if (!btn) return;
-    if (window._autoPitEnabled) {
-        btn.className = 'flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded border transition bg-green-900/40 border-green-500/50 text-green-400';
-        if (lbl) lbl.textContent = window.t ? window.t('autoPitOn') || 'Auto' : 'Auto';
-    } else {
-        btn.className = 'flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded border transition bg-navy-700/60 border-gray-600/50 text-gray-400';
-        if (lbl) lbl.textContent = window.t ? window.t('autoPitOff') || 'Manual' : 'Manual';
-    }
-};
+// Pit detection is always driven by live timing when it's connected — the manual/auto
+// toggle was removed because switching to Manual while live timing stayed connected
+// produced a pit loop (the feed and the user's manual entry fought over state). The
+// user can still press "Enter Pit" manually at any time (see confirmPitEntry); it's
+// just no longer possible to tell live timing to stop auto-tracking pits.
+window._autoPitEnabled = true;
 
 // Single chokepoint for every place that wants live timing (real feed or demo
-// simulation) to force a pit entry/exit/penalty-adjustment. Every such call MUST go
-// through this guard instead of checking _autoPitEnabled inline — that's what let the
-// demo-mode pit bridge slip through ungated before. When Manual is selected this
-// always returns false and the caller must do nothing.
+// simulation) to force a pit entry/exit/penalty-adjustment. Kept as a function (rather
+// than inlining `true`) so call sites and intent stay unchanged.
 window._liveTimingMayForcePit = function() {
-    return !!window._autoPitEnabled;
+    return true;
 };
 
 function getLapWord(count) {
@@ -530,8 +510,6 @@ window.startProxyLiveTiming = function() {
     window.proxyFetchInterval = setInterval(window.fetchLiveTimingFromProxy, 5000);
     // Start stale-feed watchdog
     if (typeof window._startHbWatchdog === 'function') window._startHbWatchdog();
-    // Sync auto-pit toggle UI
-    if (typeof window._updateAutoPitUI === 'function') window._updateAutoPitUI();
 };
 
 window.stopProxyLiveTiming = function() {
@@ -858,7 +836,6 @@ window.updateCompetitorsTable = function() {
         const isUs = comp.isOurTeam;
         if (isUs) ourTeamRow = row;
 
-        const isDanger = !isUs && window.liveData.position && Math.abs(comp.position - window.liveData.position) <= 2;
         const isGoodPace = !isUs && goodPaceThreshold && comp.bestLap && comp.bestLap <= goodPaceThreshold;
         // PB glow is scoped to the current stint (since last pit), not the whole race —
         // a driver going faster in stint 3 than their stint-1 best should still glow.
@@ -876,7 +853,6 @@ window.updateCompetitorsTable = function() {
         else if (isSecondaryTeam) rowCls += ' second-team';
         if (isConsistentFast) rowCls += ' consistent-fast';
         if (catFiltered) rowCls += ' cr-filtered-out';
-        else if (isDanger) rowCls += ' danger-zone';
         if (row.className !== rowCls) row.className = rowCls;
 
         // ---- Position ----
