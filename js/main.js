@@ -1477,10 +1477,6 @@ window.editLiveStintTarget = function(stintIdx) {
     const currentStintIdx = Math.max(0, (window.state.globalStintNumber || 1) - 1);
     if (stintIdx < currentStintIdx) return; // completed stint — flagged, not editable
 
-    const bounds = typeof window.getStintBoundsMs === 'function'
-        ? window.getStintBoundsMs(window.config)
-        : { minStintMs: (parseFloat(window.config?.minStint) || 0) * 60000, effectiveMaxStint: (parseFloat(window.config?.maxStint) || 0) > 0 ? window.config.maxStint * 60000 : Infinity };
-
     const stintTargets = Array.isArray(window.state.stintTargets) ? window.state.stintTargets : [];
     const existingMs = stintIdx === currentStintIdx
         ? (window.state.targetStintMs || stintTargets[stintIdx])
@@ -1490,8 +1486,27 @@ window.editLiveStintTarget = function(stintIdx) {
     const mins = parseFloat(input);
     if (!(mins > 0)) return;
 
+    window._setLiveStintTargetMs(stintIdx, mins * 60000);
+};
+
+// Core of the mid-race stint-target edit above, split out so any UI that lets the
+// host change a current/future stint's duration mid-race (the outlook pills here,
+// and the "▶ PLAN" preview's duration input) drives the SAME live state — otherwise
+// an edit made in one place doesn't move the clock/box-time logic, which only ever
+// reads window.state.stintTargets/targetStintMs, not window.previewData.
+window._setLiveStintTargetMs = function(stintIdx, newMs, opts) {
+    opts = opts || {};
+    if (!window.state?.isRunning || stintIdx == null || !(newMs > 0)) return false;
+    const currentStintIdx = Math.max(0, (window.state.globalStintNumber || 1) - 1);
+    if (stintIdx < currentStintIdx) return false; // completed stint — never editable
+
+    const bounds = typeof window.getStintBoundsMs === 'function'
+        ? window.getStintBoundsMs(window.config)
+        : { minStintMs: (parseFloat(window.config?.minStint) || 0) * 60000, effectiveMaxStint: (parseFloat(window.config?.maxStint) || 0) > 0 ? window.config.maxStint * 60000 : Infinity };
+
+    const stintTargets = Array.isArray(window.state.stintTargets) ? window.state.stintTargets : [];
+
     const minMs = bounds.minStintMs > 0 ? bounds.minStintMs : 0;
-    let newMs = mins * 60000;
     const maxMs = bounds.effectiveMaxStint === Infinity ? newMs : bounds.effectiveMaxStint;
     newMs = Math.max(minMs, Math.min(maxMs, newMs));
 
@@ -1505,7 +1520,7 @@ window.editLiveStintTarget = function(stintIdx) {
     const stopsDone = window.state.pitCount || 0;
     const totalStops = parseInt(window.config?.reqStops) || 0;
     const futureStints = Math.max(0, totalStops - stopsDone);
-    if (futureStints === 0 || stintIdx >= currentStintIdx + 1 + futureStints) return; // nothing to redistribute into beyond the required stops
+    if (futureStints === 0 || stintIdx >= currentStintIdx + 1 + futureStints) return false; // nothing to redistribute into beyond the required stops
 
     const newTargets = [...stintTargets];
     newTargets[stintIdx] = newMs;
@@ -1541,11 +1556,12 @@ window.editLiveStintTarget = function(stintIdx) {
     }
 
     window.state.stintTargets = newTargets;
-    if (typeof window.showToast === 'function') {
+    if (!opts.silent && typeof window.showToast === 'function') {
         window.showToast(`✏️ Stint target set to ${Math.round(newMs / 60000)}m`, 'info', 1800);
     }
     if (typeof window.broadcast === 'function') window.broadcast();
     updateRemainingStrategyLogic(raceRemainingMs);
+    return true;
 };
 
 

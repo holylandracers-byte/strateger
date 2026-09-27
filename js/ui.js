@@ -1522,7 +1522,16 @@ window.swapStints = function(fromIdx, toIdx) {
     const temp = { name: source.driverName, idx: source.driverIdx, col: source.color, sq: source.squad };
     source.driverName = target.driverName; source.driverIdx = target.driverIdx; source.color = target.color; source.squad = target.squad;
     target.driverName = temp.name; target.driverIdx = temp.idx; target.color = temp.col; target.squad = temp.sq;
+    // Mid-race, the live dashboard reads window.state.stintSchedule for who's up next
+    // — mirror the swap there too, or a reorder here won't show up on the real race.
+    const schedule = window.state && window.state.stintSchedule;
+    if (Array.isArray(schedule) && schedule[fromIdx] && schedule[toIdx]) {
+        [schedule[fromIdx].driverName, schedule[toIdx].driverName] = [schedule[toIdx].driverName, schedule[fromIdx].driverName];
+        [schedule[fromIdx].driverIdx, schedule[toIdx].driverIdx] = [schedule[toIdx].driverIdx, schedule[fromIdx].driverIdx];
+        [schedule[fromIdx].squad, schedule[toIdx].squad] = [schedule[toIdx].squad, schedule[fromIdx].squad];
+    }
     window.renderPreview();
+    if (window.state?.isRunning && typeof window.broadcast === 'function') window.broadcast();
 };
 window.updateStintDuration = function(idx, val) {
     const newMs = parseFloat(val) * 60000;
@@ -1531,6 +1540,25 @@ window.updateStintDuration = function(idx, val) {
     const stints = window.previewData.timeline.filter(t => t.type === 'stint');
     if (!stints[idx]) return;
     if (stints[idx]._actual || stints[idx]._done) return; // locked — already ran
+
+    // Mid-race, the live clock/box-time logic reads window.state.stintTargets /
+    // targetStintMs — never this preview's timeline — so an edit here has to go
+    // through the same redistribution the outlook pills' tap-to-edit uses, or the
+    // target stint on the actual race dashboard won't move. Mirror the result back
+    // into the preview afterwards so the two views agree.
+    if (window.state?.isRunning) {
+        if (!window._setLiveStintTargetMs(idx, newMs, { silent: true })) return;
+        const targets = window.state.stintTargets;
+        if (Array.isArray(targets)) {
+            stints.forEach((s, i) => { if (targets[i] != null) s.duration = targets[i]; });
+        }
+        window.recalculateTimelineTimes();
+        window.renderPreview();
+        if (typeof window.showToast === 'function') {
+            window.showToast(`✏️ Stint target set to ${Math.round(newMs / 60000)}m`, 'info', 1800);
+        }
+        return;
+    }
 
     const pits = window.previewData.timeline.filter(t => t.type === 'pit');
     const totalPitMs = pits.reduce((a, p) => a + p.duration, 0);
