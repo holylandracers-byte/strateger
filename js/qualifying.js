@@ -29,17 +29,17 @@ window.saveQualifyState = function() {
             qlSegDurations: window._qlSegDurations || {},
             savedAt: Date.now()
         };
-        localStorage.setItem(window.QUALIFY_STATE_KEY, JSON.stringify(snap));
+        sessionStorage.setItem(window.QUALIFY_STATE_KEY, JSON.stringify(snap));
     } catch(e) {}
 };
 
 window.clearQualifyState = function() {
-    localStorage.removeItem(window.QUALIFY_STATE_KEY);
+    sessionStorage.removeItem(window.QUALIFY_STATE_KEY);
 };
 
 window.restoreQualifyState = function() {
     try {
-        const raw = localStorage.getItem(window.QUALIFY_STATE_KEY);
+        const raw = sessionStorage.getItem(window.QUALIFY_STATE_KEY);
         if (!raw) return false;
         const snap = JSON.parse(raw);
         if (!snap || !snap.qualifyState || (Date.now() - snap.savedAt) > 4 * 3600000) {

@@ -1214,7 +1214,7 @@
                     <div id="apexIframeContainer" class="hidden mt-1">
                         <iframe id="apexIframe" src="" class="w-full rounded" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
                     </div>
-                    <div id="kartRankingPanel" class="hidden mt-1 p-2 bg-navy-950 rounded border border-gray-700/50"></div>
+                    <!-- kartRankingPanel removed: replaced by the single avg-pace green highlight in the standings -->
                     <!-- Second-team watch card (laptop only, >=1280px): a compact read-only monitor
                          for another entry from the same org, alongside the primary team above. -->
                     <div id="secondaryTeamCard" class="hidden lt-laptop-only mt-1 p-2 bg-navy-950 rounded border border-cyan-700/40">
@@ -1319,6 +1319,17 @@
                                 🔄 <span data-i18n="resetMode">Reset Mode</span>
                             </button>
                         </div>
+                    </div>
+
+                    <!-- Penalties & warnings: things to serve (our own penalty -- needs pit-time
+                         action) or acknowledge (race-control warnings), persisted until dismissed
+                         so nothing gets missed. Hidden entirely when the queue is empty. -->
+                    <div id="penaltyQueuePanel" class="hidden bg-navy-900 border border-amber-600/40 rounded-lg overflow-hidden">
+                        <div class="flex items-center justify-between px-2 py-1 bg-amber-900/20 border-b border-amber-700/30">
+                            <span class="text-[9px] text-amber-400 font-bold uppercase tracking-widest">⚠ <span data-i18n="penaltiesWarnings">Penalties &amp; Warnings</span></span>
+                            <span id="penaltyQueueCount" class="text-[9px] text-amber-300 font-mono">0</span>
+                        </div>
+                        <div id="penaltyQueueList" class="max-h-32 overflow-y-auto divide-y divide-gray-800"></div>
                     </div>
 
                     <!-- Driver stats table -->
@@ -2546,11 +2557,11 @@
         </div>
     </div>
 
-    <script src="js/state.js?v=22"></script>
+    <script src="js/state.js?v=23"></script>
     <script src="js/auth.js?v=7"></script>
     <script src="js/network.js?v=9"></script>
     <script src="js/strategy.js?v=12"></script>
-    <script src="js/live-timing.js?v=14"></script>
+    <script src="js/live-timing.js?v=15"></script>
     <script src="js/ui.js?v=12"></script>
     <script src="js/walkthrough.js?v=13"></script>
     <script src="js/main.js?v=16"></script>

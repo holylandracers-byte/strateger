@@ -310,16 +310,16 @@ window.initHostPeer = function() {
 
     try {
         const hasSavedRace = localStorage.getItem('strateger_race_state');
-        let storedId = localStorage.getItem('strateger_host_id');
+        let storedId = sessionStorage.getItem('strateger_host_id');
         
         // יצירת ID חדש אם אין מירוץ שמור
         if (!hasSavedRace) {
             storedId = String(Math.floor(1000000 + Math.random() * 9000000));
-            localStorage.setItem('strateger_host_id', storedId);
+            sessionStorage.setItem('strateger_host_id', storedId);
             console.log("🆕 New Race Setup: Generated New Host ID");
         } else if (!storedId) {
             storedId = String(Math.floor(1000000 + Math.random() * 9000000));
-            localStorage.setItem('strateger_host_id', storedId);
+            sessionStorage.setItem('strateger_host_id', storedId);
         }
         
         window.myId = storedId;
@@ -360,7 +360,7 @@ window.initHostPeer = function() {
                 }
                 // Only send chat history to previously approved viewers (reconnections)
                 if (window.approvedViewers.has(c.peer)) {
-                    const chatHistory = JSON.parse(localStorage.getItem('strateger_chat_history') || '[]');
+                    const chatHistory = JSON.parse(sessionStorage.getItem('strateger_chat_history') || '[]');
                     if(chatHistory.length) {
                         chatHistory.forEach(msg => c.send(msg));
                     }
@@ -588,7 +588,7 @@ window.initHostPeer = function() {
         window.peer.on('error', (err) => {
             console.error("Peer Error:", err);
              if (err.type === 'unavailable-id') {
-                localStorage.removeItem('strateger_host_id');
+                sessionStorage.removeItem('strateger_host_id');
                 window.initHostPeer(); 
              }
         });
@@ -931,7 +931,7 @@ window.connectToHost = function(hostId) {
                     const feed = document.getElementById('chatFeed');
                     if (feed && feed.children.length === 0) {
                         try {
-                            const history = JSON.parse(localStorage.getItem('strateger_chat_history') || '[]');
+                            const history = JSON.parse(sessionStorage.getItem('strateger_chat_history') || '[]');
                             history.forEach(msg => window.renderChatMessage(msg));
                         } catch(e) {}
                     }
@@ -1068,12 +1068,12 @@ window.broadcast = function(specificPayload = null) {
         if (payload.type === 'CHAT') {
             // Save to host history locally
             try {
-                let history = JSON.parse(localStorage.getItem('strateger_chat_history') || '[]');
+                let history = JSON.parse(sessionStorage.getItem('strateger_chat_history') || '[]');
                 const exists = history.some(m => m.timestamp === payload.timestamp && m.text === payload.text && m.sender === payload.sender);
                 if (!exists) {
                     history.push(payload);
                     if (history.length > 200) history.shift();
-                    localStorage.setItem('strateger_chat_history', JSON.stringify(history));
+                    sessionStorage.setItem('strateger_chat_history', JSON.stringify(history));
                 }
             } catch (e) { console.error('Failed saving chat history', e); }
 

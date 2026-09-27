@@ -541,7 +541,7 @@ window.translations = {
         teamLogoInvalidType: "Only JPG, PNG or SVG allowed",
         stintAvg: "Stint Avg",
         norm: "NORM",
-        pitLatestExitIn: "Latest exit in", pitLeaveNow: "⚠️ Leave now!", ltNoTeamSet: "No team set — enter team/kart/driver", ltTeamNotFound: "not found in feed", connLost: "⚠️ Connection lost — reconnecting…", feedStale: "⚠️ Live timing stale", watchingLive: "Watching live · read-only", pitClosed: "PIT CLOSED", watchStale: "No update", pickYourTeam: "Pick your team", pickTeamFilter: "Filter by name or kart #", durationMismatch: "Live timing has more time left than the configured race length - set Duration to match or the clock will not move", bufferDefault: "def.", watchingSecondTeam: "Watching", yourTeam: "Your Team", guidedTourMidRaceWarning: "This will end your current race and start the guided tour. This cannot be undone.", consistentFastPitAlert: "⚡ Kart #{{kart}} ({{team}}) — fast & consistent — just pitted. Possible opportunity.", pitEarlyExit: "⚠️ EARLY EXIT — min pit time not served", pitLatestExitPassed: "🚨 EXIT OVERDUE",
+        pitLatestExitIn: "Latest exit in", pitLeaveNow: "⚠️ Leave now!", ltNoTeamSet: "No team set — enter team/kart/driver", ltTeamNotFound: "not found in feed", connLost: "⚠️ Connection lost — reconnecting…", feedStale: "⚠️ Live timing stale", watchingLive: "Watching live · read-only", pitClosed: "PIT CLOSED", watchStale: "No update", pickYourTeam: "Pick your team", pickTeamFilter: "Filter by name or kart #", durationMismatch: "Live timing has more time left than the configured race length - set Duration to match or the clock will not move", bufferDefault: "def.", watchingSecondTeam: "Watching", yourTeam: "Your Team", guidedTourMidRaceWarning: "This will end your current race and start the guided tour. This cannot be undone.", consistentFastPitAlert: "⚡ Kart #{{kart}} ({{team}}) — fast & consistent — just pitted. Possible opportunity.", penaltiesWarnings: "Penalties & Warnings", penaltyServe: "Serve", acknowledge: "OK", pitEarlyExit: "⚠️ EARLY EXIT — min pit time not served", pitLatestExitPassed: "🚨 EXIT OVERDUE",
         autoPit: "Auto", autoPitOn: "Auto", autoPitOff: "Manual",
     },
     he: {
@@ -753,7 +753,7 @@ window.translations = {
         teamLogoInvalidType: "רק JPG, PNG או SVG",
         stintAvg: "ממוצע סטינט",
         norm: "רגיל",
-        pitLatestExitIn: "יציאה אחרונה בעוד", pitLeaveNow: "⚠️ צא עכשיו!", ltNoTeamSet: "לא הוגדרה קבוצה — הזן קבוצה/קארט/נהג", ltTeamNotFound: "לא נמצא בפיד", connLost: "⚠️ החיבור אבד — מתחבר מחדש…", feedStale: "⚠️ הנתונים החיים אינם מתעדכנים", watchingLive: "צפייה חיה · לקריאה בלבד", pitClosed: "הפיטס סגור", watchStale: "אין עדכון", pickYourTeam: "בחרו את הקבוצה שלכם", pickTeamFilter: "סינון לפי שם או מספר קארט", durationMismatch: "בתזמון החי נותר יותר זמן ממשך המרוץ שהוגדר - עדכנו את משך המרוץ אחרת השעון לא יזוז", bufferDefault: "ברירת מחדל", watchingSecondTeam: "עוקב אחרי", yourTeam: "קבוצתך", guidedTourMidRaceWarning: "זה יסיים את המירוץ הנוכחי ויתחיל את הסיור המודרך. לא ניתן לבטל פעולה זו.", consistentFastPitAlert: "⚡ קארט #{{kart}} ({{team}}) — מהיר ועקבי — נכנס לפיטים. אולי הזדמנות.", pitEarlyExit: "⚠️ יציאה מוקדמת", pitLatestExitPassed: "🚨 יציאה באיחור",
+        pitLatestExitIn: "יציאה אחרונה בעוד", pitLeaveNow: "⚠️ צא עכשיו!", ltNoTeamSet: "לא הוגדרה קבוצה — הזן קבוצה/קארט/נהג", ltTeamNotFound: "לא נמצא בפיד", connLost: "⚠️ החיבור אבד — מתחבר מחדש…", feedStale: "⚠️ הנתונים החיים אינם מתעדכנים", watchingLive: "צפייה חיה · לקריאה בלבד", pitClosed: "הפיטס סגור", watchStale: "אין עדכון", pickYourTeam: "בחרו את הקבוצה שלכם", pickTeamFilter: "סינון לפי שם או מספר קארט", durationMismatch: "בתזמון החי נותר יותר זמן ממשך המרוץ שהוגדר - עדכנו את משך המרוץ אחרת השעון לא יזוז", bufferDefault: "ברירת מחדל", watchingSecondTeam: "עוקב אחרי", yourTeam: "קבוצתך", guidedTourMidRaceWarning: "זה יסיים את המירוץ הנוכחי ויתחיל את הסיור המודרך. לא ניתן לבטל פעולה זו.", consistentFastPitAlert: "⚡ קארט #{{kart}} ({{team}}) — מהיר ועקבי — נכנס לפיטים. אולי הזדמנות.", penaltiesWarnings: "עונשים ואזהרות", penaltyServe: "לשרת", acknowledge: "אישור", pitEarlyExit: "⚠️ יציאה מוקדמת", pitLatestExitPassed: "🚨 יציאה באיחור",
         autoPit: "אוטו", autoPitOn: "אוטו", autoPitOff: "ידני",
     },
     fr: {
@@ -2468,7 +2468,7 @@ window.saveRaceState = function() {
     // would otherwise re-write the very key that was just deleted, which is exactly what made
     // Discard need several attempts before it actually stuck).
     try {
-        const discardedAt = parseInt(localStorage.getItem('strateger_race_discarded_at') || '0', 10);
+        const discardedAt = parseInt(sessionStorage.getItem('strateger_race_discarded_at') || '0', 10);
         if (discardedAt && (Date.now() - discardedAt) < 10000) return;
     } catch (e) {}
     const snapshot = {
@@ -2485,7 +2485,7 @@ window.saveRaceState = function() {
         hostId: window.myId, 
         timestamp: Date.now()
     };
-    localStorage.setItem(window.RACE_STATE_KEY, JSON.stringify(snapshot));
+    sessionStorage.setItem(window.RACE_STATE_KEY, JSON.stringify(snapshot));
 };
 
 // Save a final snapshot on refresh/back-navigation
@@ -2511,13 +2511,13 @@ window.checkForSavedRace = function() {
     else if (typeof window.runSim === 'function') window.runSim();
 
     // 2. בדיקת מירוץ פעיל
-    const savedData = localStorage.getItem(window.RACE_STATE_KEY);
+    const savedData = sessionStorage.getItem(window.RACE_STATE_KEY);
     if (!savedData) return;
 
     try {
         const data = JSON.parse(savedData);
         if (Date.now() - new Date(data.timestamp).getTime() > 24 * 60 * 60 * 1000) {
-            localStorage.removeItem(window.RACE_STATE_KEY);
+            sessionStorage.removeItem(window.RACE_STATE_KEY);
             return;
         }
 
@@ -2542,13 +2542,13 @@ window.checkForSavedRace = function() {
         }
     } catch (e) {
         console.error("Error parsing saved race:", e);
-        localStorage.removeItem(window.RACE_STATE_KEY);
+        sessionStorage.removeItem(window.RACE_STATE_KEY);
         document.getElementById('setupScreen').classList.remove('hidden');
     }
 };
 
 window.continueRace = function() {
-    const savedData = localStorage.getItem(window.RACE_STATE_KEY);
+    const savedData = sessionStorage.getItem(window.RACE_STATE_KEY);
     if (!savedData) return window.finalDiscardRace();
 
     try {
@@ -2567,7 +2567,7 @@ window.continueRace = function() {
 
         // Restore Host ID from the confirmed saved race
         if (data.hostId) {
-            localStorage.setItem('strateger_host_id', data.hostId);
+            sessionStorage.setItem('strateger_host_id', data.hostId);
             window.myId = data.hostId; 
         }
 
@@ -2682,12 +2682,12 @@ window.cancelDiscard = function() {
 };
 
 window.finalDiscardRace = function() {
-    try { localStorage.setItem('strateger_race_discarded_at', String(Date.now())); } catch (e) {}
-    localStorage.removeItem(window.RACE_STATE_KEY);
+    try { sessionStorage.setItem('strateger_race_discarded_at', String(Date.now())); } catch (e) {}
+    sessionStorage.removeItem(window.RACE_STATE_KEY);
     // Delete Host ID
-    localStorage.removeItem('strateger_host_id');
+    sessionStorage.removeItem('strateger_host_id');
     // Delete Chat History
-    localStorage.removeItem('strateger_chat_history');
+    sessionStorage.removeItem('strateger_chat_history');
 
     document.getElementById('confirmDiscardModal').classList.add('hidden');
     document.getElementById('savedRaceModal').classList.add('hidden');

@@ -388,6 +388,11 @@ window.fetchLiveTimingFromProxy = async function() {
                         const msg = `⚠️ PENALTY! ${newPenaltyTime > 0 ? `${newPenaltyTime} Lap` : ''} ${penaltyMsg}`;
                         window._fireStrategyNotification(msg, 'warning');
                     }
+                    // Persistent, actionable item: OUR team's own penalty needs serving (pit-time
+                    // added), not just a fleeting toast that scrolls away.
+                    if (typeof window._queuePenaltyItem === 'function') {
+                        window._queuePenaltyItem('serve', `${newPenaltyTime > 0 ? newPenaltyTime + 's — ' : ''}${penaltyMsg || (window.t ? window.t('penaltiesWarnings') : 'Penalty')}`);
+                    }
                     
                     // Auto-adjust pit time if penalty has a time component — only when
                     // auto-pit is enabled. In Manual mode the admin is notified above but
@@ -473,6 +478,9 @@ window.fetchLiveTimingFromProxy = async function() {
             // Also fire as strategy notification if race is running
             if (window.state && window.state.isRunning && typeof window._fireStrategyNotification === 'function') {
                 window._fireStrategyNotification(`📢 ${entry.text}`, 'info');
+            }
+            if (/penalty|warning/i.test(entry.text) && typeof window._queuePenaltyItem === 'function') {
+                window._queuePenaltyItem('ack', entry.text);
             }
         }
     });
@@ -1082,8 +1090,6 @@ window.updateCompetitorsTable = function() {
         }
     });
 
-    // ---- Update kart ranking mini-panel ----
-    window._updateKartRankingPanel();
 };
 
 // ==================== PER-STINT LAP TRACKING (real-feed) ====================
@@ -1180,9 +1186,12 @@ window._updateKartStats = function(competitors) {
         }
     });
 
-    // Determine fast karts by real recent-lap AVERAGE, not a single best lap -- a "best lap"
-    // can be one leaked sector time or a lucky tow, and says nothing about who is actually
-    // quick over a run. Needs at least 3 recorded laps before a kart is judged at all.
+    // Fast karts, by real recent-lap AVERAGE -- never by a single best lap (one leaked sector
+    // time, a lucky tow, both make "best lap" unreliable as a pace signal). Needs at least 3
+    // recorded laps before a kart is judged. Flags everyone within the pace band, uncapped --
+    // a tight spec-kart field legitimately has several karts on the same real pace, and that's
+    // the point: the green highlight + pit-entry alert should catch all of them, not an
+    // arbitrary top N.
     const avgOf = s => s.recentLaps.length >= 3
         ? s.recentLaps.slice(-8).reduce((a, b) => a + b, 0) / Math.min(s.recentLaps.length, 8)
         : null;
@@ -1200,30 +1209,47 @@ window._updateKartStats = function(competitors) {
         });
     }
     window._fastKarts = fastSet;
+    window._consistentFastKarts = fastSet;   // same set now drives both the row highlight and the pit-entry alert
+};
 
-    // Fast AND consistent: low lap-to-lap spread over the last few laps, not just one quick lap.
-    // A kart that's fast once could be a fluke or a car about to be lapped through traffic; one
-    // that's fast with tight spread is a genuine strong, stable pace -- worth watching for a
-    // strategic pit-entry opportunity (see window._checkConsistentFastPitEntries).
-    // A fixed pace-vs-best percentage band (the original approach) flags nearly half a tight
-    // spec-kart field as "fast" -- useless as a standout signal. Rank by average pace instead
-    // and cap it to a small top slice of the field, so it stays a short, meaningful list
-    // regardless of how bunched up a given race's times are.
-    const consistencyOf = s => {
-        if (s.recentLaps.length < 4) return null;
-        const sample = s.recentLaps.slice(-6);
-        const mean = sample.reduce((a, b) => a + b, 0) / sample.length;
-        const variance = sample.reduce((a, b) => a + (b - mean) ** 2, 0) / sample.length;
-        return mean > 0 ? Math.sqrt(variance) / mean : 1;
-    };
-    const CONSISTENCY_MAX = 0.01;   // within ~1% lap-to-lap
-    const rankedByPace = Object.entries(stats)
-        .map(([kart, s]) => ({ kart, avg: avgOf(s), stdDevPct: consistencyOf(s) }))
-        .filter(x => x.avg != null && x.stdDevPct != null && x.stdDevPct <= CONSISTENCY_MAX)
-        .sort((a, b) => a.avg - b.avg);
-    const cap = Math.max(1, Math.min(5, Math.ceil(rankedByPace.length * 0.1)));   // top ~10%, 1-5 karts
-    const consistentFastSet = new Set(rankedByPace.slice(0, cap).map(x => x.kart));
-    window._consistentFastKarts = consistentFastSet;
+// === Penalties & Warnings queue ===
+// 'serve' = our own penalty, needs pit-time action from the admin. 'ack' = a race-control
+// comment (penalty/warning for anyone) the admin should be aware of. Both persist until
+// explicitly dismissed -- unlike the toast, this can't be missed by looking away for a moment.
+window._penaltyQueue = window._penaltyQueue || [];
+
+window._queuePenaltyItem = function(type, text) {
+    if (!text) return;
+    const dup = window._penaltyQueue.some(it => !it.acknowledged && it.type === type && it.text === text);
+    if (dup) return;
+    window._penaltyQueue.unshift({ id: 'pq' + Date.now() + Math.random().toString(36).slice(2, 6), type, text, at: Date.now(), acknowledged: false });
+    if (window._penaltyQueue.length > 40) window._penaltyQueue.length = 40;
+    window._renderPenaltyQueue();
+};
+
+window.acknowledgePenaltyItem = function(id) {
+    const item = window._penaltyQueue.find(it => it.id === id);
+    if (item) item.acknowledged = true;
+    window._renderPenaltyQueue();
+};
+
+window._renderPenaltyQueue = function() {
+    const panel = document.getElementById('penaltyQueuePanel');
+    const list = document.getElementById('penaltyQueueList');
+    const countEl = document.getElementById('penaltyQueueCount');
+    if (!panel || !list) return;
+    const pending = window._penaltyQueue.filter(it => !it.acknowledged);
+    panel.classList.toggle('hidden', pending.length === 0);
+    if (countEl) countEl.textContent = String(pending.length);
+    const t = window.t || (k => k);
+    const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    list.innerHTML = pending.map(it => `
+        <div class="flex items-center justify-between gap-2 px-2 py-1.5 text-[10px]">
+            <span class="flex-1 min-w-0 ${it.type === 'serve' ? 'text-amber-300 font-bold' : 'text-gray-300'}">
+                ${it.type === 'serve' ? '🔧 ' + (t('penaltyServe') || 'Serve') + ': ' : '📢 '}${esc(it.text)}
+            </span>
+            <button type="button" onclick="window.acknowledgePenaltyItem('${it.id}')" class="shrink-0 text-[9px] font-bold px-2 py-1 rounded border border-gray-600 text-gray-400 hover:text-white hover:border-gray-400 min-h-[28px]">✓ ${t('acknowledge') || 'OK'}</button>
+        </div>`).join('');
 };
 
 // === Pit-entry opportunity alert ===

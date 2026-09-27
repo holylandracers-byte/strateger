@@ -1616,7 +1616,7 @@ window.performStrategySave = async function() {
         timeline: window.cachedStrategy.timeline,
         driverSchedule: window.previewData.driverSchedule, // חשוב לתצוגה
         userId: window.myId || 'anonymous', // מזהה משתמש אם קיים
-        deviceId: localStorage.getItem('strateger_host_id') // מזהה מכשיר
+        deviceId: sessionStorage.getItem('strateger_host_id') // מזהה מכשיר
     };
 
     const btn = document.querySelector('#saveStrategyModal button.bg-ice');
@@ -1668,7 +1668,7 @@ window.loadStrategyLibrary = async function() {
 
     // 1. נסה לטעון מהשרת (DB)
     try {
-        const deviceId = localStorage.getItem('strateger_host_id') || '';
+        const deviceId = sessionStorage.getItem('strateger_host_id') || '';
         const response = await fetch(`/.netlify/functions/get-strategies?deviceId=${deviceId}`); 
         const result = await response.json();
 
@@ -1980,7 +1980,7 @@ window.toggleChat = function() {
     // 1. Load history if empty (First open)
     if (panel.classList.contains('hidden') && feed.children.length === 0) {
         try {
-            const history = JSON.parse(localStorage.getItem('strateger_chat_history') || '[]');
+            const history = JSON.parse(sessionStorage.getItem('strateger_chat_history') || '[]');
             history.forEach(msg => window.renderChatMessage(msg));
         } catch(e) { console.error("Error loading chat history:", e); }
     }
@@ -2021,7 +2021,7 @@ window.toggleChat = function() {
             // 🟢 Load chat history for continuing races
             if (feed.children.length === 0) {
                 try {
-                    const history = JSON.parse(localStorage.getItem('strateger_chat_history') || '[]');
+                    const history = JSON.parse(sessionStorage.getItem('strateger_chat_history') || '[]');
                     history.forEach(msg => window.renderChatMessage(msg));
                 } catch(e) { console.error("Error loading chat history:", e); }
             }
@@ -2065,7 +2065,7 @@ window.joinChat = function() {
             const feed = document.getElementById('chatFeed');
             if (feed.children.length === 0) {
                 try {
-                    const history = JSON.parse(localStorage.getItem('strateger_chat_history') || '[]');
+                    const history = JSON.parse(sessionStorage.getItem('strateger_chat_history') || '[]');
                     history.forEach(msg => window.renderChatMessage(msg));
                 } catch(e) { console.error("Error loading chat history:", e); }
             }
@@ -2093,7 +2093,7 @@ window.joinChat = function() {
         const feed = document.getElementById('chatFeed');
         if (feed && feed.children.length === 0) {
             try {
-                const history = JSON.parse(localStorage.getItem('strateger_chat_history') || '[]');
+                const history = JSON.parse(sessionStorage.getItem('strateger_chat_history') || '[]');
                 history.forEach(msg => window.renderChatMessage(msg));
             } catch(e) {}
         }
@@ -2138,7 +2138,7 @@ window.onNameAccepted = function(name) {
     const feed = document.getElementById('chatFeed');
     if (feed.children.length === 0) {
         try {
-            const history = JSON.parse(localStorage.getItem('strateger_chat_history') || '[]');
+            const history = JSON.parse(sessionStorage.getItem('strateger_chat_history') || '[]');
             history.forEach(msg => window.renderChatMessage(msg));
         } catch(e) { console.error('Error loading chat history:', e); }
     }
@@ -2354,7 +2354,7 @@ window.renderChatMessage = function(msg) {
     // Build reply context
     let replyHTML = '';
     if (msg.replyTo) {
-        const history = JSON.parse(localStorage.getItem('strateger_chat_history') || '[]');
+        const history = JSON.parse(sessionStorage.getItem('strateger_chat_history') || '[]');
         const original = history.find(m => m.timestamp === msg.replyTo);
         if (original) {
             replyHTML = `<div class="bg-navy-900/60 border-l-2 border-blue-400 pl-2 mb-2 text-[9px] text-gray-300">
@@ -2389,12 +2389,12 @@ window.renderChatMessage = function(msg) {
 
     // --- Save to LocalStorage ---
     try {
-        let history = JSON.parse(localStorage.getItem('strateger_chat_history') || '[]');
+        let history = JSON.parse(sessionStorage.getItem('strateger_chat_history') || '[]');
         const exists = history.some(m => m.timestamp === msg.timestamp && m.text === msg.text);
         if (!exists) {
             history.push(msg);
             if (history.length > 100) history.shift(); 
-            localStorage.setItem('strateger_chat_history', JSON.stringify(history));
+            sessionStorage.setItem('strateger_chat_history', JSON.stringify(history));
         }
     } catch(e) { console.error("Chat save error", e); }
 
