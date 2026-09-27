@@ -298,7 +298,12 @@ window.fetchLiveTimingFromProxy = async function() {
                 window.liveData.position = data.ourTeam.position;
                 window.liveData.lastLap = data.ourTeam.lastLap;
                 window.liveData.bestLap = data.ourTeam.bestLap;
-                window.liveData.laps = data.ourTeam.totalLaps;
+                // Laps can only go up. A provider's column mapping can occasionally latch onto
+                // the wrong field (pit count, position, a category index) instead of the true lap
+                // counter; that shows up as the value jumping backward or by an implausible amount.
+                // Guard instead of trusting it blindly, and log it so a mis-mapped provider is
+                // visible immediately rather than silently corrupting stint/strategy math.
+                window.liveData.laps = window._sanityCheckedLaps(data.ourTeam.totalLaps, window.liveData.laps, data.provider);
                 window.liveData.gapToLeader = data.ourTeam.gap;
 
                 // === Track stint lap history for pace analysis ===
@@ -583,6 +588,30 @@ window.stopProxyLiveTiming = function() {
     };
 })();
 
+// Shared across every provider (Apex/RaceFacer/Alpha/Hakafast): a lap counter must be
+// monotonic. Reject a regression outright (keep the last good value) and flag — but still
+// accept — an implausibly large single-update jump, since that can be a legitimate catch-up
+// after a reconnect. Every rejection/flag is recorded in window._columnMapWarnings so a
+// mis-mapped provider column can be diagnosed from the console instead of guessed at.
+window._columnMapWarnings = window._columnMapWarnings || [];
+window._sanityCheckedLaps = function(nextLaps, prevLaps, provider) {
+    const n = Number(nextLaps);
+    if (!Number.isFinite(n)) return prevLaps;
+    if (prevLaps == null) return n;
+    if (n < prevLaps) {
+        window._columnMapWarnings.push({ at: new Date().toISOString(), provider: provider || '?', type: 'laps-regressed', from: prevLaps, to: n });
+        if (window._columnMapWarnings.length > 100) window._columnMapWarnings.shift();
+        console.warn(`[LiveTiming] ⚠️ Ignored lap count going backward (${prevLaps} → ${n}) from ${provider || 'feed'} — likely a mis-mapped column, not a real lap loss.`);
+        return prevLaps;
+    }
+    if (n - prevLaps > 10) {
+        window._columnMapWarnings.push({ at: new Date().toISOString(), provider: provider || '?', type: 'laps-jumped', from: prevLaps, to: n });
+        if (window._columnMapWarnings.length > 100) window._columnMapWarnings.shift();
+        console.warn(`[LiveTiming] ⚠️ Lap count jumped by ${n - prevLaps} in one update (${prevLaps} → ${n}) from ${provider || 'feed'} — accepted, but check window._columnMapWarnings if this looks wrong.`);
+    }
+    return n;
+};
+
 // ==================== LIVE TIMING UI ====================
 
 window.formatLapTime = function(ms) {
@@ -701,6 +730,7 @@ window.updateLiveTimingUI = function() {
     }
     
     window.updateCompetitorsTable();
+    if (typeof window._updateSecondaryTeamCard === 'function') window._updateSecondaryTeamCard();
 
     // ---- Competitor table header: show/hide based on whether we have sector data ----
     const tableHeader = document.getElementById('competitorsTableHeader');
@@ -810,8 +840,10 @@ window.updateCompetitorsTable = function() {
         const isTopKart = kartKey && window._fastKarts && window._fastKarts.has(kartKey);
 
         // ---- Row class (only update if changed) ----
+        const isSecondaryTeam = !!(window.secondaryWatch && window.secondaryWatch.kart && (comp.kart || '').trim() === window.secondaryWatch.kart);
         let rowCls = 'competitor-row';
         if (isUs) rowCls += ' our-team';
+        else if (isSecondaryTeam) rowCls += ' second-team';
         else if (isDanger) rowCls += ' danger-zone';
         if (row.className !== rowCls) row.className = rowCls;
 
@@ -1869,7 +1901,8 @@ window.toggleCompetitorsTable = function() {
 // ==================== TEAM PICKER ====================
 // When the feed is connected but none of its rows matched the typed team/kart/driver, the
 // admin can tap the warning and pick their team straight from the feed's own list.
-window.openTeamPicker = function() {
+window.openTeamPicker = function(target) {
+    target = target || 'primary';
     if (window.role === 'client') return;   // spectators cannot change what the admin follows
     const comps = dedupeLiveCompetitors(window.liveData.competitors || []);
     if (!comps.length) { if (window.showToast) window.showToast(window.t('waitingData'), 'info', 2500); return; }
@@ -1897,13 +1930,14 @@ window.openTeamPicker = function() {
             b.type = 'button';
             b.className = 'w-full flex items-center gap-3 text-start bg-navy-900 border border-gray-700 rounded-lg px-3 py-2 min-h-[48px] active:scale-[0.99]';
             b.innerHTML = `<span class="w-8 text-gray-400 font-mono">${esc(c.position)}</span><span class="w-10 text-gray-500 font-mono">#${esc(c.kart)}</span><span class="flex-1 font-bold text-white truncate">${esc(c.name)}</span>`;
-            b.onclick = () => window._selectOurTeam(c);
+            b.onclick = () => (target === 'secondary' ? window._selectSecondaryTeam(c) : window._selectOurTeam(c));
             listEl.appendChild(b);
         });
         if (!listEl.children.length) listEl.innerHTML = `<div class="text-gray-500 text-center py-4">${t('notFound')}</div>`;
     };
     render('');
     ov.querySelector('#teamPickerFilter').addEventListener('input', e => render(e.target.value));
+    ov.dataset.target = target;
     ov.querySelector('#teamPickerClose').onclick = () => ov.remove();
     ov.addEventListener('keydown', e => { if (e.key === 'Escape') ov.remove(); });
     ov.querySelector('#teamPickerFilter').focus();
@@ -1924,6 +1958,47 @@ window._selectOurTeam = function(c) {
     if (typeof window.saveRaceState === 'function') window.saveRaceState();
     window.fetchLiveTimingFromProxy();   // signature changed -> scraper restarts with the new target
 };
+
+// === Secondary team (laptop-only monitor for a second entry from the same org) ===
+// Deliberately NOT a second strategy engine: one race, one pit workflow. This just tracks the
+// second entry's live-timing numbers so an admin managing two cars from a laptop can see both
+// at a glance, without the (much larger) scope of running two independent stint plans at once.
+window.secondaryWatch = null;   // { kart, name }
+
+window._selectSecondaryTeam = function(c) {
+    window.secondaryWatch = { kart: c.kart ? String(c.kart).trim() : '', name: c.name || '' };
+    document.getElementById('teamPickerOverlay')?.remove();
+    if (window.showToast) window.showToast('✓ ' + (window.t('watchingSecondTeam') || 'Watching') + ' ' + (c.name || '') + (c.kart ? ' #' + c.kart : ''), 'success', 2500);
+    if (typeof window.saveRaceState === 'function') window.saveRaceState();
+    window._updateSecondaryTeamCard();
+};
+
+window.clearSecondaryTeam = function() {
+    window.secondaryWatch = null;
+    window._updateSecondaryTeamCard();
+    if (typeof window.saveRaceState === 'function') window.saveRaceState();
+};
+
+window._updateSecondaryTeamCard = function() {
+    const card = document.getElementById('secondaryTeamCard');
+    if (!card) return;
+    const w = window.secondaryWatch;
+    if (!w) { card.classList.add('hidden'); return; }
+    const comps = dedupeLiveCompetitors(window.liveData.competitors || window._lastKnownCompetitors || []);
+    const match = w.kart
+        ? comps.find(c => (c.kart || '').trim() === w.kart)
+        : comps.find(c => (c.name || '') === w.name);
+    card.classList.remove('hidden');
+    document.getElementById('secondaryTeamName').textContent = (match?.name || w.name || '?') + (w.kart ? ' #' + w.kart : '');
+    document.getElementById('secondaryPos').textContent = match?.position ?? '-';
+    document.getElementById('secondaryLast').textContent = match?.lastLap ? window.formatLapTime(match.lastLap) : '-';
+    document.getElementById('secondaryBest').textContent = match?.bestLap ? window.formatLapTime(match.bestLap) : '-';
+    const gapEl = document.getElementById('secondaryGap');
+    if (match?.position === 1) { gapEl.textContent = window.t ? window.t('leaderLabel') : 'LEADER'; }
+    else if (match?.gap) { const decSep = window.t ? window.t('numDecSep') : '.'; const g = (match.gap / 1000).toFixed(1); gapEl.textContent = '+' + (decSep !== '.' ? g.replace('.', decSep) : g) + 's'; }
+    else { gapEl.textContent = '-'; }
+};
+
 
 // ==================== LIVE-TIMING WIDGET HEIGHT RESIZE (≥1024px) ====================
 // The widget stays docked inside raceInfoPanel at all times — this only adjusts its

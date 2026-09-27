@@ -1442,6 +1442,16 @@ function updateRemainingStrategyLogic(raceRemainingMs) {
     pillsEl.innerHTML = phtml;
 }
 
+
+// The pit-exit buffer for the driver about to leave the pits: their own override
+// (driver.pitBufferSec) if set, else the race-wide Release Buffer input.
+window._effectiveReleaseBuffer = function() {
+    const idx = window.state && window.state.nextDriverIdx;
+    const driver = (idx != null && window.drivers) ? window.drivers[idx] : null;
+    if (driver && driver.pitBufferSec != null) return driver.pitBufferSec;
+    return parseInt(document.getElementById('releaseBuffer')?.value || '5') || 5;
+};
+
 window.updatePitModalLogic = function() {
     // Guard: bail out if we're not actually in a pit stop (prevents NaN cascade)
     if (!window.state || !window.state.isInPit || !window.state.pitStart) return;
@@ -1452,7 +1462,7 @@ window.updatePitModalLogic = function() {
     const elapsedSec = Math.max(0, (now - pitStart) / 1000);
     const basePitTime = parseInt(window.config.minPitTime || window.config.pitTime) || 0;
     const totalRequiredTime = Math.max(0, basePitTime + (window.currentPitAdjustment || 0));
-    const buffer = parseInt(document.getElementById('releaseBuffer')?.value) || 5;
+    const buffer = window._effectiveReleaseBuffer();
     const timeRemaining = totalRequiredTime - elapsedSec;
     const t = window.t || ((k) => k);
 
@@ -2305,7 +2315,7 @@ window._handlePitBothTimestamps = function() {
 
     const pitDurationMs   = pitOutAt - pitInAt;
     const minPitMs        = Math.max(0, (parseInt(window.config.minPitTime || window.config.pitTime) || 0) * 1000);
-    const buffer          = parseInt(document.getElementById('releaseBuffer')?.value || '5') * 1000;
+    const buffer          = window._effectiveReleaseBuffer() * 1000;
     const outlap          = window._getOutlapSec() * 1000;
 
     // How far the kart is from pit-out (approximated by using the out-lap time).
@@ -2372,7 +2382,7 @@ window._handlePitInOnly = function() {
     const pitInAt    = window.state.pitStart;
     const minPitMs   = Math.max(0, (parseInt(window.config.minPitTime || window.config.pitTime) || 0) * 1000);
     const outlap     = window._getOutlapSec() * 1000;
-    const buffer     = parseInt(document.getElementById('releaseBuffer')?.value || '5') * 1000;
+    const buffer     = window._effectiveReleaseBuffer() * 1000;
 
     // latestExit so that pitDuration + outlap = minPitTime exactly
     const latestExitAt  = pitInAt + minPitMs - outlap;

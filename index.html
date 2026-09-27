@@ -40,13 +40,13 @@
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js" defer></script>
 
     <script src="js/racefacer-scraper.js?v=7"></script>
-    <script src="js/apex-scraper.js?v=8"></script>
+    <script src="js/apex-scraper.js?v=9"></script>
     <script src="js/hakafast-scraper.js?v=7"></script>
     <script src="js/alpha-scraper.js?v=7"></script>
     <script src="js/live-timing-manager.js?v=8"></script>
     <script src="js/qualifying.js?v=7"></script>
 
-    <link rel="stylesheet" href="css/style.css?v=21">
+    <link rel="stylesheet" href="css/style.css?v=22">
 
     <script>
         tailwind.config = {
@@ -1129,6 +1129,8 @@
                             <!-- Pro: team logo upload button (hidden for free tier) -->
                             <button id="teamLogoUploadBtn" class="team-logo-upload-btn hidden" onclick="window.openTeamLogoUpload()" title="Upload Logo">📷</button>
                             <button id="apexViewToggle" onclick="window.toggleApexIframe()" class="text-[10px] bg-navy-700 border border-gray-600 text-gray-300 px-2 py-0.5 rounded" title="Toggle original Apex view">🌐</button>
+                            <!-- Laptop only (>=1280px): follow a second team from the same org -->
+                            <button id="addSecondaryTeamBtn" onclick="window.openTeamPicker('secondary')" class="lt-laptop-only text-[10px] bg-navy-700 border border-gray-600 text-gray-300 px-2 py-0.5 rounded" title="Watch a second team">➕👥</button>
                             <!-- Auto-pit toggle: when ON, live timing auto-confirms pit in/out -->
                             <button id="autoPitToggleBtn" onclick="window.toggleAutoPit()" class="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded border transition" title="Auto-pit from live timing">
                                 <span id="autoPitIcon">🤖</span>
@@ -1191,6 +1193,20 @@
                         <iframe id="apexIframe" src="" class="w-full rounded" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
                     </div>
                     <div id="kartRankingPanel" class="hidden mt-1 p-2 bg-navy-950 rounded border border-gray-700/50"></div>
+                    <!-- Second-team watch card (laptop only, >=1280px): a compact read-only monitor
+                         for another entry from the same org, alongside the primary team above. -->
+                    <div id="secondaryTeamCard" class="hidden lt-laptop-only mt-1 p-2 bg-navy-950 rounded border border-cyan-700/40">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-[9px] text-cyan-400 font-bold uppercase tracking-wider" id="secondaryTeamName">-</span>
+                            <button onclick="window.clearSecondaryTeam()" class="text-[10px] text-gray-500 hover:text-gray-300" title="Stop watching">&times;</button>
+                        </div>
+                        <div class="grid grid-cols-4 gap-1 text-center">
+                            <div><div class="text-[8px] text-gray-500" data-i18n="pos">POS</div><div id="secondaryPos" class="text-sm font-bold text-ice">-</div></div>
+                            <div><div class="text-[8px] text-gray-500" data-i18n="gap">GAP</div><div id="secondaryGap" class="text-xs font-mono text-fuel">-</div></div>
+                            <div><div class="text-[8px] text-gray-500" data-i18n="last">LAST</div><div id="secondaryLast" class="text-xs font-mono">-</div></div>
+                            <div><div class="text-[8px] text-gray-500" data-i18n="best">BEST</div><div id="secondaryBest" class="text-xs font-mono text-neon">-</div></div>
+                        </div>
+                    </div>
                 </div>
                 <!-- Drag up/down to resize the live-timing widget's height (≥1024px only) -->
                 <div id="liveTimingHeightHandle" class="lt-height-handle" title="Drag to resize"><span></span></div>
@@ -2505,13 +2521,13 @@
         </div>
     </div>
 
-    <script src="js/state.js?v=17"></script>
+    <script src="js/state.js?v=18"></script>
     <script src="js/auth.js?v=7"></script>
     <script src="js/network.js?v=9"></script>
-    <script src="js/strategy.js?v=10"></script>
-    <script src="js/live-timing.js?v=10"></script>
-    <script src="js/ui.js?v=10"></script>
+    <script src="js/strategy.js?v=11"></script>
+    <script src="js/live-timing.js?v=11"></script>
+    <script src="js/ui.js?v=11"></script>
     <script src="js/walkthrough.js?v=11"></script>
-    <script src="js/main.js?v=14"></script>
+    <script src="js/main.js?v=15"></script>
 </body>
 </html>

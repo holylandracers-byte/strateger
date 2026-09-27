@@ -452,6 +452,31 @@ window.createDriverInput = function(val, checked, squad) {
     staminaWrap.appendChild(staminaInput);
     staminaWrap.appendChild(staminaLabel);
 
+    // Per-driver pit-exit buffer (sec): some drivers need more warning to walk to the car and
+    // be ready to leave the moment the minimum pit time is served. Falls back to the race-wide
+    // Release Buffer (#releaseBuffer) when left blank.
+    const bufferWrap = document.createElement('div');
+    bufferWrap.className = 'driver-buffer-wrap';
+    bufferWrap.title = "This driver's own pit-exit buffer (sec) — overrides the race-wide Release Buffer. Leave blank to use the race default.";
+
+    const bufferInput = document.createElement('input');
+    bufferInput.type = 'number';
+    bufferInput.className = 'driver-buffer-input';
+    bufferInput.placeholder = window.t ? window.t('bufferDefault') : 'def.';
+    bufferInput.min = '0';
+    bufferInput.addEventListener('click', (e) => e.stopPropagation());
+    bufferInput.oninput = () => {
+        if (typeof window.scheduleRunSim === 'function') window.scheduleRunSim(400);
+        if (typeof window.updateDriversFromUI === 'function') window.updateDriversFromUI();
+    };
+
+    const bufferLabel = document.createElement('span');
+    bufferLabel.className = 'driver-buffer-label';
+    bufferLabel.textContent = 's buf';
+
+    bufferWrap.appendChild(bufferInput);
+    bufferWrap.appendChild(bufferLabel);
+
     div.appendChild(dragHandle);
     div.appendChild(accentBar);
     div.appendChild(colorSwatch);
@@ -460,6 +485,7 @@ window.createDriverInput = function(val, checked, squad) {
     div.appendChild(starterBtn);
     div.appendChild(nameWrap);
     div.appendChild(staminaWrap);
+    div.appendChild(bufferWrap);
     div.appendChild(squadLabel);
 
     document.getElementById('driversList').appendChild(div);

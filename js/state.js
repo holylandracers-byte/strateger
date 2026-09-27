@@ -541,7 +541,7 @@ window.translations = {
         teamLogoInvalidType: "Only JPG, PNG or SVG allowed",
         stintAvg: "Stint Avg",
         norm: "NORM",
-        pitLatestExitIn: "Latest exit in", pitLeaveNow: "⚠️ Leave now!", ltNoTeamSet: "No team set — enter team/kart/driver", ltTeamNotFound: "not found in feed", connLost: "⚠️ Connection lost — reconnecting…", feedStale: "⚠️ Live timing stale", watchingLive: "Watching live · read-only", pitClosed: "PIT CLOSED", watchStale: "No update", pickYourTeam: "Pick your team", pickTeamFilter: "Filter by name or kart #", durationMismatch: "Live timing has more time left than the configured race length - set Duration to match or the clock will not move", pitEarlyExit: "⚠️ EARLY EXIT — min pit time not served", pitLatestExitPassed: "🚨 EXIT OVERDUE",
+        pitLatestExitIn: "Latest exit in", pitLeaveNow: "⚠️ Leave now!", ltNoTeamSet: "No team set — enter team/kart/driver", ltTeamNotFound: "not found in feed", connLost: "⚠️ Connection lost — reconnecting…", feedStale: "⚠️ Live timing stale", watchingLive: "Watching live · read-only", pitClosed: "PIT CLOSED", watchStale: "No update", pickYourTeam: "Pick your team", pickTeamFilter: "Filter by name or kart #", durationMismatch: "Live timing has more time left than the configured race length - set Duration to match or the clock will not move", bufferDefault: "def.", watchingSecondTeam: "Watching", pitEarlyExit: "⚠️ EARLY EXIT — min pit time not served", pitLatestExitPassed: "🚨 EXIT OVERDUE",
         autoPit: "Auto", autoPitOn: "Auto", autoPitOff: "Manual",
     },
     he: {
@@ -753,7 +753,7 @@ window.translations = {
         teamLogoInvalidType: "רק JPG, PNG או SVG",
         stintAvg: "ממוצע סטינט",
         norm: "רגיל",
-        pitLatestExitIn: "יציאה אחרונה בעוד", pitLeaveNow: "⚠️ צא עכשיו!", ltNoTeamSet: "לא הוגדרה קבוצה — הזן קבוצה/קארט/נהג", ltTeamNotFound: "לא נמצא בפיד", connLost: "⚠️ החיבור אבד — מתחבר מחדש…", feedStale: "⚠️ הנתונים החיים אינם מתעדכנים", watchingLive: "צפייה חיה · לקריאה בלבד", pitClosed: "הפיטס סגור", watchStale: "אין עדכון", pickYourTeam: "בחרו את הקבוצה שלכם", pickTeamFilter: "סינון לפי שם או מספר קארט", durationMismatch: "בתזמון החי נותר יותר זמן ממשך המרוץ שהוגדר - עדכנו את משך המרוץ אחרת השעון לא יזוז", pitEarlyExit: "⚠️ יציאה מוקדמת", pitLatestExitPassed: "🚨 יציאה באיחור",
+        pitLatestExitIn: "יציאה אחרונה בעוד", pitLeaveNow: "⚠️ צא עכשיו!", ltNoTeamSet: "לא הוגדרה קבוצה — הזן קבוצה/קארט/נהג", ltTeamNotFound: "לא נמצא בפיד", connLost: "⚠️ החיבור אבד — מתחבר מחדש…", feedStale: "⚠️ הנתונים החיים אינם מתעדכנים", watchingLive: "צפייה חיה · לקריאה בלבד", pitClosed: "הפיטס סגור", watchStale: "אין עדכון", pickYourTeam: "בחרו את הקבוצה שלכם", pickTeamFilter: "סינון לפי שם או מספר קארט", durationMismatch: "בתזמון החי נותר יותר זמן ממשך המרוץ שהוגדר - עדכנו את משך המרוץ אחרת השעון לא יזוז", bufferDefault: "ברירת מחדל", watchingSecondTeam: "עוקב אחרי", pitEarlyExit: "⚠️ יציאה מוקדמת", pitLatestExitPassed: "🚨 יציאה באיחור",
         autoPit: "אוטו", autoPitOn: "אוטו", autoPitOff: "ידני",
     },
     fr: {

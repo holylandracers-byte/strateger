@@ -3353,3 +3353,38 @@ body.watcher-mode #dashPanelResizer { display: none !important; }
 
 body.watcher-mode #liveTeamHint { display: none !important; }
 #liveTeamHint { cursor: pointer; }
+
+/* Per-driver pit-exit buffer input (driver-row) */
+.driver-buffer-wrap {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    margin-right: 6px;
+    flex-shrink: 0;
+}
+.driver-buffer-input {
+    width: 40px;
+    background: rgba(56,189,248,0.08);
+    border: 1px solid rgba(56,189,248,0.35);
+    border-radius: 5px;
+    color: #38bdf8;
+    font-size: 11px;
+    font-weight: 700;
+    text-align: center;
+    padding: 3px 2px;
+    min-height: 28px;
+}
+.driver-buffer-input::placeholder { color: #0e7490; font-weight: 400; }
+.driver-buffer-label { font-size: 9px; color: #6b7280; white-space: nowrap; }
+[dir="rtl"] .driver-buffer-wrap { order: 10; }
+
+/* Second-team (laptop) watch: enabling control + card only shown at laptop width */
+.lt-laptop-only { display: none; }
+@media (min-width: 1280px) {
+    .lt-laptop-only { display: inline-flex; }
+    #secondaryTeamCard.lt-laptop-only:not(.hidden) { display: block; }
+}
+.competitor-row.second-team {
+    border-color: rgba(56,189,248,0.5);
+    background: rgba(56,189,248,0.07);
+}

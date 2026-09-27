@@ -476,11 +476,14 @@ class ApexTimingScraper {
             const lapTime = lapMatch[2];
             const comp = this.competitors.get(rowId);
             if (comp) {
-                comp.lastLap = lapTime;
-                const lapMs = this.parseTimeToMs(lapTime);
-                if (lapMs > 0 && (!comp.bestLapMs || lapMs < comp.bestLapMs)) {
-                    comp.bestLap = lapTime;
-                    comp.bestLapMs = lapMs;
+                const { display, ms: lapMs } = this._normalizeLapTimeCell(lapTime);
+                if (display != null) {
+                    comp.lastLap = display;
+                    comp.lastLapMs = lapMs;
+                    if (lapMs > 0 && (!comp.bestLapMs || lapMs < comp.bestLapMs)) {
+                        comp.bestLap = display;
+                        comp.bestLapMs = lapMs;
+                    }
                 }
                 comp.totalLaps = (comp.totalLaps || 0) + 1;
                 if (!deferEmit) this.emitUpdate();
@@ -571,7 +574,10 @@ class ApexTimingScraper {
         }
 
         if (!next.position && prev.position) merged.position = prev.position;
-        if (!next.totalLaps && prev.totalLaps) merged.totalLaps = prev.totalLaps;
+        // Same monotonic guard as the WS cell handler: an HTTP grid snapshot merged on top of a
+        // higher, already-known WS value must not roll totalLaps backward (a mis-mapped column has
+        // been observed live sending a small number, e.g. 1, over an already-confirmed 1034).
+        if ((next.totalLaps == null || next.totalLaps < (prev.totalLaps || 0)) && prev.totalLaps) merged.totalLaps = prev.totalLaps;
         if (!next.lastLapMs && prev.lastLapMs) merged.lastLapMs = prev.lastLapMs;
         if (!next.bestLapMs && prev.bestLapMs) merged.bestLapMs = prev.bestLapMs;
         if ((!next.pitCount || next.pitCount < 0) && prev.pitCount) merged.pitCount = prev.pitCount;
@@ -607,6 +613,36 @@ class ApexTimingScraper {
         if (this.onComment) {
             this.onComment(entry);
         }
+    }
+
+    /**
+     * Apex's lastLap/bestLap cell sometimes arrives pre-formatted ("1:07.390", "18.818") and
+     * sometimes as a bare millisecond integer ("67112") -- observed live on the same event,
+     * same column, moments apart. Left as-is, the raw digits get displayed as if they were a
+     * formatted lap time ("67112" shown as the last lap), and parseTimeToMs (which requires a
+     * ":" or "." separator) silently fails to read it, so the top summary shows "-" even though
+     * a real value arrived. Detect the bare-integer case and format it properly instead.
+     * Bounded to 4-6 digits (1s-16.7min) so a genuinely different raw-ms field (e.g. a multi-hour
+     * total time) sharing this code path is never mistaken for a single lap.
+     */
+    _normalizeLapTimeCell(value) {
+        const MIN_LAP_MS = 3000;   // shortest plausible full lap on any real circuit
+        const str = String(value ?? '').trim();
+        let ms = this.parseTimeToMs(str);
+        if (ms > 0 && ms < MIN_LAP_MS) return { display: null, ms: 0 };   // a sector split, not a full lap -- reject outright, don't overwrite the real last lap with it
+        if (ms > 0) return { display: str, ms };
+        if (/^\d{4,6}$/.test(str)) {
+            const raw = parseInt(str, 10);
+            if (raw >= MIN_LAP_MS) return { display: this._formatMsAsLapTime(raw), ms: raw };
+        }
+        return { display: str, ms: 0 };
+    }
+
+    _formatMsAsLapTime(ms) {
+        const totalSec = ms / 1000;
+        const min = Math.floor(totalSec / 60);
+        const sec = (totalSec % 60).toFixed(3).padStart(6, '0');
+        return `${min}:${sec}`;
     }
 
     /** Convert time string (H:MM:SS, MM:SS, or decimal seconds) to seconds */
@@ -847,25 +883,29 @@ class ApexTimingScraper {
                     case 'position':   comp.position = parseInt(value) || comp.position; break;
                     case 'kartNumber': comp.kartNumber = value; break;
                     case 'driverName': comp.driverName = value; break;
-                    case 'totalLaps':  comp.totalLaps = parseInt(value) || 0; break;
+                    case 'totalLaps': { const lp = parseInt(value, 10); if (Number.isFinite(lp) && lp >= (comp.totalLaps || 0)) comp.totalLaps = lp; break; }  // never accept a regression -- a stray packet reading the wrong column (seen live: a real ~1030 dropping to 1) must not overwrite the true count
                     case 'gap':        comp.gap = value; break;
                     case 'category':   comp.category = value; break;
                     case 'lastLap': {
-                        comp.lastLap = value;
-                        const ms = this.parseTimeToMs(value);
+                        const { display, ms } = this._normalizeLapTimeCell(value);
+                        if (display == null) break;   // rejected (implausibly short) -- keep the previous last lap
+                        comp.lastLap = display;
                         if (ms > 0) {
                             comp.lastLapMs = ms;
                             if (!comp.bestLapMs || ms < comp.bestLapMs) {
                                 comp.bestLapMs = ms;
-                                comp.bestLap = value;
+                                comp.bestLap = display;
                             }
                         }
                         break;
                     }
-                    case 'bestLap':
-                        comp.bestLap = value;
-                        comp.bestLapMs = this.parseTimeToMs(value);
+                    case 'bestLap': {
+                        const { display, ms } = this._normalizeLapTimeCell(value);
+                        if (display == null) break;
+                        comp.bestLap = display;
+                        comp.bestLapMs = ms;
                         break;
+                    }
                     case 'onTrack': {
                         // 'in'/'si' = in pit, 'out'/'so' = on track
                         const v = value.toLowerCase().trim();
@@ -1058,8 +1098,8 @@ class ApexTimingScraper {
                 penaltyReason: ''
             };
 
-            comp.lastLapMs = this.parseTimeToMs(comp.lastLap);
-            comp.bestLapMs = this.parseTimeToMs(comp.bestLap);
+            { const n = this._normalizeLapTimeCell(comp.lastLap); if (n.display != null) { comp.lastLap = n.display; comp.lastLapMs = n.ms; } else { comp.lastLap = ''; comp.lastLapMs = 0; } }
+            { const n = this._normalizeLapTimeCell(comp.bestLap); if (n.display != null) { comp.bestLap = n.display; comp.bestLapMs = n.ms; } else { comp.bestLap = ''; comp.bestLapMs = 0; } }
             comp.previousPosition = comp.position;
 
             // Penalty — from detected column or fallback col 14
@@ -1171,8 +1211,8 @@ class ApexTimingScraper {
                 penaltyReason: ''
             };
 
-            comp.lastLapMs = this.parseTimeToMs(comp.lastLap);
-            comp.bestLapMs = this.parseTimeToMs(comp.bestLap);
+            { const n = this._normalizeLapTimeCell(comp.lastLap); if (n.display != null) { comp.lastLap = n.display; comp.lastLapMs = n.ms; } else { comp.lastLap = ''; comp.lastLapMs = 0; } }
+            { const n = this._normalizeLapTimeCell(comp.bestLap); if (n.display != null) { comp.bestLap = n.display; comp.bestLapMs = n.ms; } else { comp.bestLap = ''; comp.bestLapMs = 0; } }
             comp.previousPosition = comp.position;
 
             // Strict validation: must have position > 0 OR numeric kart OR timing data
