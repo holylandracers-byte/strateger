@@ -776,6 +776,23 @@ window.updateCompetitorsTable = function() {
     const tableEl = document.getElementById('competitorsTable');
     if (!tableEl) return;
 
+    // A real endurance race practically never has every single car in the pit lane at once.
+    // When a feed's column mapping misreads the wrong field as pit status, that's exactly what
+    // it looks like -- so distrust an all-true reading instead of showing it as fact, and log it
+    // for diagnosis (window._columnMapWarnings) rather than guess at which column is wrong.
+    (function guardAgainstImplausibleAllInPit() {
+        const comps = window.liveData.competitors || [];
+        if (comps.length < 5) { window._pitStatusUnreliable = false; return; }
+        const inPitCount = comps.filter(c => c.inPit).length;
+        const wasUnreliable = window._pitStatusUnreliable;
+        window._pitStatusUnreliable = (inPitCount / comps.length) > 0.9;
+        if (window._pitStatusUnreliable && !wasUnreliable) {
+            window._columnMapWarnings = window._columnMapWarnings || [];
+            window._columnMapWarnings.push({ at: new Date().toISOString(), type: 'pit-status-implausible', inPitCount, total: comps.length });
+            console.warn(`[LiveTiming] ⚠️ ${inPitCount}/${comps.length} competitors read as "in pit" at once -- almost certainly a mis-mapped column for this feed, not reality. Suppressing PIT badges.`);
+        }
+    })();
+
     // ---- Stable data: cache last known so table never flickers ----
     const fresh = window.liveData.competitors;
     if (fresh && fresh.length > 0) {
@@ -801,6 +818,7 @@ window.updateCompetitorsTable = function() {
 
     // ---- Update kart performance tracking ----
     window._updateKartStats(allCompetitors);
+    window._checkConsistentFastPitEntries(allCompetitors);
 
     // ---- Stable DOM: only rebuild when row count changes ----
     const existingRows = tableEl.querySelectorAll('.competitor-row');
@@ -842,11 +860,13 @@ window.updateCompetitorsTable = function() {
 
         // ---- Row class (only update if changed) ----
         const isSecondaryTeam = !!(window.secondaryWatch && window.secondaryWatch.kart && (comp.kart || '').trim() === window.secondaryWatch.kart);
+        const isConsistentFast = !!(window._consistentFastKarts && kartKey && window._consistentFastKarts.has(kartKey));
         const catFiltered = window._categoryFilter && _competitorCategory(comp) !== window._categoryFilter;
         row.classList.toggle('cr-filtered-out', !!catFiltered);
         let rowCls = 'competitor-row';
         if (isUs) rowCls += ' our-team';
         else if (isSecondaryTeam) rowCls += ' second-team';
+        if (isConsistentFast) rowCls += ' consistent-fast';
         if (catFiltered) rowCls += ' cr-filtered-out';
         else if (isDanger) rowCls += ' danger-zone';
         if (row.className !== rowCls) row.className = rowCls;
@@ -940,7 +960,7 @@ window.updateCompetitorsTable = function() {
         const badgesEl = row.querySelector('.cr-badges');
         if (badgesEl) {
             let badges = '';
-            if (comp.inPit) badges += `<span class="badge-pit">${window.t ? window.t('pitLabel') : 'PIT'}</span>`;
+            if (comp.inPit && !window._pitStatusUnreliable) badges += `<span class="badge-pit">${window.t ? window.t('pitLabel') : 'PIT'}</span>`;
             const penaltyVal = comp.penalty || comp.penaltyTime || 0;
             if (penaltyVal > 0) {
                 const penLabel = comp.penaltyTime ? `${comp.penaltyTime} Lap` : '';
@@ -1164,7 +1184,52 @@ window._updateKartStats = function(competitors) {
         });
     }
     window._fastKarts = fastSet;
+
+    // Fast AND consistent: low lap-to-lap spread over the last few laps, not just one quick lap.
+    // A kart that's fast once could be a fluke or a car about to be lapped through traffic; one
+    // that's fast with tight spread is a genuine strong, stable pace -- worth watching for a
+    // strategic pit-entry opportunity (see window._checkConsistentFastPitEntries).
+    const consistentFastSet = new Set();
+    Object.entries(stats).forEach(([kart, s]) => {
+        if (!fastSet.has(kart) || s.recentLaps.length < 4) return;
+        const sample = s.recentLaps.slice(-6);
+        const mean = sample.reduce((a, b) => a + b, 0) / sample.length;
+        const variance = sample.reduce((a, b) => a + (b - mean) ** 2, 0) / sample.length;
+        const stdDevPct = mean > 0 ? Math.sqrt(variance) / mean : 1;
+        if (stdDevPct <= 0.015) consistentFastSet.add(kart);   // within ~1.5% lap-to-lap
+    });
+    window._consistentFastKarts = consistentFastSet;
 };
+
+// === Pit-entry opportunity alert ===
+// A kart identified as fast + consistent pitting is a signal worth the admin's attention --
+// their competitor is about to lose track position, which can be a good moment to push or
+// plan around. Tracks every kart's inPit transition (not just our own team) and fires once
+// per entry, logging the kart number/team so it's reviewable afterward.
+window._consistentFastPitLog = window._consistentFastPitLog || [];
+window._prevInPitByKart = window._prevInPitByKart || {};
+
+window._checkConsistentFastPitEntries = function(competitors) {
+    const consistent = window._consistentFastKarts;
+    if (!consistent || consistent.size === 0) return;
+    (competitors || []).forEach(c => {
+        const kart = (c.kart || '').trim();
+        if (!kart) return;
+        const wasInPit = window._prevInPitByKart[kart];
+        window._prevInPitByKart[kart] = !!c.inPit;
+        if (c.inPit && wasInPit === false && consistent.has(kart)) {
+            const entry = { at: new Date().toISOString(), kart, team: c.name || c.team || '' };
+            window._consistentFastPitLog.push(entry);
+            if (window._consistentFastPitLog.length > 50) window._consistentFastPitLog.shift();
+            const t = window.t || (k => k);
+            const msg = (t('consistentFastPitAlert') || '⚡ Kart #{{kart}} ({{team}}) — fast & consistent — just pitted. Possible opportunity.')
+                .replace('{{kart}}', kart).replace('{{team}}', entry.team);
+            if (typeof window.showToast === 'function') window.showToast(msg, 'info', 7000);
+            if (typeof window.playAlertBeep === 'function') window.playAlertBeep('info');
+        }
+    });
+};
+
 
 // Foldable state for kart panel (persisted in session)
 if (window._kartPanelOpen == null) window._kartPanelOpen = true;
@@ -2230,8 +2295,10 @@ window.toggleOutlookCollapse = function() {
         el.textContent = '';
     }
 
-    // Run every second regardless of feed heartbeat rate
-    setInterval(tick, 1000);
+    // Runs twice a second so the widget clock doesn't visibly lag the raw feed by up to a
+    // full second just from local tick phase -- some of the "1-2s delay" reported was this,
+    // on top of the feed's own network/parse latency (which this can't remove).
+    setInterval(tick, 500);
     tick();
 })();
 

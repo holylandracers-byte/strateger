@@ -800,6 +800,24 @@
     };
 
     window.restartWalkthrough = function () {
+        // The Guided Tour icon is reachable from the header at all times, including mid-race.
+        // Firing it by accident used to silently kill the running race with no warning.
+        if (window.state && window.state.isRunning) {
+            const t = window.t || (k => k);
+            if (typeof window.showConfirmModal === 'function') {
+                window.showConfirmModal(
+                    `🎭 ${t('wtGuideBtn') || 'Guided Tour'}`,
+                    t('guidedTourMidRaceWarning') || 'This will end your current race and start the guided tour. This cannot be undone.',
+                    t('wtGuideBtn') || 'Guided Tour',
+                    () => window._restartWalkthroughConfirmed()
+                );
+            }
+            return;
+        }
+        window._restartWalkthroughConfirmed();
+    };
+
+    window._restartWalkthroughConfirmed = function () {
         localStorage.removeItem(DONE_KEY);
         clearSimSegmentTimer();
         clearPitSimTimer();

@@ -3394,3 +3394,45 @@ body.watcher-mode #liveTeamHint { display: none !important; }
 
 /* Category filter: hide non-matching rows without touching row order/indices */
 .competitor-row.cr-filtered-out { display: none; }
+
+/* RTL: mr-1.5 on the driver color dot puts the margin on the wrong side of the box in RTL
+   flow (the name sits to the dot's LEFT, not right), so the dot and name touched with no
+   gap. Give it a real gap on both sides. */
+[dir="rtl"] #statsTable .stat-driver-wrap > .rounded-full {
+    margin-right: 0 !important;
+    margin-left: 6px !important;
+}
+
+/* Small gap between competitor rows so a red (danger-zone) row never visually touches a
+   blue (our-team) row's border. */
+.competitor-row { margin-bottom: 2px; }
+
+/* Tablet/phone (<1024px): the row's fixed-width right-hand columns (S1/S2/gap/interval/
+   avg) were being clipped by overflow:hidden with no way to reach them. Give the table real
+   horizontal scroll instead of silently cutting content off. */
+@media (max-width: 1023px) {
+    #competitorsTable {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    #competitorsTable .competitor-row {
+        min-width: 420px;
+    }
+    #competitorsTable .cr-name {
+        flex: 0 0 auto;
+        min-width: 90px;
+        max-width: 140px;
+    }
+    #competitorsTableHeader {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
+/* Consistent + fast kart: highlighted green so a pit-entry from one of them stands out as a
+   possible strategic opportunity (see window._checkConsistentFastPitEntries). */
+.competitor-row.consistent-fast:not(.our-team):not(.second-team) {
+    background: rgba(163,230,53,0.10) !important;
+    border-color: rgba(163,230,53,0.45) !important;
+    box-shadow: inset 2px 0 0 var(--neon);
+}
