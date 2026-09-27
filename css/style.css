@@ -3354,15 +3354,15 @@ body.watcher-mode #dashPanelResizer { display: none !important; }
 body.watcher-mode #liveTeamHint { display: none !important; }
 #liveTeamHint { cursor: pointer; }
 
-/* Per-driver pit-exit buffer input (driver-row) */
-.driver-buffer-wrap {
+/* Per-driver advance-warning lead-time input (driver-row) */
+.driver-notify-wrap {
     display: flex;
     align-items: center;
     gap: 2px;
     margin-right: 6px;
     flex-shrink: 0;
 }
-.driver-buffer-input {
+.driver-notify-input {
     width: 40px;
     background: rgba(56,189,248,0.08);
     border: 1px solid rgba(56,189,248,0.35);
@@ -3374,9 +3374,9 @@ body.watcher-mode #liveTeamHint { display: none !important; }
     padding: 3px 2px;
     min-height: 28px;
 }
-.driver-buffer-input::placeholder { color: #0e7490; font-weight: 400; }
-.driver-buffer-label { font-size: 9px; color: #6b7280; white-space: nowrap; }
-[dir="rtl"] .driver-buffer-wrap { order: 10; }
+.driver-notify-input::placeholder { color: #0e7490; font-weight: 400; }
+.driver-notify-label { font-size: 9px; color: #6b7280; white-space: nowrap; }
+[dir="rtl"] .driver-notify-wrap { order: 10; }
 
 /* Second-team (laptop) watch: enabling control + card only shown at laptop width */
 .lt-laptop-only { display: none; }
@@ -3388,3 +3388,9 @@ body.watcher-mode #liveTeamHint { display: none !important; }
     border-color: rgba(56,189,248,0.5);
     background: rgba(56,189,248,0.07);
 }
+
+/* Strategy-outlook collapse (tablet default) */
+#remainingStintsPanel.outlook-collapsed #remStintsText { display: none; }
+
+/* Category filter: hide non-matching rows without touching row order/indices */
+.competitor-row.cr-filtered-out { display: none; }

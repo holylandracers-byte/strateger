@@ -731,6 +731,7 @@ window.updateLiveTimingUI = function() {
     
     window.updateCompetitorsTable();
     if (typeof window._updateSecondaryTeamCard === 'function') window._updateSecondaryTeamCard();
+    if (typeof window._updateCategoryFilterChips === 'function') window._updateCategoryFilterChips();
 
     // ---- Competitor table header: show/hide based on whether we have sector data ----
     const tableHeader = document.getElementById('competitorsTableHeader');
@@ -841,9 +842,12 @@ window.updateCompetitorsTable = function() {
 
         // ---- Row class (only update if changed) ----
         const isSecondaryTeam = !!(window.secondaryWatch && window.secondaryWatch.kart && (comp.kart || '').trim() === window.secondaryWatch.kart);
+        const catFiltered = window._categoryFilter && _competitorCategory(comp) !== window._categoryFilter;
+        row.classList.toggle('cr-filtered-out', !!catFiltered);
         let rowCls = 'competitor-row';
         if (isUs) rowCls += ' our-team';
         else if (isSecondaryTeam) rowCls += ' second-team';
+        if (catFiltered) rowCls += ' cr-filtered-out';
         else if (isDanger) rowCls += ' danger-zone';
         if (row.className !== rowCls) row.className = rowCls;
 
@@ -1979,10 +1983,34 @@ window.clearSecondaryTeam = function() {
     if (typeof window.saveRaceState === 'function') window.saveRaceState();
 };
 
+function _formatGapCell(match) {
+    if (match?.position === 1) return window.t ? window.t('leaderLabel') : 'LEADER';
+    if (match?.gap) { const decSep = window.t ? window.t('numDecSep') : '.'; const g = (match.gap / 1000).toFixed(1); return '+' + (decSep !== '.' ? g.replace('.', decSep) : g) + 's'; }
+    return '-';
+}
+
 window._updateSecondaryTeamCard = function() {
     const card = document.getElementById('secondaryTeamCard');
-    if (!card) return;
+    const strip = document.getElementById('dualTeamStrip');
     const w = window.secondaryWatch;
+
+    if (strip) {
+        if (!w) { strip.classList.add('hidden'); }
+        else {
+            const comps = dedupeLiveCompetitors(window.liveData.competitors || window._lastKnownCompetitors || []);
+            const primary = comps.find(c => c.isOurTeam);
+            const secondary = w.kart ? comps.find(c => (c.kart || '').trim() === w.kart) : comps.find(c => (c.name || '') === w.name);
+            strip.classList.remove('hidden');
+            document.getElementById('dualTeamPrimaryName').textContent = primary?.name || window.t('yourTeam') || 'Your Team';
+            document.getElementById('dualTeamPrimaryPos').textContent = primary?.position ?? window.liveData.position ?? '-';
+            document.getElementById('dualTeamPrimaryGap').textContent = _formatGapCell(primary) !== '-' ? _formatGapCell(primary) : '-';
+            document.getElementById('dualTeamSecondaryName').textContent = (secondary?.name || w.name || '?') + (w.kart ? ' #' + w.kart : '');
+            document.getElementById('dualTeamSecondaryPos').textContent = secondary?.position ?? '-';
+            document.getElementById('dualTeamSecondaryGap').textContent = _formatGapCell(secondary);
+        }
+    }
+
+    if (!card) return;
     if (!w) { card.classList.add('hidden'); return; }
     const comps = dedupeLiveCompetitors(window.liveData.competitors || window._lastKnownCompetitors || []);
     const match = w.kart
@@ -1993,11 +2021,67 @@ window._updateSecondaryTeamCard = function() {
     document.getElementById('secondaryPos').textContent = match?.position ?? '-';
     document.getElementById('secondaryLast').textContent = match?.lastLap ? window.formatLapTime(match.lastLap) : '-';
     document.getElementById('secondaryBest').textContent = match?.bestLap ? window.formatLapTime(match.bestLap) : '-';
-    const gapEl = document.getElementById('secondaryGap');
-    if (match?.position === 1) { gapEl.textContent = window.t ? window.t('leaderLabel') : 'LEADER'; }
-    else if (match?.gap) { const decSep = window.t ? window.t('numDecSep') : '.'; const g = (match.gap / 1000).toFixed(1); gapEl.textContent = '+' + (decSep !== '.' ? g.replace('.', decSep) : g) + 's'; }
-    else { gapEl.textContent = '-'; }
+    document.getElementById('secondaryGap').textContent = _formatGapCell(match);
 };
+
+// === Category filter (laptop): jump to SK1/SK2/AM etc. instead of scanning every row ===
+// Category comes from the feed's own column when present; otherwise this falls back to a
+// leading all-caps/alnum token shared by many rows (seen live: "SK1 TEAM FDP", "AM AMS", ...),
+// which is the only place the category actually appears for that particular event.
+window._categoryFilter = null;   // null = show all
+
+function _competitorCategory(c) {
+    if (c.category) return c.category;
+    const m = String(c.name || '').match(/^([A-Z0-9]{2,4})\s+\S/);
+    return m ? m[1] : null;
+}
+
+window._updateCategoryFilterChips = function() {
+    const row = document.getElementById('categoryFilterRow');
+    if (!row) return;
+    const comps = dedupeLiveCompetitors(window.liveData.competitors || window._lastKnownCompetitors || []);
+    const cats = [...new Set(comps.map(_competitorCategory).filter(Boolean))].sort();
+    if (cats.length < 2) { row.classList.add('hidden'); row.innerHTML = ''; window._categoryFilter = null; return; }
+    if (window._categoryFilter && !cats.includes(window._categoryFilter)) window._categoryFilter = null;
+    row.classList.remove('hidden');
+    const chip = (label, active, onClick) =>
+        `<button type="button" data-cat="${label}" class="text-[9px] font-bold px-2 py-1 rounded-full border transition ${active ? 'bg-cyan-600 border-cyan-400 text-white' : 'bg-navy-900 border-gray-600 text-gray-400'}">${label}</button>`;
+    row.innerHTML = chip('ALL', !window._categoryFilter) + cats.map(c => chip(c, window._categoryFilter === c)).join('');
+    row.querySelectorAll('button').forEach(btn => {
+        btn.onclick = () => {
+            window._categoryFilter = btn.dataset.cat === 'ALL' ? null : btn.dataset.cat;
+            window._updateCategoryFilterChips();
+            window.updateCompetitorsTable();
+        };
+    });
+};
+
+// === Strategy-outlook collapse (tablet: default collapsed, tap OUTLOOK to expand) ===
+window.toggleOutlookCollapse = function() {
+    const collapsed = document.getElementById('remainingStintsPanel')?.classList.toggle('outlook-collapsed');
+    try { localStorage.setItem('strateger_outlook_collapsed', collapsed ? '1' : '0'); } catch (e) {}
+    const icon = document.getElementById('outlookCollapseIcon');
+    if (icon) icon.textContent = collapsed ? '▸' : '▾';
+};
+(function initOutlookCollapseDefault() {
+    let stored = null;
+    try { stored = localStorage.getItem('strateger_outlook_collapsed'); } catch (e) {}
+    // No saved preference yet: default collapsed on tablet/phone widths (space is scarce there),
+    // expanded on laptop. Only applied once, on first render, via a one-shot flag.
+    window._outlookCollapseDefaultApplied = false;
+    const apply = () => {
+        if (window._outlookCollapseDefaultApplied) return;
+        const panel = document.getElementById('remainingStintsPanel');
+        if (!panel || panel.classList.contains('hidden')) return;   // wait until it actually renders
+        window._outlookCollapseDefaultApplied = true;
+        const shouldCollapse = stored != null ? stored === '1' : window.matchMedia('(max-width:1279px)').matches;
+        panel.classList.toggle('outlook-collapsed', shouldCollapse);
+        const icon = document.getElementById('outlookCollapseIcon');
+        if (icon) icon.textContent = shouldCollapse ? '▸' : '▾';
+    };
+    const iv = setInterval(() => { apply(); if (window._outlookCollapseDefaultApplied) clearInterval(iv); }, 500);
+})();
+
 
 
 // ==================== LIVE-TIMING WIDGET HEIGHT RESIZE (≥1024px) ====================

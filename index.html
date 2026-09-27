@@ -46,7 +46,7 @@
     <script src="js/live-timing-manager.js?v=8"></script>
     <script src="js/qualifying.js?v=7"></script>
 
-    <link rel="stylesheet" href="css/style.css?v=22">
+    <link rel="stylesheet" href="css/style.css?v=23">
 
     <script>
         tailwind.config = {
@@ -1178,6 +1178,28 @@
                         <button id="liveTeamHint" type="button" onclick="window.openTeamPicker()" class="hidden text-[10px] text-amber-400 font-bold truncate underline decoration-dotted underline-offset-2 text-start"></button>
                         <div id="flagStatusBar" class="flag-green hidden"></div>
                     </div>
+                    <!-- Both-my-teams strip (laptop only, >=1280px): pinned above the standings so
+                         neither tracked car needs a scroll to check on -- unlike the fuller card
+                         further down, this is always in view. -->
+                    <div id="dualTeamStrip" class="hidden lt-laptop-only mt-1 grid grid-cols-2 gap-1 text-center">
+                        <div class="bg-navy-950 rounded border border-ice/30 px-1 py-0.5">
+                            <div class="text-[8px] text-gray-500 truncate" id="dualTeamPrimaryName">-</div>
+                            <div class="flex items-baseline justify-center gap-1">
+                                <span id="dualTeamPrimaryPos" class="text-sm font-bold text-ice">-</span>
+                                <span id="dualTeamPrimaryGap" class="text-[9px] font-mono text-fuel">-</span>
+                            </div>
+                        </div>
+                        <div class="bg-navy-950 rounded border border-cyan-700/40 px-1 py-0.5">
+                            <div class="text-[8px] text-gray-500 truncate" id="dualTeamSecondaryName">-</div>
+                            <div class="flex items-baseline justify-center gap-1">
+                                <span id="dualTeamSecondaryPos" class="text-sm font-bold text-cyan-400">-</span>
+                                <span id="dualTeamSecondaryGap" class="text-[9px] font-mono text-fuel">-</span>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Category filter chips (laptop only): jump straight to a category instead of
+                         scanning every row -- built once categories are known from the feed. -->
+                    <div id="categoryFilterRow" class="hidden lt-laptop-only mt-1 flex flex-wrap gap-1"></div>
                     <!-- Competitor table header -->
                     <div id="competitorsTableHeader" class="hidden grid gap-0 text-[8px] font-bold uppercase text-gray-600 tracking-wider px-1 py-0.5 border-b border-gray-700/50 mt-1" style="grid-template-columns: 22px 22px 1fr 44px 46px 52px 52px">
                         <span></span>
@@ -1265,7 +1287,10 @@
                         <!-- Strategy outlook -->
                         <div id="remainingStintsPanel" class="hidden px-2 pt-2 pb-1">
                             <div class="flex items-center justify-between mb-1.5">
-                                <span class="text-[9px] text-gray-500 font-bold uppercase tracking-widest" data-i18n="strategyOutlook">OUTLOOK</span>
+                                <button type="button" id="outlookCollapseBtn" onclick="window.toggleOutlookCollapse()" class="flex items-center gap-1 text-[9px] text-gray-500 font-bold uppercase tracking-widest min-h-[28px]">
+                                    <span id="outlookCollapseIcon">▾</span>
+                                    <span data-i18n="strategyOutlook">OUTLOOK</span>
+                                </button>
                                 <div class="flex items-center gap-1.5">
                                     <button onclick="window.openLivePreview()" class="text-[9px] text-gray-400 hover:text-white bg-gray-700/50 hover:bg-gray-600/70 border border-gray-600 rounded px-1.5 py-0.5 transition font-bold uppercase tracking-wide leading-none" data-i18n="livePreviewBtn">▶ PLAN</button>
                                     <span id="remTimeText" class="text-[11px] text-white font-mono font-bold">--:--</span>
@@ -2521,13 +2546,13 @@
         </div>
     </div>
 
-    <script src="js/state.js?v=18"></script>
+    <script src="js/state.js?v=20"></script>
     <script src="js/auth.js?v=7"></script>
     <script src="js/network.js?v=9"></script>
-    <script src="js/strategy.js?v=11"></script>
-    <script src="js/live-timing.js?v=11"></script>
-    <script src="js/ui.js?v=11"></script>
+    <script src="js/strategy.js?v=12"></script>
+    <script src="js/live-timing.js?v=12"></script>
+    <script src="js/ui.js?v=12"></script>
     <script src="js/walkthrough.js?v=11"></script>
-    <script src="js/main.js?v=15"></script>
+    <script src="js/main.js?v=16"></script>
 </body>
 </html>

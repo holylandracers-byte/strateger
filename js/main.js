@@ -1443,15 +1443,6 @@ function updateRemainingStrategyLogic(raceRemainingMs) {
 }
 
 
-// The pit-exit buffer for the driver about to leave the pits: their own override
-// (driver.pitBufferSec) if set, else the race-wide Release Buffer input.
-window._effectiveReleaseBuffer = function() {
-    const idx = window.state && window.state.nextDriverIdx;
-    const driver = (idx != null && window.drivers) ? window.drivers[idx] : null;
-    if (driver && driver.pitBufferSec != null) return driver.pitBufferSec;
-    return parseInt(document.getElementById('releaseBuffer')?.value || '5') || 5;
-};
-
 window.updatePitModalLogic = function() {
     // Guard: bail out if we're not actually in a pit stop (prevents NaN cascade)
     if (!window.state || !window.state.isInPit || !window.state.pitStart) return;
@@ -1462,7 +1453,7 @@ window.updatePitModalLogic = function() {
     const elapsedSec = Math.max(0, (now - pitStart) / 1000);
     const basePitTime = parseInt(window.config.minPitTime || window.config.pitTime) || 0;
     const totalRequiredTime = Math.max(0, basePitTime + (window.currentPitAdjustment || 0));
-    const buffer = window._effectiveReleaseBuffer();
+    const buffer = parseInt(document.getElementById('releaseBuffer')?.value) || 5;
     const timeRemaining = totalRequiredTime - elapsedSec;
     const t = window.t || ((k) => k);
 
@@ -2260,7 +2251,11 @@ window._getStintNotifyTimings = function() {
 
     const maxStintMs = cfgMax * 60000;
     const inLapMs = window._getInlapSec() * 1000;
-    const leadMs = (parseFloat(cfg.pitNotifyLeadMin) || 3) * 60000;
+    // Per-driver override: whoever is currently on track may need more/less advance warning
+    // than the race-wide default (slower to react, parked further from pit lane, etc).
+    const curDriver = (window.state && window.drivers) ? window.drivers[window.state.currentDriverIdx] : null;
+    const leadMinEff = (curDriver && curDriver.notifyLeadMin != null) ? curDriver.notifyLeadMin : (parseFloat(cfg.pitNotifyLeadMin) || 3);
+    const leadMs = leadMinEff * 60000;
     const pitEntryDeadlineMs = Math.max(0, maxStintMs - inLapMs);
     const notifyStartMs = Math.max(0, pitEntryDeadlineMs - leadMs);
     const targetMs = window.state?.targetStintMs || maxStintMs;
@@ -2315,7 +2310,7 @@ window._handlePitBothTimestamps = function() {
 
     const pitDurationMs   = pitOutAt - pitInAt;
     const minPitMs        = Math.max(0, (parseInt(window.config.minPitTime || window.config.pitTime) || 0) * 1000);
-    const buffer          = window._effectiveReleaseBuffer() * 1000;
+    const buffer          = (parseInt(document.getElementById('releaseBuffer')?.value || '5') || 5) * 1000;
     const outlap          = window._getOutlapSec() * 1000;
 
     // How far the kart is from pit-out (approximated by using the out-lap time).
@@ -2382,7 +2377,7 @@ window._handlePitInOnly = function() {
     const pitInAt    = window.state.pitStart;
     const minPitMs   = Math.max(0, (parseInt(window.config.minPitTime || window.config.pitTime) || 0) * 1000);
     const outlap     = window._getOutlapSec() * 1000;
-    const buffer     = window._effectiveReleaseBuffer() * 1000;
+    const buffer     = (parseInt(document.getElementById('releaseBuffer')?.value || '5') || 5) * 1000;
 
     // latestExit so that pitDuration + outlap = minPitTime exactly
     const latestExitAt  = pitInAt + minPitMs - outlap;

@@ -452,30 +452,32 @@ window.createDriverInput = function(val, checked, squad) {
     staminaWrap.appendChild(staminaInput);
     staminaWrap.appendChild(staminaLabel);
 
-    // Per-driver pit-exit buffer (sec): some drivers need more warning to walk to the car and
-    // be ready to leave the moment the minimum pit time is served. Falls back to the race-wide
-    // Release Buffer (#releaseBuffer) when left blank.
-    const bufferWrap = document.createElement('div');
-    bufferWrap.className = 'driver-buffer-wrap';
-    bufferWrap.title = "This driver's own pit-exit buffer (sec) — overrides the race-wide Release Buffer. Leave blank to use the race default.";
+    // Per-driver advance-warning lead time (min): some drivers need to be told earlier than
+    // others that their stint is ending soon (slower to react, further from the pit lane, etc).
+    // Falls back to the race-wide Notify Lead Time (#pitNotifyLeadMin) when left blank. The
+    // Pit Exit Buffer stays a single race-wide setting -- it isn't a per-driver need.
+    const notifyWrap = document.createElement('div');
+    notifyWrap.className = 'driver-notify-wrap';
+    notifyWrap.title = "This driver's own advance-warning lead time (min) — overrides the race-wide Notify Lead Time. Leave blank to use the race default.";
 
-    const bufferInput = document.createElement('input');
-    bufferInput.type = 'number';
-    bufferInput.className = 'driver-buffer-input';
-    bufferInput.placeholder = window.t ? window.t('bufferDefault') : 'def.';
-    bufferInput.min = '0';
-    bufferInput.addEventListener('click', (e) => e.stopPropagation());
-    bufferInput.oninput = () => {
+    const notifyInput = document.createElement('input');
+    notifyInput.type = 'number';
+    notifyInput.className = 'driver-notify-input';
+    notifyInput.placeholder = window.t ? window.t('bufferDefault') : 'def.';
+    notifyInput.min = '0';
+    notifyInput.step = '0.5';
+    notifyInput.addEventListener('click', (e) => e.stopPropagation());
+    notifyInput.oninput = () => {
         if (typeof window.scheduleRunSim === 'function') window.scheduleRunSim(400);
         if (typeof window.updateDriversFromUI === 'function') window.updateDriversFromUI();
     };
 
-    const bufferLabel = document.createElement('span');
-    bufferLabel.className = 'driver-buffer-label';
-    bufferLabel.textContent = 's buf';
+    const notifyLabel = document.createElement('span');
+    notifyLabel.className = 'driver-notify-label';
+    notifyLabel.textContent = 'm lead';
 
-    bufferWrap.appendChild(bufferInput);
-    bufferWrap.appendChild(bufferLabel);
+    notifyWrap.appendChild(notifyInput);
+    notifyWrap.appendChild(notifyLabel);
 
     div.appendChild(dragHandle);
     div.appendChild(accentBar);
@@ -485,7 +487,7 @@ window.createDriverInput = function(val, checked, squad) {
     div.appendChild(starterBtn);
     div.appendChild(nameWrap);
     div.appendChild(staminaWrap);
-    div.appendChild(bufferWrap);
+    div.appendChild(notifyWrap);
     div.appendChild(squadLabel);
 
     document.getElementById('driversList').appendChild(div);

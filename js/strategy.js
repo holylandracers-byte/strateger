@@ -16,17 +16,17 @@ window.updateDriversFromUI = function() {
     const squadValues = realRows.map(row => row.querySelector('.squad-value')).filter(Boolean);
     const colorPickers = realRows.map(row => row.querySelector('.driver-color-picker')).filter(Boolean);
     const staminaInputs = realRows.map(row => row.querySelector('.driver-stamina-input'));
-    const bufferInputs = realRows.map(row => row.querySelector('.driver-buffer-input'));
+    const notifyLeadInputs = realRows.map(row => row.querySelector('.driver-notify-input'));
     window.drivers = inputs.map((input, i) => {
         const existingColor = colorPickers[i]?.value ||
             ((window.drivers && window.drivers[i]) ? window.drivers[i].color : `hsl(${(i * 360 / inputs.length)}, 70%, 50%)`);
         const sqIdx = parseInt(squadValues[i]?.value) || 0;
         // staminaMin: per-driver max stint in minutes. 0 = no personal limit.
         const staminaMin = parseFloat(staminaInputs[i]?.value || '0') || 0;
-        // pitBufferSec: this driver's own release-buffer override in seconds; null = use the
-        // race-wide Release Buffer input instead (the common case for most drivers).
-        const bufferRaw = bufferInputs[i]?.value;
-        const pitBufferSec = (bufferRaw != null && bufferRaw.trim() !== '') ? (parseInt(bufferRaw, 10) || 0) : null;
+        // notifyLeadMin: this driver's own advance-warning lead time override (minutes);
+        // null = use the race-wide Notify Lead Time input instead (the common case).
+        const notifyLeadRaw = notifyLeadInputs[i]?.value;
+        const notifyLeadMin = (notifyLeadRaw != null && notifyLeadRaw.trim() !== '') ? (parseFloat(notifyLeadRaw) || 0) : null;
         return {
             name: input.value || `${window.t('ltDriver')} ${i+1}`,
             isStarter: i === starterIdx,
@@ -34,7 +34,7 @@ window.updateDriversFromUI = function() {
             squadIdx: sqIdx,
             color: existingColor,
             staminaMin,
-            pitBufferSec,
+            notifyLeadMin,
             totalTime: 0,
             stints: 0,
             logs: []
