@@ -3490,3 +3490,11 @@ body.watcher-mode #liveTeamHint { display: none !important; }
 
 .rules-group-title { font-size: 13px; font-weight: 700; color: #e2e8f0; margin: 14px 0 8px; padding-top: 10px; border-top: 1px solid #1e293b; }
 .collapse-body > .rules-group-title:first-of-type { border-top: 0; padding-top: 0; margin-top: 0; }
+
+/* Setup: one filled action, the rest are quiet links */
+.setup-links { display: flex; flex-wrap: wrap; gap: 4px 16px; justify-content: center; }
+.setup-links button { display: inline-flex; align-items: center; gap: 6px; padding: 8px 4px; min-height: 36px; font-size: 13px; color: #94a3b8; background: none; border: 0; cursor: pointer; }
+.setup-links button:hover { color: #22d3ee; }
+.setup-links button:focus-visible { outline: 2px solid #22d3ee; outline-offset: 2px; border-radius: 4px; }
+.setup-links-tag { font-size: 11px; font-weight: 700; color: #fbbf24; border: 1px solid rgba(251,191,36,.35); border-radius: 999px; padding: 0 6px; }
+.setup-links-ok { color: #4ade80; border-color: rgba(74,222,128,.35); }

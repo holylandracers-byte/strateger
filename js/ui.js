@@ -3558,7 +3558,7 @@ window._togglePreviewAdjustPanel = function() {
 // ⚡ QUICK MODE PRESETS (hero pill strip)
 // ==========================================
 
-window._heroCollapsed = localStorage.getItem('strateger_hero_collapsed') === 'true';
+window._heroCollapsed = localStorage.getItem('strateger_hero_collapsed') !== 'false';
 
 window.toggleHero = function() {
     window._heroCollapsed = !window._heroCollapsed;
