@@ -6,7 +6,7 @@
 // closed windows without breaking min/max stint, rebalances stints between drivers, and reports each rule.
 
 window._RULE_FIELDS = {
-    raceDuration: 'Duration (h)', reqPitStops: 'Required stops', minStint: 'Min stint (min)', maxStint: 'Max stint (min)',
+    raceLaps: 'Total laps', raceDuration: 'Duration (h)', reqPitStops: 'Required stops', minStint: 'Min stint (min)', maxStint: 'Max stint (min)',
     minPitTime: 'Min pit time (s)', pitClosedStart: 'Pit closed at start (min)', pitClosedEnd: 'Pit closed at end (min)',
     minDriverTime: 'Min driver total (min)', maxDriverTime: 'Max driver total (min)', kartChangeInterval: 'Kart change every (min)',
     reqExtraPits: 'Extra pits', numTeams: 'Competing teams', minPitLapSec: 'Min pit lap (s)'
@@ -310,8 +310,11 @@ window._showRulesProposal = function(text) {
         const r = window.raceRules;
         ov.querySelectorAll('input[data-rule-key]:checked').forEach(function(cb) {
             const el = document.getElementById(cb.dataset.ruleKey);
+            if (cb.dataset.ruleKey === 'raceLaps' && el) { el.value = cb.dataset.ruleVal; if (typeof window._setRaceTarget === 'function') window._setRaceTarget('laps', true); return; }
+            if (cb.dataset.ruleKey === 'raceDuration' && window.isLapRace && window.isLapRace()) return;
             if (el) el.value = cb.dataset.ruleVal;
         });
+        if (typeof window._normalizeOffFields === 'function') window._normalizeOffFields();
         if (wins.length && ov.querySelector('input[data-rule-wins]:checked')) r.closedWindows = wins;
         const ms = ov.querySelector('input[data-rule-minstints]:checked');
         if (ms) r.minStintsPerDriver = minStints;

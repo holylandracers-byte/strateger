@@ -92,13 +92,29 @@
             const dur = parseFloat(getReal('raceDuration', '12'));
             const presets = [1, 3, 6, 12, 24].map(h =>
                 `<button type="button" class="wz-chip${dur === h ? ' is-on' : ''}" data-hours="${h}">${h}h</button>`).join('');
+            const isLaps = !!(window.isLapRace && window.isLapRace());
+            const laps = parseInt(getReal('raceLaps', '500'));
+            const lapPresets = [250, 500, 750, 1000].map(n =>
+                `<button type="button" class="wz-chip${laps === n ? ' is-on' : ''}" data-laps="${n}">${n}</button>`).join('');
+            const lengthBlock = isLaps
+                ? `<div class="wz-field">
+                        <label class="wz-label" for="wz_raceLaps">${esc(t('lblTotalLaps'))}</label>
+                        <input class="wz-input wz-big" id="wz_raceLaps" type="number" inputmode="numeric" min="1" step="1" value="${esc(getReal('raceLaps', '500'))}" data-real="raceLaps">
+                        <div class="wz-chips">${lapPresets}</div>
+                    </div>
+                    ${numField('avgLapSec', t('lblAvgLap'), { min: 1, step: 0.5 })}`
+                : `<div class="wz-field">
+                        <label class="wz-label" for="wz_raceDuration">${esc(t('lblDuration'))}</label>
+                        <input class="wz-input wz-big" id="wz_raceDuration" type="number" inputmode="decimal" min="0.5" step="0.5" value="${esc(getReal('raceDuration', '12'))}" data-real="raceDuration">
+                        <div class="wz-chips">${presets}</div>
+                    </div>`;
             return `<h3 class="wz-q">${esc(t('xWzQBasics'))}</h3>
                 <div class="wz-field">
-                    <label class="wz-label" for="wz_raceDuration">${esc(t('lblDuration'))}</label>
-                    <input class="wz-input wz-big" id="wz_raceDuration" type="number" inputmode="decimal" min="0.5" step="0.5" value="${esc(getReal('raceDuration', '12'))}" data-real="raceDuration">
-                    <div class="wz-chips">${presets}</div>
+                    <span class="wz-label">${esc(t('lblRaceTarget'))}</span>
+                    ${segmented('rtarget', [{ value: 'time', label: t('targetTime') }, { value: 'laps', label: t('targetLaps') }], isLaps ? 'laps' : 'time')}
                 </div>
-                ${numField('reqPitStops', t('lblStops'), { min: 0 })}
+                ${lengthBlock}
+                ${numField('reqPitStops', t('lblStops'), { min: 0, hint: t('xWzOffHint') })}
                 <div class="wz-field">
                     <label class="wz-label" for="wz_raceStartTime">${esc(t('lblStartTime'))}</label>
                     <input class="wz-input" id="wz_raceStartTime" type="time" value="${esc(getReal('raceStartTime'))}" data-real="raceStartTime">
@@ -126,7 +142,7 @@
                     ${numField('minStint', t('lblMinStint'), { min: 0 })}
                     ${numField('maxStint', t('lblMaxStint'), { min: 0 })}
                 </div>
-                ${numField('minPitTime', t('lblPitTime'), { min: 0 })}
+                ${numField('minPitTime', t('lblPitTime'), { min: 0, hint: t('xWzOffHint') })}
                 ${numField('pitNotifyLeadMin', t('xWzMinWarn'), { min: 0, step: 0.5, hint: t('xWzMinWarnD') })}`;
         },
         review() {
@@ -135,7 +151,9 @@
             const names = pool.filter(d => on.has(d.name)).map(d => d.name).join(', ') || '—';
             const rows = [
                 ['type', t('xWzType'), state.mode === 'qualify' ? t('xWzQuali') : t('xWzRaceOnly')],
-                ['basics', t('xWzDuration'), getReal('raceDuration', '12') + 'h'],
+                ['basics', t('xWzDuration'), (window.isLapRace && window.isLapRace())
+                    ? getReal('raceLaps', '500') + ' ' + t('laps') + ' · ≈ ' + (Math.round(parseFloat(getReal('raceDuration', '0')) * 10) / 10) + 'h'
+                    : getReal('raceDuration', '12') + 'h'],
                 ['basics', t('xPitStops'), getReal('reqPitStops', '—')],
                 ['drivers', t('xWzDrivers'), names],
                 ['rules', t('lblMinStint') + ' / ' + t('lblMaxStint'), getReal('minStint') + ' – ' + getReal('maxStint')]
@@ -188,11 +206,14 @@
             if (idx >= 0) { state.step = idx; render(); }
             return;
         }
+        const lapsChip = e.target.closest('[data-laps]');
+        if (lapsChip) { setReal('raceLaps', lapsChip.dataset.laps); return render(); }
         const hours = e.target.closest('[data-hours]');
         if (hours) { setReal('raceDuration', hours.dataset.hours); return render(); }
         const seg = e.target.closest('.wz-seg-btn');
         if (seg) {
             const kind = seg.parentElement.dataset.seg;
+            if (kind === 'rtarget' && window._setRaceTarget) { window._setRaceTarget(seg.dataset.value); return render(); }
             if (kind === 'qsegs' && window.setQSegments) window.setQSegments(parseInt(seg.dataset.value));
             if (kind === 'qpart' && window.setQParticipation) window.setQParticipation(seg.dataset.value);
             seg.parentElement.querySelectorAll('.wz-seg-btn').forEach(b => b.classList.toggle('is-on', b === seg));

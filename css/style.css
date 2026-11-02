@@ -3964,3 +3964,32 @@ body.lite .fa-spin { animation: fa-spin 1.2s linear infinite !important; }
 .wz-edit:hover { text-decoration: underline; }
 .wz-next { box-shadow: 0 6px 20px rgba(34,211,238,.25); }
 .lite .wz-next, body.lite .wz-next { box-shadow: none; }
+
+/* ---- Race target switch (time / laps) ---- */
+.set-seg { display: inline-flex; gap: 0; margin-top: 6px; background: var(--navy-900); border: 1px solid #334155; border-radius: 10px; padding: 3px; }
+.set-seg button { min-height: 38px; padding: 0 18px; border-radius: 8px; background: transparent; color: #94a3b8; font-weight: 700; font-size: 14px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: background .15s, color .15s; }
+.set-seg button.is-on { background: var(--ice); color: #06222b; }
+#durationBlock.is-derived .set-chips { display: none; }
+#durationBlock.is-derived input { opacity: .6; }
+
+/* ---- Rule compliance banner (preview) ---- */
+.compliance { border-radius: 10px; border: 1px solid #334155; background: rgba(15, 23, 42, .7); overflow: hidden; }
+.compliance.is-ok { border-color: rgba(34, 197, 94, .45); }
+.compliance.is-bad { border-color: rgba(239, 68, 68, .6); background: rgba(69, 10, 10, .45); }
+.compliance-head { width: 100%; display: flex; align-items: center; gap: 8px; padding: 7px 10px; font-size: 12px; font-weight: 800; text-align: start; cursor: pointer; background: transparent; }
+.compliance.is-ok .compliance-head { color: #4ade80; }
+.compliance.is-bad .compliance-head { color: #fca5a5; }
+.compliance-chev { margin-inline-start: auto; font-size: 10px; opacity: .7; }
+.compliance-list { list-style: none; margin: 0; padding: 2px 10px 8px; max-height: 32vh; overflow-y: auto; font-size: 12px; }
+.compliance-list li { padding: 3px 0; display: flex; gap: 8px; align-items: flex-start; color: #cbd5e1; }
+.compliance-list li.ok i { color: #4ade80; margin-top: 3px; }
+.compliance-list li.bad { color: #fca5a5; }
+.compliance-list li.bad i { color: #f87171; margin-top: 3px; }
+
+/* ---- Save status + lap tags ---- */
+.save-status { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+.save-status.is-ok { color: #4ade80; }
+.save-status.is-bad { color: #f87171; }
+.save-status.is-pending { color: #fbbf24; }
+.sr-laps { font-size: 11px; font-weight: 700; color: var(--ice); }
+#confirmBody { white-space: pre-line; }

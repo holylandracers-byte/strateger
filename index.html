@@ -387,8 +387,38 @@
                 </h2>
                 <div class="collapse-body">
 
+                <!-- Race target: the race ends after a set time, or after a set number of laps -->
+                <div class="set-block" style="margin-top:0">
+                    <div class="set-label" data-i18n="lblRaceTarget">Race ends after</div>
+                    <div class="set-seg" role="group" aria-label="Race target">
+                        <button type="button" id="targetTimeBtn" class="is-on" onclick="window._setRaceTarget('time')"><i class="far fa-clock"></i> <span data-i18n="targetTime">Time</span></button>
+                        <button type="button" id="targetLapsBtn" onclick="window._setRaceTarget('laps')"><i class="fas fa-redo"></i> <span data-i18n="targetLaps">Laps</span></button>
+                    </div>
+                    <input type="hidden" id="raceTarget" value="time">
+                </div>
+
+                <div id="lapTargetBlock" class="hidden set-block">
+                    <div class="set-grid-2">
+                        <div>
+                            <label class="set-label" for="raceLaps" data-i18n="lblTotalLaps">Total laps</label>
+                            <input type="number" id="raceLaps" min="1" value="500" onchange="window.runSim()" class="input-field set-big">
+                            <div class="set-chips" role="group" aria-label="Lap presets">
+                                <button type="button" onclick="document.getElementById('raceLaps').value=250;window.runSim()">250</button>
+                                <button type="button" onclick="document.getElementById('raceLaps').value=500;window.runSim()">500</button>
+                                <button type="button" onclick="document.getElementById('raceLaps').value=750;window.runSim()">750</button>
+                                <button type="button" onclick="document.getElementById('raceLaps').value=1000;window.runSim()">1000</button>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="set-label" for="avgLapSec" data-i18n="lblAvgLap">Average lap (sec)</label>
+                            <input type="number" id="avgLapSec" min="1" step="0.1" value="60" onchange="window.runSim()" class="input-field set-big">
+                        </div>
+                    </div>
+                    <p id="lapTargetSummary" class="set-hint"></p>
+                </div>
+
                 <div class="set-grid-2">
-                    <div>
+                    <div id="durationBlock">
                         <label class="set-label" for="raceDuration" data-i18n="lblDuration">Duration (Hours)</label>
                         <input type="number" id="raceDuration" value="12" onchange="window.runSim()" class="input-field set-big">
                         <div class="set-chips" role="group" aria-label="Duration presets">
@@ -401,7 +431,7 @@
                     </div>
                     <div>
                         <label class="set-label" for="reqPitStops" data-i18n="lblStops">Req. Stops</label>
-                        <input type="number" id="reqPitStops" value="15" onchange="window.runSim()" class="input-field set-big text-neon">
+                        <input type="number" id="reqPitStops" value="15" placeholder="Off" onchange="window.runSim()" class="input-field set-big text-neon">
                     </div>
                 </div>
 
@@ -424,15 +454,15 @@
                 <div class="set-grid-3">
                     <div>
                         <label class="set-sublabel" for="minStint" data-i18n="lblMinStint">Min Stint (min)</label>
-                        <input type="number" id="minStint" value="30" onchange="window.runSim()" class="input-field">
+                        <input type="number" id="minStint" value="30" placeholder="Off" onchange="window.runSim()" class="input-field">
                     </div>
                     <div>
                         <label class="set-sublabel" for="maxStint" data-i18n="lblMaxStint">Max Stint (min)</label>
-                        <input type="number" id="maxStint" value="65" onchange="window.runSim()" class="input-field">
+                        <input type="number" id="maxStint" value="65" placeholder="Off" onchange="window.runSim()" class="input-field">
                     </div>
                     <div>
                         <label class="set-sublabel" for="minPitTime" data-i18n="lblPitTime">Pit Time (sec)</label>
-                        <input type="number" id="minPitTime" value="120" onchange="window.runSim()" class="input-field">
+                        <input type="number" id="minPitTime" value="120" placeholder="Off" onchange="window.runSim()" class="input-field">
                     </div>
                 </div>
 
@@ -475,7 +505,7 @@
                     <i class="fas fa-chevron-down collapse-icon set-chevron"></i>
                 </h2>
                 <div class="collapse-body">
-                <p class="set-hint" style="margin-top:0" data-i18n="rulesIntro">Optional rules from the organizer. Leave a number at 0 to switch that rule off.</p>
+                <p class="set-hint" style="margin-top:0" data-i18n="rulesIntro">Optional rules from the organizer. Leave a field empty (Off) to switch that rule off.</p>
 
                 <h3 class="rules-group-title" data-i18n="grpRotation">Driver rotation</h3>
 
@@ -540,15 +570,15 @@
 
                 <h3 class="rules-group-title" data-i18n="grpPitRules">Pit rules</h3>
                 <div class="rule" data-rule>
-                    <p class="rule-effect" style="margin-top:0">No pit stops are planned inside the closed window. Minutes from race start; 0 = off.</p>
+                    <p class="rule-effect" style="margin-top:0">No pit stops are planned inside the closed window. Minutes from race start. Leave empty to turn off.</p>
                     <div class="set-grid-2">
                         <div>
                             <label class="set-sublabel" for="pitClosedStart" data-i18n="lblPitClosedStart">Closed Start (min)</label>
-                            <input type="number" id="pitClosedStart" value="0" onchange="window.runSim()" class="input-field">
+                            <input type="number" id="pitClosedStart" onchange="window.runSim()" class="input-field" placeholder="Off">
                         </div>
                         <div>
                             <label class="set-sublabel" for="pitClosedEnd" data-i18n="lblPitClosedEnd">Closed End (min)</label>
-                            <input type="number" id="pitClosedEnd" value="0" onchange="window.runSim()" class="input-field">
+                            <input type="number" id="pitClosedEnd" onchange="window.runSim()" class="input-field" placeholder="Off">
                         </div>
                     </div>
                 </div>
@@ -571,33 +601,33 @@
                 <div id="extraPitSection" class="hidden rule rule-kart" data-rule>
                     <div class="rule-head">
                         <span class="rule-title" data-i18n="kartChanges">Kart changes</span>
-                        <span class="rule-note" data-i18n="kartChangesShown">Shown because a key value is 0</span>
+                        <span class="rule-note" data-i18n="kartChangesShown">Shown because a key value is off</span>
                     </div>
 
                     <label class="set-sublabel" for="kartChangeInterval" data-i18n="kartChangeEvery">Kart change every (min)</label>
-                    <input type="number" id="kartChangeInterval" value="0" min="0" placeholder="Off"
-                        onchange="window._updateKartChangeInfo(); window.runSim()" class="input-field">
+                    <input type="number" id="kartChangeInterval" min="0"
+                        onchange="window._updateKartChangeInfo(); window.runSim()" class="input-field" placeholder="Off">
                     <div id="kartChangeInfo" class="rule-info hidden"></div>
-                    <p class="set-hint" data-i18n="kartChangeHint">How often the organizer makes you change karts, e.g. 90 for every 90 min. 0 = off.</p>
+                    <p class="set-hint" data-i18n="kartChangeHint">How often the organizer makes you change karts, e.g. 90 for every 90 min. Leave empty to turn off.</p>
 
                     <div class="set-grid-2">
                         <div>
                             <label class="set-sublabel" for="reqExtraPits" data-i18n="lblReqExtraPits">Extra Pits (optional)</label>
-                            <input type="number" id="reqExtraPits" value="0" min="0" onchange="window.runSim()" class="input-field">
+                            <input type="number" id="reqExtraPits" min="0" onchange="window.runSim()" class="input-field" placeholder="Off">
                             <p class="set-hint" data-i18n="xHintSwap">In-stint swaps: rain, tired driver, early switch request.</p>
                         </div>
                         <div>
                             <label class="set-sublabel" for="minPitLapSec" data-i18n="lblMinPitLapSec">Min Pit Lap (sec)</label>
-                            <input type="number" id="minPitLapSec" value="0" min="0" onchange="window.runSim()" class="input-field">
-                            <p class="set-hint" data-i18n="offHint">0 = off.</p>
+                            <input type="number" id="minPitLapSec" min="0" onchange="window.runSim()" class="input-field" placeholder="Off">
+                            <p class="set-hint" data-i18n="offHint">Empty = off.</p>
                         </div>
                     </div>
 
                     <label class="set-sublabel" for="numTeams" data-i18n="lblNumTeams">Competing Teams (rotation count)</label>
-                    <input type="number" id="numTeams" value="0" min="0" placeholder="Off"
-                        onchange="window._updateKartRotationInfo(); window.runSim()" class="input-field">
+                    <input type="number" id="numTeams" min="0"
+                        onchange="window._updateKartRotationInfo(); window.runSim()" class="input-field" placeholder="Off">
                     <div id="kartRotationInfo" class="rule-info hidden"></div>
-                    <p class="set-hint" data-i18n="numTeamsHint">Required stops = teams − 1, so each team drives every kart once. 0 = off.</p>
+                    <p class="set-hint" data-i18n="numTeamsHint">Required stops = teams − 1, so each team drives every kart once. Leave empty to turn off.</p>
                 </div>
 
                 <h3 class="rules-group-title" data-i18n="grpAlerts">Alerts and timing</h3>
@@ -616,8 +646,8 @@
                         </div>
                     </div>
                     <label class="set-sublabel" for="inLapSec" data-i18n="lblInLapSec">In-Lap to Pits (sec, dry)</label>
-                    <input type="number" id="inLapSec" value="0" min="0" step="5" placeholder="0 = auto" onchange="window.runSim(); window._updatePitNotifyPreview && window._updatePitNotifyPreview()" class="input-field">
-                    <p class="set-hint" data-i18n="lblInLapHint">Track time to reach pit entry. 0 = auto from circuit name.</p>
+                    <input type="number" id="inLapSec" min="0" step="5" placeholder="Auto" onchange="window.runSim(); window._updatePitNotifyPreview && window._updatePitNotifyPreview()" class="input-field">
+                    <p class="set-hint" data-i18n="lblInLapHint">Track time to reach pit entry. Empty = auto from circuit name.</p>
                     <div id="pitNotifyPreview" class="hidden rule-info"></div>
                 </div>
                 </div>
@@ -706,6 +736,7 @@
                     <div class="flex-1 min-w-0">
                         <div class="text-[11px] font-black text-gray-500 uppercase tracking-widest mb-0.5" data-i18n="previewTitle">Strategy Preview</div>
                         <div id="previewLocationWeather" class="text-[11px] text-blue-300 font-mono truncate hidden"></div>
+                        <div id="saveStatus" class="save-status hidden" role="status" aria-live="polite"></div>
                         <div id="miniStintChart" class="mini-stint-chart mt-0.5" style="height:14px;"></div>
                     </div>
                     <!-- Compact time strip (start → end + calendar) -->
@@ -718,49 +749,14 @@
                         </button>
                     </div>
                     <div class="flex items-center gap-1 shrink-0">
-                        <button onclick="window.openLiveAdjustModal()" aria-label="Scenario planner" class="preview-icon-btn">
-                            <i class="fas fa-sliders-h"></i>
-                        </button>
                         <button id="previewCloseBtn" onclick="window._closePreview()" aria-label="Close preview" class="preview-close-btn">
                             <i class="fas fa-times"></i>
                         </button>
                     </div>
                 </div>
 
-                <!-- Live Adjust Panel (collapsible) -->
-                <div id="previewAdjustPanel" class="hidden shrink-0">
-                    <div class="panel-header" onclick="window._togglePreviewAdjustPanel()">
-                        <div class="flex items-center gap-2">
-                            <span class="w-2 h-2 rounded-full bg-neon animate-pulse"></span>
-                            <span class="text-xs font-bold text-neon" data-i18n="scenarioActive">Scenario active</span>
-                            <span id="adjustScenarioLabel" class="delta-badge delta-neutral text-[11px]">—</span>
-                        </div>
-                        <i id="adjustPanelIcon" class="fas fa-chevron-down text-[11px] text-gray-500 transition-transform"></i>
-                    </div>
-                    <div class="panel-body space-y-2">
-                        <div class="outcome-row">
-                            <span class="outcome-label" data-i18n="xPitStops">Pit stops</span>
-                            <span id="adjOutPits" class="outcome-val">—</span>
-                            <div class="flex-1 outcome-bar-track"><div id="adjBarPits" class="outcome-bar-fill safe" style="width:0%"></div></div>
-                            <span id="adjDeltaPits" class="delta-badge delta-neutral ml-1">—</span>
-                        </div>
-                        <div class="outcome-row">
-                            <span class="outcome-label" data-i18n="xAvgStint">Avg stint</span>
-                            <span id="adjOutStint" class="outcome-val">—</span>
-                            <div class="flex-1 outcome-bar-track"><div id="adjBarStint" class="outcome-bar-fill safe" style="width:0%"></div></div>
-                            <span id="adjDeltaStint" class="delta-badge delta-neutral ml-1">—</span>
-                        </div>
-                        <div class="outcome-row">
-                            <span class="outcome-label" data-i18n="xDriveTime">Drive time</span>
-                            <span id="adjOutDrive" class="outcome-val">—</span>
-                            <div class="flex-1 outcome-bar-track"><div id="adjBarDrive" class="outcome-bar-fill safe" style="width:0%"></div></div>
-                            <span id="adjDeltaDrive" class="delta-badge delta-neutral ml-1">—</span>
-                        </div>
-                        <button onclick="window.applyLiveAdjustment()" class="w-full mt-1 bg-neon/20 hover:bg-neon/30 border border-neon/40 text-neon font-bold py-2 rounded-lg text-xs transition">
-                            <i class="fas fa-check mr-1"></i> Apply Adjustment to Strategy
-                        </button>
-                    </div>
-                </div>
+                <!-- Rule compliance: every rule from setup + regulations, checked against this plan -->
+                <div id="complianceBanner" class="hidden shrink-0"></div>
 
                 <!-- Driver summary strip: compact horizontal scroll, single row -->
                 <div id="previewDriverStrip" class="shrink-0 bg-navy-900/60 border border-gray-700/40 rounded-lg px-2 py-1.5">
@@ -775,11 +771,6 @@
                 <div class="flex-1 flex flex-col min-h-0 bg-navy-900 rounded-xl border border-gray-700/60 overflow-hidden">
                     <div class="px-2 py-1.5 bg-navy-800/80 border-b border-gray-700/50 font-black text-[11px] text-gray-400 uppercase tracking-wider shrink-0 flex justify-between items-center">
                         <span data-i18n="timeline">Timeline</span>
-                        <div class="flex items-center gap-2">
-                            <button onclick="window.openLiveAdjustModal()" class="flex items-center gap-1 text-[11px] text-gray-500 hover:text-neon transition font-bold">
-                                <i class="fas fa-random text-[11px]"></i> Scenario
-                            </button>
-                        </div>
                     </div>
                     <div id="driverScheduleList" class="flex-1 overflow-y-auto overscroll-contain" style="-webkit-overflow-scrolling:touch;padding:4px 6px;display:flex;flex-direction:column;gap:2px;"></div>
                 </div>
@@ -877,78 +868,6 @@
                 </button>
                 <button onclick="window.launchSelectedDemo()" class="flex-[2] bg-ice hover:bg-blue-400 text-navy-950 font-black py-2.5 rounded-xl shadow-lg transition text-sm uppercase tracking-wider">
                     <i class="fas fa-play mr-1.5"></i> Launch Demo
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- ============================================================
-         LIVE-ADJUST MODAL — mid-race / mid-qualifying scenario tool
-         ============================================================ -->
-    <div id="liveAdjustModal" class="hidden">
-        <div class="adjust-sheet">
-            <div class="flex items-center justify-between mb-3">
-                <div>
-                    <div class="text-sm font-black text-white" data-i18n="scenarioTitle">Scenario planner</div>
-                    <div class="text-[11px] text-gray-400 mt-0.5" data-i18n="scenarioSub">Try decisions and see the outcome right away</div>
-                </div>
-                <button onclick="window.closeLiveAdjustModal()" class="w-8 h-8 flex items-center justify-center bg-navy-800 hover:bg-navy-700 text-gray-400 hover:text-white rounded-lg border border-gray-700 text-lg transition">&times;</button>
-            </div>
-
-            <!-- Scenario tabs -->
-            <div class="flex gap-1 bg-navy-950/70 p-1 rounded-xl mb-4 border border-gray-700/50">
-                <button class="scenario-tab active-race" onclick="window.setAdjustScenario('race')" id="adjTab_race">🏎️<br>Race</button>
-                <button class="scenario-tab" onclick="window.setAdjustScenario('qualify')" id="adjTab_qualify">⏱️<br>Qualify</button>
-                <button class="scenario-tab" onclick="window.setAdjustScenario('safety')" id="adjTab_safety">🟡<br>Safety Car</button>
-                <button class="scenario-tab" onclick="window.setAdjustScenario('weather')" id="adjTab_weather">🌧️<br>Weather</button>
-            </div>
-
-            <!-- Dynamic scenario controls -->
-            <div id="adjustScenarioControls" class="space-y-3 mb-4">
-                <!-- Populated by JS per scenario -->
-            </div>
-
-            <!-- Live outcome visualisation -->
-            <div class="section-divider" data-i18n="xProjected">Projected Outcome</div>
-            <div class="bg-navy-950/60 border border-gray-700/40 rounded-xl p-3 mb-4 space-y-2">
-                <div class="outcome-row">
-                    <span class="outcome-label" data-i18n="xPitStops">Pit stops</span>
-                    <span id="ladjOutPits" class="outcome-val">—</span>
-                    <div class="flex-1 outcome-bar-track ml-2"><div id="ladjBarPits" class="outcome-bar-fill safe" style="width:60%"></div></div>
-                    <span id="ladjDeltaPits" class="delta-badge delta-neutral ml-2">—</span>
-                </div>
-                <div class="outcome-row">
-                    <span class="outcome-label" data-i18n="xAvgStint">Avg stint</span>
-                    <span id="ladjOutStint" class="outcome-val">—</span>
-                    <div class="flex-1 outcome-bar-track ml-2"><div id="ladjBarStint" class="outcome-bar-fill safe" style="width:75%"></div></div>
-                    <span id="ladjDeltaStint" class="delta-badge delta-neutral ml-2">—</span>
-                </div>
-                <div class="outcome-row">
-                    <span class="outcome-label" data-i18n="xDriveTime">Drive time</span>
-                    <span id="ladjOutDrive" class="outcome-val">—</span>
-                    <div class="flex-1 outcome-bar-track ml-2"><div id="ladjBarDrive" class="outcome-bar-fill safe" style="width:90%"></div></div>
-                    <span id="ladjDeltaDrive" class="delta-badge delta-neutral ml-2">—</span>
-                </div>
-                <div class="outcome-row">
-                    <span class="outcome-label" data-i18n="xRisk">Risk level</span>
-                    <span id="ladjOutRisk" class="outcome-val">—</span>
-                    <div class="flex-1 outcome-bar-track ml-2"><div id="ladjBarRisk" class="outcome-bar-fill safe" style="width:20%"></div></div>
-                    <span id="ladjDeltaRisk" class="delta-badge delta-neutral ml-2">—</span>
-                </div>
-            </div>
-
-            <!-- Recommendation text -->
-            <div id="adjustRecommendation" class="hidden bg-navy-900/70 border border-gray-700/50 rounded-xl p-3 text-xs text-gray-300 mb-4">
-                <span class="font-black text-ice">💡 Recommendation: </span>
-                <span id="adjustRecommendationText"></span>
-            </div>
-
-            <div class="flex gap-2">
-                <button onclick="window.closeLiveAdjustModal()" class="flex-1 bg-navy-800 hover:bg-navy-700 text-gray-300 font-bold py-2.5 rounded-xl border border-gray-700 transition text-sm" data-i18n="cancel">
-                    Cancel
-                </button>
-                <button onclick="window.applyLiveAdjustment()" class="flex-[2] bg-neon/90 hover:bg-neon text-black font-black py-2.5 rounded-xl shadow-lg transition text-sm uppercase tracking-wider">
-                    <i class="fas fa-check mr-1.5"></i> Apply to Strategy
                 </button>
             </div>
         </div>
@@ -1516,22 +1435,23 @@
         </div>
     </div>
 
-    <div id="saveStrategyModal" class="hidden fixed inset-0 bg-navy-950/95 z-50 flex items-center justify-center p-4">
+    <div id="saveStrategyModal" class="hidden fixed inset-0 bg-navy-950/95 flex items-center justify-center p-4" style="z-index:400">
         <div class="bg-navy-900 border border-gray-700 p-4 rounded w-full max-w-md">
             <h3 class="text-white font-bold mb-2">Save Strategy</h3>
             <input type="text" id="saveStrategyName" placeholder="Strategy Name" class="input-field mb-2">
-            <div class="flex gap-4 mb-4 text-gray-300 text-xs">
+            <div class="flex gap-4 mb-2 text-gray-300 text-xs">
                 <label><input type="radio" name="strategyVisibility" value="private" checked> Private</label>
-                <label><input type="radio" name="strategyVisibility" value="public"> Public</label>
+                <label><input type="radio" name="strategyVisibility" value="public"> Public (cloud)</label>
             </div>
+            <p class="text-[11px] text-gray-500 mb-4"><i class="fas fa-mobile-alt"></i> Always kept on this device. Sent to the cloud too when you are online; if not, it syncs later.</p>
             <div class="flex gap-2">
-                <button onclick="window.performStrategySave()" class="flex-1 bg-ice text-navy-950 font-bold py-2 rounded" data-i18n="save">Save</button>
+                <button id="saveStrategyConfirmBtn" onclick="window.performStrategySave()" class="flex-1 bg-ice text-navy-950 font-bold py-2 rounded" data-i18n="save">Save</button>
                 <button onclick="window.closeSaveStrategyModal()" class="flex-1 bg-navy-700 text-gray-300 py-2 rounded" data-i18n="cancel">Cancel</button>
             </div>
         </div>
     </div>
     
-    <div id="strategyModal" class="hidden fixed inset-0 bg-navy-950/95 z-50 flex items-center justify-center p-4">
+    <div id="strategyModal" class="hidden fixed inset-0 bg-navy-950/95 flex items-center justify-center p-4" style="z-index:400">
         <div class="bg-navy-900 border border-gray-700 rounded w-full max-w-lg max-h-[80vh] flex flex-col">
             <div class="p-3 border-b border-gray-700 flex justify-between items-center">
                 <h3 class="text-ice font-bold" data-i18n="xSavedStrategies">Saved Strategies</h3>
@@ -2514,23 +2434,27 @@
         </div>
     </div>
 
-    <script src="js/state.js?v=31"></script>
+    <script src="js/state.js?v=32"></script>
     <script src="js/lite-mode.js?v=1"></script>
     <script src="js/i18n-extra.js?v=2"></script>
     <script src="js/i18n-extra2.js?v=1"></script>
     <script src="js/i18n-extra3.js?v=1"></script>
+    <script src="js/i18n-laps.js?v=1"></script>
     <script src="js/i18n-phrases.js?v=2"></script>
     <script src="js/i18n-phrases2.js?v=1"></script>
     <script src="js/i18n-phrases3.js?v=1"></script>
     <script src="js/auth.js?v=9"></script>
     <script src="js/network.js?v=10"></script>
-    <script src="js/strategy.js?v=14"></script>
-    <script src="js/race-rules.js?v=4"></script>
+    <script src="js/strategy.js?v=15"></script>
+    <script src="js/race-rules.js?v=5"></script>
+    <script src="js/compliance.js?v=1"></script>
+    <script src="js/export.js?v=1"></script>
+    <script src="js/autosave.js?v=1"></script>
     <script src="js/live-timing.js?v=19"></script>
     <script src="js/track-finder.js?v=2"></script>
-    <script src="js/ui.js?v=19"></script>
+    <script src="js/ui.js?v=20"></script>
     <script src="js/walkthrough.js?v=13"></script>
     <script src="js/wizard.js?v=2"></script>
-    <script src="js/main.js?v=25"></script>
+    <script src="js/main.js?v=26"></script>
 </body>
 </html>

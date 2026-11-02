@@ -1029,6 +1029,8 @@ window.renderPreview = function() {
 
         const tr = (k, fb) => { const v = window.t ? window.t(k) : null; return (v && v !== k) ? v : fb; };
         const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const stintLaps = typeof window.lapsForMs === 'function' ? window.lapsForMs(stint.duration) : null;
+        const lapTag = stintLaps != null ? `<span class="sr-laps" title="${tr('lapsAtAvg', 'Laps at the average lap time')}">≈${stintLaps} ${tr('lapsShort', 'laps')}</span>` : '';
         const tooShort = durationMin < minStintMin;
         const tooLong = durationMin > maxStintMin;
         const outOfBounds = tooShort || tooLong;
@@ -1048,7 +1050,7 @@ window.renderPreview = function() {
                     <div class="sr-main">
                         <span class="sr-num sr-num-done" title="${tr('stintActualDone', 'Done')}"><i class="fas fa-check"></i></span>
                         <span class="sr-driver sr-driver-static"><span class="sr-dot"></span><span class="sr-name">${esc(stint.driverName)}</span></span>
-                        <div class="sr-sub"><span>${startTimeStr}${arrow}${endTimeStr}</span>${checkeredFlag}${pitIndicator}<span class="sr-done-tag">${tr('stintDoneTag', 'Done')}</span></div>
+                        <div class="sr-sub"><span>${startTimeStr}${arrow}${endTimeStr}</span>${checkeredFlag}${lapTag}${pitIndicator}<span class="sr-done-tag">${tr('stintDoneTag', 'Done')}</span></div>
                         <span class="sr-dur-static" title="${tr('actualDuration', 'Actual duration')}">${durationMin}m</span>
                     </div>
                 </div>
@@ -1069,7 +1071,7 @@ window.renderPreview = function() {
                     <button type="button" class="sr-driver stint-driver-swap" data-stint-index="${index}" onclick="event.stopPropagation();window.openStintDriverPicker(${index})" aria-label="${tr('swapDriver', 'Swap driver')}: ${esc(stint.driverName)}">
                         <span class="sr-dot"></span><span class="sr-name">${esc(stint.driverName)}</span><i class="fas fa-chevron-down sr-caret"></i>
                     </button>
-                    <div class="sr-sub">${stint._current ? `<span class="sr-now"><span class="sr-now-dot"></span>${tr('stintInProgress', 'In progress')}</span>` : ''}<span>${startTimeStr}${arrow}${endTimeStr}</span>${checkeredFlag}${pitIndicator}${stintForecastTag}${ruleNote}</div>
+                    <div class="sr-sub">${stint._current ? `<span class="sr-now"><span class="sr-now-dot"></span>${tr('stintInProgress', 'In progress')}</span>` : ''}<span>${startTimeStr}${arrow}${endTimeStr}</span>${checkeredFlag}${lapTag}${pitIndicator}${stintForecastTag}${ruleNote}</div>
                     <div class="sr-step">
                         <button type="button" class="sr-step-btn" onclick="window.nudgeStint(${index}, -1)" aria-label="-1 min"><i class="fas fa-minus"></i></button>
                         <input type="number" inputmode="numeric" value="${durationMin}" min="${minStintMin}" max="${maxStintMin}" aria-label="${tr('lblStintMinutes', 'Stint minutes')}"
@@ -1091,9 +1093,11 @@ window.renderPreview = function() {
     const raceTimeMs = window.config ? (window.config.raceMs || 0) : 0;
     const diffMs = (totalDrive + totalPit) - raceTimeMs;
     const diffClass = Math.abs(diffMs) <= 60000 ? 'text-neon' : 'text-red-400';
+    const totalLaps = typeof window.lapsForMs === 'function' ? window.lapsForMs(totalDrive) : null;
+    const lapsTotalTxt = totalLaps != null ? ` · <b class="text-ice">≈${totalLaps}${window.config && window.config.raceLaps ? '/' + window.config.raceLaps : ''} ${window.t ? (window.t('lapsShort') !== 'lapsShort' ? window.t('lapsShort') : 'laps') : 'laps'}</b>` : '';
     const totalBar = `
         <div class="bg-navy-800 p-2 rounded border border-gray-700 text-[11px] text-gray-400 flex justify-between items-center" style="margin-top:2px">
-            <span>${window.t ? window.t('driveNoun') : 'Drive'}: <b class="text-white">${(totalDrive/60000).toFixed(0)}m</b> + ${window.t ? window.t('pitNoun') : 'Pit'}: <b class="text-gold">${(totalPit/60000).toFixed(0)}m</b></span>
+            <span>${window.t ? window.t('driveNoun') : 'Drive'}: <b class="text-white">${(totalDrive/60000).toFixed(0)}m</b> + ${window.t ? window.t('pitNoun') : 'Pit'}: <b class="text-gold">${(totalPit/60000).toFixed(0)}m</b>${lapsTotalTxt}</span>
             <span class="${diffClass} font-bold">= ${((totalDrive+totalPit)/60000).toFixed(0)}m ${diffMs !== 0 ? '(' + (diffMs > 0 ? '+' : '') + (diffMs/60000).toFixed(0) + 'm)' : '✅'}</span>
         </div>
     `;
@@ -1657,161 +1661,7 @@ window.closeSaveStrategyModal = function() {
     if (modal) modal.classList.add('hidden');
 };
 
-// החלף את הפונקציה performStrategySave ב-js/ui.js בקוד הזה:
-window.performStrategySave = async function() {
-    const name = document.getElementById('saveStrategyName').value || 'Untitled';
-    const visibility = document.querySelector('input[name="strategyVisibility"]:checked')?.value || 'private';
-    
-    if (!window.cachedStrategy) return window.showToast(window.tt('No strategy generated yet!'), 'warning');
 
-    // הכנת הנתונים לשליחה לשרת
-    const payload = {
-        name: name,
-        isPublic: visibility === 'public',
-        config: window.config,
-        drivers: window.drivers,
-        timeline: window.cachedStrategy.timeline,
-        driverSchedule: window.previewData.driverSchedule, // חשוב לתצוגה
-        userId: window.myId || 'anonymous', // מזהה משתמש אם קיים
-        deviceId: sessionStorage.getItem('strateger_host_id') // מזהה מכשיר
-    };
-
-    const btn = document.querySelector('#saveStrategyModal button.bg-ice');
-    const originalText = btn ? btn.innerText : 'Save';
-    if (btn) { btn.innerText = "Saving..."; btn.disabled = true; }
-
-    try {
-        // שליחה לקובץ save-strategy.js דרך השרת
-        const response = await fetch(window.APP_CONFIG.API_BASE + '/.netlify/functions/save-strategy', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-
-        const result = await response.json();
-
-        if (!result.success) {
-            throw new Error(result.error || 'Server error');
-        }
-        
-        window.showToast('☁️ Strategy saved to cloud!', 'success');
-        window.closeSaveStrategyModal();
-
-    } catch (e) {
-        console.error("Save failed:", e);
-        window.showToast('Cloud save failed: ' + e.message, 'error');
-        
-        // אופציונלי: גיבוי ל-LocalStorage אם השרת נכשל
-        // const saved = JSON.parse(localStorage.getItem('strateger_strategies') || '[]');
-        // saved.push(payload);
-        // localStorage.setItem('strateger_strategies', JSON.stringify(saved));
-    } finally {
-        if (btn) { btn.innerText = originalText; btn.disabled = false; }
-    }
-};
-
-// ==========================================
-// 📚 STRATEGY LIBRARY (DB Loaded)
-// ==========================================
-
-window.loadStrategyLibrary = async function() {
-    const modal = document.getElementById('strategyModal');
-    const list = document.getElementById('strategyList');
-    
-    if (modal) modal.classList.remove('hidden');
-    if (list) list.innerHTML = '<div class="text-center text-gray-500 p-4">Loading strategies from Cloud... <span class="animate-spin inline-block">⏳</span></div>';
-
-    let strategies = [];
-
-    // 1. נסה לטעון מהשרת (DB)
-    try {
-        const deviceId = sessionStorage.getItem('strateger_host_id') || '';
-        const response = await fetch(`/.netlify/functions/get-strategies?deviceId=${deviceId}`); 
-        const result = await response.json();
-
-        if (result.success && Array.isArray(result.strategies)) {
-            // המרת הנתונים מהפורמט של DB לפורמט המקומי
-            strategies = result.strategies.map(s => ({
-                name: s.name,
-                config: s.config || {
-                    duration: (s.race_duration_ms || 0) / 3600000,
-                    reqStops: s.required_stops || 0,
-                    minStint: s.config?.minStint || 0,
-                    maxStint: s.config?.maxStint || 0,
-                    pitTime: s.config?.pitTime || 0,
-                    allowDouble: s.config?.allowDouble || false,
-                    useSquads: s.config?.useSquads || false,
-                    ...s.config
-                },
-                drivers: s.drivers || [],
-                timeline: s.timeline || [],
-                driverSchedule: s.driver_schedule || [],
-                timestamp: s.created_at || new Date().toISOString(),
-                type: s.is_public ? 'public' : 'private',
-                id: s.id
-            }));
-            console.log("Loaded from Cloud:", strategies.length);
-        } else {
-            console.warn("Cloud load returned empty or error, falling back to local.");
-            throw new Error(result.error || "Unknown error");
-        }
-
-    } catch (e) {
-        console.error("Could not load from DB:", e);
-        
-        // 2. במקרה של שגיאה או אם אין אינטרנט - טען מה-LocalStorage
-        if (list) list.innerHTML = '<div class="text-center text-yellow-500 p-2 text-xs">Offline / DB Error - Showing Local Files</div>';
-        try {
-            const localData = JSON.parse(localStorage.getItem('strateger_strategies') || '[]');
-            strategies = localData; 
-        } catch (localErr) {
-            console.error("Local load error:", localErr);
-        }
-    }
-    
-    // שמירת האסטרטגיות במשתנה גלובלי לשימוש ב-applyStrategy
-    window.currentStrategies = strategies;
-    
-    // שליחה לפונקציית הרינדור
-    window.renderStrategyList(strategies);
-};
-
-window.renderStrategyList = function(strategies) {
-    const list = document.getElementById('strategyList');
-    if (!list) return;
-
-    if (strategies.length === 0) {
-        list.innerHTML = `
-            <div class="text-center py-8 opacity-50">
-                <div class="text-4xl mb-2">📂</div>
-                <div class="text-sm">${window.tt('No saved strategies found.')}</div>
-            </div>`;
-        return;
-    }
-
-    // מיון לפי תאריך (החדש ביותר למעלה)
-    strategies.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-    list.innerHTML = strategies.map((s, index) => `
-        <div class="bg-navy-800 p-3 rounded border border-gray-700 flex justify-between items-center mb-2 hover:border-ice transition group">
-            <div class="flex-1 cursor-pointer" onclick="window.applyStrategy(${index})">
-                <div class="font-bold text-white text-sm flex items-center gap-2">
-                    ${s.name}
-                    ${s.type === 'public' ? '<span class="text-[11px] bg-green-900 text-green-300 px-1 rounded">PUB</span>' : ''}
-                </div>
-                <div class="text-[11px] text-gray-400 mt-1">
-                    📅 ${new Date(s.timestamp).toLocaleString()} | 
-                    ⏱️ ${(s.config.duration || 0)}h | 
-                    🛑 ${s.config.reqStops || 0} Stops
-                </div>
-            </div>
-            <div class="flex gap-2">
-                <button onclick="window.applyStrategy(${index})" class="bg-ice/20 text-ice px-3 py-1.5 rounded text-xs font-bold hover:bg-ice/40 transition">${window.tt('Load')}</button>
-                <button onclick="window.deleteStrategy(${index})" class="text-gray-600 hover:text-red-400 text-xs px-2 transition"><i class="fas fa-trash"></i></button>
-            </div>
-        </div>
-    `).join('');
-};
 
 window.applyStrategy = function(index) {
     try {
@@ -1864,6 +1714,11 @@ window.applyStrategy = function(index) {
             setVal('minDriverTotal', strategy.config.minDriverTotal);
             setVal('maxDriverTotal', strategy.config.maxDriverTotal);
             setVal('fuelTime', strategy.config.fuel);
+            setVal('raceLaps', strategy.config.raceLaps);
+            setVal('avgLapSec', strategy.config.avgLapSec);
+            setVal('kartChangeInterval', strategy.config.kartChangeIntervalMin);
+            if (typeof window._setRaceTarget === 'function') window._setRaceTarget(strategy.config.raceTarget || 'time', true);
+            if (typeof window._normalizeOffFields === 'function') window._normalizeOffFields();
             
             // עדכון צ'קבוקסים
             const setCheck = (id, val) => {
@@ -1909,23 +1764,6 @@ window.applyStrategy = function(index) {
     }
 };
 
-window.deleteStrategy = function(index) {
-    window.showConfirmModal(
-        '🗑️ Delete Strategy',
-        'This action cannot be undone.',
-        'Delete permanently?',
-        () => {
-            try {
-                const strategies = JSON.parse(localStorage.getItem('strateger_strategies') || '[]');
-                strategies.splice(index, 1);
-                localStorage.setItem('strateger_strategies', JSON.stringify(strategies));
-                window.loadStrategyLibrary();
-            } catch (e) {
-                console.error(e);
-            }
-        }
-    );
-};
 
 window.closeStrategyModal = function() {
     const modal = document.getElementById('strategyModal');
@@ -3161,6 +2999,8 @@ window.renderMiniStintChart = function(containerId, stints, maxMs) {
 const _origRenderPreview = window.renderPreview;
 window.renderPreview = function() {
     if (_origRenderPreview) _origRenderPreview.call(this);
+    if (typeof window.renderComplianceBanner === 'function') window.renderComplianceBanner();
+    if (typeof window._markStrategyDirty === 'function') window._markStrategyDirty();
     // Update mini chart
     if (window.previewData?.timeline) {
         const stints = window.previewData.timeline.filter(t => t.type === 'stint');
@@ -3279,283 +3119,6 @@ window.launchSelectedDemo = function() {
     // Re-run sim and open preview
     if (typeof window.runSim === 'function') window.runSim();
     setTimeout(() => window.generatePreview && window.generatePreview(false, true), 100);
-};
-
-// ==========================================
-// 🔧 LIVE-ADJUST MODAL
-// ==========================================
-
-window._adjustScenario = 'race';
-window._pendingAdjustment = null;
-
-const _ADJUST_SCENARIOS = {
-    race: {
-        label: 'Mid-Race',
-        controls: [
-            { id: 'adj_elapsedRace', label: 'Elapsed race time (%)', type: 'range', min: 0, max: 95, step: 5, default: 50 },
-            { id: 'adj_extraStops', label: 'Extra pit stops', type: 'range', min: 0, max: 5, step: 1, default: 0 },
-            { id: 'adj_driverOut', label: 'Driver unavailable (index)', type: 'range', min: -1, max: 5, step: 1, default: -1 },
-        ]
-    },
-    qualify: {
-        label: 'Qualifying',
-        controls: [
-            { id: 'adj_qElapsed', label: 'Session elapsed (%)', type: 'range', min: 0, max: 95, step: 5, default: 30 },
-            { id: 'adj_qExtraRun', label: 'Extra qualifying run', type: 'range', min: 0, max: 3, step: 1, default: 0 },
-        ]
-    },
-    safety: {
-        label: 'Safety Car',
-        controls: [
-            { id: 'adj_scDuration', label: 'Safety car duration (min)', type: 'range', min: 0, max: 30, step: 2, default: 10 },
-            { id: 'adj_scElapsed', label: 'Occurs at race % elapsed', type: 'range', min: 5, max: 90, step: 5, default: 40 },
-        ]
-    },
-    weather: {
-        label: 'Weather Change',
-        controls: [
-            { id: 'adj_rainAt', label: 'Rain starts at race % elapsed', type: 'range', min: 5, max: 90, step: 5, default: 50 },
-            { id: 'adj_rainDuration', label: 'Rain duration (min)', type: 'range', min: 0, max: 60, step: 5, default: 20 },
-            { id: 'adj_wetPitExtra', label: 'Extra wet pit time (s)', type: 'range', min: 0, max: 120, step: 10, default: 30 },
-        ]
-    }
-};
-
-window.openLiveAdjustModal = function() {
-    const modal = document.getElementById('liveAdjustModal');
-    if (!modal) return;
-    modal.classList.remove('hidden');
-    window.setAdjustScenario(window._adjustScenario || 'race');
-};
-
-window.closeLiveAdjustModal = function() {
-    const modal = document.getElementById('liveAdjustModal');
-    if (modal) modal.classList.add('hidden');
-};
-
-window.setAdjustScenario = function(scenario) {
-    window._adjustScenario = scenario;
-    // Update tab styles
-    const tabIds = ['race', 'qualify', 'safety', 'weather'];
-    const activeClasses = { race: 'active-race', qualify: 'active-qualify', safety: 'active-safety', weather: 'active-weather' };
-    tabIds.forEach(s => {
-        const tab = document.getElementById('adjTab_' + s);
-        if (!tab) return;
-        tab.className = 'scenario-tab';
-        if (s === scenario) tab.classList.add(activeClasses[s]);
-    });
-    // Render controls
-    const container = document.getElementById('adjustScenarioControls');
-    if (!container) return;
-    const def = _ADJUST_SCENARIOS[scenario];
-    if (!def) return;
-    container.innerHTML = def.controls.map(ctrl => `
-        <div class="space-y-1">
-            <div class="flex justify-between items-center">
-                <label class="text-[11px] text-gray-400 font-bold uppercase tracking-wide">${ctrl.label}</label>
-                <span id="${ctrl.id}_val" class="text-xs font-mono text-ice font-bold">${ctrl.default}${ctrl.id.includes('elapsed') || ctrl.id.includes('At') ? '%' : ctrl.id.includes('Duration') || ctrl.id.includes('duration') ? 'm' : ''}</span>
-            </div>
-            <input type="range" id="${ctrl.id}" min="${ctrl.min}" max="${ctrl.max}" step="${ctrl.step}" value="${ctrl.default}"
-                oninput="window._onAdjustSlider('${ctrl.id}', this.value)"
-                class="w-full accent-cyan-400 h-1.5 rounded appearance-none cursor-pointer bg-navy-800">
-        </div>
-    `).join('');
-    window._computeAdjustOutcome();
-};
-
-window._onAdjustSlider = function(id, val) {
-    const display = document.getElementById(id + '_val');
-    if (display) {
-        const unit = id.includes('elapsed') || id.includes('At') ? '%' : id.includes('Duration') || id.includes('duration') ? 'm' : '';
-        display.textContent = val + unit;
-    }
-    window._computeAdjustOutcome();
-};
-
-window._computeAdjustOutcome = function() {
-    if (!window.previewData?.timeline || !window.config) {
-        window._setAdjustOutcome({ pits: '—', stint: '—', drive: '—', risk: '—', pct: { pits: 60, stint: 60, drive: 90, risk: 10 }, classes: { pits: 'safe', stint: 'safe', drive: 'safe', risk: 'safe' }, deltas: { pits: '—', stint: '—', drive: '—', risk: '—' }, deltaClasses: { pits: 'delta-neutral', stint: 'delta-neutral', drive: 'delta-neutral', risk: 'delta-neutral' } });
-        return;
-    }
-    const sc = window._adjustScenario;
-    const stints = window.previewData.timeline.filter(t => t.type === 'stint');
-    const pits = window.previewData.timeline.filter(t => t.type === 'pit');
-    const basePits = pits.length;
-    const basePitMs = window.config.pitTime * 1000 || 120000;
-    const baseAvgStint = stints.length > 0 ? stints.reduce((a, s) => a + s.duration, 0) / stints.length : 0;
-    const baseDrive = stints.reduce((a, s) => a + s.duration, 0);
-    const raceMs = window.config.raceMs || 0;
-
-    let adjPits = basePits, adjStint = baseAvgStint, adjDrive = baseDrive, riskPct = 10;
-
-    if (sc === 'race') {
-        const extra = parseInt(document.getElementById('adj_extraStops')?.value || 0);
-        const driverOut = parseInt(document.getElementById('adj_driverOut')?.value || -1);
-        adjPits = basePits + extra;
-        adjDrive = baseDrive - extra * basePitMs;
-        adjStint = adjPits > 0 ? adjDrive / (adjPits + 1) : adjDrive;
-        riskPct = driverOut >= 0 ? 55 : extra > 2 ? 40 : 15;
-    } else if (sc === 'safety') {
-        const scMin = parseInt(document.getElementById('adj_scDuration')?.value || 0);
-        const scMs = scMin * 60000;
-        adjDrive = Math.max(0, baseDrive - scMs);
-        adjStint = stints.length > 0 ? adjDrive / stints.length : 0;
-        riskPct = scMin > 15 ? 50 : scMin > 5 ? 30 : 10;
-        adjPits = scMin > 5 ? Math.max(0, basePits - 1) : basePits;
-    } else if (sc === 'weather') {
-        const extraSec = parseInt(document.getElementById('adj_wetPitExtra')?.value || 0);
-        const extraMs = extraSec * 1000;
-        adjPits = Math.max(0, basePits - 2); // typically go longer stints in rain
-        adjDrive = baseDrive + extraMs * adjPits;
-        adjStint = adjPits > 0 ? adjDrive / (adjPits + 1) : adjDrive;
-        riskPct = extraSec > 60 ? 65 : extraSec > 20 ? 35 : 15;
-    } else if (sc === 'qualify') {
-        adjPits = basePits;
-        adjStint = baseAvgStint;
-        adjDrive = baseDrive;
-        riskPct = 5;
-    }
-
-    const fmtMin = ms => `${Math.round(ms / 60000)}m`;
-    const deltaPits = adjPits - basePits;
-    const deltaStint = adjStint - baseAvgStint;
-    const deltaDrive = adjDrive - baseDrive;
-
-    const pitsBarPct = Math.min(100, Math.round((adjPits / Math.max(1, basePits + 5)) * 100));
-    const stintBarPct = Math.min(100, Math.round((adjStint / (raceMs / 2)) * 100));
-    const driveBarPct = raceMs > 0 ? Math.min(100, Math.round((adjDrive / raceMs) * 100)) : 80;
-
-    window._pendingAdjustment = { sc, adjPits, adjStint, adjDrive, riskPct, raceMs };
-
-    window._setAdjustOutcome({
-        pits: String(adjPits),
-        stint: fmtMin(adjStint),
-        drive: fmtMin(adjDrive),
-        risk: riskPct > 50 ? '⚠️ High' : riskPct > 25 ? '🟡 Med' : '✅ Low',
-        pct: { pits: pitsBarPct, stint: stintBarPct, drive: driveBarPct, risk: riskPct },
-        classes: {
-            pits: deltaPits > 2 ? 'risk' : deltaPits > 0 ? 'warn' : 'safe',
-            stint: deltaStint < -600000 ? 'risk' : deltaStint < 0 ? 'warn' : 'safe',
-            drive: deltaDrive < -1800000 ? 'risk' : deltaDrive < 0 ? 'warn' : 'safe',
-            risk: riskPct > 50 ? 'risk' : riskPct > 25 ? 'warn' : 'safe'
-        },
-        deltas: {
-            pits: deltaPits !== 0 ? (deltaPits > 0 ? '+' : '') + deltaPits : '—',
-            stint: deltaStint !== 0 ? (deltaStint > 0 ? '+' : '') + Math.round(deltaStint / 60000) + 'm' : '—',
-            drive: deltaDrive !== 0 ? (deltaDrive > 0 ? '+' : '') + Math.round(deltaDrive / 60000) + 'm' : '—',
-            risk: ''
-        },
-        deltaClasses: {
-            pits: deltaPits > 0 ? 'delta-negative' : deltaPits < 0 ? 'delta-positive' : 'delta-neutral',
-            stint: deltaStint < -300000 ? 'delta-negative' : deltaStint > 300000 ? 'delta-positive' : 'delta-neutral',
-            drive: deltaDrive < -600000 ? 'delta-negative' : deltaDrive > 600000 ? 'delta-positive' : 'delta-neutral',
-            risk: riskPct > 50 ? 'delta-negative' : 'delta-neutral'
-        }
-    });
-
-    // Show recommendation
-    const recBox = document.getElementById('adjustRecommendation');
-    const recText = document.getElementById('adjustRecommendationText');
-    if (recBox && recText) {
-        let rec = '';
-        if (sc === 'safety' && parseInt(document.getElementById('adj_scDuration')?.value || 0) > 5) {
-            rec = 'Use the safety car window to pit early — saves time vs. a free-air stop later.';
-        } else if (sc === 'weather' && parseInt(document.getElementById('adj_wetPitExtra')?.value || 0) > 30) {
-            rec = 'Consider delaying your next stop until conditions improve to minimise wet-tyre time in the pits.';
-        } else if (sc === 'race' && parseInt(document.getElementById('adj_extraStops')?.value || 0) > 1) {
-            rec = 'Extra stops cost track position. Only worthwhile if the pace delta exceeds the time loss per stop.';
-        } else {
-            recBox.classList.add('hidden');
-            return;
-        }
-        recText.textContent = rec;
-        recBox.classList.remove('hidden');
-    }
-};
-
-window._setAdjustOutcome = function(data) {
-    const ids = ['Pits', 'Stint', 'Drive', 'Risk'];
-    ids.forEach(key => {
-        const lk = key.toLowerCase();
-        const outEl = document.getElementById('ladjOut' + key);
-        const barEl = document.getElementById('ladjBar' + key);
-        const deltaEl = document.getElementById('ladjDelta' + key);
-        if (outEl) outEl.textContent = data[lk] || '—';
-        if (barEl) {
-            barEl.style.width = (data.pct[lk] || 0) + '%';
-            barEl.className = 'outcome-bar-fill ' + (data.classes[lk] || 'safe');
-        }
-        if (deltaEl) {
-            deltaEl.textContent = data.deltas?.[lk] || '—';
-            deltaEl.className = 'delta-badge ' + (data.deltaClasses?.[lk] || 'delta-neutral');
-        }
-    });
-};
-
-window.applyLiveAdjustment = function() {
-    if (!window._pendingAdjustment || !window.previewData?.timeline) {
-        window.closeLiveAdjustModal();
-        return;
-    }
-    const { sc, adjPits, adjStint, adjDrive, raceMs } = window._pendingAdjustment;
-    const stints = window.previewData.timeline.filter(t => t.type === 'stint');
-    const pits = window.previewData.timeline.filter(t => t.type === 'pit');
-
-    if (sc === 'safety' || sc === 'weather' || sc === 'race') {
-        // Redistribute drive time evenly across existing stints
-        if (stints.length > 0 && adjDrive > 0) {
-            const perStint = Math.round(adjDrive / stints.length / 1000) * 1000;
-            stints.forEach((s, i) => {
-                s.duration = i < stints.length - 1 ? perStint : adjDrive - perStint * (stints.length - 1);
-            });
-        }
-        // Recalculate timeline times
-        if (typeof window.recalculateTimelineTimes === 'function') window.recalculateTimelineTimes();
-    }
-
-    window._pendingAdjustment = null;
-    window.closeLiveAdjustModal();
-
-    // Show outcome in preview panel
-    const panel = document.getElementById('previewAdjustPanel');
-    const label = document.getElementById('adjustScenarioLabel');
-    if (panel) panel.classList.remove('hidden', 'collapsed');
-    if (label) {
-        const names = { race: '🏎️ Race', qualify: '⏱️ Qualify', safety: '🟡 Safety Car', weather: '🌧️ Weather' };
-        label.textContent = names[sc] || sc;
-        label.className = 'delta-badge ' + (sc === 'race' ? 'delta-negative' : sc === 'qualify' ? 'delta-neutral' : sc === 'safety' ? 'delta-neutral' : 'delta-positive');
-    }
-    // Sync outcome bars in preview panel
-    if (stints.length > 0) {
-        const adjDriveVal = stints.reduce((a, s) => a + s.duration, 0);
-        const adjStintVal = adjDriveVal / stints.length;
-        const pitCount = pits.length;
-        const fmtMin = ms => `${Math.round(ms / 60000)}m`;
-        const fields = [
-            { key: 'Pits', val: String(pitCount), pct: Math.min(100, Math.round(pitCount / 20 * 100)), cls: 'safe', delta: '—', deltaCls: 'delta-neutral' },
-            { key: 'Stint', val: fmtMin(adjStintVal), pct: Math.min(100, Math.round(adjStintVal / (raceMs / 2) * 100)), cls: 'safe', delta: '—', deltaCls: 'delta-neutral' },
-            { key: 'Drive', val: fmtMin(adjDriveVal), pct: raceMs > 0 ? Math.min(100, Math.round(adjDriveVal / raceMs * 100)) : 80, cls: 'safe', delta: '—', deltaCls: 'delta-neutral' }
-        ];
-        fields.forEach(f => {
-            const out = document.getElementById('adjOut' + f.key);
-            const bar = document.getElementById('adjBar' + f.key);
-            const dlt = document.getElementById('adjDelta' + f.key);
-            if (out) out.textContent = f.val;
-            if (bar) { bar.style.width = f.pct + '%'; bar.className = 'outcome-bar-fill ' + f.cls; }
-            if (dlt) { dlt.textContent = f.delta; dlt.className = 'delta-badge ' + f.deltaCls; }
-        });
-    }
-
-    window.renderPreview();
-    if (typeof window.showToast === 'function') window.showToast('✅ Scenario applied to strategy', 'success', 2500);
-};
-
-window._togglePreviewAdjustPanel = function() {
-    const panel = document.getElementById('previewAdjustPanel');
-    const icon = document.getElementById('adjustPanelIcon');
-    if (!panel) return;
-    panel.classList.toggle('collapsed');
-    if (icon) icon.style.transform = panel.classList.contains('collapsed') ? 'rotate(-90deg)' : 'rotate(0deg)';
 };
 
 // ==========================================

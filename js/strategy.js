@@ -139,10 +139,25 @@ window.calculateStintDurations = function(config) {
         derivedStops = Math.max(derivedStops, mandatoryChanges);
     }
 
+    // The required stops are a minimum. If the stint cap (max stint / fuel tank) cannot cover the race
+    // with that few stops, add the stops the cap forces instead of quietly dropping race time.
+    const capMs = Math.min(config.maxStint > 0 ? config.maxStint * 60000 : Infinity, config.fuel > 0 ? config.fuel * 60000 : Infinity);
+    const isLapRace = config.raceTarget === 'laps' && config.avgLapSec > 0 && config.raceLaps > 0;
+    const lapDriveMs = isLapRace ? config.raceLaps * config.avgLapSec * 1000 : 0;
+    if (capMs !== Infinity) {
+        for (let i = 0; i < 200; i++) {
+            const drive = isLapRace ? lapDriveMs : raceMs - derivedStops * pitTimeMs;
+            const needed = Math.max(0, Math.ceil(drive / capMs - 1e-9) - 1);
+            if (needed <= derivedStops) break;
+            derivedStops = needed;
+        }
+    }
+
     // NLE with no required stops: treat as single stint covering the full race
     const totalStints = Math.max(1, derivedStops + 1);
     const totalPitTime = derivedStops * pitTimeMs;
-    const totalNetDriveTime = Math.max(raceMs - totalPitTime, raceMs * 0.5);
+    // A lap race fixes the driving (laps x lap time); pit time is added on top of it.
+    const totalNetDriveTime = isLapRace ? lapDriveMs : Math.max(raceMs - totalPitTime, raceMs * 0.5);
 
     const closedStartMs = (config.closedStart || 0) * 60000;
     const closedEndMs = (config.closedEnd || 0) * 60000;
@@ -566,7 +581,72 @@ window.scheduleRunSim = function(delayMs) {
     _runSimTimer = setTimeout(() => { window.runSim(); }, delayMs || 0);
 };
 
+// ---------- Race target: fixed time, or a fixed number of laps ----------
+// In laps mode the race length is estimated from the lap count and the average lap time, plus the
+// time spent in the pits. The result is written into #raceDuration so the rest of the app, which
+// only knows durations, keeps working unchanged.
+window.isLapRace = function() {
+    return (document.getElementById('raceTarget')?.value || 'time') === 'laps';
+};
+
+window.getAvgLapMs = function() {
+    const sec = parseFloat(document.getElementById('avgLapSec')?.value) || (window.config && window.config.avgLapSec) || 0;
+    return sec > 0 ? sec * 1000 : 0;
+};
+
+window._setRaceTarget = function(mode, silent) {
+    mode = mode === 'laps' ? 'laps' : 'time';
+    const hidden = document.getElementById('raceTarget');
+    if (hidden) hidden.value = mode;
+    const isLaps = mode === 'laps';
+    document.getElementById('targetTimeBtn')?.classList.toggle('is-on', !isLaps);
+    document.getElementById('targetLapsBtn')?.classList.toggle('is-on', isLaps);
+    document.getElementById('lapTargetBlock')?.classList.toggle('hidden', !isLaps);
+    const dur = document.getElementById('raceDuration');
+    if (dur) dur.readOnly = isLaps;
+    document.getElementById('durationBlock')?.classList.toggle('is-derived', isLaps);
+    if (!silent && typeof window.runSim === 'function') window.runSim();
+};
+
+window._syncRaceTarget = function() {
+    if (!window.isLapRace()) return;
+    const laps = parseInt(document.getElementById('raceLaps')?.value) || 0;
+    const lapMs = window.getAvgLapMs();
+    const dur = document.getElementById('raceDuration');
+    const summary = document.getElementById('lapTargetSummary');
+    if (!laps || !lapMs) { if (summary) summary.textContent = ''; return; }
+    const pitMs = (parseInt(document.getElementById('minPitTime')?.value) || 0) * 1000;
+    const reqStops = parseInt(document.getElementById('reqPitStops')?.value) || 0;
+    const kartMin = parseFloat(document.getElementById('kartChangeInterval')?.value) || 0;
+    const driveMs = laps * lapMs;
+    // Kart-change pits can add stops on top of the required ones, so settle the stop count first.
+    let stops = reqStops, totalMs = driveMs + stops * pitMs;
+    for (let i = 0; i < 4 && kartMin > 0; i++) {
+        const forced = Math.max(0, Math.floor(totalMs / (kartMin * 60000)) - 1);
+        const next = Math.max(reqStops, forced);
+        if (next === stops) break;
+        stops = next; totalMs = driveMs + stops * pitMs;
+    }
+    const hours = totalMs / 3600000;
+    if (dur) dur.value = String(Math.round(hours * 10000) / 10000);
+    if (summary) {
+        const h = Math.floor(totalMs / 3600000), m = Math.round((totalMs % 3600000) / 60000);
+        const lapTxt = Math.floor(lapMs / 60000) + ':' + String(((lapMs / 1000) % 60).toFixed(1)).padStart(4, '0');
+        summary.textContent = '≈ ' + h + 'h ' + String(m).padStart(2, '0') + 'm  ·  ' + laps + ' × ' + lapTxt + ' (' + (driveMs / 60000).toFixed(0) + ' min driving)'
+            + (pitMs ? ' + ' + stops + ' × ' + (pitMs / 1000) + 's pit' : '');
+    }
+};
+
+/** Laps covered by a span of time at the planned average lap; null when the race is not lap-based. */
+window.lapsForMs = function(ms) {
+    const lapMs = window.getAvgLapMs();
+    if (!(window.isLapRace() || (window.config && window.config.raceTarget === 'laps')) || !lapMs) return null;
+    return Math.round(ms / lapMs);
+};
+
 window.runSim = function() {
+    if (typeof window._normalizeOffFields === 'function') window._normalizeOffFields();
+    window._syncRaceTarget();
     const durationHours = parseFloat(document.getElementById('raceDuration').value) || 12;
 
     // Read raw string values so we can distinguish "empty/zero" from "filled"
@@ -586,8 +666,8 @@ window.runSim = function() {
     // any param missing                  → 'noLimitEndurance'
     const _hasStops   = reqStops > 0;
     const _hasMaxSt   = maxStintMin > 0;
-    const _hasPitT    = pitTimeSec > 0;
-    const _isNLE      = !_hasStops || !_hasMaxSt || !_hasPitT;
+    // The minimum pit time is optional (a fast pit can be switched off), so it no longer decides the race type.
+    const _isNLE      = !_hasStops || !_hasMaxSt;
     const raceType    = _isNLE ? 'noLimitEndurance' : (durationHours <= 2 ? 'sprint' : 'endurance');
 
     // Sync per-driver stamina visibility (show when maxStint = 0)
@@ -679,6 +759,9 @@ window.runSim = function() {
         totalNetDriveTime,
         totalPitTime: totalPitTimeMs,
         raceType,                // 'sprint' | 'endurance' | 'noLimitEndurance'
+        raceTarget: window.isLapRace() ? 'laps' : 'time',
+        raceLaps: window.isLapRace() ? (parseInt(document.getElementById('raceLaps')?.value) || 0) : 0,
+        avgLapSec: parseFloat(document.getElementById('avgLapSec')?.value) || 0,
         buffer: releaseBufferSec,
         pitNotifyLeadMin,
         inLapSec: inLapSecRaw,
@@ -709,6 +792,13 @@ window.runSim = function() {
 
     const stintDurations = durationResult.durations;
     const totalStintTime = stintDurations.reduce((a, b) => a + b, 0);
+    if (config.raceTarget === 'laps') {
+        // Stops forced by the stint cap lengthen a lap race, so the race clock follows the real plan.
+        const stopCount = durationResult.derivedStops != null ? durationResult.derivedStops : reqStops;
+        config.totalNetDriveTime = totalStintTime;
+        config.raceMs = totalStintTime + stopCount * pitTimeMs;
+        config.duration = config.raceMs / 3600000;
+    }
     const timeDiff = Math.abs(totalStintTime - totalNetDriveTime);
     
     if (timeDiff > 60000) { 
@@ -752,6 +842,11 @@ window.runSim = function() {
     }
 
     if (typeof window.applyRaceRules === 'function') window.applyRaceRules(window.previewData.timeline, config);
+    // Re-deal driver assignments that break rotation / driver-total rules, then record the verdict.
+    if (typeof window.repairAssignments === 'function' && window.repairAssignments(window.previewData.timeline, config)) {
+        window.recalculateDriverStatsFromTimeline();
+    }
+    window._compliance = typeof window.checkCompliance === 'function' ? window.checkCompliance(window.previewData.timeline, config) : null;
 
     const stints = result.timeline.filter(t => t.type === 'stint');
     const pits = result.timeline.filter(t => t.type === 'pit');
@@ -783,7 +878,7 @@ window.runSim = function() {
     let pitClosedInfo = '';
     if (closedEndMin > 0 && pits.length > 0) {
         const lastPit = pits[pits.length - 1];
-        const deadlineMs = raceMs - (closedEndMin * 60000);
+        const deadlineMs = config.raceMs - (closedEndMin * 60000);
         const lastPitTime = lastPit.raceTimeAtEntry || 0;
         const marginMin = ((deadlineMs - lastPitTime) / 60000).toFixed(0);
         
@@ -835,6 +930,11 @@ window.runSim = function() {
     if (resEl && window._ruleMessages && window._ruleMessages.length && typeof window._ruleMessagesHtml === 'function') {
         resEl.innerHTML += '<br>' + window._ruleMessagesHtml();
     }
+    if (window._compliance && window._compliance.failing.length && resEl) {
+        resEl.innerHTML += '<br><span class="rule-status-bad"><i class="fas fa-exclamation-triangle"></i> '
+            + window._compliance.failing.length + ' ' + (window.tt ? window.tt('rule(s) not met') : 'rule(s) not met') + ': '
+            + window._compliance.failing.map(function(f) { return window._escHtml(f.text); }).join(' · ') + '</span>';
+    }
     if (typeof window.renderRuleStatus === 'function') window.renderRuleStatus();
     window._setStartBtnState(true);
 };
@@ -857,6 +957,21 @@ window.initRace = function() {
     if (!window.cachedStrategy) {
         window.runSim();
         if (!window.cachedStrategy) return window.showToast(window.tt('Please generate a strategy first!'), 'warning');
+    }
+
+    // Warn before starting a plan that breaks rules (the user can still go ahead).
+    if (!window._complianceAcknowledged && !(window.state && window.state.isRunning) && typeof window.checkCompliance === 'function') {
+        const verdict = window.checkCompliance(window.previewData && window.previewData.timeline, window.config);
+        if (verdict.failing.length) {
+            const list = verdict.failing.map(f => '• ' + f.text).join('\n');
+            window.showConfirmModal(
+                '⚠️ ' + verdict.failing.length + ' ' + (window.tt ? window.tt('rule(s) not met') : 'rule(s) not met'),
+                list,
+                (window.tt ? window.tt('Start anyway') : 'Start anyway') + '?',
+                () => { window._complianceAcknowledged = true; try { window.initRace(); } finally { window._complianceAcknowledged = false; } }
+            );
+            return;
+        }
     }
 
     const allowDouble = document.getElementById('allowDouble')?.checked;

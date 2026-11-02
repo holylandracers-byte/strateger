@@ -2235,13 +2235,13 @@ window.translations = {
         "grpPitRules": "Pit rules",
         "grpDriverLimits": "Driver limits",
         "grpAlerts": "Alerts and timing",
-        "rulesIntro": "Optional rules from the organizer. Leave a number at 0 to switch that rule off.",
+        "rulesIntro": "Optional rules from the organizer. Leave a field empty (Off) to switch that rule off.",
         "kartChanges": "Kart changes",
-        "kartChangesShown": "Shown because a key value is 0",
+        "kartChangesShown": "Shown because a key value is off",
         "kartChangeEvery": "Kart change every (min)",
-        "kartChangeHint": "How often the organizer makes you change karts, e.g. 90 for every 90 min. 0 = off.",
-        "offHint": "0 = off.",
-        "numTeamsHint": "Required stops = teams − 1, so each team drives every kart once. 0 = off."
+        "kartChangeHint": "How often the organizer makes you change karts, e.g. 90 for every 90 min. Leave empty to turn off.",
+        "offHint": "Empty = off.",
+        "numTeamsHint": "Required stops = teams − 1, so each team drives every kart once. Leave empty to turn off."
     },
     "he": {
         "menuTeam": "צוות",
@@ -2261,13 +2261,13 @@ window.translations = {
         "grpPitRules": "חוקי פיט",
         "grpDriverLimits": "מגבלות נהגים",
         "grpAlerts": "התראות וזמנים",
-        "rulesIntro": "חוקים אופציונליים מהמארגן. השאירו 0 כדי לכבות חוק.",
+        "rulesIntro": "חוקים אופציונליים מהמארגן. השאירו שדה ריק (כבוי) כדי לכבות חוק.",
         "kartChanges": "החלפות קארט",
-        "kartChangesShown": "מוצג כי ערך מפתח הוא 0",
+        "kartChangesShown": "מוצג כי ערך מפתח כבוי",
         "kartChangeEvery": "החלפת קארט כל (דק')",
-        "kartChangeHint": "באיזו תדירות המארגן מחייב להחליף קארטים, למשל 90 = כל 90 דקות. 0 = כבוי.",
-        "offHint": "0 = כבוי.",
-        "numTeamsHint": "עצירות נדרשות = קבוצות − 1, כך שכל קבוצה נוהגת בכל קארט פעם אחת. 0 = כבוי."
+        "kartChangeHint": "באיזו תדירות המארגן מחייב להחליף קארטים, למשל 90 = כל 90 דקות. השאירו ריק לכיבוי.",
+        "offHint": "ריק = כבוי.",
+        "numTeamsHint": "עצירות נדרשות = קבוצות − 1, כך שכל קבוצה נוהגת בכל קארט פעם אחת. השאירו ריק לכיבוי."
     },
     "fr": {
         "menuTeam": "Équipe",
@@ -2526,7 +2526,7 @@ window.translations = {
         "kartChangesShown": "Εμφανίζεται επειδή μια βασική τιμή είναι 0",
         "kartChangeEvery": "Αλλαγή kart κάθε (λεπτά)",
         "kartChangeHint": "Πόσο συχνά απαιτεί ο διοργανωτής αλλαγή kart, π.χ. 90 = κάθε 90 λεπτά. 0 = off.",
-        "offHint": "0 = off.",
+        "offHint": "Empty = off.",
         "numTeamsHint": "Απαιτούμενες στάσεις = ομάδες − 1, κάθε ομάδα οδηγεί κάθε kart μία φορά. 0 = off."
     }
 };
@@ -3095,8 +3095,19 @@ window._SETTING_FIELDS = [
     ['kartChangeInterval', 'kartChangeInterval'], ['reqExtraPits', 'reqExtraPits'], ['minPitLapSec', 'minPitLapSec'],
     ['numTeams', 'numTeams'], ['minDriverTime', 'minDriverTime'], ['maxDriverTime', 'maxDriverTime'],
     ['releaseBuffer', 'releaseBuffer'], ['pitNotifyLeadMin', 'pitNotifyLeadMin'], ['inLapSec', 'inLapSec'],
-    ['fuelTime', 'fuelTime']
+    ['fuelTime', 'fuelTime'], ['raceTarget', 'raceTarget'], ['raceLaps', 'raceLaps'], ['avgLapSec', 'avgLapSec']
 ];
+// Number fields where an empty box means "rule off" (shown as the Off placeholder).
+window._OFF_FIELD_IDS = ['reqPitStops', 'minStint', 'maxStint', 'minPitTime', 'pitClosedStart', 'pitClosedEnd',
+    'kartChangeInterval', 'reqExtraPits', 'minPitLapSec', 'numTeams', 'inLapSec', 'minDriverTime', 'maxDriverTime', 'fuelTime'];
+// A stored 0 on one of those fields really means off, so show it as empty.
+window._normalizeOffFields = function() {
+    window._OFF_FIELD_IDS.forEach(function(id) {
+        const el = document.getElementById(id);
+        if (el && el.value !== '' && Number(el.value) === 0) el.value = '';
+    });
+};
+document.addEventListener('change', function(e) { if (e.target && window._OFF_FIELD_IDS.indexOf(e.target.id) >= 0) window._normalizeOffFields(); }, true);
 window._SETTING_CHECKS = [['allowDouble', 'allowDouble'], ['trackFuel', 'trackFuel'], ['showWeatherInStints', 'showWeatherInStints']];
 
 // Settings save themselves after every change — silent=true skips the toast.
@@ -3185,12 +3196,19 @@ window.loadSavedSettings = function() {
     const s = all[deviceId];
     if (!s) return;
 
-    const set = (id, val) => { const el = document.getElementById(id); if (el && val !== undefined && val !== null && val !== '') el.value = val; };
+    const set = (id, val) => {
+        const el = document.getElementById(id);
+        if (!el || val === undefined || val === null) return;
+        if (val === '' && window._OFF_FIELD_IDS.indexOf(id) < 0) return;
+        el.value = val;
+    };
     const setChecked = (id, val) => { const el = document.getElementById(id); if (el && val !== undefined) el.checked = !!val; };
 
     window._SETTING_FIELDS.forEach(([key, id]) => set(id, s[key]));
     window._SETTING_CHECKS.forEach(([key, id]) => setChecked(id, s[key]));
     if (typeof window.toggleMaxConsecutive === 'function') window.toggleMaxConsecutive();
+    window._normalizeOffFields();
+    if (typeof window._setRaceTarget === 'function') window._setRaceTarget(document.getElementById('raceTarget')?.value || 'time', true);
 
     if (s.searchType) {
         const radio = document.querySelector(`input[name="searchType"][value="${s.searchType}"]`);

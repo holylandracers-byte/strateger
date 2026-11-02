@@ -3791,145 +3791,6 @@ window.updateProUI = function() {
 // 📄 PDF / IMAGE EXPORT
 // ==========================================
 
-// Waits for layout to settle after DOM/style mutations (renderPreview's innerHTML
-// rebuild, _prepareFullCapture's overflow/height changes) before html2canvas reads
-// scrollWidth/scrollHeight — without this the capture can intermittently measure the
-// pre-mutation layout, producing a cropped or stale-looking export.
-function _waitForLayoutSettle() {
-    return new Promise(resolve => {
-        requestAnimationFrame(() => requestAnimationFrame(resolve));
-    });
-}
-
-// Expand scroll-clipped elements so html2canvas captures the full content,
-// then restore after capture.
-function _prepareFullCapture() {
-    const els = [];
-    const targets = ['#driverScheduleList', '#previewScreen', '#previewInner', '#previewMainCol'];
-    targets.forEach(sel => {
-        const el = document.querySelector(sel);
-        if (!el) return;
-        const saved = {
-            el,
-            overflow: el.style.overflow,
-            overflowY: el.style.overflowY,
-            height: el.style.height,
-            maxHeight: el.style.maxHeight,
-            flex: el.style.flex
-        };
-        els.push(saved);
-        el.style.overflow = 'visible';
-        el.style.overflowY = 'visible';
-        el.style.height = 'auto';
-        el.style.maxHeight = 'none';
-        if (sel === '#driverScheduleList') el.style.flex = 'none';
-    });
-    return els;
-}
-
-function _restoreAfterCapture(saved) {
-    saved.forEach(s => {
-        s.el.style.overflow = s.overflow;
-        s.el.style.overflowY = s.overflowY;
-        s.el.style.height = s.height;
-        s.el.style.maxHeight = s.maxHeight;
-        s.el.style.flex = s.flex;
-    });
-}
-
-window.exportStrategyImage = async function() {
-    if (!window.checkProFeature('pdfExport')) {
-        window.showProGate('Image Export');
-        return;
-    }
-
-    const target = document.querySelector('#previewScreen');
-    if (!target || typeof html2canvas === 'undefined') {
-        window.showToast('Export not available. Please try again.', 'error');
-        return;
-    }
-
-    // Re-render with current data before capturing — without this the export can freeze
-    // whatever times were last drawn, which may be stale (e.g. a pit exit synced new
-    // actual durations into previewData.timeline after this screen's last render).
-    if (typeof window.recalculateTimelineTimes === 'function') window.recalculateTimelineTimes();
-    if (typeof window.renderPreview === 'function') window.renderPreview();
-
-    const saved = _prepareFullCapture();
-    await _waitForLayoutSettle();
-    try {
-        const canvas = await html2canvas(target, {
-            backgroundColor: '#020617',
-            scale: 2,
-            useCORS: true,
-            allowTaint: false,
-            logging: false,
-            width: target.scrollWidth,
-            height: target.scrollHeight
-        });
-        const link = document.createElement('a');
-        link.download = `strateger-strategy-${Date.now()}.png`;
-        link.href = canvas.toDataURL('image/png');
-        link.click();
-    } catch (e) {
-        console.error('Image export failed:', e);
-        window.showToast('Export failed: ' + e.message, 'error');
-    } finally {
-        _restoreAfterCapture(saved);
-    }
-};
-
-window.exportStrategyPdf = async function() {
-    if (!window.checkProFeature('pdfExport')) {
-        window.showProGate('PDF Export');
-        return;
-    }
-
-    const target = document.querySelector('#previewScreen');
-    if (!target || typeof html2canvas === 'undefined' || typeof jspdf === 'undefined') {
-        window.showToast('PDF export not available. Please try again.', 'error');
-        return;
-    }
-
-    const t = window.t || ((k) => k);
-    const btn = event?.target?.closest?.('button');
-    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ' + t('exportingPdf'); }
-
-    // Re-render with current data before capturing — same staleness concern as the
-    // PNG export above (see exportStrategyImage).
-    if (typeof window.recalculateTimelineTimes === 'function') window.recalculateTimelineTimes();
-    if (typeof window.renderPreview === 'function') window.renderPreview();
-
-    const saved = _prepareFullCapture();
-    await _waitForLayoutSettle();
-    try {
-        const canvas = await html2canvas(target, {
-            backgroundColor: '#020617',
-            scale: 2,
-            useCORS: true,
-            allowTaint: false,
-            logging: false,
-            width: target.scrollWidth,
-            height: target.scrollHeight
-        });
-
-        const imgData = canvas.toDataURL('image/png');
-        const { jsPDF } = jspdf;
-        const pdf = new jsPDF({
-            orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
-            unit: 'px',
-            format: [canvas.width / 2, canvas.height / 2]
-        });
-        pdf.addImage(imgData, 'PNG', 0, 0, canvas.width / 2, canvas.height / 2);
-        pdf.save(`strateger-strategy-${Date.now()}.pdf`);
-    } catch (e) {
-        console.error('PDF export failed:', e);
-        window.showToast('PDF export failed: ' + e.message, 'error');
-    } finally {
-        _restoreAfterCapture(saved);
-        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-file-pdf"></i>'; }
-    }
-};
 
 // ==========================================
 // ↩️ UNDO PIT ACTION
@@ -5369,7 +5230,7 @@ ${window._rulesPdfText}
 ---
 
 CURRENT RACE SETUP:
-- Duration: ${config.duration || '?'} hours
+- Duration: ${config.duration || '?'} hours${config.raceTarget === 'laps' ? ` (a ${config.raceLaps}-lap race, average lap ${config.avgLapSec}s)` : ''}
 - Required pit stops: ${config.reqStops || '?'}
 - Min stint: ${config.minStint || '?'} min, Max stint: ${config.maxStint || '?'} min
 - Pit stop time: ${config.pitTime || '?'} seconds
@@ -5378,11 +5239,13 @@ ${(window.previewData?.timeline || []).filter(t => t.type === 'stint').length > 
     ? 'Current strategy: ' + (window.previewData.timeline || []).filter(t => t.type === 'stint').map((s,i) => `Stint ${i+1}: ${s.driverName} ${Math.round(s.duration/60000)}min`).join(', ')
     : ''}
 
-IMPORTANT: Respond in language "${lang}". Give:
+IMPORTANT: Go through the WHOLE document and list EVERY rule that limits the strategy (stops, stint limits, pit windows, driver minimums/maximums, kart changes, laps, red-flag procedures). Do not skip any rule. A rule you cannot express as a setting goes into "notes".
+Respond in language "${lang}". Give:
 1. Key rules that affect strategy (mandatory stops, min/max driver times, pit window restrictions, etc.)
 2. Your strategic recommendation based on the rules
 3. A JSON block, always included, in this exact format (omit any "settings" key the rules do not state; never guess numbers):
-{"settings": {"raceDuration": hours, "reqPitStops": n, "minStint": min, "maxStint": min, "minPitTime": sec, "pitClosedStart": min, "pitClosedEnd": min, "minDriverTime": min, "maxDriverTime": min, "kartChangeInterval": min, "reqExtraPits": n, "numTeams": n, "minPitLapSec": sec},
+{"settings": {"raceLaps": n, "raceDuration": hours, "reqPitStops": n, "minStint": min, "maxStint": min, "minPitTime": sec, "pitClosedStart": min, "pitClosedEnd": min, "minDriverTime": min, "maxDriverTime": min, "kartChangeInterval": min, "reqExtraPits": n, "numTeams": n, "minPitLapSec": sec},
+ // raceLaps ONLY when the race ends after a fixed number of laps instead of a time (e.g. 250, 500, 750, 1000 laps). Then omit raceDuration.
  "closedWindows": [[fromMin, toMin]],   // pit lane closed windows during the race, minutes from race start. Do NOT repeat the first/last minutes already given as pitClosedStart / pitClosedEnd
  "reasons": {"<settings key, closedWindows, minStintsPerDriver or maxStintsPerDriver>": "short quote or paraphrase of the exact rule, max 14 words"},
  // kartChangeInterval ONLY if the rules force a kart swap on a time schedule (e.g. every 60 min) in addition to normal pit stops. If every pit stop already changes kart and driver, omit it. Never put the average stint length there.
@@ -5408,13 +5271,15 @@ Be concise and practical.`;
         }
         const text = data.content[0].text.trim();
 
-        // Try to extract and apply JSON stint block
+        // Try to extract and apply the AI's stint plan, but only keep it if it breaks no rule.
         const jsonMatch = text.match(/\{[\s\S]*"stints"[\s\S]*\}/);
         if (jsonMatch && window.previewData?.timeline) {
             try {
                 const aiResult = JSON.parse(jsonMatch[0]);
                 if (aiResult.stints && Array.isArray(aiResult.stints)) {
                     const stints = window.previewData.timeline.filter(t => t.type === 'stint');
+                    const before = stints.map(s => ({ driverIdx: s.driverIdx, driverName: s.driverName, color: s.color, duration: s.duration }));
+                    const scoreBefore = window.checkCompliance ? window.checkCompliance(window.previewData.timeline, window.config).score : 0;
                     aiResult.stints.forEach((s, i) => {
                         if (stints[i]) {
                             if (s.driverIdx != null && window.drivers[s.driverIdx]) {
@@ -5426,6 +5291,13 @@ Be concise and practical.`;
                             if (s.durationMin > 0) stints[i].duration = s.durationMin * 60000;
                         }
                     });
+                    const scoreAfter = window.checkCompliance ? window.checkCompliance(window.previewData.timeline, window.config).score : 0;
+                    if (scoreAfter > scoreBefore) {
+                        // The AI plan is worse against the rules than the current one: keep the current plan.
+                        stints.forEach((s, i) => Object.assign(s, before[i]));
+                        window.showToast(window.tt('The AI stint plan broke rules, so your current plan was kept.'), 'warning', 6000);
+                    }
+                    if (typeof window.recalculateTimelineTimes === 'function') window.recalculateTimelineTimes();
                     window.renderPreview && window.renderPreview();
                 }
             } catch (e) { /* no valid stint JSON — fine */ }
