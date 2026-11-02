@@ -246,9 +246,23 @@ window._showRulesProposal = function(text) {
     const settings = Object.entries(parsed.settings || {}).filter(function(kv) {
         return window.tt(window._RULE_FIELDS[kv[0]]) && kv[1] !== null && kv[1] !== '' && Number.isFinite(Number(kv[1])) && document.getElementById(kv[0]);
     });
-    const wins = (Array.isArray(parsed.closedWindows) ? parsed.closedWindows : [])
+    const sv = function(k) { const f = settings.filter(function(kv) { return kv[0] === k; })[0]; return f ? Number(f[1]) : 0; };
+    const raceMin = (sv('raceDuration') || parseFloat(document.getElementById('raceDuration')?.value) || 0) * 60;
+    let wins = (Array.isArray(parsed.closedWindows) ? parsed.closedWindows : [])
         .filter(function(w) { return Array.isArray(w) && Number.isFinite(Number(w[0])) && Number.isFinite(Number(w[1])) && Number(w[1]) > Number(w[0]); })
         .map(function(w) { return [Number(w[0]), Number(w[1])]; }).slice(0, 12);
+    // The first/last-N-minutes closures already have their own settings: don't list them twice.
+    wins = wins.filter(function(w) {
+        const isStart = sv('pitClosedStart') && w[0] === 0 && w[1] === sv('pitClosedStart');
+        const isEnd = sv('pitClosedEnd') && raceMin && w[1] === raceMin && w[0] === raceMin - sv('pitClosedEnd');
+        return !(isStart || isEnd);
+    });
+    // "Kart change every N min" is only a real rule when the organizer forces a swap on a clock,
+    // on top of normal pit stops. A value equal to the average stint is just derived from the stop count.
+    const avgStint = sv('reqPitStops') && raceMin ? raceMin / (sv('reqPitStops') + 1) : 0;
+    const ksi = settings.findIndex(function(kv) { return kv[0] === 'kartChangeInterval'; });
+    if (ksi >= 0 && avgStint && Math.abs(Number(settings[ksi][1]) - avgStint) <= 2) settings.splice(ksi, 1);
+    const reasons = (parsed.reasons && typeof parsed.reasons === 'object') ? parsed.reasons : {};
     const minStints = Number(parsed.minStintsPerDriver) > 0 ? Math.floor(Number(parsed.minStintsPerDriver)) : 0;
     const maxStints = Number(parsed.maxStintsPerDriver) > 0 ? Math.floor(Number(parsed.maxStintsPerDriver)) : 0;
     const notes = Array.isArray(parsed.notes) ? parsed.notes.map(String).filter(Boolean).slice(0, 20) : [];
@@ -257,9 +271,20 @@ window._showRulesProposal = function(text) {
     const old = document.getElementById('rulesProposalModal');
     if (old) old.remove();
     const esc = window._escHtml;
-    const row = function(attrs, label, from, to) {
+    // Plain-language meaning shown under a rule, plus the regulation's own wording when the AI quoted it.
+    const MEANING = {
+        kartChangeInterval: 'The organizer forces a kart swap on this clock, on top of normal pit stops.',
+        pitClosedStart: 'No pit stops during the first minutes of the race.',
+        pitClosedEnd: 'No pit stops during the last minutes of the race.',
+        minDriverTime: 'Every driver must drive at least this long in total.',
+        maxDriverTime: 'No driver may drive more than this in total.'
+    };
+    const row = function(attrs, label, from, to, key) {
+        const meaning = MEANING[key] ? window.tt(MEANING[key]) : '';
+        const why = reasons[key] ? '“' + esc(String(reasons[key]).slice(0, 140)) + '”' : '';
+        const note = (meaning || why) ? '<span class="block text-[11px] text-gray-500 leading-snug">' + esc(meaning) + (meaning && why ? ' ' : '') + why + '</span>' : '';
         return '<label class="flex items-center gap-3 bg-navy-800 border border-gray-700 rounded-lg px-3 py-2 cursor-pointer">'
-            + '<input type="checkbox" checked ' + attrs + ' class="accent-ice w-4 h-4"><span class="flex-1 text-sm text-gray-200">' + label + '</span>'
+            + '<input type="checkbox" checked ' + attrs + ' class="accent-ice w-4 h-4"><span class="flex-1 text-sm text-gray-200"><span class="block">' + label + '</span>' + note + '</span>'
             + '<span class="text-xs text-gray-500">' + esc(from) + ' →</span><span class="text-sm font-bold text-neon">' + esc(to) + '</span></label>';
     };
     const ov = document.createElement('div');
@@ -270,10 +295,10 @@ window._showRulesProposal = function(text) {
         + '<div class="text-base font-black text-white">' + window.tt('Rules found in the regulations') + '</div>'
         + '<div class="text-[11px] text-gray-500">' + window.tt('Untick anything that is wrong. Applied rules change the strategy.') + '</div>'
         + '<div class="space-y-1">'
-        + settings.map(function(kv) { return row('data-rule-key="' + kv[0] + '" data-rule-val="' + Number(kv[1]) + '"', window.tt(window._RULE_FIELDS[kv[0]]), document.getElementById(kv[0]).value || '—', Number(kv[1])); }).join('')
-        + wins.map(function(w, i) { return row('data-rule-win="' + i + '"', window.tt('Pit lane closed (min from start)'), '—', w[0] + '–' + w[1]); }).join('')
-        + (minStints ? row('data-rule-minstints="' + minStints + '"', window.tt('Min stints per driver'), window.raceRules.minStintsPerDriver || '—', minStints) : '')
-        + (maxStints ? row('data-rule-maxstints="' + maxStints + '"', window.tt('Max stints per driver'), window.raceRules.maxStintsPerDriver || '—', maxStints) : '')
+        + settings.map(function(kv) { return row('data-rule-key="' + kv[0] + '" data-rule-val="' + Number(kv[1]) + '"', window.tt(window._RULE_FIELDS[kv[0]]), document.getElementById(kv[0]).value || '—', Number(kv[1]), kv[0]); }).join('')
+        + (wins.length ? row('data-rule-wins="1"', window.tt('Pit lane closed during the race (min from start)'), '—', wins.map(function(w) { return w[0] + '–' + w[1]; }).join(', '), 'closedWindows') : '')
+        + (minStints ? row('data-rule-minstints="' + minStints + '"', window.tt('Min stints per driver'), window.raceRules.minStintsPerDriver || '—', minStints, 'minStintsPerDriver') : '')
+        + (maxStints ? row('data-rule-maxstints="' + maxStints + '"', window.tt('Max stints per driver'), window.raceRules.maxStintsPerDriver || '—', maxStints, 'maxStintsPerDriver') : '')
         + '</div>'
         + (notes.length ? '<div><div class="text-xs font-bold text-purple-300 mb-1">' + window.tt('Also noted (kept as a checklist)') + '</div><ul class="space-y-1">'
             + notes.map(function(n) { return '<li class="text-xs text-gray-300">• ' + esc(n) + '</li>'; }).join('') + '</ul></div>' : '')
@@ -287,8 +312,7 @@ window._showRulesProposal = function(text) {
             const el = document.getElementById(cb.dataset.ruleKey);
             if (el) el.value = cb.dataset.ruleVal;
         });
-        const winsOn = Array.from(ov.querySelectorAll('input[data-rule-win]:checked')).map(function(cb) { return wins[Number(cb.dataset.ruleWin)]; });
-        if (winsOn.length) r.closedWindows = winsOn;
+        if (wins.length && ov.querySelector('input[data-rule-wins]:checked')) r.closedWindows = wins;
         const ms = ov.querySelector('input[data-rule-minstints]:checked');
         if (ms) r.minStintsPerDriver = minStints;
         if (ov.querySelector('input[data-rule-maxstints]:checked')) r.maxStintsPerDriver = maxStints;
