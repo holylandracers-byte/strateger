@@ -714,11 +714,42 @@ window.stopQualifying = function(offerRace) {
     if (offerRace) {
         window._sessionMode = 'race';
         window.setSessionMode('race');
-        window.showToast && window.showToast(
-            (window.t && window.t('qualifyDoneStartRace')) || 'Qualifying done — configure race settings and Start Race!',
-            'info', 6000
-        );
+        window._showQualifyHandoff();
     }
+};
+
+// Qualifying -> race in one flow: keep the qualifying result and offer to start the race right away
+window._showQualifyHandoff = function() {
+    const ld = window.liveData || {};
+    window._qualifyResult = { position: ld.position || null, bestLap: ld.bestLap || null, at: Date.now() };
+    document.getElementById('qualifyHandoff')?.remove();
+    if (typeof window.runSim === 'function') { try { window.runSim(); } catch (e) {} }
+    const cfg = window.config || {};
+    const ready = !!window.cachedStrategy;
+    const fmt = window.formatLapTime || function(x) { return x; };
+    const ov = document.createElement('div');
+    ov.id = 'qualifyHandoff';
+    ov.className = 'fixed inset-0 bg-black/85 flex items-center justify-center p-4';
+    ov.style.zIndex = 210;
+    ov.setAttribute('role', 'dialog');
+    ov.innerHTML = '<div class="bg-navy-900 border border-blue-500/40 rounded-2xl shadow-2xl max-w-md w-full p-5 space-y-4">'
+        + '<div><div class="text-[11px] font-black text-blue-300 uppercase tracking-widest">Qualifying complete</div>'
+        + '<div class="text-xl font-black text-white mt-1">Ready for the race</div></div>'
+        + '<div class="grid grid-cols-2 gap-2 text-center">'
+        + '<div class="bg-navy-950 border border-gray-700 rounded-lg p-2"><div class="text-[11px] text-gray-500">GRID</div><div class="text-2xl font-black text-ice">' + (window._qualifyResult.position ? 'P' + window._qualifyResult.position : '—') + '</div></div>'
+        + '<div class="bg-navy-950 border border-gray-700 rounded-lg p-2"><div class="text-[11px] text-gray-500">BEST LAP</div><div class="text-lg font-mono text-neon">' + (window._qualifyResult.bestLap ? fmt(window._qualifyResult.bestLap) : '—') + '</div></div></div>'
+        + '<div class="text-xs text-gray-400">Race plan: ' + (cfg.duration || '?') + ' h · ' + (cfg.reqStops || cfg.stops || '?') + ' stops · stints ' + (cfg.minStint || '?') + '–' + (cfg.maxStint || '?') + ' min'
+        + (ready ? '' : '<br><span class="text-amber-400">Plan is not valid yet — adjust the race settings first.</span>') + '</div>'
+        + '<div class="flex flex-col gap-2">'
+        + '<button type="button" id="qhStart" class="w-full bg-neon hover:bg-green-400 text-black font-black py-3 rounded-xl text-base uppercase tracking-wider disabled:opacity-40"' + (ready ? '' : ' disabled') + '>▶ Start race now</button>'
+        + '<button type="button" id="qhEdit" class="w-full bg-navy-800 border border-gray-600 text-gray-200 font-bold py-2.5 rounded-xl text-sm">Adjust the race plan first</button></div></div>';
+    document.body.appendChild(ov);
+    ov.querySelector('#qhEdit').onclick = function() { ov.remove(); };
+    ov.querySelector('#qhStart').onclick = function() {
+        ov.remove();
+        if (typeof window.initRace === 'function') window.initRace();
+        if (window._qualifyResult.position && window.showToast) window.showToast('Grid position: P' + window._qualifyResult.position, 'info', 5000);
+    };
 };
 
 // ==========================================

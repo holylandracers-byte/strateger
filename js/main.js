@@ -5221,6 +5221,33 @@ window.clearRulesPdf = function() {
     if (badge) badge.classList.add('hidden');
     if (analyzeBtn) analyzeBtn.disabled = true;
     if (input) input.value = '';
+    const ta = document.getElementById('rulesTextInput');
+    if (ta) ta.value = '';
+};
+
+// Pasted rules text: same pipeline as a PDF, minus the reading step
+window.handleRulesTextInput = function(value) {
+    const text = String(value || '').trim();
+    const previewEl = document.getElementById('rulesPdfPreview');
+    const nameEl = document.getElementById('rulesPdfName');
+    const pagesEl = document.getElementById('rulesPdfPages');
+    const analyzeBtn = document.getElementById('rulesPdfAnalyzeBtn');
+    const badge = document.getElementById('rulesPdfBadge');
+    if (!text) {
+        window._rulesPdfText = null;
+        window._rulesPdfFileName = null;
+        if (previewEl) previewEl.classList.add('hidden');
+        if (badge) badge.classList.add('hidden');
+        if (analyzeBtn) analyzeBtn.disabled = true;
+        return;
+    }
+    window._rulesPdfText = text.slice(0, 12000);
+    window._rulesPdfFileName = 'pasted-text';
+    if (nameEl) nameEl.textContent = (window.t && window.t('rulesPastedText')) || 'Pasted text';
+    if (pagesEl) pagesEl.textContent = text.length.toLocaleString() + ' ' + ((window.t && window.t('chars')) || 'characters') + (text.length > 12000 ? ' · ✂️ 12,000' : '');
+    if (previewEl) previewEl.classList.remove('hidden');
+    if (badge) badge.classList.remove('hidden');
+    if (analyzeBtn) analyzeBtn.disabled = false;
 };
 
 // A real rules page run through pdf.js's text layer normally yields well over a hundred
@@ -5244,6 +5271,16 @@ window.handleRulesPdfUpload = async function(input) {
     if (statusEl) { statusEl.textContent = (window.t && window.t('rulesPdfReading')) || 'Reading PDF…'; statusEl.classList.remove('hidden'); }
 
     try {
+        if (/\.txt$/i.test(file.name) || file.type === 'text/plain') {
+            const txt = await file.text();
+            const ta = document.getElementById('rulesTextInput');
+            if (ta) ta.value = txt.slice(0, 12000);
+            window.handleRulesTextInput(txt);
+            window._rulesPdfFileName = file.name;
+            if (nameEl) nameEl.textContent = file.name;
+            if (statusEl) statusEl.classList.add('hidden');
+            return;
+        }
         if (!window.pdfjsLib) throw new Error('PDF.js not loaded');
         window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
@@ -5348,8 +5385,13 @@ ${(window.previewData?.timeline || []).filter(t => t.type === 'stint').length > 
 IMPORTANT: Respond in language "${lang}". Give:
 1. Key rules that affect strategy (mandatory stops, min/max driver times, pit window restrictions, etc.)
 2. Your strategic recommendation based on the rules
-3. Optional: a JSON block for stint adjustments in this exact format:
-{"stints": [{"driverIdx": 0, "durationMin": 45}, ...]}
+3. A JSON block, always included, in this exact format (omit any "settings" key the rules do not state; never guess numbers):
+{"settings": {"raceDuration": hours, "reqPitStops": n, "minStint": min, "maxStint": min, "minPitTime": sec, "pitClosedStart": min, "pitClosedEnd": min, "minDriverTime": min, "maxDriverTime": min, "kartChangeInterval": min, "reqExtraPits": n, "numTeams": n, "minPitLapSec": sec},
+ "closedWindows": [[fromMin, toMin]],   // pit lane closed windows, minutes from race start
+ "minStintsPerDriver": n,
+ "maxStintsPerDriver": n,
+ "notes": ["short rule the setup fields cannot express, e.g. Pit lane closed under red flag"],
+ "stints": [{"driverIdx": 0, "durationMin": 45}]}
 
 Be concise and practical.`;
 
@@ -5391,6 +5433,8 @@ Be concise and practical.`;
             } catch (e) { /* no valid stint JSON — fine */ }
         }
 
+        window._showRulesProposal(text);
+
         // Show full analysis in a toast + console
         const shortAdvice = text.replace(/\{[\s\S]*\}/g, '').trim().slice(0, 300);
         window.showToast(`📄 ${shortAdvice}`, 'success', 12000);
@@ -5428,13 +5472,39 @@ document.addEventListener('visibilitychange', () => {
         if (shown('qualifyingDashboard')) phase = 'qualify';
         else if (shown('raceDashboard') || shown('driverModePanel')) phase = 'race';
         const qualifyStep = list.querySelector('[data-phase="qualify"]');
-        if (qualifyStep) qualifyStep.classList.toggle('hidden', !(window._sessionMode === 'qualify' || phase === 'qualify'));
+        if (qualifyStep) qualifyStep.classList.toggle('hidden', !(window._sessionMode === 'qualify' || phase === 'qualify' || !!window._qualifyState));
         list.querySelectorAll('li').forEach(li => {
             if (li.dataset.phase === phase) li.setAttribute('aria-current', 'step');
             else li.removeAttribute('aria-current');
         });
     }
     window.updatePhaseSteps = updatePhaseSteps;
+
+    // Steps are clickable: move between planning, qualifying and the race without ending any of them.
+    window.gotoPhase = function(phase) {
+        const hide = id => document.getElementById(id)?.classList.add('hidden');
+        const show = id => document.getElementById(id)?.classList.remove('hidden');
+        const raceOn = !!(window.state && window.state.isRunning);
+        const toast = (m) => window.showToast && window.showToast(m, 'info', 3000);
+        if (phase === 'qualify') {
+            if (!window._qualifyState) return toast('Qualifying is not running');
+            show('qualifyingDashboard');
+        } else if (phase === 'race') {
+            if (!raceOn) { hide('qualifyingDashboard'); show('setupScreen'); return toast('Start the race from the plan'); }
+            hide('qualifyingDashboard'); hide('setupScreen'); hide('previewScreen'); show('raceDashboard');
+        } else {
+            if (raceOn) return toast('Race in progress');
+            hide('qualifyingDashboard'); hide('previewScreen'); hide('raceDashboard'); show('setupScreen');
+        }
+        updatePhaseSteps();
+    };
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('#phaseSteps li').forEach(li => {
+            li.setAttribute('role', 'button'); li.tabIndex = 0; li.style.cursor = 'pointer';
+            li.addEventListener('click', () => window.gotoPhase(li.dataset.phase));
+            li.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); window.gotoPhase(li.dataset.phase); } });
+        });
+    });
     document.addEventListener('DOMContentLoaded', () => {
         const obs = new MutationObserver(updatePhaseSteps);
         ['setupScreen', 'previewScreen', 'raceDashboard', 'driverModePanel', 'qualifyingDashboard'].forEach(id => {

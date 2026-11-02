@@ -751,6 +751,8 @@ window.runSim = function() {
         window.fixPreviewStintViolations(true);
     }
 
+    if (typeof window.applyRaceRules === 'function') window.applyRaceRules(window.previewData.timeline, config);
+
     const stints = result.timeline.filter(t => t.type === 'stint');
     const pits = result.timeline.filter(t => t.type === 'pit');
     const actualDriveTime = stints.reduce((a, s) => a + s.duration, 0);
@@ -830,6 +832,10 @@ window.runSim = function() {
             `;
         }
     }
+    if (resEl && window._ruleMessages && window._ruleMessages.length && typeof window._ruleMessagesHtml === 'function') {
+        resEl.innerHTML += '<br>' + window._ruleMessagesHtml();
+    }
+    if (typeof window.renderRuleStatus === 'function') window.renderRuleStatus();
     window._setStartBtnState(true);
 };
 

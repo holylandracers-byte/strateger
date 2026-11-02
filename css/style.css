@@ -256,6 +256,7 @@ body:has(#qualifyingDashboard:not(.hidden)) {
 /* raceDashboard fills the space below the sticky header.
    Use a CSS var so it's easy to tune per device. */
 :root { --header-h: 46px; --dash-info-pct: 60%; --dash-ctrl-pct: 40%; }
+@media (min-width: 1024px) { :root { --dash-info-pct: 50%; } }
 
 #raceDashboard:not(.hidden) {
     height: calc(100dvh - var(--header-h));
@@ -656,7 +657,7 @@ body.strateger-page-hidden * {
 header {
     position: sticky;
     top: 0;
-    z-index: 50; 
+    z-index: 120 !important; /* above the docked live-timing widget (100); below full-screen views (150) and modals (190) */
     background-color: var(--navy-900);
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
     width: 100%;
@@ -683,10 +684,10 @@ header {
 .header-menu {
     position: absolute; right: 0; top: calc(100% + 6px);
     width: 248px; max-height: calc(100vh - 70px); overflow-y: auto;
-    background: var(--navy-900, #0a1426);
-    border: 1px solid #1e293b; border-radius: 10px;
-    box-shadow: 0 12px 28px rgba(0,0,0,.45);
-    padding: 4px 0; z-index: 50;
+    background: #0f172a; opacity: 1;
+    border: 1px solid #334155; border-radius: 10px;
+    box-shadow: 0 16px 40px rgba(0,0,0,.7);
+    padding: 4px 0; z-index: 121;
 }
 .header-menu.hidden { display: none; }
 .hdr-menu-group { padding: 6px 6px; }
@@ -2605,20 +2606,22 @@ body.wt-active {
         align-items: stretch !important;
     }
     #raceInfoPanel {
-        flex: 0 0 50% !important;
-        width: 50% !important;
-        max-width: 50% !important;
+        flex: 0 0 var(--dash-info-pct, 50%) !important;
+        width: var(--dash-info-pct, 50%) !important;
+        max-width: none !important;
         min-width: 0 !important;
-        border-right: 1px solid rgba(55,65,81,0.5) !important;
+        order: 0;
+        border-right: none !important;
         border-bottom: none !important;
         overflow-y: auto !important;
         padding: 10px 12px !important;
     }
     #raceControlDock {
-        flex: 0 0 50% !important;
-        width: 50% !important;
-        max-width: 50% !important;
+        flex: 1 1 0 !important;
+        width: auto !important;
+        max-width: none !important;
         min-width: 0 !important;
+        order: 2;
         border-top: none !important;
         border-left: none !important;
         display: flex !important;
@@ -2647,11 +2650,18 @@ body.wt-active {
         flex: 1 1 0;
         max-height: none;
     }
-    /* The generic panel-split resizer has no job at the fixed 50/50 width — the
-       live-timing widget's own height handle is the relevant control here instead. */
+    /* Draggable vertical divider between the two columns (width split, double-click = 50/50) */
     #dashPanelResizer {
-        display: none !important;
+        display: flex !important;
+        order: 1;
+        width: 12px;
+        height: auto;
+        cursor: col-resize;
+        flex-direction: column;
+        flex-shrink: 0;
+        background: rgba(55,65,81,0.25);
     }
+    #dashPanelResizer:hover, #dashPanelResizer.active { background: rgba(34,211,238,0.12); }
 }
 
 /* ---- Competitor row — richer layout ---- */
@@ -3520,3 +3530,114 @@ body.watcher-mode #liveTeamHint { display: none !important; }
 .no-live-status.is-error { color: #f87171; }
 .no-live-status.is-ok { color: #4ade80; font-weight: 700; }
 body.watcher-mode .no-live-form, body.watcher-mode .no-live-status { display: none; }
+
+/* ==================== SETUP: NUMBER STEPPERS + TABLET/LAPTOP LAYOUT ==================== */
+.num-stepper { display: flex; align-items: stretch; width: 100%; }
+.num-stepper > .input-field {
+    flex: 1 1 auto; min-width: 0; text-align: center;
+    border-radius: 0; margin: 0;
+    -moz-appearance: textfield; appearance: textfield;
+}
+.num-stepper > .input-field::-webkit-outer-spin-button,
+.num-stepper > .input-field::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.num-stepper > button {
+    flex: 0 0 38px; min-height: 38px;
+    background: var(--navy-800, #1e293b); color: #cbd5e1;
+    border: 1px solid #475569; font-size: 18px; line-height: 1; font-weight: 700;
+    cursor: pointer; user-select: none; touch-action: manipulation;
+    transition: background .12s, color .12s;
+}
+.num-stepper > button:first-child { border-radius: 8px 0 0 8px; border-inline-end: 0; }
+.num-stepper > button:last-child { border-radius: 0 8px 8px 0; border-inline-start: 0; }
+[dir="rtl"] .num-stepper > button:first-child { border-radius: 0 8px 8px 0; }
+[dir="rtl"] .num-stepper > button:last-child { border-radius: 8px 0 0 8px; }
+.num-stepper > button:hover { background: #334155; color: #22d3ee; }
+.num-stepper > button:active { background: #22d3ee; color: #0f172a; }
+.num-stepper > button:focus-visible { outline: 2px solid #22d3ee; outline-offset: -2px; }
+.num-stepper .num-unit {
+    position: absolute; pointer-events: none; font-size: 11px; color: #64748b;
+}
+.num-stepper-hint-off > .input-field:placeholder-shown { color: #64748b; }
+
+@media (pointer: coarse), (min-width: 768px) {
+    .num-stepper > button { flex-basis: 44px; min-height: 44px; font-size: 20px; }
+    #setupScreen .num-stepper > .input-field { min-height: 44px; font-size: 18px; font-weight: 700; }
+}
+/* Wide screens: General Info / Advanced Constraints use their full width instead of two cramped columns */
+@media (min-width: 900px) {
+    #setupScreen .collapse-body > .grid.grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+    #setupScreen .collapse-body label { font-size: 13px; }
+    #setupScreen .collapse-body p.text-\[11px\] { font-size: 12px; line-height: 1.35; }
+}
+@media (min-width: 768px) {
+    #setupScreen .collapse-body select { min-height: 40px; font-size: 14px; }
+    #setupScreen .collapse-body input[type="checkbox"] { width: 20px; height: 20px; }
+    #setupScreen .collapse-body input[type="time"], #setupScreen .collapse-body input[type="date"] { min-height: 44px; }
+}
+
+/* Full-screen preview must cover the header and the docked live-timing widget (z 100) */
+#previewScreen { z-index: 150 !important; }
+
+/* ==================== PREVIEW STRATEGY: tablet / laptop ==================== */
+.preview-btn-label { display: none; }
+@media (min-width: 900px) and (orientation: landscape) {
+    #previewInner { padding: 16px 20px !important; gap: 16px !important; max-width: 1400px !important; margin: 0 auto; width: 100%; }
+    /* Side column: labelled buttons stacked, Start pinned at the bottom */
+    #previewActionBar { width: 240px !important; gap: 10px !important; }
+    #previewActionBar button { min-height: 48px; font-size: 14px; padding: 10px 14px; justify-content: center; gap: 8px; }
+    #previewActionBar .preview-btn-label { display: inline; }
+    #previewActionBar #previewStartRaceBtn {
+        flex: 0 0 auto !important; margin-top: auto; min-height: 64px; font-size: 16px;
+        border-radius: 14px; box-shadow: 0 8px 24px rgba(74,222,128,.25);
+    }
+    #previewMainCol { gap: 12px !important; }
+    #previewMainCol > .flex.items-center.gap-2 { padding-bottom: 4px; }
+    #previewMainCol [data-i18n="previewTitle"] { font-size: 14px; color: #94a3b8; letter-spacing: .12em; }
+    #previewMainCol #miniStintChart { height: 22px !important; border-radius: 6px; overflow: hidden; }
+    #previewMainCol button[onclick*="_closePreview"] { width: 40px; height: 40px; font-size: 22px; }
+    #previewMainCol button[onclick*="openLiveAdjustModal"] { min-height: 40px; padding: 6px 12px; font-size: 13px; }
+    #previewDriverStrip { padding: 10px 14px; }
+    #strategySummary { font-size: 13px; gap: 8px; }
+    #driverScheduleList { padding: 8px 12px !important; gap: 4px !important; }
+    #driverScheduleList .stint-row { min-height: 44px; font-size: 14px; }
+    #driverScheduleList .stint-row * { font-size: inherit; }
+}
+@media (pointer: coarse) and (max-width: 899px) {
+    #previewMainCol button[onclick*="_closePreview"] { width: 44px; height: 44px; font-size: 22px; }
+}
+
+
+/* ==================== LIVE TIMING VISIBILITY (full / compact / hidden) ==================== */
+body.lt-hidden #liveTimingWidgetWrapper,
+body.lt-hidden #noLiveHint,
+body.lt-hidden #qualifyResultsCard { display: none !important; }
+
+body.lt-compact #liveTimingPanel > :not(#liveTimingDragHandle):not(#ltCompactSummary) { display: none !important; }
+body.lt-compact #ltCompactSummary { display: flex !important; }
+body.lt-compact #raceInfoPanel #liveTimingWidgetWrapper { height: auto !important; min-height: 0 !important; }
+body.lt-compact #liveTimingHeightHandle { display: none !important; }
+body.lt-compact #qualifyResultsCard { flex: 0 0 auto !important; max-height: 170px; }
+
+/* Wide screens: the freed width goes to the strategy controls */
+@media (min-width: 1024px) {
+    body.lt-hidden #raceInfoPanel {
+        flex: 0 0 0 !important; width: 0 !important; min-width: 0 !important;
+        padding: 0 !important; border: 0 !important; overflow: visible !important;
+    }
+    body.lt-hidden #dashPanelResizer { display: none !important; }
+    body.lt-hidden #strategyToastContainer {
+        position: fixed; top: 56px; right: 12px; width: min(360px, 92vw); z-index: 130;
+    }
+    body.lt-compact #raceInfoPanel { flex: 0 0 min(var(--dash-info-pct, 50%), 380px) !important; width: min(var(--dash-info-pct, 50%), 380px) !important; }
+}
+
+.lt-restore-chip {
+    position: fixed; top: 56px; inset-inline-start: 10px; z-index: 130;
+    min-height: 36px; padding: 6px 14px; border-radius: 999px;
+    background: #0f172a; color: #22d3ee; border: 1px solid #22d3ee66;
+    font-size: 13px; font-weight: 700; box-shadow: 0 6px 18px rgba(0,0,0,.5); cursor: pointer;
+}
+.lt-restore-chip:hover { background: #164e63; color: #fff; }
+.lt-restore-chip.hidden { display: none; }
+body.lt-compact #liveTimingDragHandle { flex-wrap: wrap; gap: 4px; }
+body.lt-compact #apexViewToggle, body.lt-compact #addSecondaryTeamBtn, body.lt-compact #teamLogoUploadBtn, body.lt-compact #forcePitOutBtn { display: none !important; }

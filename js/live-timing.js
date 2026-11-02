@@ -119,12 +119,7 @@ window.testLiveTiming = function() {
         return;
     }
     
-    if (!searchValue) {
-        const typeNames = { team: window.t('team'), kart: window.t('kart'), driver: window.t('driver') };
-        statusEl.innerText = `${window.t('enterValue')} ${typeNames[searchType]}`;
-        statusEl.className = "text-[11px] text-red-500 text-center";
-        return;
-    }
+    // Team filter is optional: with no value the whole field is shown and the team can be picked later, inside the race.
     
     window.liveTimingConfig.url = url;
     window.liveTimingConfig.enabled = true;
@@ -154,9 +149,12 @@ window.testLiveTiming = function() {
     const checkTimer = setInterval(() => {
         elapsed += pollInterval;
         
-        if (window.liveData.position) {
+        const feedComps = (window.liveData.competitors || []).length;
+        if (window.liveData.position || (!searchValue && feedComps > 0)) {
             clearInterval(checkTimer);
-            statusEl.innerText = `${window.t('found')} P${window.liveData.position}`;
+            statusEl.innerText = window.liveData.position
+                ? `${window.t('found')} P${window.liveData.position}`
+                : `✓ ${feedComps} ${window.t('totalCompetitors') || 'cars'}`;
             statusEl.className = "text-[11px] text-green-500 text-center font-bold";
             return;
         }
@@ -1432,7 +1430,7 @@ window.toggleApexIframe = function() {
         iframeContainer.classList.add('hidden');
         if (tableContainer) tableContainer.classList.toggle('hidden', window._competitorsTableOpen === false);
         if (btn) {
-            btn.textContent = '🌐';
+            btn.textContent = '🌐 ' + (window.t('ltOriginalView') || 'Original');
             btn.classList.remove('bg-ice', 'text-navy-900');
             btn.classList.add('bg-navy-700', 'text-gray-300');
         }
@@ -1446,7 +1444,7 @@ window.toggleApexIframe = function() {
         iframeContainer.classList.remove('hidden');
         if (tableContainer) tableContainer.classList.add('hidden');
         if (btn) {
-            btn.textContent = '📊';
+            btn.textContent = '📊 ' + (window.t('ltTableView') || 'Table');
             btn.classList.remove('bg-navy-700', 'text-gray-300');
             btn.classList.add('bg-ice', 'text-navy-900');
         }
@@ -2543,7 +2541,6 @@ window.connectLiveTimingMidRace = function() {
     const value = document.getElementById('raceLtValue').value.trim();
     const setStatus = (text, cls) => { if (status) { status.textContent = text; status.className = 'no-live-status' + (cls ? ' ' + cls : ''); } };
     if (!url) { setStatus(t('enterUrl'), 'is-error'); return; }
-    if (!value) { setStatus(t('enterValue'), 'is-error'); return; }
 
     // Keep the setup form in sync so saved state and updateSearchConfig() read the same values
     const setupUrl = document.getElementById('liveTimingUrl');
@@ -2567,9 +2564,10 @@ window.connectLiveTimingMidRace = function() {
     let elapsed = 0;
     const timer = setInterval(() => {
         elapsed += 500;
-        if (window.liveData.position) {
+        const feedComps = (window.liveData.competitors || []).length;
+        if (window.liveData.position || (!value && feedComps > 0)) {
             clearInterval(timer);
-            setStatus(t('found') + ' P' + window.liveData.position, 'is-ok');
+            setStatus(window.liveData.position ? t('found') + ' P' + window.liveData.position : '✓ ' + feedComps, 'is-ok');
             if (btn) btn.disabled = false;
         } else if (elapsed >= 15000) {
             clearInterval(timer);
@@ -2578,3 +2576,56 @@ window.connectLiveTimingMidRace = function() {
         }
     }, 500);
 };
+
+
+// ==================== LIVE TIMING VISIBILITY: full / compact / hidden ====================
+// Lets a team reclaim screen space mid-race or mid-qualifying. Remembered per device.
+window.ltView = 'full';
+try { window.ltView = localStorage.getItem('strateger_lt_view') || 'full'; } catch (e) {}
+
+window.setLtView = function(view) {
+    if (view !== 'compact' && view !== 'hidden') view = 'full';
+    window.ltView = view;
+    try { localStorage.setItem('strateger_lt_view', view); } catch (e) {}
+    document.body.classList.toggle('lt-compact', view === 'compact');
+    document.body.classList.toggle('lt-hidden', view === 'hidden');
+    window.updateLtRestoreChip();
+    window.updateLtCompactSummary();
+};
+
+window.updateLtCompactSummary = function() {
+    const el = document.getElementById('ltCompactText');
+    if (!el || window.ltView !== 'compact') return;
+    const d = window.liveData || {};
+    const fmt = window.formatLapTime || function(x) { return x; };
+    const parts = [d.position ? 'P' + d.position : 'P-'];
+    if (d.lastLap) parts.push(fmt(d.lastLap));
+    if (d.bestLap) parts.push('★ ' + fmt(d.bestLap));
+    if (d.laps != null) parts.push('L' + d.laps);
+    el.textContent = parts.join(' · ');
+};
+
+window.updateLtRestoreChip = function() {
+    let chip = document.getElementById('ltRestoreChip');
+    const visible = id => { const e = document.getElementById(id); return !!e && !e.classList.contains('hidden'); };
+    const wanted = window.ltView === 'hidden' && (visible('raceDashboard') || visible('qualifyingDashboard'));
+    if (!wanted) { if (chip) chip.classList.add('hidden'); return; }
+    if (!chip) {
+        chip = document.createElement('button');
+        chip.id = 'ltRestoreChip';
+        chip.type = 'button';
+        chip.className = 'lt-restore-chip';
+        chip.onclick = function() { window.setLtView('full'); };
+        document.body.appendChild(chip);
+    }
+    chip.textContent = '📡 ' + ((window.t && window.t('live')) || 'Live') + ' ▸';
+    chip.setAttribute('aria-label', 'Show live timing');
+    chip.classList.remove('hidden');
+};
+
+(function initLtView() {
+    const apply = function() { window.setLtView(window.ltView); };
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', apply); else apply();
+    // keep the chip and compact summary current without touching the main UI update path
+    setInterval(function() { window.updateLtRestoreChip(); window.updateLtCompactSummary(); }, 1000);
+})();

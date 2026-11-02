@@ -2768,13 +2768,15 @@ window.initDashPanelResizer = function() {
     // Side-by-side (width-drag) in the 768-1023px landscape tablet range. Portrait stacks
     // top/bottom (height-drag). ≥1024px is also side-by-side, but at a fixed 50/50 split —
     // this resizer is inert there (see _isFixedSplitWidth below).
-    const isSideBySide = () => window.matchMedia('(min-width:768px) and (orientation:landscape)').matches;
-    const isFixedSplitWidth = () => window.matchMedia('(min-width:1024px)').matches;
-    const minPct = () => 15;
+    const isSideBySide = () => window.matchMedia('(min-width:768px) and (orientation:landscape)').matches
+        || window.matchMedia('(min-width:1024px)').matches;
+    const isFixedSplitWidth = () => false;   // wide screens can now drag the width split too
+    const minPct = () => 20;
+    const isRtl = () => getComputedStyle(wrapper).direction === 'rtl';
 
     // Restore saved split
     const saved = parseFloat(localStorage.getItem(STORAGE_KEY));
-    const initialPct = (saved >= 15 && saved <= 85) ? saved : 60;
+    const initialPct = (saved >= 15 && saved <= 85) ? saved : (window.matchMedia('(min-width:1024px)').matches ? 50 : 60);
     document.documentElement.style.setProperty('--dash-info-pct', Math.max(initialPct, minPct()) + '%');
 
     let dragging = false;
@@ -2786,7 +2788,9 @@ window.initDashPanelResizer = function() {
         const lo = minPct();
         if (isSideBySide()) {
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-            return Math.min(85, Math.max(lo, ((clientX - rect.left) / rect.width) * 100));
+            // RTL: the info panel sits at the right edge, so measure from there
+            const from = isRtl() ? (rect.right - clientX) : (clientX - rect.left);
+            return Math.min(80, Math.max(lo, (from / rect.width) * 100));
         } else {
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
             return Math.min(85, Math.max(lo, ((clientY - rect.top) / rect.height) * 100));
@@ -3973,3 +3977,49 @@ if (_origRunSimForHero) {
         if (typeof window.runSim === 'function') window.runSim();
     }
 })();
+
+// Header menu: close on outside click or Esc (it opens over everything else now)
+document.addEventListener('click', function(e) {
+    const menu = document.getElementById('headerOverflowMenu');
+    if (!menu || menu.classList.contains('hidden')) return;
+    if (e.target.closest('#headerOverflowMenu') || e.target.closest('#headerMenuBtn')) return;
+    menu.classList.add('hidden');
+});
+document.addEventListener('keydown', function(e) {
+    if (e.key !== 'Escape') return;
+    document.getElementById('headerOverflowMenu')?.classList.add('hidden');
+});
+
+// Setup number fields: − / + steppers so values can be tapped in on a tablet or laptop
+window.initNumberSteppers = function() {
+    const root = document.getElementById('setupScreen');
+    if (!root) return;
+    root.querySelectorAll('input[type="number"].input-field').forEach(inp => {
+        if (inp.closest('.num-stepper')) return;
+        const step = parseFloat(inp.getAttribute('step')) || (/^(minStint|maxStint|minDriverTime|maxDriverTime|kartChangeInterval|pitClosed)/.test(inp.id) ? 5 : 1);
+        const wrap = document.createElement('div');
+        wrap.className = 'num-stepper';
+        const mk = (sign, label) => {
+            const b = document.createElement('button');
+            b.type = 'button'; b.textContent = sign; b.tabIndex = -1;
+            b.setAttribute('aria-label', label);
+            b.addEventListener('click', () => {
+                const min = inp.min !== '' ? parseFloat(inp.min) : (inp.id === 'raceDuration' || inp.id === 'reqPitStops' ? 0 : 0);
+                const max = inp.max !== '' ? parseFloat(inp.max) : Infinity;
+                const cur = parseFloat(inp.value) || 0;
+                const dec = String(step).includes('.') ? 1 : 0;
+                const next = Math.min(max, Math.max(min, +(cur + (sign === '+' ? step : -step)).toFixed(dec)));
+                inp.value = next;
+                inp.dispatchEvent(new Event('input', { bubbles: true }));
+                inp.dispatchEvent(new Event('change', { bubbles: true }));
+            });
+            return b;
+        };
+        inp.parentNode.insertBefore(wrap, inp);
+        wrap.appendChild(mk('−', 'Decrease'));
+        wrap.appendChild(inp);
+        wrap.appendChild(mk('+', 'Increase'));
+    });
+};
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', window.initNumberSteppers);
+else window.initNumberSteppers();

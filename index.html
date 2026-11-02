@@ -44,9 +44,9 @@
     <script src="js/hakafast-scraper.js?v=7"></script>
     <script src="js/alpha-scraper.js?v=7"></script>
     <script src="js/live-timing-manager.js?v=8"></script>
-    <script src="js/qualifying.js?v=8"></script>
+    <script src="js/qualifying.js?v=9"></script>
 
-    <link rel="stylesheet" href="css/style.css?v=25">
+    <link rel="stylesheet" href="css/style.css?v=33">
 
     <script>
         tailwind.config = {
@@ -770,10 +770,10 @@
             <!-- ── RIGHT / BOTTOM: action bar ── -->
             <div id="previewActionBar" class="shrink-0 flex gap-1.5 items-stretch">
                 <button onclick="window.exportStrategyImage()" class="bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/50 text-purple-300 font-bold py-2 px-2.5 rounded-xl transition text-sm flex items-center gap-1" title="Share as Image">
-                    <i class="fas fa-image"></i>
+                    <i class="fas fa-image"></i><span class="preview-btn-label">Image</span>
                 </button>
                 <button onclick="window.exportStrategyPdf()" class="bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/50 text-blue-300 font-bold py-2 px-2.5 rounded-xl transition text-sm flex items-center gap-1" title="Export PDF">
-                    <i class="fas fa-file-pdf"></i>
+                    <i class="fas fa-file-pdf"></i><span class="preview-btn-label">PDF</span>
                 </button>
                 <button onclick="window.saveStrategy()" class="bg-gold/15 hover:bg-gold/25 text-gold font-bold py-2 px-3 rounded-xl border border-gold/40 transition text-sm" data-i18n="saveStratTitle">
                     <i class="fas fa-bookmark"></i>
@@ -1027,7 +1027,7 @@
                             <button type="button" onclick="window.findTrackUrl('race')" class="bg-red-900/50 border border-red-500/50 text-red-300 text-xs px-2 rounded hover:bg-red-900" data-i18n="tfFind">Find</button>
                         </div>
                         <input type="url" id="raceLtUrl" class="input-field text-xs" data-i18n="liveTimingUrl" placeholder="Live Timing URL..." autocomplete="off" required>
-                        <input type="text" id="raceLtValue" class="input-field text-xs" data-i18n="ltPlaceholder" placeholder="Search value..." autocomplete="off" required>
+                        <input type="text" id="raceLtValue" class="input-field text-xs" data-i18n="ltFilterOptional" placeholder="Team / kart filter (optional)" autocomplete="off">
                         <button type="submit" class="no-live-btn" data-i18n="connectLive">Connect</button>
                     </form>
                     <div id="raceLtStatus" class="no-live-status" role="status" aria-live="polite"></div>
@@ -1046,13 +1046,20 @@
                         <div class="flex items-center gap-1">
                             <!-- Pro: team logo upload button (hidden for free tier) -->
                             <button id="teamLogoUploadBtn" data-i18n-aria="ariaTeamLogo" aria-label="Upload team logo" class="team-logo-upload-btn hidden" onclick="window.openTeamLogoUpload()" title="Upload Logo">📷</button>
-                            <button id="apexViewToggle" data-i18n-aria="ariaLiveView" aria-label="Toggle original timing view" onclick="window.toggleApexIframe()" class="text-[11px] bg-navy-700 border border-gray-600 text-gray-300 px-2 py-0.5 rounded" title="Toggle original Apex view">🌐</button>
+                            <button id="apexViewToggle" data-i18n-aria="ariaLiveView" aria-label="Toggle original timing view" onclick="window.toggleApexIframe()" class="text-[11px] bg-navy-700 border border-gray-600 text-gray-300 px-2 py-0.5 rounded" title="Toggle original timing view">🌐 Original</button>
+                            <button id="pickTeamBtn" data-i18n-aria="pickYourTeam" aria-label="Pick your team" onclick="window.openTeamPicker()" class="text-[11px] bg-navy-700 border border-gray-600 text-gray-300 px-2 py-0.5 rounded" title="Pick your team / filter">🎯</button>
                             <!-- Laptop only (>=1280px): follow a second team from the same org -->
                             <button id="addSecondaryTeamBtn" data-i18n-aria="ariaSecondTeam" aria-label="Watch a second team" onclick="window.openTeamPicker('secondary')" class="lt-laptop-only text-[11px] bg-navy-700 border border-gray-600 text-gray-300 px-2 py-0.5 rounded" title="Watch a second team">➕👥</button>
                             <!-- Force Pit Out: bypasses 20s guard and live timing auto-exit, shown only when in pit -->
                             <button id="forcePitOutBtn" onclick="window.forcePitOut()" class="hidden text-[11px] bg-amber-600 hover:bg-amber-500 text-white font-bold px-2 py-0.5 rounded border border-amber-400 transition" title="Force pit out now (override)">⚡ OUT</button>
+                            <button id="ltMinBtn" type="button" onclick="window.setLtView('compact')" class="text-[11px] bg-navy-700 border border-gray-600 text-gray-300 px-2 py-0.5 rounded" title="Minimize live timing" aria-label="Minimize live timing">&#9644;</button>
+                            <button id="ltHideBtn" type="button" onclick="window.setLtView('hidden')" class="text-[11px] bg-navy-700 border border-gray-600 text-gray-300 px-2 py-0.5 rounded" title="Hide live timing" aria-label="Hide live timing">&#128065;</button>
                             <button onclick="window.stopLiveTiming()" class="text-[11px] bg-red-900 text-white px-2 rounded" data-i18n="stop">Stop</button>
                         </div>
+                    </div>
+                    <div id="ltCompactSummary" class="hidden items-center justify-between gap-2 text-xs font-mono text-gray-200 px-1">
+                        <span id="ltCompactText">-</span>
+                        <button type="button" onclick="window.setLtView('full')" class="text-[11px] bg-navy-700 border border-gray-600 text-ice px-2 py-0.5 rounded" aria-label="Expand live timing">&#9633; Expand</button>
                     </div>
                     <div class="grid grid-cols-3 gap-1 text-center">
                         <div class="bg-navy-950 rounded border border-gray-700 p-1">
@@ -1588,10 +1595,11 @@
             <!-- RIGHT PANEL — results + next segment + next run -->
             <div class="flex-1 flex flex-col overflow-y-auto md:overflow-hidden gap-3 min-h-0">
                 <!-- Results table -->
-                <div class="bg-navy-900 border border-gray-700 rounded-xl overflow-hidden flex-1 flex flex-col min-h-0">
+                <div id="qualifyResultsCard" class="bg-navy-900 border border-gray-700 rounded-xl overflow-hidden flex-1 flex flex-col min-h-0">
                     <div class="px-3 py-2 bg-navy-800 border-b border-gray-700 flex items-center justify-between shrink-0">
                         <span class="text-[11px] text-gray-400 uppercase font-bold tracking-wide" data-i18n="qualifyStageResults">Results</span>
                         <span id="qualifyAdvancedCount" class="hidden text-[11px] text-green-400 font-bold"></span>
+                        <span class="flex gap-1 ml-auto"><button type="button" onclick="window.setLtView('compact')" class="text-[11px] bg-navy-700 border border-gray-600 text-gray-300 px-2 py-0.5 rounded" aria-label="Minimize results">&#9644;</button><button type="button" onclick="window.setLtView('hidden')" class="text-[11px] bg-navy-700 border border-gray-600 text-gray-300 px-2 py-0.5 rounded" aria-label="Hide results">&#128065;</button></span>
                     </div>
                     <div id="qualifyStageResults" class="divide-y divide-gray-800/60 overflow-y-auto flex-1"></div>
                 </div>
@@ -2321,7 +2329,7 @@
 
     <!-- RACE RULES PDF MODAL -->
     <div id="rulesPdfModal" class="hidden fixed inset-0 bg-black/85 z-[200] flex items-center justify-center p-4" onclick="if(event.target===this)window.closeRulesPdfModal()">
-        <div class="bg-navy-900 border border-purple-500/40 rounded-2xl shadow-2xl max-w-sm w-full p-5 space-y-3">
+        <div class="bg-navy-900 border border-purple-500/40 rounded-2xl shadow-2xl max-w-md w-full p-5 space-y-3 max-h-[92vh] overflow-y-auto">
             <div class="flex items-center justify-between">
                 <div>
                     <div class="text-base font-black text-white" data-i18n="rulesPdfModalTitle">Race Rules PDF</div>
@@ -2335,8 +2343,12 @@
                 <i class="fas fa-file-pdf text-2xl text-purple-400"></i>
                 <span class="text-sm text-gray-300 font-bold" data-i18n="rulesPdfDrop">Click to select PDF</span>
                 <span class="text-[11px] text-gray-500" data-i18n="rulesPdfDropHint">Max ~50 pages recommended</span>
-                <input type="file" id="rulesPdfInput" accept=".pdf" class="hidden" onchange="window.handleRulesPdfUpload(this)">
+                <input type="file" id="rulesPdfInput" accept=".pdf,.txt,text/plain" class="hidden" onchange="window.handleRulesPdfUpload(this)">
             </label>
+
+            <!-- Or paste the rules as plain text -->
+            <div class="flex items-center gap-2 text-[11px] text-gray-500"><span class="flex-1 h-px bg-gray-700"></span><span data-i18n="rulesOrPaste">or paste the rules text</span><span class="flex-1 h-px bg-gray-700"></span></div>
+            <textarea id="rulesTextInput" rows="5" class="input-field w-full text-xs resize-y" style="min-height:96px;max-height:40vh" data-i18n="rulesPastePlaceholder" placeholder="Paste race rules or regulations here…" oninput="window.handleRulesTextInput(this.value)"></textarea>
 
             <!-- Status row -->
             <div id="rulesPdfStatus" class="hidden text-xs text-center py-2 rounded-lg bg-navy-800 border border-gray-700 text-gray-300"></div>
@@ -2473,14 +2485,15 @@
         </div>
     </div>
 
-    <script src="js/state.js?v=25"></script>
+    <script src="js/state.js?v=27"></script>
     <script src="js/auth.js?v=8"></script>
     <script src="js/network.js?v=10"></script>
-    <script src="js/strategy.js?v=12"></script>
-    <script src="js/live-timing.js?v=16"></script>
+    <script src="js/strategy.js?v=13"></script>
+    <script src="js/race-rules.js?v=3"></script>
+    <script src="js/live-timing.js?v=19"></script>
     <script src="js/track-finder.js?v=1"></script>
-    <script src="js/ui.js?v=13"></script>
+    <script src="js/ui.js?v=15"></script>
     <script src="js/walkthrough.js?v=13"></script>
-    <script src="js/main.js?v=17"></script>
+    <script src="js/main.js?v=21"></script>
 </body>
 </html>
