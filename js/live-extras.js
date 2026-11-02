@@ -72,7 +72,16 @@
         const link = $('apexIframeOpen');
         const url = window.liveTimingConfig && window.liveTimingConfig.url;
         if (link && url) link.href = url;
-        if (typeof origToggle === 'function') return origToggle.apply(this, arguments);
+        const r = typeof origToggle === 'function' ? origToggle.apply(this, arguments) : undefined;
+        // original page showing: the six stat boxes go away and the page gets the whole widget
+        const box = $('apexIframeContainer');
+        document.body.classList.toggle('lt-original', !!box && !box.classList.contains('hidden'));
+        return r;
+    };
+    const origStop = window.stopLiveTiming;
+    window.stopLiveTiming = function() {
+        document.body.classList.remove('lt-original');
+        return typeof origStop === 'function' ? origStop.apply(this, arguments) : undefined;
     };
 
     // ----- 4) race clock follows the timing clock -----

@@ -2227,7 +2227,10 @@ window.toggleOutlookCollapse = function() {
 
     function maxH() {
         if (!wrapper || !wrapper.parentElement) return 800;
-        return Math.max(MIN_H, wrapper.parentElement.clientHeight - 16);
+        // In the single-column layout the panel scrolls, so the widget may grow past the screen.
+        const bounded = window.matchMedia('(min-width:768px) and (orientation:landscape)').matches || window.matchMedia('(min-width:1024px)').matches;
+        const room = wrapper.parentElement.clientHeight - 16;
+        return Math.max(MIN_H, bounded ? room : Math.max(room, Math.round(window.innerHeight * 1.4)));
     }
 
     function applyH(h) {
@@ -2256,9 +2259,8 @@ window.toggleOutlookCollapse = function() {
         // --lt-widget-h: always at ≥1024px, and on tablet landscape (768–1023px) too
         // (see style.css) — but not in the portrait/phone single-scroll-column layout,
         // where raceInfoPanel has no bounded height for this to resize against.
-        const resizable = window.matchMedia('(min-width:1024px)').matches
-            || window.matchMedia('(min-width:768px) and (orientation:landscape)').matches;
-        if (!resizable) return;
+        // The handle now works in every layout (portrait tablets and phones included).
+        document.body.classList.add('lt-resized');
         dragging = true;
         handle.classList.add('active');
         const clientY = e.touches ? e.touches[0].clientY : e.clientY;
@@ -2278,6 +2280,7 @@ window.toggleOutlookCollapse = function() {
 
         const saved = parseInt(localStorage.getItem(STORAGE_KEY));
         document.documentElement.style.setProperty('--lt-widget-h', (Number.isFinite(saved) && saved >= MIN_H ? saved : 420) + 'px');
+        if (Number.isFinite(saved) && saved >= MIN_H) document.body.classList.add('lt-resized');
 
         handle.addEventListener('mousedown', onStart);
         handle.addEventListener('touchstart', onStart, { passive: false });
