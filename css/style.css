@@ -662,118 +662,61 @@ header {
     width: 100%;
 }
 
-/* Mobile / narrow: compact header — logo + team + chips + menu */
+/* Header: logo, team name, status, one Menu */
+.header-menu-btn {
+    position: relative;
+    width: 36px; height: 36px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 8px;
+    color: #cbd5e1;
+    border: 1px solid #1e293b;
+    background: transparent;
+    transition: background .15s, color .15s;
+}
+.header-menu-btn:hover { background: var(--navy-800, #0f1c33); color: #fff; }
+.header-menu-btn:focus-visible, .hdr-menu-item:focus-visible { outline: 2px solid #22d3ee; outline-offset: 2px; }
+/* a pending viewer request puts a dot on the Menu button */
+.header-overflow-wrap:has(#viewerPendingBadge:not(.hidden)) .header-menu-btn::after {
+    content: ''; position: absolute; top: 4px; right: 4px;
+    width: 8px; height: 8px; border-radius: 50%; background: #ef4444;
+}
+.header-menu {
+    position: absolute; right: 0; top: calc(100% + 6px);
+    width: 248px; max-height: calc(100vh - 70px); overflow-y: auto;
+    background: var(--navy-900, #0a1426);
+    border: 1px solid #1e293b; border-radius: 10px;
+    box-shadow: 0 12px 28px rgba(0,0,0,.45);
+    padding: 4px 0; z-index: 50;
+}
+.header-menu.hidden { display: none; }
+.hdr-menu-group { padding: 6px 6px; }
+.hdr-menu-group + .hdr-menu-group { border-top: 1px solid #1e293b; }
+.hdr-menu-label { padding: 2px 10px 4px; font-size: 12px; color: #94a3b8; }
+.hdr-menu-item {
+    width: 100%; display: flex; align-items: center; gap: 10px;
+    padding: 9px 10px; min-height: 40px;
+    border-radius: 6px; font-size: 14px; color: #e2e8f0; text-align: start;
+    background: transparent; border: 0; cursor: pointer;
+}
+.hdr-menu-item.hidden { display: none !important; }
+button.hdr-menu-item:hover { background: var(--navy-800, #0f1c33); color: #fff; }
+.hdr-menu-item > i { width: 18px; text-align: center; color: #94a3b8; flex-shrink: 0; }
+.hdr-menu-item span.hidden { display: inline !important; }
+.hdr-menu-lang select { flex: 1; min-width: 0; background: var(--navy-800, #0f1c33); color: #fff; border: 1px solid #334155; border-radius: 6px; padding: 4px 6px; font-size: 14px; }
+.hdr-menu-badge { margin-inline-start: auto; background: #ef4444; color: #fff; font-size: 12px; font-weight: 700; min-width: 20px; padding: 0 6px; border-radius: 10px; text-align: center; }
+.hdr-menu-signout { color: #94a3b8; padding: 6px; border-radius: 6px; }
+.hdr-menu-signout:hover { color: #f87171; }
+header.header-bar { gap: 8px; }
+.header-center { min-width: 0; }
+
 @media (max-width: 767px) {
     :root { --header-h: 44px; }
-
-    header.header-bar {
-        padding: 4px 6px;
-        gap: 4px;
-        min-height: var(--header-h);
-    }
-
-    /* Left: logo + guide (always visible) */
-    .header-left {
-        gap: 4px !important;
-    }
-    #guideBtn {
-        width: 34px;
-        height: 34px;
-        min-width: 34px !important;
-        min-height: 34px !important;
-        padding: 0 !important;
-    }
-    .header-lang-desktop {
-        display: none !important;
-    }
-    /* Logged-in avatar only; login button lives in ⋮ menu */
-    .header-auth-desktop #googleSignInBtn {
-        display: none !important;
-    }
-    .header-auth-desktop #googleUserDisplay:not(.hidden) {
-        display: flex !important;
-        margin-left: 0 !important;
-        padding: 2px 4px !important;
-        min-height: 28px !important;
-    }
-    .header-logo-link svg {
-        width: 26px;
-        height: 26px;
-    }
-
-    /* Center: team name gets priority */
-    .header-center {
-        flex: 1 1 auto;
-        min-width: 0;
-        padding: 0 4px;
-    }
-    .header-center .team-identity-input {
-        font-size: 0.8125rem;
-        line-height: 1.2;
-        padding-top: 1px;
-        padding-bottom: 1px;
-    }
-    #headerTeamLogoImg {
-        width: 1.25rem !important;
-        height: 1.25rem !important;
-    }
-
-    /* Right: race chips scroll horizontally, menu stays fixed */
-    .header-right {
-        flex: 0 1 auto;
-        max-width: 46vw;
-        gap: 2px;
-    }
-    .header-race-chips {
-        flex: 1 1 auto;
-        min-width: 0;
-        max-width: calc(46vw - 40px);
-        scrollbar-width: none;
-        -ms-overflow-style: none;
-        mask-image: linear-gradient(to right, transparent 0, #000 6px, #000 calc(100% - 10px), transparent 100%);
-    }
-    .header-race-chips::-webkit-scrollbar {
-        display: none;
-    }
-
-    /* Icon-only chips during race */
-    .header-chip {
-        min-width: 34px !important;
-        min-height: 34px !important;
-        width: 34px;
-        height: 34px;
-        padding: 0 !important;
-        justify-content: center;
-        border-radius: 9999px;
-    }
-    .header-chip .header-chip-label {
-        display: none !important;
-    }
-    .header-chip i {
-        margin: 0 !important;
-        font-size: 0.875rem;
-    }
-    #proStatusBtn.header-chip {
-        width: auto;
-        min-width: 34px !important;
-        padding: 0 8px !important;
-    }
-    #proStatusBtn .header-chip-label {
-        display: inline !important;
-        font-size: 9px;
-    }
-
-    .header-overflow-wrap button {
-        width: 34px;
-        height: 34px;
-        min-width: 34px !important;
-        min-height: 34px !important;
-    }
-
-    /* Logged-in: hide mobile login row */
-    body:has(#googleUserDisplay:not(.hidden)) #googleSignInMobileBtn {
-        display: none;
-    }
+    header.header-bar { padding: 4px 8px; min-height: var(--header-h); }
+    .header-logo-link svg { width: 26px; height: 26px; }
+    .header-center { flex: 1 1 auto; padding: 0 4px; }
+    .header-center .team-identity-input { font-size: 0.8125rem; line-height: 1.2; padding-top: 1px; padding-bottom: 1px; }
+    #headerTeamLogoImg { width: 1.25rem !important; height: 1.25rem !important; }
+    .header-menu-btn { width: 40px; height: 40px; }
 }
 
 .scrollbar-none {
@@ -3362,7 +3305,7 @@ html { touch-action: manipulation; }   /* no double-tap-zoom delay; pinch-zoom s
     #teamLogoUploadBtn,
     #liveTimingPanel button[onclick*="stopLiveTiming"],
     #btnPush, #btnBad, #btnResetMode,
-    .header-bar button {
+    .header-menu-btn {
         min-height: 44px;
         min-width: 44px;
         padding-inline: 12px;
@@ -3510,3 +3453,29 @@ body.watcher-mode #liveTeamHint { display: none !important; }
     border-color: rgba(163,230,53,0.45) !important;
     box-shadow: inset 2px 0 0 var(--neon);
 }
+
+
+/* Next action slot: show only the first (highest-priority) visible banner */
+#nextActionSlot > :not(.hidden) ~ :not(.hidden) { display: none !important; }
+
+/* Adjust drawer: pit-time penalties stay one tap away */
+.adjust-drawer { position: relative; }
+.adjust-summary {
+    list-style: none; cursor: pointer; user-select: none;
+    padding: 6px 12px; min-height: 32px; border-radius: 6px;
+    font-size: 12px; font-weight: 600; color: #94a3b8;
+    border: 1px solid #1e293b;
+}
+.adjust-summary::-webkit-details-marker { display: none; }
+.adjust-drawer[open] .adjust-summary { color: #fff; background: #0f1c33; }
+.adjust-drawer > div {
+    display: flex; align-items: center; gap: 6px; margin-top: 6px;
+}
+
+/* Phase steps: where you are in Plan -> Qualify -> Race (desktop header) */
+.phase-steps { display: none; list-style: none; margin: 0 0 0 12px; padding: 0; gap: 4px; align-items: center; }
+@media (min-width: 768px) { .phase-steps { display: flex; } }
+.phase-steps li { font-size: 13px; font-weight: 600; color: #64748b; padding: 4px 10px; border-radius: 6px; }
+.phase-steps li.hidden { display: none; }
+.phase-steps li + li::before { content: '›'; margin-right: 14px; margin-left: -4px; color: #475569; }
+.phase-steps li[aria-current="step"] { color: #fff; background: #0f1c33; }

@@ -248,8 +248,8 @@ window.toggleMute = function() {
     const btn = document.getElementById('muteToggleBtn');
     if (btn) {
         btn.innerHTML = window._soundMuted 
-            ? '<i class="fas fa-volume-mute"></i>' 
-            : '<i class="fas fa-volume-up"></i>';
+            ? '<i class="fas fa-volume-mute"></i><span>Sound off</span>' 
+            : '<i class="fas fa-volume-up"></i><span>Sound</span>';
         btn.title = window._soundMuted ? 'Unmute' : 'Mute';
     }
 };

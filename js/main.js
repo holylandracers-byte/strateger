@@ -191,7 +191,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize mute button icon
     const muteBtn = document.getElementById('muteToggleBtn');
     if (muteBtn && window._soundMuted) {
-        muteBtn.innerHTML = '<i class="fas fa-volume-mute"></i>';
+        muteBtn.innerHTML = '<i class="fas fa-volume-mute"></i><span>Sound off</span>';
         muteBtn.title = 'Unmute';
     }
 
@@ -4517,7 +4517,7 @@ document.addEventListener('keydown', function(e) {
             const muteBtn = document.getElementById('muteBtn');
             if (muteBtn) {
                 muteBtn.innerHTML = window._soundMuted
-                    ? '<i class="fas fa-volume-mute"></i>'
+                    ? '<i class="fas fa-volume-mute"></i><span>Sound off</span>'
                     : '<i class="fas fa-volume-up"></i>';
             }
             window.showToast(window._soundMuted ? '🔇 Sound muted' : '🔊 Sound on', 'info', 2000);
@@ -5414,3 +5414,37 @@ document.addEventListener('visibilitychange', () => {
     }
 });
 
+
+
+// ==========================================
+// PHASE STEPS (Plan -> Qualify -> Race) — shows where the team is
+// ==========================================
+(function() {
+    const shown = id => { const el = document.getElementById(id); return !!el && !el.classList.contains('hidden'); };
+    function updatePhaseSteps() {
+        const list = document.getElementById('phaseSteps');
+        if (!list) return;
+        let phase = 'plan';
+        if (shown('qualifyingDashboard')) phase = 'qualify';
+        else if (shown('raceDashboard') || shown('driverModePanel')) phase = 'race';
+        const qualifyStep = list.querySelector('[data-phase="qualify"]');
+        if (qualifyStep) qualifyStep.classList.toggle('hidden', !(window._sessionMode === 'qualify' || phase === 'qualify'));
+        list.querySelectorAll('li').forEach(li => {
+            if (li.dataset.phase === phase) li.setAttribute('aria-current', 'step');
+            else li.removeAttribute('aria-current');
+        });
+    }
+    window.updatePhaseSteps = updatePhaseSteps;
+    document.addEventListener('DOMContentLoaded', () => {
+        const obs = new MutationObserver(updatePhaseSteps);
+        ['setupScreen', 'previewScreen', 'raceDashboard', 'driverModePanel', 'qualifyingDashboard'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) obs.observe(el, { attributes: true, attributeFilter: ['class'] });
+        });
+        const origMode = window.setSessionMode;
+        if (typeof origMode === 'function') {
+            window.setSessionMode = function() { const r = origMode.apply(this, arguments); updatePhaseSteps(); return r; };
+        }
+        updatePhaseSteps();
+    });
+})();

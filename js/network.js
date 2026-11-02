@@ -57,7 +57,7 @@ window.updateShareUI = function() {
     if (window.myId && window.role === 'host') {
         if (shareBtn) {
             shareBtn.classList.remove('hidden');
-            shareBtn.innerHTML = '<i class="fas fa-link"></i> <span class="hidden sm:inline">Invite</span>';
+            shareBtn.innerHTML = '<i class="fas fa-link"></i><span>Invite</span>';
         }
         
         if (driverLinkBtn) {
@@ -605,12 +605,11 @@ window.copyInviteLink = function() {
     navigator.clipboard.writeText(link).then(() => {
         const btn = document.getElementById('shareRaceBtn');
         const original = btn.innerHTML;
-        btn.innerHTML = '<i class="fas fa-check"></i>';
-        btn.classList.add('bg-green-500', 'text-white');
+        btn.innerHTML = '<i class="fas fa-check"></i><span>Copied</span>';
         
         setTimeout(() => {
             btn.innerHTML = original;
-            btn.classList.remove('bg-green-500', 'text-white');
+            
         }, 2000);
     }).catch(err => {
         prompt("Copy this link:", link);
@@ -626,12 +625,10 @@ window.copyDriverLink = function() {
         const btn = document.getElementById('driverLinkBtn');
         if (!btn) return;
         const original = btn.innerHTML;
-        btn.innerHTML = '<i class="fas fa-check"></i> <span class="hidden sm:inline">Copied!</span>';
-        btn.style.background = '#15803d';
+        btn.innerHTML = '<i class="fas fa-check"></i><span>Copied</span>';
         
         setTimeout(() => {
             btn.innerHTML = original;
-            btn.style.background = '';
         }, 2000);
     }).catch(err => {
         prompt("Copy this driver link:", link);
