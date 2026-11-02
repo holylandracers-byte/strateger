@@ -3993,3 +3993,33 @@ body.lite .fa-spin { animation: fa-spin 1.2s linear infinite !important; }
 .save-status.is-pending { color: #fbbf24; }
 .sr-laps { font-size: 11px; font-weight: 700; color: var(--ice); }
 #confirmBody { white-space: pre-line; }
+
+/* ---- Pinned totals line + tablet-friendly stint rows ---- */
+.pt-line { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 4px 12px; padding: 8px 12px; border-top: 1px solid #334155; background: var(--navy-900); font-size: 12px; color: #94a3b8; }
+.pt-line.is-ok { box-shadow: inset 0 3px 0 #22c55e; }
+.pt-line.is-bad { box-shadow: inset 0 3px 0 #ef4444; background: rgba(69, 10, 10, .45); }
+.pt-sum { display: inline-flex; align-items: baseline; flex-wrap: wrap; gap: 6px; }
+.pt-part b { color: #fff; font-size: 14px; }
+.pt-part b.pt-pit { color: var(--gold, #fbbf24); }
+.pt-op { color: #64748b; }
+.pt-total { color: #fff; font-size: 16px; }
+.pt-check { font-weight: 700; }
+.pt-line.is-ok .pt-check { color: #4ade80; }
+.pt-line.is-bad .pt-check { color: #fca5a5; }
+.stint-row.is-arming { box-shadow: 0 0 0 2px var(--ice); }
+.stint-row.is-arming .sr-handle { color: var(--ice); animation: srArm 2s linear forwards; }
+@keyframes srArm { from { transform: scale(1); } to { transform: scale(1.35); } }
+.sr-handle { touch-action: pan-y; }
+.stint-row, .stint-row * { -webkit-touch-callout: none; }
+/* leave a bare strip at the right edge so a thumb can always grab the list to scroll */
+#driverScheduleList { padding-inline-end: 18px !important; }
+@media (min-width: 620px) {
+    .stint-row { padding-block: 1px; }
+    .sr-handle, .sr-driver, .sr-step, .sr-move-btn { min-height: 34px; height: 34px; }
+    .sr-driver { font-size: 13px; padding: 0 10px; }
+    .sr-step-btn { width: 34px; }
+    .sr-dur-input { width: 44px; font-size: 14px; }
+    .sr-move-btn { width: 34px; }
+    .sr-sub { font-size: 11px; width: 230px; }
+    #driverScheduleList { gap: 3px !important; }
+}

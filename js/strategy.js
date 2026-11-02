@@ -144,6 +144,7 @@ window.calculateStintDurations = function(config) {
     const capMs = Math.min(config.maxStint > 0 ? config.maxStint * 60000 : Infinity, config.fuel > 0 ? config.fuel * 60000 : Infinity);
     const isLapRace = config.raceTarget === 'laps' && config.avgLapSec > 0 && config.raceLaps > 0;
     const lapDriveMs = isLapRace ? config.raceLaps * config.avgLapSec * 1000 : 0;
+    const stopsBeforeCap = derivedStops;
     if (capMs !== Infinity) {
         for (let i = 0; i < 200; i++) {
             const drive = isLapRace ? lapDriveMs : raceMs - derivedStops * pitTimeMs;
@@ -242,7 +243,8 @@ window.calculateStintDurations = function(config) {
     stintDurations[totalStints - 1] = finalStintDuration;
 
     // Post-validation: if any stint violates min/max bounds, fall back to balanced distribution.
-    const anyViolation = stintDurations.some(d => d < safeMinStintMs || d > effectiveMaxStint);
+    // Lap races and cap-forced stops: spread the driving evenly rather than front-loading max stints.
+    const anyViolation = isLapRace || derivedStops > stopsBeforeCap || stintDurations.some(d => d < safeMinStintMs || d > effectiveMaxStint);
     if (anyViolation) {
         console.warn("Greedy allocation violated bounds, falling back to balanced distribution.");
         const avg = totalNetDriveTime / totalStints;

@@ -1064,7 +1064,7 @@ window.renderPreview = function() {
         const canMoveDown = !isLast;
         return `
             <div class="stint-row${stint._current ? ' is-current' : ''}${outOfBounds ? ' is-bad' : ''}" style="--sc:${stint.color}"
-                 data-index="${index}" draggable="true" ondragstart="window.handleDragStart(event)" ondragover="window.handleDragOver(event)" ondragleave="window.handleDragLeave(event)" ondrop="window.handleDrop(event)">
+                 data-index="${index}" ondragstart="window.handleDragStart(event)" ondragover="window.handleDragOver(event)" ondragleave="window.handleDragLeave(event)" ondrop="window.handleDrop(event)">
                 <div class="sr-main">
                     <span class="sr-handle" title="${tr('dragToReorder', 'Drag to reorder')}"><i class="fas fa-grip-vertical"></i></span>
                     <span class="sr-num">${index + 1}</span>
@@ -1092,16 +1092,27 @@ window.renderPreview = function() {
     const totalPit = pits.reduce((a, p) => a + p.duration, 0);
     const raceTimeMs = window.config ? (window.config.raceMs || 0) : 0;
     const diffMs = (totalDrive + totalPit) - raceTimeMs;
-    const diffClass = Math.abs(diffMs) <= 60000 ? 'text-neon' : 'text-red-400';
+    // Pinned totals line: driving + pits must add up to the race length (or, for a lap race, to the laps asked for).
+    const hmFmt = (ms) => { const m = Math.round(ms / 60000); return Math.floor(m / 60) + 'h ' + String(m % 60).padStart(2, '0') + 'm'; };
+    const tl = (k, fb) => { const v = window.t ? window.t(k) : null; return (v && v !== k) ? v : fb; };
+    const cfgNow = window.config || {};
+    const isLapRace = cfgNow.raceTarget === 'laps' && cfgNow.raceLaps > 0;
     const totalLaps = typeof window.lapsForMs === 'function' ? window.lapsForMs(totalDrive) : null;
-    const lapsTotalTxt = totalLaps != null ? ` · <b class="text-ice">≈${totalLaps}${window.config && window.config.raceLaps ? '/' + window.config.raceLaps : ''} ${window.t ? (window.t('lapsShort') !== 'lapsShort' ? window.t('lapsShort') : 'laps') : 'laps'}</b>` : '';
+    const lapsOk = isLapRace && totalLaps != null && Math.abs(totalLaps - cfgNow.raceLaps) <= 1;
+    const timeOk = Math.abs(diffMs) <= 60000;
+    const allOk = isLapRace ? (lapsOk && timeOk) : timeOk;
+    const driveLabel = isLapRace && totalLaps != null ? totalLaps + ' ' + tl('laps', 'laps') + ' · ' + hmFmt(totalDrive) : hmFmt(totalDrive);
+    const targetLabel = isLapRace
+        ? cfgNow.raceLaps + ' ' + tl('laps', 'laps') + ' → ' + hmFmt(raceTimeMs)
+        : hmFmt(raceTimeMs);
+    const offTxt = timeOk ? '' : ' (' + (diffMs > 0 ? '+' : '') + Math.round(diffMs / 60000) + 'm)';
     const totalBar = `
-        <div class="bg-navy-800 p-2 rounded border border-gray-700 text-[11px] text-gray-400 flex justify-between items-center" style="margin-top:2px">
-            <span>${window.t ? window.t('driveNoun') : 'Drive'}: <b class="text-white">${(totalDrive/60000).toFixed(0)}m</b> + ${window.t ? window.t('pitNoun') : 'Pit'}: <b class="text-gold">${(totalPit/60000).toFixed(0)}m</b>${lapsTotalTxt}</span>
-            <span class="${diffClass} font-bold">= ${((totalDrive+totalPit)/60000).toFixed(0)}m ${diffMs !== 0 ? '(' + (diffMs > 0 ? '+' : '') + (diffMs/60000).toFixed(0) + 'm)' : '✅'}</span>
+        <div class="pt-line ${allOk ? 'is-ok' : 'is-bad'}">
+            <span class="pt-sum"><span class="pt-part">${tl('driveNoun', 'Drive')} <b>${driveLabel}</b></span><span class="pt-op">+</span><span class="pt-part">${tl('pitNoun', 'Pit')} <b class="pt-pit">${hmFmt(totalPit)}</b></span><span class="pt-op">=</span><b class="pt-total">${hmFmt(totalDrive + totalPit)}</b></span>
+            <span class="pt-check"><i class="fas fa-${allOk ? 'check-circle' : 'exclamation-triangle'}"></i> ${allOk ? tl('xMatchesRace', 'matches') : tl('xOffRace', 'off target')}${offTxt} · ${targetLabel}</span>
         </div>
     `;
-    
+
     const violationCount = typeof window.countStintViolations === 'function'
         ? window.countStintViolations(timeline, window.config)
         : 0;
@@ -1114,7 +1125,9 @@ window.renderPreview = function() {
 
     const scheduleEl = document.getElementById('driverScheduleList');
     if (scheduleEl) {
-        scheduleEl.innerHTML = violationBanner + listHtml + totalBar;
+        scheduleEl.innerHTML = violationBanner + listHtml;
+        const totalEl = document.getElementById('previewTotalBar');
+        if (totalEl) totalEl.innerHTML = totalBar;
         // Re-init touch drag for mobile reorder
         window.initTouchDrag(scheduleEl);
     }
@@ -1395,6 +1408,17 @@ window.toggleLog = function(idx) {
 
 // ... (Drag & Drop ושאר הפונקציות נשארים ללא שינוי) ...
 window.draggedStintIndex = null;
+document.addEventListener('mousedown', function(e) {
+    const grip = e.target.closest && e.target.closest('.sr-handle');
+    const row = grip && grip.closest('.stint-row[data-index]');
+    if (row) row.setAttribute('draggable', 'true');
+});
+document.addEventListener('dragend', function() {
+    document.querySelectorAll('.stint-row[draggable]').forEach(r => r.removeAttribute('draggable'));
+});
+document.addEventListener('mouseup', function() {
+    document.querySelectorAll('.stint-row[draggable]').forEach(r => r.removeAttribute('draggable'));
+});
 window.handleDragStart = function(e) {
     window.draggedStintIndex = parseInt(e.currentTarget.getAttribute('data-index'));
     e.dataTransfer.effectAllowed = 'move';
@@ -1464,17 +1488,34 @@ window.initTouchDrag = function(container) {
     const rowAt = (x, y) => document.elementFromPoint(x, y)?.closest('.stint-row[data-index]:not(.stint-row-locked)');
     const clear = () => container.querySelectorAll('.drag-over, .is-dragging').forEach(i => i.classList.remove('drag-over', 'is-dragging'));
 
+    // A row only moves after its grip is held for 2 s without sliding; anything shorter is a scroll.
+    const HOLD_MS = 2000, SLIDE_PX = 10;
+    let armTimer = null, armRow = null, armX = 0, armY = 0;
+    const disarm = () => { clearTimeout(armTimer); armTimer = null; if (armRow) armRow.classList.remove('is-arming'); armRow = null; };
+
     container.addEventListener('touchstart', function(e) {
         const handle = e.target.closest('.sr-handle');
         if (!handle) return;
         const row = handle.closest('[data-index]');
         if (!row) return;
-        window._touchDragState = { fromIdx: parseInt(row.getAttribute('data-index'), 10), el: row };
-        row.classList.add('is-dragging');
-        window.haptic && window.haptic('light');
+        disarm();
+        armRow = row; armX = e.touches[0].clientX; armY = e.touches[0].clientY;
+        row.classList.add('is-arming');
+        armTimer = setTimeout(function() {
+            armTimer = null;
+            row.classList.remove('is-arming');
+            window._touchDragState = { fromIdx: parseInt(row.getAttribute('data-index'), 10), el: row };
+            row.classList.add('is-dragging');
+            window.haptic && window.haptic('medium');
+        }, HOLD_MS);
     }, { passive: true });
 
     container.addEventListener('touchmove', function(e) {
+        if (armTimer) {
+            const t0 = e.touches[0];
+            if (Math.abs(t0.clientX - armX) > SLIDE_PX || Math.abs(t0.clientY - armY) > SLIDE_PX) disarm();
+            return;
+        }
         if (!window._touchDragState) return;
         e.preventDefault();
         const touch = e.touches[0];
@@ -1487,6 +1528,7 @@ window.initTouchDrag = function(container) {
     }, { passive: false });
 
     container.addEventListener('touchend', function(e) {
+        disarm();
         const drag = window._touchDragState;
         window._touchDragState = null;
         if (!drag) return;
@@ -1503,6 +1545,7 @@ window.initTouchDrag = function(container) {
     }, { passive: true });
 
     container.addEventListener('touchcancel', function() {
+        disarm();
         window._touchDragState = null;
         clear();
     });
