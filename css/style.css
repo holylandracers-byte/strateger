@@ -4023,3 +4023,29 @@ body.lite .fa-spin { animation: fa-spin 1.2s linear infinite !important; }
     .sr-sub { font-size: 11px; width: 230px; }
     #driverScheduleList { gap: 3px !important; }
 }
+
+/* ---- Live timing: dismissible empty state, filter choice, page viewer, clock sync ---- */
+.no-live-hint { position: relative; }
+.no-live-close { position: absolute; top: 6px; inset-inline-end: 8px; width: 36px; height: 36px; font-size: 24px; line-height: 1; color: #94a3b8; border-radius: 8px; }
+.no-live-close:hover { color: #fff; background: #1e293b; }
+.no-live-hint p:first-of-type { padding-inline-end: 40px; }
+.no-live-chip { display: none; margin: 8px; min-height: 38px; padding: 6px 14px; border: 1px dashed #334155; border-radius: 999px; color: #94a3b8; font-size: 13px; font-weight: 700; }
+.no-live-chip:hover { color: #22d3ee; border-color: #22d3ee; }
+body.nolive-dismissed #raceInfoPanel > .no-live-hint { display: none !important; }
+body.nolive-dismissed #raceInfoPanel:has(#liveTimingWidgetWrapper.hidden) > .no-live-chip { display: inline-flex; align-items: center; gap: 6px; }
+.no-live-filter { display: flex; flex-direction: column; gap: 6px; }
+.no-live-label { font-size: 12px; font-weight: 700; color: #cbd5e1; }
+.no-live-help { margin: 0 !important; font-size: 12px; color: #64748b; line-height: 1.35; }
+.no-live-btn-alt { background: transparent; color: #22d3ee; border: 1px solid #22d3ee; }
+.no-live-btn-alt:hover { background: rgba(34, 211, 238, .12); }
+.lt-page-viewer { position: fixed; inset: 0; z-index: 350; display: flex; flex-direction: column; background: #020617; }
+.lt-page-viewer.hidden { display: none; }
+.lt-page-bar { display: flex; align-items: center; gap: 12px; padding: 8px 12px; background: #0f172a; border-bottom: 1px solid #334155; }
+.lt-page-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #cbd5e1; font-size: 13px; }
+.lt-page-open { color: #22d3ee; font-size: 13px; text-decoration: underline; white-space: nowrap; }
+.lt-page-close { width: 40px; height: 40px; font-size: 26px; color: #cbd5e1; border-radius: 8px; }
+.lt-page-close:hover { background: #1e293b; }
+.lt-page-frame { flex: 1; width: 100%; border: 0; background: #fff; }
+.lt-page-note { margin: 0; padding: 6px 12px; font-size: 12px; color: #64748b; background: #0f172a; }
+.clock-sync-btn { font-size: 11px; padding: 1px 8px; border-radius: 999px; border: 1px solid #475569; color: #94a3b8; }
+.clock-sync-btn.is-on { color: #4ade80; border-color: rgba(74, 222, 128, .5); }

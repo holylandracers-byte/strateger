@@ -952,7 +952,9 @@
 
             <div id="raceInfoPanel" class="flex-1 min-h-0 overflow-y-auto p-2 space-y-2">
 
+                <button type="button" id="noLiveChip" class="no-live-chip" onclick="window.setNoLiveDismissed(false)">&#128225; <span data-i18n="connectLive">Live timing</span></button>
                 <div id="noLiveHint" class="no-live-hint">
+                    <button type="button" class="no-live-close" onclick="window.setNoLiveDismissed(true)" aria-label="Hide live timing panel" title="Hide (you can bring it back later)">&times;</button>
                     <p data-i18n="noLiveHint">Live timing is not connected. Positions and lap times appear here once a timing URL is set for this race.</p>
                     <form id="raceLtForm" class="no-live-form" onsubmit="window.connectLiveTimingMidRace(); return false;">
                         <div class="flex gap-1 mb-1">
@@ -965,8 +967,21 @@
                             <button type="button" onclick="window.findTrackUrl('race')" class="bg-red-900/50 border border-red-500/50 text-red-300 text-xs px-2 rounded hover:bg-red-900" data-i18n="tfFind">Find</button>
                         </div>
                         <input type="url" id="raceLtUrl" class="input-field text-xs" data-i18n="liveTimingUrl" placeholder="Live Timing URL..." autocomplete="off" required>
-                        <input type="text" id="raceLtValue" class="input-field text-xs" data-i18n="ltFilterOptional" placeholder="Team / kart filter (optional)" autocomplete="off">
-                        <button type="submit" class="no-live-btn" data-i18n="connectLive">Connect</button>
+                        <div class="no-live-filter">
+                            <label class="no-live-label" for="raceLtFilterBy">Which car is yours?</label>
+                            <select id="raceLtFilterBy" class="input-field text-xs" onchange="window.onRaceLtFilterBy(this.value)">
+                                <option value="team">Match by team name</option>
+                                <option value="kart">Match by kart number</option>
+                                <option value="driver">Match by driver name</option>
+                                <option value="all">Don't filter - show every car</option>
+                            </select>
+                            <input type="text" id="raceLtValue" class="input-field text-xs" placeholder="Team name, e.g. Holyland Racing" autocomplete="off">
+                            <p id="raceLtFilterHint" class="no-live-help"></p>
+                        </div>
+                        <div class="flex gap-2 flex-wrap">
+                            <button type="submit" class="no-live-btn" data-i18n="connectLive">Connect</button>
+                            <button type="button" class="no-live-btn no-live-btn-alt" onclick="window.openTimingPage()">View timing page</button>
+                        </div>
                     </form>
                     <div id="raceLtStatus" class="no-live-status" role="status" aria-live="polite"></div>
                 </div>
@@ -980,6 +995,7 @@
                             <span class="text-xs font-bold" data-i18n="live">LIVE</span>
                             <!-- Race clock synced to main timer -->
                             <span class="text-[11px] text-gray-400 font-mono ml-1" id="liveRaceClock"></span>
+                            <button type="button" id="clockSyncBtn" class="clock-sync-btn hidden" onclick="window.toggleClockSync()" title="Race clock follows the live timing clock"></button>
                         </div>
                         <div class="flex items-center gap-1">
                             <!-- Pro: team logo upload button (hidden for free tier) -->
@@ -1070,6 +1086,7 @@
                     </div>
                     <div id="competitorsTable" class="mt-1 overflow-y-auto lt-table-scroll"></div>
                     <div id="apexIframeContainer" class="hidden mt-1">
+                        <div class="flex justify-end text-[11px] mb-1"><a id="apexIframeOpen" href="#" target="_blank" rel="noopener" class="text-ice underline">Open in new tab &#8599;</a></div>
                         <iframe id="apexIframe" src="" class="w-full rounded" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
                     </div>
                     <!-- kartRankingPanel removed: replaced by the single avg-pace green highlight in the standings -->
@@ -2451,6 +2468,7 @@
     <script src="js/compliance.js?v=1"></script>
     <script src="js/export.js?v=1"></script>
     <script src="js/autosave.js?v=1"></script>
+    <script src="js/live-extras.js?v=1"></script>
     <script src="js/live-timing.js?v=19"></script>
     <script src="js/track-finder.js?v=2"></script>
     <script src="js/ui.js?v=21"></script>
