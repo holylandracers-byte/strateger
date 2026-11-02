@@ -309,6 +309,16 @@
                 </h2>
                 <div class="collapse-body mt-3">
                 <div class="mb-2">
+                    <div class="flex gap-1 mb-1">
+                        <select id="tfSystem" class="input-field text-xs" style="width:6.5rem" aria-label="Timing system">
+                            <option value="racefacer">RaceFacer</option>
+                            <option value="apex">Apex</option>
+                            <option value="alpha">Alpha</option>
+                        </select>
+                        <input type="text" id="tfTrack" list="tfTrackList" class="input-field text-xs flex-1 min-w-0" data-i18n="tfTrack" placeholder="Track name..." autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();window.findTrackUrl('setup')}">
+                        <button type="button" onclick="window.findTrackUrl('setup')" class="bg-red-900/50 border border-red-500/50 text-red-300 text-xs px-2 rounded hover:bg-red-900" data-i18n="tfFind">Find</button>
+                    </div>
+                    <datalist id="tfTrackList"></datalist>
                     <input type="url" id="liveTimingUrl" data-i18n="liveTimingUrl" placeholder="Live Timing URL..." class="input-field text-xs mb-1">
                 </div>
                 <div class="mb-2">
@@ -1007,6 +1017,15 @@
                 <div id="noLiveHint" class="no-live-hint">
                     <p data-i18n="noLiveHint">Live timing is not connected. Positions and lap times appear here once a timing URL is set for this race.</p>
                     <form id="raceLtForm" class="no-live-form" onsubmit="window.connectLiveTimingMidRace(); return false;">
+                        <div class="flex gap-1 mb-1">
+                            <select id="racetfSystem" class="input-field text-xs" style="width:6.5rem" aria-label="Timing system">
+                                <option value="racefacer">RaceFacer</option>
+                                <option value="apex">Apex</option>
+                                <option value="alpha">Alpha</option>
+                            </select>
+                            <input type="text" id="racetfTrack" list="tfTrackList" class="input-field text-xs flex-1 min-w-0" data-i18n="tfTrack" placeholder="Track name..." autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();window.findTrackUrl('race')}">
+                            <button type="button" onclick="window.findTrackUrl('race')" class="bg-red-900/50 border border-red-500/50 text-red-300 text-xs px-2 rounded hover:bg-red-900" data-i18n="tfFind">Find</button>
+                        </div>
                         <input type="url" id="raceLtUrl" class="input-field text-xs" data-i18n="liveTimingUrl" placeholder="Live Timing URL..." autocomplete="off" required>
                         <input type="text" id="raceLtValue" class="input-field text-xs" data-i18n="ltPlaceholder" placeholder="Search value..." autocomplete="off" required>
                         <button type="submit" class="no-live-btn" data-i18n="connectLive">Connect</button>
@@ -2459,6 +2478,7 @@
     <script src="js/network.js?v=10"></script>
     <script src="js/strategy.js?v=12"></script>
     <script src="js/live-timing.js?v=16"></script>
+    <script src="js/track-finder.js?v=1"></script>
     <script src="js/ui.js?v=13"></script>
     <script src="js/walkthrough.js?v=13"></script>
     <script src="js/main.js?v=17"></script>
