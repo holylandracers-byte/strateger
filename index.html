@@ -525,7 +525,7 @@
 
                 <h3 class="rules-group-title" data-i18n="grpDriverLimits">Driver limits</h3>
                 <div class="rule" data-rule>
-                    <p class="rule-effect" style="margin-top:0">Keeps every driver's total drive time inside this range.</p>
+                    <p class="rule-effect" style="margin-top:0" data-i18n="xHintDriveRange">Keeps every driver's total drive time inside this range.</p>
                     <div class="set-grid-2">
                         <div>
                             <label class="set-sublabel" for="minDriverTime" data-i18n="lblMinDrive">Min Driver Total (min)</label>
@@ -563,7 +563,7 @@
                     <div id="fuelInputDiv" class="hidden rule-body">
                         <label class="set-sublabel" for="fuelTime" data-i18n="lblFuelTank">Fuel Tank (min)</label>
                         <input type="number" id="fuelTime" onchange="window.runSim()" class="input-field">
-                        <p class="set-hint">A stint can never be longer than one tank.</p>
+                        <p class="set-hint" data-i18n="xHintTank">A stint can never be longer than one tank.</p>
                     </div>
                 </div>
 
@@ -584,7 +584,7 @@
                         <div>
                             <label class="set-sublabel" for="reqExtraPits" data-i18n="lblReqExtraPits">Extra Pits (optional)</label>
                             <input type="number" id="reqExtraPits" value="0" min="0" onchange="window.runSim()" class="input-field">
-                            <p class="set-hint">In-stint swaps: rain, tired driver, early switch request.</p>
+                            <p class="set-hint" data-i18n="xHintSwap">In-stint swaps: rain, tired driver, early switch request.</p>
                         </div>
                         <div>
                             <label class="set-sublabel" for="minPitLapSec" data-i18n="lblMinPitLapSec">Min Pit Lap (sec)</label>
@@ -602,7 +602,7 @@
 
                 <h3 class="rules-group-title" data-i18n="grpAlerts">Alerts and timing</h3>
                 <div class="rule" data-rule="always">
-                    <p class="rule-effect" style="margin-top:0">These shape pit calls and driver alerts during the race.</p>
+                    <p class="rule-effect" style="margin-top:0" data-i18n="xHintAlerts">These shape pit calls and driver alerts during the race.</p>
                     <div class="set-grid-2">
                         <div>
                             <label class="set-sublabel" for="releaseBuffer" data-i18n="lblBuffer">Pit Exit Buffer (s)</label>
@@ -2519,7 +2519,8 @@
     <script src="js/i18n-extra.js?v=2"></script>
     <script src="js/i18n-extra2.js?v=1"></script>
     <script src="js/i18n-extra3.js?v=1"></script>
-    <script src="js/i18n-phrases.js?v=1"></script>
+    <script src="js/i18n-phrases.js?v=2"></script>
+    <script src="js/i18n-phrases2.js?v=1"></script>
     <script src="js/auth.js?v=9"></script>
     <script src="js/network.js?v=10"></script>
     <script src="js/strategy.js?v=14"></script>

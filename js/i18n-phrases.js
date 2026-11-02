@@ -77,6 +77,7 @@
         'Move to left panel': ['העבר לפאנל השמאלי', 'Déplacer vers le panneau gauche', 'Mover para o painel esquerdo', 'Переместить в левую панель', 'نقل إلى اللوحة اليسرى', 'Mover al panel izquierdo', 'Sposta nel pannello sinistro', 'მარცხენა პანელზე გადატანა', 'In linkes Panel verschieben', '左パネルへ移動', 'Μετακίνηση στο αριστερό πάνελ']
     };
 
+    window._TT_PH = PH;   // extra phrase files merge into this table
     const lang = () => {
         try {
             return (window.role === 'viewer'

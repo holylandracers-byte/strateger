@@ -1,7 +1,7 @@
 // ==========================================
 // 📦 STRATEGER SERVICE WORKER — Offline-First PWA
 // ==========================================
-const CACHE_VERSION = 16;
+const CACHE_VERSION = 17;
 const CACHE_NAME = `strateger-v${CACHE_VERSION}`;
 
 // Core app shell — must be cached for offline
@@ -15,6 +15,7 @@ const STATIC_ASSETS = [
     '/js/i18n-extra2.js',
     '/js/i18n-extra3.js',
     '/js/i18n-phrases.js',
+    '/js/i18n-phrases2.js',
     '/js/auth.js',
     '/js/network.js',
     '/js/strategy.js',

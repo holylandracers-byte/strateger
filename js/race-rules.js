@@ -159,7 +159,7 @@ window.applyRaceRules = function(timeline, config) {
             if (item.type === 'pit' && t >= w[0] && t <= w[1]) bad++;
             t += item.duration;
         });
-        msgs.push({ ok: bad === 0, text: 'Pit closed ' + w[0] / 60000 + '–' + w[1] / 60000 + ' min: ' + (bad ? bad + ' pit(s) inside the window' : 'clear') });
+        msgs.push({ ok: bad === 0, text: window.tt('Pit closed') + ' ' + w[0] / 60000 + '–' + w[1] / 60000 + ' min: ' + (bad ? bad + ' ' + window.tt('pit(s) inside the window') : window.tt('clear')) });
     });
 
     window._ruleMessages = msgs;
@@ -192,20 +192,20 @@ window.renderRuleNotes = function() {
     const esc = window._escHtml;
     card.innerHTML =
         '<div class="rule-head" style="cursor:default"><span class="rule-title">' + window.tt('Custom race rules') + '</span><span class="rule-note" style="color:#c4b5fd">' + window.tt('applied to the strategy') + '</span></div>'
-        + '<div class="set-sublabel" style="margin-top:4px">Pit lane closed windows (minutes from race start)</div>'
+        + '<div class="set-sublabel" style="margin-top:4px">' + window.tt('Pit lane closed windows (minutes from race start)') + '</div>'
         + '<div class="rule-windows">'
         + r.closedWindows.map(function(w, i) {
-            return '<div class="rule-window"><input type="number" min="0" value="' + Number(w[0]) + '" class="input-field" data-win="' + i + '" data-pos="0" aria-label="From">'
-                + '<i class="fas fa-long-arrow-alt-right" aria-hidden="true"></i><input type="number" min="0" value="' + Number(w[1]) + '" class="input-field" data-win="' + i + '" data-pos="1" aria-label="To">'
-                + '<button type="button" class="rule-window-del" data-win-del="' + i + '" aria-label="Remove window"><i class="fas fa-trash-alt"></i></button></div>';
+            return '<div class="rule-window"><input type="number" min="0" value="' + Number(w[0]) + '" class="input-field" data-win="' + i + '" data-pos="0" aria-label="' + window.tt('From') + '">'
+                + '<i class="fas fa-long-arrow-alt-right" aria-hidden="true"></i><input type="number" min="0" value="' + Number(w[1]) + '" class="input-field" data-win="' + i + '" data-pos="1" aria-label="' + window.tt('To') + '">'
+                + '<button type="button" class="rule-window-del" data-win-del="' + i + '" aria-label="' + window.tt('Remove window') + '"><i class="fas fa-trash-alt"></i></button></div>';
         }).join('')
-        + '</div><button type="button" id="ruleAddWindow" class="rule-add"><i class="fas fa-plus"></i> Add closed window</button>'
+        + '</div><button type="button" id="ruleAddWindow" class="rule-add"><i class="fas fa-plus"></i> ' + window.tt('Add closed window') + '</button>'
         + '<div class="set-grid-2">'
         + '<div><label class="set-sublabel" for="ruleMinStints">' + window.tt('Min stints per driver') + '</label><input type="number" min="0" id="ruleMinStints" class="input-field" value="' + r.minStintsPerDriver + '"></div>'
         + '<div><label class="set-sublabel" for="ruleMaxStints">' + window.tt('Max stints per driver') + '</label><input type="number" min="0" id="ruleMaxStints" class="input-field" value="' + r.maxStintsPerDriver + '"></div>'
         + '</div>'
         + (r.notes.length
-            ? '<div class="rule-body"><div class="rule-head" style="min-height:0;cursor:default"><span class="rule-title" style="font-size:13px">Other rules <span class="rule-note" style="color:#94a3b8">checklist, not calculated</span></span>'
+            ? '<div class="rule-body"><div class="rule-head" style="min-height:0;cursor:default"><span class="rule-title" style="font-size:13px">' + window.tt('Other rules') + ' <span class="rule-note" style="color:#94a3b8">' + window.tt('checklist, not calculated') + '</span></span>'
                 + '<button type="button" id="ruleClearNotes" class="rule-add" style="margin:0">' + window.tt('Clear') + '</button></div><ul class="rule-notes">'
                 + r.notes.map(function(n) { return '<li>' + esc(n) + '</li>'; }).join('') + '</ul></div>'
             : '')
@@ -244,7 +244,7 @@ window._showRulesProposal = function(text) {
     try { parsed = m && JSON.parse(m[0]); } catch (e) { return; }
     if (!parsed) return;
     const settings = Object.entries(parsed.settings || {}).filter(function(kv) {
-        return window._RULE_FIELDS[kv[0]] && kv[1] !== null && kv[1] !== '' && Number.isFinite(Number(kv[1])) && document.getElementById(kv[0]);
+        return window.tt(window._RULE_FIELDS[kv[0]]) && kv[1] !== null && kv[1] !== '' && Number.isFinite(Number(kv[1])) && document.getElementById(kv[0]);
     });
     const wins = (Array.isArray(parsed.closedWindows) ? parsed.closedWindows : [])
         .filter(function(w) { return Array.isArray(w) && Number.isFinite(Number(w[0])) && Number.isFinite(Number(w[1])) && Number(w[1]) > Number(w[0]); })
@@ -270,7 +270,7 @@ window._showRulesProposal = function(text) {
         + '<div class="text-base font-black text-white">' + window.tt('Rules found in the regulations') + '</div>'
         + '<div class="text-[11px] text-gray-500">' + window.tt('Untick anything that is wrong. Applied rules change the strategy.') + '</div>'
         + '<div class="space-y-1">'
-        + settings.map(function(kv) { return row('data-rule-key="' + kv[0] + '" data-rule-val="' + Number(kv[1]) + '"', window._RULE_FIELDS[kv[0]], document.getElementById(kv[0]).value || '—', Number(kv[1])); }).join('')
+        + settings.map(function(kv) { return row('data-rule-key="' + kv[0] + '" data-rule-val="' + Number(kv[1]) + '"', window.tt(window._RULE_FIELDS[kv[0]]), document.getElementById(kv[0]).value || '—', Number(kv[1])); }).join('')
         + wins.map(function(w, i) { return row('data-rule-win="' + i + '"', window.tt('Pit lane closed (min from start)'), '—', w[0] + '–' + w[1]); }).join('')
         + (minStints ? row('data-rule-minstints="' + minStints + '"', window.tt('Min stints per driver'), window.raceRules.minStintsPerDriver || '—', minStints) : '')
         + (maxStints ? row('data-rule-maxstints="' + maxStints + '"', window.tt('Max stints per driver'), window.raceRules.maxStintsPerDriver || '—', maxStints) : '')

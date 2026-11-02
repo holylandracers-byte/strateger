@@ -3155,7 +3155,7 @@ window._refreshRuleStates = function() {
     });
     const count = document.getElementById('rulesActiveCount');
     if (count) {
-        count.textContent = active > 0 ? active + ' on' : '';
+        count.textContent = active > 0 ? active + ' ' + (window.tt ? window.tt('on') : 'on') : '';
         count.classList.toggle('hidden', active === 0);
     }
 };
