@@ -3507,3 +3507,6 @@ body.watcher-mode #liveTeamHint { display: none !important; }
 
 /* Timers and lap times: equal-width digits so they don't jitter */
 .font-mono, [class*="font-mono"] { font-variant-numeric: tabular-nums; }
+
+/* Menu: hide a group when none of its items apply */
+.hdr-menu-group:not(:has(> .hdr-menu-item:not(.hidden))) { display: none; }
