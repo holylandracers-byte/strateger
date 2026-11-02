@@ -248,8 +248,8 @@ window.toggleMute = function() {
     const btn = document.getElementById('muteToggleBtn');
     if (btn) {
         btn.innerHTML = window._soundMuted 
-            ? '<i class="fas fa-volume-mute"></i>' 
-            : '<i class="fas fa-volume-up"></i>';
+            ? '<i class="fas fa-volume-mute"></i><span>' + (window.t ? window.t('menuSoundOff') : 'Sound off') + '</span>' 
+            : '<i class="fas fa-volume-up"></i><span>' + (window.t ? window.t('menuSound') : 'Sound') + '</span>';
         btn.title = window._soundMuted ? 'Unmute' : 'Mute';
     }
 };
@@ -325,7 +325,7 @@ window.translations = {
         errImpossible: "Impossible Strategy!", errAvgHigh: "Avg stint > Max Stint. Increase Stops or Max Stint.", errAvgLow: "Avg stint < Min Stint. Decrease Stops or Min Stint.",
         appTitle: "STRATEGER", appSubtitle: "Endurance Race Strategy Manager", generalInfo: "General Info", advancedConstraints: "Advanced Constraints", driverConfig: "Drivers", aiTitle: "AI Strategy",
         lblDuration: "Duration (Hours)", lblStops: "Req. Stops", lblMinStint: "Min Stint (min)", lblMaxStint: "Max Stint (min)", lblPitTime: "Pit Time (sec)", lblPitClosedStart: "🚫 Closed Start (min)", lblPitClosedEnd: "🚫 Closed End (min)",
-        lblMinDrive: "Min Driver Total (min)", lblMaxDrive: "Max Driver Total (min)", lblBuffer: "Pit Alert / Buffer (s)", lblDoubles: "Allow Doubles", lblSquads: "Use Squads", lblFuel: "Fuel", lblFuelTank: "Fuel Tank (min)",
+        lblMinDrive: "Min Driver Total (min)", lblMaxDrive: "Max Driver Total (min)", lblBuffer: "Pit Exit Buffer (s)", lblBufferHint: "Seconds before min pit time ends — driver walks to exit", lblPitNotifyLead: "Notify Lead Time (min)", lblPitNotifyLeadHint: "Minutes before max stint (minus in-lap) to warn driver on track", lblInLapSec: "In-Lap to Pits (sec, dry)", lblInLapHint: "Track time to reach pit entry. 0 = auto from circuit name.", lblDoubles: "Allow Doubles", lblSquads: "Use Squads", lblFuel: "Fuel", lblFuelTank: "Fuel Tank (min)",
         lblExtraPits: "Extra Pit Stops", lblReqExtraPits: "Required Extra Pits", lblMinPitLapSec: "Min Pit Lap (sec)", lblExtraPitsHint: "Mandatory extra pits in left lane. Pit lane closed first & last 10 min.",
         markExtraPit: "Mark as Extra Pit", extraPitDone: "Extra Pit", driverMaxTimeWarning: "⚠️ Near max drive time!", driverOverMaxTime: "🚨 OVER max drive time!",
         qpKart24h: "🏎 24H Kart", qpNoLimit: "∞ No Limit", extraPitMissing: "Extra pits missing", extraPitOnPace: "Extra pits on pace",
@@ -381,6 +381,22 @@ window.translations = {
         driverExitedEarly: "Driver exited early",
         driverExitedEarlyNotice: "Driver exited the pit before required time — confirm to accept.",
         orangeZone: "⚠️ Orange zone - NOTIFY only",
+        stintNotifySoon: "Start notifying driver in",
+        stintNotifyNow: "NOTIFY DRIVER — Pit entry window open",
+        stintNotifyLate: "MAX STINT RISK — Driver must pit now",
+        stintNotifyInfo: "Notify from {{time}} (max {{max}}m − {{inlap}}s in-lap − {{lead}}m lead)",
+        pitNotifyPreview: "→ Notify driver at stint {{time}}",
+        driverNotifiedShort: "✓ Notified",
+        swapDriver: "Swap driver",
+        holdToReorder: "Hold 3 sec, then drag to new position",
+        holdToSwapDriver: "Hold 3 sec to swap driver",
+        holdToChangeNext: "Hold 3 sec to change next driver",
+        dragToPosition: "🔀 Drag to the target position",
+        nextDriverChanged: "Next driver updated",
+        stintFixApplied: "✓ Stints redistributed to fit min/max rules",
+        stintFixPartial: "⚠️ Some stints still outside bounds — add stops or adjust limits",
+        stintViolationsBanner: "{{count}} stint(s) outside min/max — tap Auto-fix",
+        stintFixBtn: "Auto-fix",
         targetLabel: "TARGET",
         driverLink: "Driver Link",
         tapToPit: "TAP TO ENTER PIT",
@@ -458,6 +474,43 @@ window.translations = {
         onboardDemoHint: "The best way to get started is to run a quick demo race — it takes 30 seconds and shows you exactly how everything works.",
         onboardRunDemo: "Run Demo Race",
         onboardWelcome: "Welcome to Strateger!",
+        wtLangTitle: "Choose Your Language",
+        wtLangSub: "More languages available in the header after setup.",
+        wtGuideBtn: "Guide",
+        wtTitleWelcome: "Welcome to Strateger!",
+        wtDescWelcome: "Your pit strategy assistant for endurance karting. This quick tour shows how to set up a race, connect live timing (Apex / RaceFacer), and run a fast simulation.",
+        wtTitleHero: "Quick Race Profiles",
+        wtDescHero: "Pick Sprint, Endurance, or No Limit presets. These fill in duration, pit stops, and stint limits based on typical rules.",
+        wtTitleRules: "Race Rules",
+        wtDescRules: "Set duration, required pit stops, min/max stint, and pit time. Strateger validates your plan and warns if stints are impossible.",
+        wtTitleLT: "Live Timing — Apex & RaceFacer",
+        wtDescLT: "Paste your venue URL from Apex Timing or RaceFacer. Filter by team name so you only see your kart — even with 20+ teams on track.",
+        wtTitleDrivers: "Drivers",
+        wtDescDrivers: "Add your driver pool, pick who starts, and assign squads for night shifts. Minimum 2 drivers required.",
+        wtTitlePreview: "Strategy Preview",
+        wtDescPreview: "The full stint timeline before the race — each bar is a driver shift. You can drag to reorder or adjust durations.",
+        wtTitleSim: "Guided Simulation",
+        wtDescSim: "A 6-hour endurance demo with simulated live timing. The clock ticks briefly, then jumps forward hours between stints to show pit stops and strategy updates.",
+        wtStartSim: "▶ Start Simulation",
+        wtTitleRaceTimer: "6-Hour Race Clock",
+        wtDescRaceTimer: "A real endurance race — 6 hours on the clock. Click Next to watch a few seconds tick, then we'll skip ahead through the race.",
+        wtTitleTimeSkip: "Fast-Forward",
+        wtDescTimeSkip1: "In a 6-hour race, hours pass between driver changes. We jump +2h 30m ahead — the clock and stint timer update instantly.",
+        wtDescTimeSkip2: "Another +1h 30m forward — now deep into the race. The live timing grid reflects the later stage.",
+        wtSkipToast: "{delta} — skipping ahead in the race",
+        wtTitleStintDriver: "Stint & Driver",
+        wtDescStintDriver: "Mid-race: current driver, stint timer (~25–55 min stints), and progress bar. Click Next for a short live tick.",
+        wtTitleStrategy: "Strategy Outlook",
+        wtDescStrategy: "Live pills show remaining stints for the rest of this 6-hour race. After each pit, times recalculate from actual stops.",
+        wtTitleLivePreview: "Updated Plan",
+        wtDescLivePreview: "▶ PLAN after a pit stop: completed stints show real durations, future stints are redistributed across the remaining hours.",
+        wtTitleLTRace: "Live Timing Grid",
+        wtDescLTRace: "Simulated leaderboard late in the race. Collapse the table (📋) when you only need your row.",
+        wtTitlePit: "Pit Stop",
+        wtDescPit: "Demo pit stop: entry, minimum pit time, exit, and driver swap — then the 6-hour plan recalculates.",
+        wtTitleDone: "You're Ready!",
+        wtDescDone: "Set up your real race, connect live timing, and go. Replay this guide anytime from the Guide button in the header.",
+        wtFinishedToast: "Tour complete — good luck in the race!",
         soundMute: "Mute", soundUnmute: "Unmute",
         aiOptimize: "AI Optimize Strategy",
         raceFinished: "RACE FINISHED", totalPitTime: "Pit Time", raceStart: "Start", pitLog: "Pit Stop Log", drove: "Drove", pitNoun: "Pit", driveNoun: "Drive", stints: "Stints", avgStint: "Avg",
@@ -488,7 +541,7 @@ window.translations = {
         teamLogoInvalidType: "Only JPG, PNG or SVG allowed",
         stintAvg: "Stint Avg",
         norm: "NORM",
-        pitLatestExitIn: "Latest exit in", pitLeaveNow: "⚠️ Leave now!", pitLatestExitPassed: "🚨 EXIT OVERDUE",
+        pitLatestExitIn: "Latest exit in", pitLeaveNow: "⚠️ Leave now!", ltNoTeamSet: "Showing all cars — tap to pick your team", ltFilterOptional: "Team / kart filter (optional)", rulesOrPaste: "or paste the rules text", rulesPastePlaceholder: "Paste race rules or regulations here…", rulesPastedText: "Pasted text", chars: "characters", ltOriginalView: "Original", ltTableView: "Table", ltTeamNotFound: "not found in feed", connLost: "⚠️ Connection lost — reconnecting…", feedStale: "⚠️ Live timing stale", watchingLive: "Watching live · read-only", pitClosed: "PIT CLOSED", watchStale: "No update", pickYourTeam: "Pick your team", pickTeamFilter: "Filter by name or kart #", durationMismatch: "Live timing has more time left than the configured race length - set Duration to match or the clock will not move", bufferDefault: "def.", watchingSecondTeam: "Watching", yourTeam: "Your Team", guidedTourMidRaceWarning: "This will end your current race and start the guided tour. This cannot be undone.", consistentFastPitAlert: "⚡ Kart #{{kart}} ({{team}}) — fast & consistent — just pitted. Possible opportunity.", penaltiesWarnings: "Penalties & Warnings", penaltyServe: "Serve", acknowledge: "OK", pitEarlyExit: "⚠️ EARLY EXIT — min pit time not served", pitLatestExitPassed: "🚨 EXIT OVERDUE",
         autoPit: "Auto", autoPitOn: "Auto", autoPitOff: "Manual",
     },
     he: {
@@ -498,7 +551,7 @@ window.translations = {
         errImpossible: "אסטרטגיה לא אפשרית!", errAvgHigh: "ממוצע סטינט גבוה מהמקסימום. הוסף עצירות או הגדל מקסימום.", errAvgLow: "ממוצע סטינט נמוך מהמינימום. הפחת עצירות או הקטן מינימום.",
         appTitle: "STRATEGER", appSubtitle: "ניהול אסטרטגיה למירוצי סיבולת", generalInfo: "הגדרות כלליות", advancedConstraints: "אילוצים מתקדמים", driverConfig: "נהגים", aiTitle: "אסטרטגיה חכמה (AI)",
         lblDuration: "משך (שעות)", lblStops: "עצירות חובה", lblMinStint: "מינימום סטינט (דק')", lblMaxStint: "מקסימום סטינט (דק')", lblPitTime: "זמן פיטס (שניות)", lblPitClosedStart: "🚫 סגור בהתחלה (דק')", lblPitClosedEnd: "🚫 סגור בסוף (דק')",
-        lblMinDrive: "מינימום לנהג (דק')", lblMaxDrive: "מקסימום לנהג (דק')", lblBuffer: "התראה מראש (שניות)", lblDoubles: "אפשר דאבל סטינט", lblSquads: "שימוש בחוליות", lblFuel: "דלק", lblFuelTank: "מיכל דלק (דק')",
+        lblMinDrive: "מינימום לנהג (דק')", lblMaxDrive: "מקסימום לנהג (דק')", lblBuffer: "באפר יציאה מפיט (שניות)", lblBufferHint: "שניות לפני סיום זמן מינימום בפיט — הנהג הולך ליציאה", lblPitNotifyLead: "התראה מראש (דק')", lblPitNotifyLeadHint: "דקות לפני מקס סטינט (פחות in-lap) להודיע לנהג", lblInLapSec: "סיבוב כניסה לפיט (שניות, יבש)", lblInLapHint: "זמן במסלול עד כניסה לפיט. 0 = זיהוי אוטומטי לפי שם המסלול.", lblDoubles: "אפשר דאבל סטינט", lblSquads: "שימוש בחוליות", lblFuel: "דלק", lblFuelTank: "מיכל דלק (דק')",
         addDriver: "+ הוסף", generateStrategy: "צור אסטרטגיה (AI)", previewStrategy: "תצוגה מקדימה", startRace: "התחל מירוץ", loadSaved: "טען מירוץ",
         stepRaceSettings: "הגדרות מירוץ", stepDrivers: "נהגים", stepGo: "יאללה נתחיל", optional: "אופציונלי", joinAsDriverHint: "התחבר למירוץ שרץ במכשיר אחר",
         raceTime: "זמן מירוץ", stops: "עצירות", live: "חי", stop: "עצור", pos: "מיקום", last: "אחרון", best: "הטוב", targetStint: "יעד סטינט", buildTime: "צבור זמן",
@@ -547,6 +600,22 @@ window.translations = {
         driverExitedEarly: "הנהג יצא מוקדם",
         driverExitedEarlyNotice: "הנהג יצא מהפיט לפני הזמן הנדרש – אשר כדי להתקבל.",
         orangeZone: "⚠️ אזור כתום - הודע לנהג בלבד",
+        stintNotifySoon: "התחל להודיע לנהג בעוד",
+        stintNotifyNow: "הודע לנהג — חלון כניסה לפיט פתוח",
+        stintNotifyLate: "סיכון מקס סטינט — הנהג חייב להיכנס לפיט עכשיו",
+        stintNotifyInfo: "הודע מ-{{time}} (מקס {{max}}ד' − {{inlap}}ש' in-lap − {{lead}}ד' מראש)",
+        pitNotifyPreview: "→ הודע לנהג בסטינט {{time}}",
+        driverNotifiedShort: "✓ הודיע",
+        swapDriver: "החלף נהג",
+        holdToReorder: "החזק 3 שניות, ואז גרור למיקום החדש",
+        holdToSwapDriver: "החזק 3 שניות להחלפת נהג",
+        holdToChangeNext: "החזק 3 שניות לשינוי הנהג הבא",
+        dragToPosition: "🔀 גרור למיקום היעד",
+        nextDriverChanged: "הנהג הבא עודכן",
+        stintFixApplied: "✓ הסטינטים חולקו מחדש לפי כללי מינ/מקס",
+        stintFixPartial: "⚠️ חלק מהסטינטים עדיין מחוץ לגבולות — הוסף עצירות או שנה הגבלות",
+        stintViolationsBanner: "{{count}} סטינטים מחוץ למינ/מקס — לחץ תיקון אוטומטי",
+        stintFixBtn: "תיקון אוטומטי",
         targetLabel: "יעד",
         driverLink: "קישור נהג",
         tapToPit: "לחץ לכניסה לפיטס",
@@ -616,6 +685,43 @@ window.translations = {
         proFeature: "תכונת Pro", proUpgradeTitle: "⭐ שדרג ל-Pro", proUpgradeMsg: "שחרר תזמון חי, אסטרטגיית AI, חוליות, נהגים וערכות נושא ללא הגבלה, ועוד!", proActivate: "הפעל רישיון", proDeactivate: "בטל", proEnterKey: "הכנס מפתח רישיון...", proInvalidKey: "מפתח רישיון לא תקין", proActivated: "⭐ Pro הופעל!", proBadge: "PRO", proRequired: "דרוש Pro", proHaveCoupon: "🎟️ יש לך קוד קופון?", proApplyCoupon: "החל",
         onboardWelcome: "ברוכים הבאים ל-Strateger!", onboardDemoHint: "הדרך הכי טובה להתחיל היא להריץ מירוץ דמו קצר — לוקח 30 שניות ומראה בדיוק איך הכל עובד.", onboardRunDemo: "הרץ דמו",
         onboardSkip: "אחקור לבד", onboardNext: "הבא", onboardDone: "יאללה!",
+        wtLangTitle: "בחר שפה",
+        wtLangSub: "שפות נוספות זמינות בכותרת אחרי ההגדרה.",
+        wtGuideBtn: "מדריך",
+        wtTitleWelcome: "ברוכים הבאים ל-Strateger!",
+        wtDescWelcome: "עוזר האסטרטגיה שלך למירוצי סיבולת בקארטינג. הסיור המהיר מראה איך להגדיר מירוץ, לחבר תזמון חי (Apex / RaceFacer), ולהריץ סימולציה מהירה.",
+        wtTitleHero: "פרופילי מירוץ מהירים",
+        wtDescHero: "בחר ספרינט, סיבולת או ללא הגבלה. אלה ממלאים משך, עצירות חובה ומגבלות סטינט לפי תקנון טיפוסי.",
+        wtTitleRules: "תקנון מירוץ",
+        wtDescRules: "הגדר משך, עצירות חובה, מינ/מקס סטינט וזמן פיט. Strateger מאמת את התוכנית ומזהיר אם הסטינטים בלתי אפשריים.",
+        wtTitleLT: "תזמון חי — Apex ו-RaceFacer",
+        wtDescLT: "הדבק את כתובת האתר מ-Apex Timing או RaceFacer. סנן לפי שם קבוצה — גם עם 20+ קבוצות במסלול.",
+        wtTitleDrivers: "נהגים",
+        wtDescDrivers: "הוסף את מאגר הנהגים, בחר מי מתחיל, והקצה חוליות למשמרות לילה. נדרשים לפחות 2 נהגים.",
+        wtTitlePreview: "תצוגה מקדימה",
+        wtDescPreview: "ציר הזמן המלא לפני המירוץ — כל פס הוא סטינט של נהג. אפשר לגרור, לשנות משכים ולשמור.",
+        wtTitleSim: "סימולציה מודרכת",
+        wtDescSim: "דמו סיבולת 6 שעות עם תזמון חי מדומה. השעון זז רגע, ואז קופצים שעות קדימה בין סטינטים — פיטס, החלפת נהג ועדכון תוכנית.",
+        wtStartSim: "▶ התחל סימולציה",
+        wtTitleRaceTimer: "שעון מירוץ 6 שעות",
+        wtDescRaceTimer: "מירוץ סיבולת אמיתי — 6 שעות על השעון. לחץ הבא לראות כמה שניות של ספירה, ואז נקפוץ קדימה במירוץ.",
+        wtTitleTimeSkip: "דילוג קדימה",
+        wtDescTimeSkip1: "במירוץ של 6 שעות עוברות שעות בין החלפות. קופצים +2:30 שעות — השעון וטיימר הסטינט מתעדכנים מיד.",
+        wtDescTimeSkip2: "עוד +1:30 שעות קדימה — עכשיו בשלב מאוחר של המירוץ. טבלת התזמון החי משקפת את המצב.",
+        wtSkipToast: "{delta} — מדלגים קדימה במירוץ",
+        wtTitleStintDriver: "סטינט ונהג",
+        wtDescStintDriver: "אמצע מירוץ: נהג נוכחי, שעון סטינט (25–55 דק'), ופס התקדמות. לחץ הבא לטיק קצר חי.",
+        wtTitleStrategy: "תחזית אסטרטגיה",
+        wtDescStrategy: "Pills חיים מציגים סטינטים שנותרו לשאר ה-6 שעות. אחרי כל פיטס — חישוב מחדש מזמנים בפועל.",
+        wtTitleLivePreview: "תוכנית מעודכנת",
+        wtDescLivePreview: "▶ תוכנית אחרי פיטס: סטינטים שהושלמו בזמן אמת, העתידים מחולקים מחדש על השעות שנותרו.",
+        wtTitleLTRace: "טבלת תזמון חי",
+        wtDescLTRace: "טבלת מובילים מדומה בשלב מאוחר של המירוץ. כווץ (📋) כשצריך רק את השורה שלך.",
+        wtTitlePit: "עצירת פיט",
+        wtDescPit: "פיטס דמו: כניסה, זמן מינימום, יציאה והחלפת נהג — ואז תוכנית ה-6 שעות מתעדכנת.",
+        wtTitleDone: "מוכנים!",
+        wtDescDone: "הגדר את המירוץ האמיתי, חבר תזמון חי, וצא לדרך. אפשר להפעיל מחדש מהכפתור מדריך בכותרת.",
+        wtFinishedToast: "הסיור הושלם — בהצלחה במירוץ!",
         aiOptimize: "ייעול אסטרטגיה (AI)",
         raceFinished: "המירוץ נגמר", totalPitTime: "זמן פיטס", raceStart: "התחלה", pitLog: "יומן עצירות", drove: "נהג", pitNoun: "פיט", driveNoun: "נסיעה", stints: "סטינטים", avgStint: "ממוצע",
         demoSelectFeatures: "בחר תכונות Pro לבדיקה", demoLiveTimingDesc: "טבלת 20 קבוצות מדומה", demoRainLabel: "סימולציית גשם", demoRainDesc: "אירועי גשם אקראיים עם שינוי קצב", demoPenaltyDesc: "עונשים אקראיים ותוספות זמן", demoTiresLabel: "בלאי צמיגים", demoTiresDesc: "זמני הקפה עולים במהלך הסטינט", demoSquadsLabel: "חוליות", demoSquadsDesc: "קבוצות נהגים עם רוטציה", demoFuelLabel: "ניהול דלק", demoFuelDesc: "מעקב אחר דלק ועצירה לתדלוק",
@@ -647,7 +753,7 @@ window.translations = {
         teamLogoInvalidType: "רק JPG, PNG או SVG",
         stintAvg: "ממוצע סטינט",
         norm: "רגיל",
-        pitLatestExitIn: "יציאה אחרונה בעוד", pitLeaveNow: "⚠️ צא עכשיו!", pitLatestExitPassed: "🚨 יציאה באיחור",
+        pitLatestExitIn: "יציאה אחרונה בעוד", pitLeaveNow: "⚠️ צא עכשיו!", ltNoTeamSet: "מציג את כל הקארטים — לחצו לבחירת הקבוצה שלכם", ltFilterOptional: "סינון קבוצה / קארט (אופציונלי)", rulesOrPaste: "או הדביקו את טקסט התקנון", rulesPastePlaceholder: "הדביקו כאן את תקנון המרוץ…", rulesPastedText: "טקסט מודבק", chars: "תווים", ltOriginalView: "מקורי", ltTableView: "טבלה", ltTeamNotFound: "לא נמצא בפיד", connLost: "⚠️ החיבור אבד — מתחבר מחדש…", feedStale: "⚠️ הנתונים החיים אינם מתעדכנים", watchingLive: "צפייה חיה · לקריאה בלבד", pitClosed: "הפיטס סגור", watchStale: "אין עדכון", pickYourTeam: "בחרו את הקבוצה שלכם", pickTeamFilter: "סינון לפי שם או מספר קארט", durationMismatch: "בתזמון החי נותר יותר זמן ממשך המרוץ שהוגדר - עדכנו את משך המרוץ אחרת השעון לא יזוז", bufferDefault: "ברירת מחדל", watchingSecondTeam: "עוקב אחרי", yourTeam: "קבוצתך", guidedTourMidRaceWarning: "זה יסיים את המירוץ הנוכחי ויתחיל את הסיור המודרך. לא ניתן לבטל פעולה זו.", consistentFastPitAlert: "⚡ קארט #{{kart}} ({{team}}) — מהיר ועקבי — נכנס לפיטים. אולי הזדמנות.", penaltiesWarnings: "עונשים ואזהרות", penaltyServe: "לשרת", acknowledge: "אישור", pitEarlyExit: "⚠️ יציאה מוקדמת", pitLatestExitPassed: "🚨 יציאה באיחור",
         autoPit: "אוטו", autoPitOn: "אוטו", autoPitOff: "ידני",
     },
     fr: {
@@ -657,7 +763,7 @@ window.translations = {
         errImpossible: "Stratégie Impossible!", errAvgHigh: "Moyenne > Max. Ajoutez des arrêts.", errAvgLow: "Moyenne < Min. Réduisez les arrêts.",
         appSubtitle: "Gestionnaire de Stratégie", generalInfo: "Info Générale", advancedConstraints: "Contraintes Avancées", driverConfig: "Pilotes", aiTitle: "Stratégie IA",
         lblDuration: "Durée (H)", lblStops: "Arrêts Req.", lblMinStint: "Min Relais", lblMaxStint: "Max Relais", lblPitTime: "Temps Stand", lblPitClosedStart: "🚫 Fermé Début", lblPitClosedEnd: "🚫 Fermé Fin",
-        lblMinDrive: "Min Total (min)", lblMaxDrive: "Max Total (min)", lblBuffer: "Alerte (s)", lblDoubles: "Doubles OK", lblSquads: "Équipes", lblFuel: "Carburant", lblFuelTank: "Réservoir (min)",
+        lblMinDrive: "Min Total (min)", lblMaxDrive: "Max Total (min)", lblBuffer: "Buffer sortie stand (s)", lblBufferHint: "Secondes avant la fin du temps minimum au stand — le pilote se dirige vers la sortie", lblPitNotifyLead: "Délai d'alerte (min)", lblPitNotifyLeadHint: "Minutes avant le max relais (moins in-lap) pour avertir le pilote sur piste", lblInLapSec: "In-lap vers stands (sec, sec)", lblInLapHint: "Temps piste jusqu'à l'entrée stand. 0 = auto selon le circuit.", lblDoubles: "Doubles OK", lblSquads: "Équipes", lblFuel: "Carburant", lblFuelTank: "Réservoir (min)",
         addDriver: "+ Ajouter", generateStrategy: "Générer (IA)", previewStrategy: "Aperçu", startRace: "Démarrer", loadSaved: "Charger",
         raceTime: "TEMPS COURSE", stops: "ARRÊTS", live: "LIVE", stop: "Stop", pos: "POS", last: "DERN", best: "MEILL", targetStint: "CIBLE RELAIS", buildTime: "GÉRER TEMPS",
         current: "ACTUEL", stintTime: "TEMPS RELAIS", nextDriver: "Prochain", penalty: "Pénalité", enterPit: "ENTRER STAND", push: "ATTAQUE", problem: "PROBLÈME",
@@ -705,6 +811,12 @@ window.translations = {
         driverExitedEarly: "Le pilote est sorti tôt",
         driverExitedEarlyNotice: "Le pilote est sorti des stands avant le temps requis — confirmez pour accepter.",
         orangeZone: "⚠️ Zone orange - NOTIFIER seulement",
+        stintNotifySoon: "Commencer à avertir le pilote dans",
+        stintNotifyNow: "AVERTIR LE PILOTE — Fenêtre d'entrée aux stands ouverte",
+        stintNotifyLate: "RISQUE MAX RELAIS — Le pilote doit rentrer maintenant",
+        stintNotifyInfo: "Avertir dès {{time}} (max {{max}}m − {{inlap}}s in-lap − {{lead}}m d'avance)",
+        pitNotifyPreview: "→ Avertir le pilote au relais {{time}}",
+        driverNotifiedShort: "✓ Averti",
         targetLabel: "CIBLE",
         driverLink: "Lien pilote",
         tapToPit: "APPUYER POUR ENTRER AUX STANDS",
@@ -798,7 +910,7 @@ window.translations = {
         teamLogoInvalidType: "Seulement JPG, PNG ou SVG",
         stintAvg: "Moy. Relais",
         norm: "NORM",
-        pitLatestExitIn: "Sortie max dans", pitLeaveNow: "⚠️ Sortez maintenant!", pitLatestExitPassed: "🚨 SORTIE EN RETARD",
+        pitLatestExitIn: "Sortie max dans", pitLeaveNow: "⚠️ Sortez maintenant!", pitEarlyExit: "⚠️ SORTIE ANTICIPÉE", pitLatestExitPassed: "🚨 SORTIE EN RETARD",
     },
     pt: {
         ltSearchType: "Filtrar por:", ltTeam: "Equipe", ltDriver: "Piloto", ltKart: "Kart nº", ltPlaceholder: "Pesquisar...",
@@ -807,7 +919,7 @@ window.translations = {
         errImpossible: "Estratégia Impossível!", errAvgHigh: "Média > Máx. Aumente paradas.", errAvgLow: "Média < Mín. Reduza paradas.",
         appSubtitle: "Gestor de Estratégia", generalInfo: "Info Geral", advancedConstraints: "Restrições Avançadas", driverConfig: "Pilotos", aiTitle: "Estratégia IA",
         lblDuration: "Duração (H)", lblStops: "Paradas Req.", lblMinStint: "Mín Stint", lblMaxStint: "Máx Stint", lblPitTime: "Tempo Box", lblPitClosedStart: "🚫 Fechado Início", lblPitClosedEnd: "🚫 Fechado Fim",
-        lblMinDrive: "Mín Total (min)", lblMaxDrive: "Máx Total (min)", lblBuffer: "Alerta (s)", lblDoubles: "Duplos OK", lblSquads: "Esquadrões", lblFuel: "Combustível", lblFuelTank: "Tanque (min)",
+        lblMinDrive: "Mín Total (min)", lblMaxDrive: "Máx Total (min)", lblBuffer: "Buffer saída box (s)", lblBufferHint: "Segundos antes do fim do tempo mínimo no box — piloto vai para a saída", lblPitNotifyLead: "Antecedência de alerta (min)", lblPitNotifyLeadHint: "Minutos antes do máx stint (menos in-lap) para avisar o piloto", lblInLapSec: "In-lap até box (seg, seco)", lblInLapHint: "Tempo na pista até entrada box. 0 = auto pelo circuito.", lblDoubles: "Duplos OK", lblSquads: "Esquadrões", lblFuel: "Combustível", lblFuelTank: "Tanque (min)",
         addDriver: "+ Adicionar", generateStrategy: "Gerar (IA)", previewStrategy: "Visualizar", startRace: "Iniciar", loadSaved: "Carregar",
         raceTime: "TEMPO PROVA", stops: "PARADAS", live: "AO VIVO", stop: "Parar", pos: "POS", last: "ÚLT", best: "MELH", targetStint: "ALVO STINT", buildTime: "CRIAR TEMPO",
         current: "ATUAL", stintTime: "TEMPO STINT", nextDriver: "Próximo", penalty: "Penalidade", enterPit: "ENTRAR BOX", push: "PUSH", problem: "PROBLEMA",
@@ -850,6 +962,12 @@ window.translations = {
         driverExitedEarly: "O piloto saiu cedo",
         driverExitedEarlyNotice: "O piloto saiu do pit antes do tempo exigido – confirme para aceitar.",
         orangeZone: "⚠️ Zona laranja - NOTIFICAR apenas",
+        stintNotifySoon: "Comece a avisar o piloto em",
+        stintNotifyNow: "AVISAR PILOTO — Janela de entrada no box aberta",
+        stintNotifyLate: "RISCO MÁX STINT — Piloto deve entrar agora",
+        stintNotifyInfo: "Avisar a partir de {{time}} (máx {{max}}m − {{inlap}}s in-lap − {{lead}}m antec.)",
+        pitNotifyPreview: "→ Avisar piloto no stint {{time}}",
+        driverNotifiedShort: "✓ Avisado",
         targetLabel: "ALVO",
         driverLink: "Link do piloto",
         tapToPit: "TOQUE PARA ENTRAR NO BOX",
@@ -949,7 +1067,7 @@ window.translations = {
         teamLogoInvalidType: "Apenas JPG, PNG ou SVG",
         stintAvg: "Méd. Stint",
         norm: "NORM",
-        pitLatestExitIn: "Saída máx. em", pitLeaveNow: "⚠️ Saia agora!", pitLatestExitPassed: "🚨 SAÍDA ATRASADA",
+        pitLatestExitIn: "Saída máx. em", pitLeaveNow: "⚠️ Saia agora!", pitEarlyExit: "⚠️ SAÍDA ANTECIPADA", pitLatestExitPassed: "🚨 SAÍDA ATRASADA",
     },
     ru: {
         ltSearchType: "Фильтр по:", ltTeam: "Команда", ltDriver: "Пилот", ltKart: "Карт №", ltPlaceholder: "Поиск...",
@@ -958,7 +1076,7 @@ window.translations = {
         errImpossible: "Невозможная стратегия!", errAvgHigh: "Средн. > Макс. Добавьте остановок.", errAvgLow: "Средн. < Мин. Уменьшите остановок.",
         appSubtitle: "Менеджер стратегии", generalInfo: "Основная информация", advancedConstraints: "Продвинутые ограничения", driverConfig: "Пилоты", aiTitle: "ИИ стратегия",
         lblDuration: "Длительность (ч)", lblStops: "Требуемые остановки", lblMinStint: "Мин заезд", lblMaxStint: "Макс заезд", lblPitTime: "Время боксов", lblPitClosedStart: "🚫 Закрыто в начале", lblPitClosedEnd: "🚫 Закрыто в конце",
-        lblMinDrive: "Мин всего (мин)", lblMaxDrive: "Макс всего (мин)", lblBuffer: "Оповещение (сек)", lblDoubles: "Разрешить дубли", lblSquads: "Использовать группы", lblFuel: "Топливо", lblFuelTank: "Бак (мин)",
+        lblMinDrive: "Мин всего (мин)", lblMaxDrive: "Макс всего (мин)", lblBuffer: "Буфер выезда (с)", lblBufferHint: "Секунды до конца мин. времени в боксах — пилот идёт к выезду", lblPitNotifyLead: "Заблаговременность (мин)", lblPitNotifyLeadHint: "Минуты до макс. стинта (минус in-lap) для предупреждения пилота", lblInLapSec: "In-lap до боксов (сек, сухо)", lblInLapHint: "Время на трассе до входа в боксы. 0 = авто по названию трассы.", lblDoubles: "Разрешить дубли", lblSquads: "Использовать группы", lblFuel: "Топливо", lblFuelTank: "Бак (мин)",
         addDriver: "+ Добавить", generateStrategy: "Создать (ИИ)", previewStrategy: "Просмотр", startRace: "Начать", loadSaved: "Загрузить",
         raceTime: "ВРЕМЯ ГОНКИ", stops: "ОСТАНОВКИ", live: "LIVE", stop: "Стоп", pos: "ПОЗ", last: "ПОС", best: "ЛУЧ", targetStint: "ЦЕЛЕВОЙ ЗАЕЗД", buildTime: "СТРОИТЬ ВРЕМЯ",
         current: "ТЕКУЩ", stintTime: "ВРЕМЯ ЗАЕЗДА", nextDriver: "Следующий", penalty: "Штраф", enterPit: "ВХОД В БОХ", push: "ТОЛКАТЬ", problem: "ПРОБЛЕМА",
@@ -1005,6 +1123,12 @@ window.translations = {
         driverExitedEarly: "Пилот выехал раньше",
         driverExitedEarlyNotice: "Пилот покинул пит до требуемого времени – подтвердите для продолжения.",
         orangeZone: "⚠️ Оранжевая зона - только УВЕДОМИТЬ",
+        stintNotifySoon: "Начните предупреждать пилота через",
+        stintNotifyNow: "УВЕДОМИТЬ ПИЛОТА — Окно въезда в боксы открыто",
+        stintNotifyLate: "РИСК МАКС. СТИНТА — Пилот должен заехать сейчас",
+        stintNotifyInfo: "Уведомить с {{time}} (макс {{max}}м − {{inlap}}с in-lap − {{lead}}м запас)",
+        pitNotifyPreview: "→ Уведомить пилота на стинте {{time}}",
+        driverNotifiedShort: "✓ Уведомлён",
         targetLabel: "ЦЕЛЬ",
         driverLink: "Ссылка для пилота",
         tapToPit: "НАЖМИТЕ ДЛЯ ЗАЕЗДА В БОКС",
@@ -1101,7 +1225,7 @@ window.translations = {
         teamLogoInvalidType: "Только JPG, PNG или SVG",
         stintAvg: "Ср. Стинт",
         norm: "НОРМ",
-        pitLatestExitIn: "Выезд не позднее", pitLeaveNow: "⚠️ Выезжай!", pitLatestExitPassed: "🚨 ВЫЕЗД ПРОСРОЧЕН",
+        pitLatestExitIn: "Выезд не позднее", pitLeaveNow: "⚠️ Выезжай!", pitEarlyExit: "⚠️ РАННИЙ ВЫЕЗД", pitLatestExitPassed: "🚨 ВЫЕЗД ПРОСРОЧЕН",
     },
     ar: {
         ltSearchType: "تصفية حسب:", ltTeam: "الفريق", ltDriver: "السائق", ltKart: "رقم الكارت", ltPlaceholder: "البحث...",
@@ -1110,7 +1234,7 @@ window.translations = {
         errImpossible: "إستراتيجية غير ممكنة!", errAvgHigh: "المتوسط > الحد الأقصى. أضف محطات.", errAvgLow: "المتوسط < الحد الأدنى. اقلل المحطات.",
         appSubtitle: "مدير الإستراتيجية", generalInfo: "معلومات عامة", advancedConstraints: "القيود المتقدمة", driverConfig: "السائقون", aiTitle: "إستراتيجية AI",
         lblDuration: "المدة (ساعات)", lblStops: "المحطات المطلوبة", lblMinStint: "الحد الأدنى للمقطع", lblMaxStint: "الحد الأقصى للمقطع", lblPitTime: "وقت الحفرة", lblPitClosedStart: "🚫 مغلق في البداية", lblPitClosedEnd: "🚫 مغلق في النهاية",
-        lblMinDrive: "الحد الأدنى الكلي (دقيقة)", lblMaxDrive: "الحد الأقصى الكلي (دقيقة)", lblBuffer: "التنبيه (ثانية)", lblDoubles: "السماح بالمضاعفات", lblSquads: "استخدام الفرق", lblFuel: "الوقود", lblFuelTank: "خزان الوقود (دقيقة)",
+        lblMinDrive: "الحد الأدنى الكلي (دقيقة)", lblMaxDrive: "الحد الأقصى الكلي (دقيقة)", lblBuffer: "مخزن الخروج (ث)", lblBufferHint: "ثوانٍ قبل انتهاء الحد الأدنى في الحفرة — السائق يتجه للخروج", lblPitNotifyLead: "وقت التنبيه المسبق (د)", lblPitNotifyLeadHint: "دقائق قبل أقصى مقطع (ناقص in-lap) لتنبيه السائق", lblInLapSec: "In-lap للحفرة (ث، جاف)", lblInLapHint: "وقت على المسار للوصول للحفرة. 0 = تلقائي من اسم الحلبة.", lblDoubles: "السماح بالمضاعفات", lblSquads: "استخدام الفرق", lblFuel: "الوقود", lblFuelTank: "خزان الوقود (دقيقة)",
         addDriver: "+ إضافة", generateStrategy: "إنشاء (AI)", previewStrategy: "معاينة", startRace: "ابدأ", loadSaved: "تحميل",
         raceTime: "وقت السباق", stops: "المحطات", live: "مباشر", stop: "توقف", pos: "موضع", last: "الأخير", best: "الأفضل", targetStint: "مقطع الهدف", buildTime: "وقت البناء",
         current: "الحالي", stintTime: "وقت المقطع", nextDriver: "السائق التالي", penalty: "العقوبة", enterPit: "الدخول للحفرة", push: "ادفع", problem: "مشكلة",
@@ -1157,6 +1281,12 @@ window.translations = {
         driverExitedEarly: "السائق خرج مبكراً",
         driverExitedEarlyNotice: "غادر السائق الحفرة قبل الوقت المطلوب – قم بالتأكيد للقبول.",
         orangeZone: "⚠️ المنطقة البرتقالية - أبلغ فقط",
+        stintNotifySoon: "ابدأ بتنبيه السائق خلال",
+        stintNotifyNow: "أبلغ السائق — نافذة دخول الحفرة مفتوحة",
+        stintNotifyLate: "خطر أقصى مقطع — يجب على السائق الدخول الآن",
+        stintNotifyInfo: "أبلغ من {{time}} (أقصى {{max}}د − {{inlap}}ث in-lap − {{lead}}د مسبقاً)",
+        pitNotifyPreview: "→ أبلغ السائق عند المقطع {{time}}",
+        driverNotifiedShort: "✓ تم الإبلاغ",
         targetLabel: "الهدف",
         driverLink: "رابط السائق",
         tapToPit: "اضغط للدخول للحفرة",
@@ -1255,7 +1385,7 @@ window.translations = {
         teamLogoInvalidType: "JPG أو PNG أو SVG فقط",
         stintAvg: "متوسط الشوط",
         norm: "عادي",
-        pitLatestExitIn: "أقصى وقت للخروج", pitLeaveNow: "⚠️ اخرج الآن!", pitLatestExitPassed: "🚨 تأخر الخروج",
+        pitLatestExitIn: "أقصى وقت للخروج", pitLeaveNow: "⚠️ اخرج الآن!", pitEarlyExit: "⚠️ خروج مبكر", pitLatestExitPassed: "🚨 تأخر الخروج",
     },
     es: {
         ltSearchType: "Filtrar por:", ltTeam: "Equipo", ltDriver: "Piloto", ltKart: "Kart nº", ltPlaceholder: "Buscar...",
@@ -1264,7 +1394,7 @@ window.translations = {
         errImpossible: "¡Estrategia imposible!", errAvgHigh: "Promedio > Máx. Añada paradas.", errAvgLow: "Promedio < Mín. Reduzca paradas.",
         appSubtitle: "Gestor de estrategia", generalInfo: "Información general", advancedConstraints: "Restricciones avanzadas", driverConfig: "Pilotos", aiTitle: "Estrategia IA",
         lblDuration: "Duración (H)", lblStops: "Paradas req.", lblMinStint: "Mín tramo", lblMaxStint: "Máx tramo", lblPitTime: "Tiempo box", lblPitClosedStart: "🚫 Cerrado inicio", lblPitClosedEnd: "🚫 Cerrado final",
-        lblMinDrive: "Mín total (min)", lblMaxDrive: "Máx total (min)", lblBuffer: "Alerta (s)", lblDoubles: "Permitir dobles", lblSquads: "Usar escuadrones", lblFuel: "Combustible", lblFuelTank: "Depósito (min)",
+        lblMinDrive: "Mín total (min)", lblMaxDrive: "Máx total (min)", lblBuffer: "Buffer salida box (s)", lblBufferHint: "Segundos antes del fin del mínimo en box — piloto camina a la salida", lblPitNotifyLead: "Antelación de aviso (min)", lblPitNotifyLeadHint: "Minutos antes del máx stint (menos in-lap) para avisar al piloto", lblInLapSec: "In-lap a boxes (seg, seco)", lblInLapHint: "Tiempo en pista hasta entrada box. 0 = auto por circuito.", lblDoubles: "Permitir dobles", lblSquads: "Usar escuadrones", lblFuel: "Combustible", lblFuelTank: "Depósito (min)",
         addDriver: "+ Añadir", generateStrategy: "Generar (IA)", previewStrategy: "Vista previa", startRace: "Iniciar", loadSaved: "Cargar",
         raceTime: "TIEMPO CARRERA", stops: "PARADAS", live: "EN DIRECTO", stop: "Parar", pos: "POS", last: "ÚLT", best: "MEJOR", targetStint: "TRAMO OBJETIVO", buildTime: "CONSTRUIR TIEMPO",
         current: "ACTUAL", stintTime: "TIEMPO TRAMO", nextDriver: "Siguiente", penalty: "Penalización", enterPit: "ENTRAR BOX", push: "ATACAR", problem: "PROBLEMA",
@@ -1311,6 +1441,12 @@ window.translations = {
         driverExitedEarly: "El piloto salió temprano",
         driverExitedEarlyNotice: "El piloto salió del pit antes del tiempo requerido – confirma para aceptar.",
         orangeZone: "⚠️ Zona naranja - solo NOTIFICAR",
+        stintNotifySoon: "Empieza a avisar al piloto en",
+        stintNotifyNow: "AVISAR PILOTO — Ventana de entrada a boxes abierta",
+        stintNotifyLate: "RIESGO MÁX STINT — El piloto debe entrar ahora",
+        stintNotifyInfo: "Avisar desde {{time}} (máx {{max}}m − {{inlap}}s in-lap − {{lead}}m antelación)",
+        pitNotifyPreview: "→ Avisar al piloto en stint {{time}}",
+        driverNotifiedShort: "✓ Avisado",
         targetLabel: "OBJETIVO",
         driverLink: "Enlace del piloto",
         tapToPit: "TOCA PARA ENTRAR A BOXES",
@@ -1409,19 +1545,19 @@ window.translations = {
         teamLogoInvalidType: "Solo JPG, PNG o SVG",
         stintAvg: "Prom. Stint",
         norm: "NORM",
-        pitLatestExitIn: "Salida máx. en", pitLeaveNow: "⚠️ ¡Sal ahora!", pitLatestExitPassed: "🚨 SALIDA TARDÍA",
+        pitLatestExitIn: "Salida máx. en", pitLeaveNow: "⚠️ ¡Sal ahora!", pitEarlyExit: "⚠️ SALIDA ANTICIPADA", pitLatestExitPassed: "🚨 SALIDA TARDÍA",
     },
     it: {
         ltSearchType: "Filtra per:", ltTeam: "Squadra", ltDriver: "Pilota", ltKart: "Kart n°", ltPlaceholder: "Ricerca...", previewTitle: "Anteprima strategia", addToCalendar: "Aggiungi al calendario", timeline: "Cronologia", driverSchedule: "Riepilogo Stint", totalTime: "Tempo totale", close: "Chiudi",
         googleLogin: "Accedi con Google", eventCreated: "Evento creato!", eventError: "Errore creazione", raceEventTitle: "Gara di resistenza", errImpossible: "Strategia impossibile!", errAvgHigh: "Media > Max. Aggiungi soste.", errAvgLow: "Media < Min. Riduci soste.",
         appSubtitle: "Gestore strategia", generalInfo: "Info generale", advancedConstraints: "Vincoli avanzati", driverConfig: "Piloti", aiTitle: "Strategia IA", lblDuration: "Durata (H)", lblStops: "Soste richieste", lblMinStint: "Min stint", lblMaxStint: "Max stint", lblPitTime: "Tempo pit", lblPitClosedStart: "🚫 Chiuso inizio", lblPitClosedEnd: "🚫 Chiuso fine",
-        lblMinDrive: "Min totale (min)", lblMaxDrive: "Max totale (min)", lblBuffer: "Avviso (s)", lblDoubles: "Consenti doppi", lblSquads: "Usa squadre", lblFuel: "Carburante", lblFuelTank: "Serbatoio (min)", addDriver: "+ Aggiungi", generateStrategy: "Genera (IA)", previewStrategy: "Anteprima", startRace: "Inizia", loadSaved: "Carica",
+        lblMinDrive: "Min totale (min)", lblMaxDrive: "Max totale (min)", lblBuffer: "Buffer uscita pit (s)", lblBufferHint: "Secondi prima del minimo in pit — il pilota va verso l'uscita", lblPitNotifyLead: "Anticipo avviso (min)", lblPitNotifyLeadHint: "Minuti prima del max stint (meno in-lap) per avvisare il pilota", lblInLapSec: "In-lap ai box (sec, asciutto)", lblInLapHint: "Tempo in pista fino all'ingresso box. 0 = auto dal circuito.", lblDoubles: "Consenti doppi", lblSquads: "Usa squadre", lblFuel: "Carburante", lblFuelTank: "Serbatoio (min)", addDriver: "+ Aggiungi", generateStrategy: "Genera (IA)", previewStrategy: "Anteprima", startRace: "Inizia", loadSaved: "Carica",
         raceTime: "TEMPO GARA", stops: "SOSTE", live: "DIRETTA", stop: "Ferma", pos: "POS", last: "ULT", best: "MIGLIORE", targetStint: "STINT OBIETTIVO", buildTime: "TEMPO COSTRUITO", current: "ATTUALE", stintTime: "TEMPO STINT", nextDriver: "Prossimo", penalty: "Penalità", enterPit: "ENTRA IN PIT", push: "SPINGI", problem: "PROBLEMA",
         resetMode: "Ripristina", nightMode: "MODALITÀ NOTTE", dry: "Secco", wet: "Pioggia", drying: "Asciugando", boxNow: "BOX ADESSO!", stayOnTrackUntilFurther: "Rimani in pista fino a nuovo avviso", pushMode: "MODALITÀ PUSH", squadSleeping: "SQUADRA DORME", squadWakeUp: "SVEGLIA SQUADRA", finalLap: "Ultimo giro", calculating: "Calcolando...", manualInput: "Manuale",
         saveStratTitle: "Salva", libTitle: "Libreria", aiPlaceholder: "es: 'Il pilota 1 preferisce...'", thStart: "Inizio", thEnd: "Fine", thType: "Tipo", thDriver: "Pilota", thDuration: "Durata", liveTiming: "Cronometraggio live", liveTimingUrl: "URL cronometraggio...", connectLive: "Connetti", disconnectLive: "Disconnetti", searchTeam: "Cerca squadra...", searchDriver: "Cerca pilota...", searchKart: "Cerca kart...", demoMode: "Modalità demo",
         sendEmail: "Invia", cancel: "Annulla", create: "Crea", save: "Salva", load: "Carica", delete: "Elimina", activeRaceFound: "Gara attiva trovata", continueRace: "Continua", discardRace: "Scarta", areYouSure: "Sei sicuro?", deleteWarning: "Questo eliminerà i dati in modo permanente.", yesDelete: "Sì, elimina", noKeep: "No, conserva", invite: "Invita", synced: "Sincronizzato",
         chatTitle: "Chat gara / D&R", enterName: "Inserisci il tuo nome", startChat: "Inizia chat", typeMessage: "Scrivi un suggerimento...", send: "Invia", viewer: "Spettatore", host: "OSPITE", suggestion: "Suggerimento", strategyOutlook: "PROSPETTIVA STRATEGICA", timeLeft: "TEMPO RIMANENTE", nextDriverLabel: "PROSSIMO PILOTA", totalHeader: "TOTALE", stopsHeader: "STINT", driverHeader: "PILOTA",
-        stintsLeft: "STINT RIMANENTI", future: "FUTURO", max: "MAX", min: "MIN", rest: "RIPOSO", buffer: "Buffer", impossible: "IMPOSSIBILE", addStop: "AGGIUNGI SOSTA", avg: "MEDIA", finalLap: "ULTIMO GIRO", inPit: "IN PIT", nextLabel: "Prossimo", shortStintMsg: "⚠️ STINT CORTO! Rischio penalità", cancelEntry: "Annulla", notifyDriver: "📢 Notifica pilota", driverNotified: "✓ Pilota notificato", includesAdj: "Include aggiustamento:", missingSeconds: "Mancante", proceedToPit: "Procedere al pit?", wait: "ATTENDI...", getReady: "PREPARATI...", go: "VAI! VAI!", goOutIn: "ESCI TRA", exitPits: "Exit Pits", driverExitedEarly: "Il pilota è uscito presto", driverExitedEarlyNotice: "Il pilota è uscito dai box prima del tempo richiesto - conferma per accettare.", orangeZone: "⚠️ Zona arancione - solo NOTIFICA", targetLabel: "OBIETTIVO", driverLink: "Link pilota", tapToPit: "TOCCA PER ENTRARE AI BOX", tapToExit: "TOCCA PER USCIRE DAI BOX", pitsConfirm: "BOX?", tapAgainConfirm: "TOCCA DI NUOVO PER CONFERMARE", stintBest: "M.STINT",
+        stintsLeft: "STINT RIMANENTI", future: "FUTURO", max: "MAX", min: "MIN", rest: "RIPOSO", buffer: "Buffer", impossible: "IMPOSSIBILE", addStop: "AGGIUNGI SOSTA", avg: "MEDIA", finalLap: "ULTIMO GIRO", inPit: "IN PIT", nextLabel: "Prossimo", shortStintMsg: "⚠️ STINT CORTO! Rischio penalità", cancelEntry: "Annulla", notifyDriver: "📢 Notifica pilota", driverNotified: "✓ Pilota notificato", includesAdj: "Include aggiustamento:", missingSeconds: "Mancante", proceedToPit: "Procedere al pit?", wait: "ATTENDI...", getReady: "PREPARATI...", go: "VAI! VAI!", goOutIn: "ESCI TRA", exitPits: "Exit Pits", driverExitedEarly: "Il pilota è uscito presto", driverExitedEarlyNotice: "Il pilota è uscito dai box prima del tempo richiesto - conferma per accettare.", orangeZone: "⚠️ Zona arancione - solo NOTIFICA", stintNotifySoon: "Inizia ad avvisare il pilota tra", stintNotifyNow: "AVVISA PILOTA — Finestra ingresso box aperta", stintNotifyLate: "RISCHIO MAX STINT — Il pilota deve entrare ora", stintNotifyInfo: "Avvisa da {{time}} (max {{max}}m − {{inlap}}s in-lap − {{lead}}m anticipo)", pitNotifyPreview: "→ Avvisa pilota allo stint {{time}}", driverNotifiedShort: "✓ Avvisato", targetLabel: "OBIETTIVO", driverLink: "Link pilota", tapToPit: "TOCCA PER ENTRARE AI BOX", tapToExit: "TOCCA PER USCIRE DAI BOX", pitsConfirm: "BOX?", tapAgainConfirm: "TOCCA DI NUOVO PER CONFERMARE", stintBest: "M.STINT",
         googleLoginBtn: "Accedi",
         testBtn: "Prova",
         demoBtn: "Demo",
@@ -1513,7 +1649,7 @@ window.translations = {
         teamLogoInvalidType: "Solo JPG, PNG o SVG",
         stintAvg: "Media Stint",
         norm: "NORM",
-        pitLatestExitIn: "Uscita max tra", pitLeaveNow: "⚠️ Esci ora!", pitLatestExitPassed: "🚨 USCITA IN RITARDO",
+        pitLatestExitIn: "Uscita max tra", pitLeaveNow: "⚠️ Esci ora!", pitEarlyExit: "⚠️ USCITA ANTICIPATA", pitLatestExitPassed: "🚨 USCITA IN RITARDO",
     },
     ka: {
         ltSearchType: "ფილტრი:", ltTeam: "გუნდი", ltDriver: "მძღოლი", ltKart: "კარტი #", ltPlaceholder: "ძებნა...",
@@ -1522,7 +1658,7 @@ window.translations = {
         errImpossible: "შეუძლებელი სტრატეგია!", errAvgHigh: "საშუალო > მაქსიმუმი. დაამატე გაჩერება.", errAvgLow: "საშუალო < მინიმუმი. კლებითი გაჩერება.",
         appSubtitle: "სტრატეგიის მენეჯერი", generalInfo: "ზოგადი ინფორმაცია", advancedConstraints: "დამატებითი შეზღუდვები", driverConfig: "მძღოლები", aiTitle: "AI სტრატეგია",
         lblDuration: "ხანგრძლივობა (საათი)", lblStops: "საჭირო გაჩერება", lblMinStint: "მინიმ ტაძე", lblMaxStint: "მაქსიმ ტაძე", lblPitTime: "ბოქსის დრო", lblPitClosedStart: "🚫 დახურული დაწყება", lblPitClosedEnd: "🚫 დახურული დასრულება",
-        lblMinDrive: "მინიმ სულ (წთ)", lblMaxDrive: "მაქსიმ სულ (წთ)", lblBuffer: "გაფრთხოვება (წამი)", lblDoubles: "დაშვებული გაორმაგება", lblSquads: "გამოიყენე ჯგუფები", lblFuel: "საწვავი", lblFuelTank: "ავზი (წთ)",
+        lblMinDrive: "მინიმ სულ (წთ)", lblMaxDrive: "მაქსიმ სულ (წთ)", lblBuffer: "გამოსვლის ბუფერი (წმ)", lblBufferHint: "წამები მინ. pit დროის დასრულებამდე — მძღოლი მიდის გამოსასვლელთან", lblPitNotifyLead: "გაფრთხოვების დრო (წთ)", lblPitNotifyLeadHint: "წუთები მაქს stint-მდე (მინუს in-lap) მძღოლის გაფრთხოვებისთვის", lblInLapSec: "In-lap pit-ში (წმ, მშრალი)", lblInLapHint: "დრო ტრასაზე pit შესასვლელამდე. 0 = ავტო ტრასის სახელით.", lblDoubles: "დაშვებული გაორმაგება", lblSquads: "გამოიყენე ჯგუფები", lblFuel: "საწვავი", lblFuelTank: "ავზი (წთ)",
         addDriver: "+ დამატება", generateStrategy: "შექმნა (AI)", previewStrategy: "წინასწარი ნახვა", startRace: "დაწყება", loadSaved: "ატვირთვა",
         raceTime: "რბოლის დრო", stops: "გაჩერება", live: "ცოცხალი", stop: "გაჩერება", pos: "პოზ", last: "ბოლო", best: "საუკეთესო", targetStint: "სამიზნე ტაძე", buildTime: "დროის აგება",
         current: "ამჟამინი", stintTime: "ტაძის დრო", nextDriver: "შემდეგი მძღოლი", penalty: "პენალტი", enterPit: "ბოქსში შესვლა", push: "ატაკა", problem: "პრობლემა",
@@ -1567,6 +1703,12 @@ window.translations = {
         goOutIn: "გამოდი",
         exitPits: "Exit Pits",
         orangeZone: "⚠️ ფორთოქლის ზონა - მხოლოდ შეატყობინეთ",
+        stintNotifySoon: "დაიწყე მძღოლის გაფრთხოვება",
+        stintNotifyNow: "შეატყობინე მძღოლს — pit შესასვლელი ფანჯარა ღიაა",
+        stintNotifyLate: "მაქს STINT რისკი — მძღოლი უნდა შევიდეს pit-ში ახლავე",
+        stintNotifyInfo: "შეატყობინე {{time}}-დან (მაქს {{max}}წთ − {{inlap}}წმ in-lap − {{lead}}წთ წინასწარ)",
+        pitNotifyPreview: "→ შეატყობინე მძღოლს stint-ზე {{time}}",
+        driverNotifiedShort: "✓ შეტყობინდა",
         targetLabel: "მიზანი",
         driverLink: "მძღოლის ბმული",
         tapToPit: "შეეხეთ პიტში შესასვლელად",
@@ -1666,19 +1808,19 @@ window.translations = {
         teamLogoInvalidType: "მხოლოდ JPG, PNG ან SVG",
         stintAvg: "სტინტის საშ.",
         norm: "NORM",
-        pitLatestExitIn: "გასვლა მაქს.", pitLeaveNow: "⚠️ გადი ახლავე!", pitLatestExitPassed: "🚨 გასვლა ვადაგასული",
+        pitLatestExitIn: "გასვლა მაქს.", pitLeaveNow: "⚠️ გადი ახლავე!", pitEarlyExit: "⚠️ ადრეული გასვლა", pitLatestExitPassed: "🚨 გასვლა ვადაგასული",
     },
     de: {
         ltSearchType: "Filter nach:", ltTeam: "Team", ltDriver: "Fahrer", ltKart: "Kart Nr.", ltPlaceholder: "Suchen...", previewTitle: "Strategievorschau", addToCalendar: "Zum Kalender hinzufügen", timeline: "Zeitleiste", driverSchedule: "Stint-Übersicht", totalTime: "Gesamtzeit", close: "Schließen",
         googleLogin: "Mit Google anmelden", eventCreated: "Ereignis erstellt!", eventError: "Erstellungsfehler", raceEventTitle: "Ausdauerrennen", errImpossible: "Unmögliche Strategie!", errAvgHigh: "Durchschn. > Max. Stopps hinzufügen.", errAvgLow: "Durchschn. < Min. Stopps reduzieren.",
         appSubtitle: "Strategie-Manager", generalInfo: "Allgemeine Informationen", advancedConstraints: "Erweiterte Einschränkungen", driverConfig: "Fahrer", aiTitle: "KI-Strategie", lblDuration: "Dauer (Std.)", lblStops: "Erforderliche Stops", lblMinStint: "Min. Stint", lblMaxStint: "Max. Stint", lblPitTime: "Boxenzeit", lblPitClosedStart: "🚫 Start geschlossen", lblPitClosedEnd: "🚫 Ende geschlossen",
-        lblMinDrive: "Min. Gesamt (min)", lblMaxDrive: "Max. Gesamt (min)", lblBuffer: "Warnung (s)", lblDoubles: "Doppel erlauben", lblSquads: "Staffeln verwenden", lblFuel: "Kraftstoff", lblFuelTank: "Tank (min)", addDriver: "+ Hinzufügen", generateStrategy: "Generieren (KI)", previewStrategy: "Vorschau", startRace: "Starten", loadSaved: "Laden",
+        lblMinDrive: "Min. Gesamt (min)", lblMaxDrive: "Max. Gesamt (min)", lblBuffer: "Boxenausfahrt-Puffer (s)", lblBufferHint: "Sekunden vor Ende der Mindest-Boxenzeit — Fahrer geht zur Ausfahrt", lblPitNotifyLead: "Vorlaufzeit Warnung (min)", lblPitNotifyLeadHint: "Minuten vor Max-Stint (minus In-lap) um Fahrer zu warnen", lblInLapSec: "In-lap zu Boxen (Sek, trocken)", lblInLapHint: "Streckenzeit bis Boxeneinfahrt. 0 = auto nach Streckenname.", lblDoubles: "Doppel erlauben", lblSquads: "Staffeln verwenden", lblFuel: "Kraftstoff", lblFuelTank: "Tank (min)", addDriver: "+ Hinzufügen", generateStrategy: "Generieren (KI)", previewStrategy: "Vorschau", startRace: "Starten", loadSaved: "Laden",
         raceTime: "RENNZEIT", stops: "STOPS", live: "LIVE", stop: "Stop", pos: "POS", last: "LETZTE", best: "BESTE", targetStint: "ZIEL-STINT", buildTime: "AUFBAUZEIT", current: "AKTUELL", stintTime: "STINT-ZEIT", nextDriver: "Nächster", penalty: "Strafe", enterPit: "BOXEN FAHREN", push: "PUSH", problem: "PROBLEM",
         resetMode: "Zurücksetzen", nightMode: "NACHTMODUS", dry: "Trocken", wet: "Regen", drying: "Trocknet", boxNow: "JETZT BOXEN!", stayOnTrackUntilFurther: "Bleiben Sie auf der Strecke bis auf Weiteres", pushMode: "PUSH-MODUS", squadSleeping: "STAFFEL SCHLÄFT", squadWakeUp: "STAFFEL WECKEN", finalLap: "Letzte Runde", calculating: "Berechnung...", manualInput: "Manuell",
         saveStratTitle: "Speichern", libTitle: "Bibliothek", aiPlaceholder: "z.B.: 'Fahrer 1 bevorzugt...'", thStart: "Start", thEnd: "Ende", thType: "Typ", thDriver: "Fahrer", thDuration: "Dauer", liveTiming: "Live-Zeitmessung", liveTimingUrl: "Zeitmessung URL...", connectLive: "Verbinden", disconnectLive: "Trennen", searchTeam: "Team suchen...", searchDriver: "Fahrer suchen...", searchKart: "Kart suchen...", demoMode: "Demo-Modus",
         sendEmail: "Senden", cancel: "Abbrechen", create: "Erstellen", save: "Speichern", load: "Laden", delete: "Löschen", activeRaceFound: "Aktives Rennen gefunden", continueRace: "Fortfahren", discardRace: "Verwerfen", areYouSure: "Bist du sicher?", deleteWarning: "Dies löscht Daten dauerhaft.", yesDelete: "Ja, löschen", noKeep: "Nein, behalten", invite: "Einladen", synced: "Synchronisiert",
         chatTitle: "Renn-Chat / Q&A", enterName: "Geben Sie Ihren Namen ein", startChat: "Chat starten", typeMessage: "Schreibe einen Vorschlag...", send: "Senden", viewer: "Zuschauer", host: "HOST", suggestion: "Vorschlag", strategyOutlook: "STRATEGIEAUSBLICK", timeLeft: "VERBLEIBENDE ZEIT", nextDriverLabel: "NÄCHSTER FAHRER", totalHeader: "GESAMT", stopsHeader: "STINTS", driverHeader: "FAHRER",
-        stintsLeft: "STINTS VERBLEIBEND", future: "ZUKUNFT", max: "MAX", min: "MIN", rest: "RUHE", buffer: "Puffer", impossible: "UNMÖGLICH", addStop: "STOP HINZUFÜGEN", avg: "DURCHSCHN.", finalLap: "LETZTE RUNDE", inPit: "IN DEN BOXEN", nextLabel: "Nächster", shortStintMsg: "⚠️ KURZER STINT! Strafrisiko", cancelEntry: "Abbrechen", notifyDriver: "📢 Fahrer benachrichtigen", driverNotified: "✓ Fahrer benachrichtigt", includesAdj: "Enthält Anpassung:", missingSeconds: "Fehlend", proceedToPit: "Zu den Boxen fahren?", wait: "WARTEN...", getReady: "VORBEREITEN...", go: "LOS! LOS! LOS!", goOutIn: "RAUS IN", orangeZone: "⚠️ Orangezone - nur BENACHRICHTIGEN", targetLabel: "ZIEL", driverLink: "Fahrer-Link", tapToPit: "TIPPEN ZUM BOXEN", tapToExit: "TIPPEN ZUM AUSFAHREN", pitsConfirm: "BOXEN?", tapAgainConfirm: "ERNEUT TIPPEN ZUM BESTÄTIGEN", stintBest: "S.BEST",
+        stintsLeft: "STINTS VERBLEIBEND", future: "ZUKUNFT", max: "MAX", min: "MIN", rest: "RUHE", buffer: "Puffer", impossible: "UNMÖGLICH", addStop: "STOP HINZUFÜGEN", avg: "DURCHSCHN.", finalLap: "LETZTE RUNDE", inPit: "IN DEN BOXEN", nextLabel: "Nächster", shortStintMsg: "⚠️ KURZER STINT! Strafrisiko", cancelEntry: "Abbrechen", notifyDriver: "📢 Fahrer benachrichtigen", driverNotified: "✓ Fahrer benachrichtigt", includesAdj: "Enthält Anpassung:", missingSeconds: "Fehlend", proceedToPit: "Zu den Boxen fahren?", wait: "WARTEN...", getReady: "VORBEREITEN...", go: "LOS! LOS! LOS!", goOutIn: "RAUS IN", orangeZone: "⚠️ Orangezone - nur BENACHRICHTIGEN", stintNotifySoon: "Fahrer warnen in", stintNotifyNow: "FAHRER WARNEN — Boxeneinfahrt-Fenster offen", stintNotifyLate: "MAX-STINT-RISIKO — Fahrer muss jetzt boxen", stintNotifyInfo: "Warnen ab {{time}} (max {{max}}m − {{inlap}}s In-lap − {{lead}}m Vorlauf)", pitNotifyPreview: "→ Fahrer warnen ab Stint {{time}}", driverNotifiedShort: "✓ Gewarnt", targetLabel: "ZIEL", driverLink: "Fahrer-Link", tapToPit: "TIPPEN ZUM BOXEN", tapToExit: "TIPPEN ZUM AUSFAHREN", pitsConfirm: "BOXEN?", tapAgainConfirm: "ERNEUT TIPPEN ZUM BESTÄTIGEN", stintBest: "S.BEST",
         googleLoginBtn: "Anmelden",
         testBtn: "Test",
         demoBtn: "Demo",
@@ -1771,19 +1913,19 @@ window.translations = {
         teamLogoInvalidType: "Nur JPG, PNG oder SVG",
         stintAvg: "Stint Ø",
         norm: "NORM",
-        pitLatestExitIn: "Spätestausfahrt in", pitLeaveNow: "⚠️ Jetzt ausfahren!", pitLatestExitPassed: "🚨 AUSFAHRT ÜBERFÄLLIG",
+        pitLatestExitIn: "Spätestausfahrt in", pitLeaveNow: "⚠️ Jetzt ausfahren!", pitEarlyExit: "⚠️ AUSFAHRT ZU FRÜH", pitLatestExitPassed: "🚨 AUSFAHRT ÜBERFÄLLIG",
     },
     ja: {
         ltSearchType: "フィルタリング:", ltTeam: "チーム", ltDriver: "ドライバー", ltKart: "カート番号", ltPlaceholder: "検索...", previewTitle: "戦略プレビュー", addToCalendar: "カレンダーに追加", timeline: "タイムライン", driverSchedule: "スティント概要", totalTime: "総時間", close: "閉じる",
         googleLogin: "Googleでログイン", eventCreated: "イベントが作成されました!", eventError: "作成エラー", raceEventTitle: "耐久レース", errImpossible: "不可能な戦略!", errAvgHigh: "平均 > 最大。ピットストップを追加してください。", errAvgLow: "平均 < 最小。ピットストップを減らしてください。",
         appSubtitle: "戦略マネージャー", generalInfo: "一般情報", advancedConstraints: "高度な制約", driverConfig: "ドライバー", aiTitle: "AI戦略", lblDuration: "期間 (時間)", lblStops: "必要なピットストップ", lblMinStint: "最小スティント", lblMaxStint: "最大スティント", lblPitTime: "ピットタイム", lblPitClosedStart: "🚫 開始時に閉鎖", lblPitClosedEnd: "🚫 終了時に閉鎖",
-        lblMinDrive: "最小合計 (分)", lblMaxDrive: "最大合計 (分)", lblBuffer: "警告 (秒)", lblDoubles: "ダブルを許可", lblSquads: "スクワッドを使用", lblFuel: "燃料", lblFuelTank: "燃料タンク (分)", addDriver: "+ 追加", generateStrategy: "生成 (AI)", previewStrategy: "プレビュー", startRace: "スタート", loadSaved: "読み込み",
+        lblMinDrive: "最小合計 (分)", lblMaxDrive: "最大合計 (分)", lblBuffer: "ピット出口バッファ (秒)", lblBufferHint: "最小ピット時間終了前の秒数 — ドライバーが出口へ向かう", lblPitNotifyLead: "通知リードタイム (分)", lblPitNotifyLeadHint: "最大スティント前 (in-lap差引) にドライバーへ警告する分数", lblInLapSec: "In-lap至ピット (秒, ドライ)", lblInLapHint: "ピット入口までの走行時間。0 = サーキット名から自動。", lblDoubles: "ダブルを許可", lblSquads: "スクワッドを使用", lblFuel: "燃料", lblFuelTank: "燃料タンク (分)", addDriver: "+ 追加", generateStrategy: "生成 (AI)", previewStrategy: "プレビュー", startRace: "スタート", loadSaved: "読み込み",
         raceTime: "レース時間", stops: "ピット", live: "ライブ", stop: "停止", pos: "POS", last: "ラスト", best: "ベスト", targetStint: "ターゲットスティント", buildTime: "タイム構築", current: "現在", stintTime: "スティントタイム", nextDriver: "次のドライバー", penalty: "ペナルティ", enterPit: "ピット進入", push: "プッシュ", problem: "問題",
         resetMode: "リセット", nightMode: "ナイトモード", dry: "ドライ", wet: "ウェット", drying: "乾燥中", boxNow: "今ピット!", stayOnTrackUntilFurther: "さらに指示があるまでトラックに留まってください", pushMode: "プッシュモード", squadSleeping: "スクワッド休止中", squadWakeUp: "スクワッド起動", finalLap: "ファイナルラップ", calculating: "計算中...", manualInput: "手動入力",
         saveStratTitle: "保存", libTitle: "ライブラリ", aiPlaceholder: "例: 'ドライバー1は...を好む'", thStart: "開始", thEnd: "終了", thType: "タイプ", thDriver: "ドライバー", thDuration: "期間", liveTiming: "ライブタイミング", liveTimingUrl: "ライブタイミングURL...", connectLive: "接続", disconnectLive: "切断", searchTeam: "チームを検索...", searchDriver: "ドライバーを検索...", searchKart: "カートを検索...", demoMode: "デモモード",
         sendEmail: "送信", cancel: "キャンセル", create: "作成", save: "保存", load: "読み込み", delete: "削除", activeRaceFound: "アクティブなレースが見つかりました", continueRace: "続行", discardRace: "破棄", areYouSure: "本当にしますか?", deleteWarning: "これはデータを永久に削除します。", yesDelete: "はい、削除", noKeep: "いいえ、保持", invite: "招待", synced: "同期済み",
         chatTitle: "レースチャット / Q&A", enterName: "名前を入力", startChat: "チャットを開始", typeMessage: "提案を入力...", send: "送信", viewer: "視聴者", host: "ホスト", suggestion: "提案", strategyOutlook: "戦略見通し", timeLeft: "残り時間", nextDriverLabel: "次のドライバー", totalHeader: "合計", stopsHeader: "スティント", driverHeader: "ドライバー",
-        stintsLeft: "残りスティント", future: "将来", max: "最大", min: "最小", rest: "休息", buffer: "バッファ", impossible: "不可能", addStop: "ピットストップ追加", avg: "平均", finalLap: "ファイナルラップ", inPit: "ピット内", nextLabel: "次", shortStintMsg: "⚠️ 短いスティント!ペナルティリスク", cancelEntry: "キャンセル", notifyDriver: "📢 ドライバーに通知", driverNotified: "✓ ドライバーに通知済み", includesAdj: "調整を含む:", missingSeconds: "不足", proceedToPit: "ピットに進む?", wait: "待機中...", getReady: "準備中...", go: "行け! 行け!", goOutIn: "あと", orangeZone: "⚠️ オレンジゾーン - 通知のみ", targetLabel: "ターゲット", driverLink: "ドライバーリンク", tapToPit: "タップしてピットイン", tapToExit: "タップしてピットアウト", pitsConfirm: "ピット?", tapAgainConfirm: "もう一度タップして確認", stintBest: "S.ベスト",
+        stintsLeft: "残りスティント", future: "将来", max: "最大", min: "最小", rest: "休息", buffer: "バッファ", impossible: "不可能", addStop: "ピットストップ追加", avg: "平均", finalLap: "ファイナルラップ", inPit: "ピット内", nextLabel: "次", shortStintMsg: "⚠️ 短いスティント!ペナルティリスク", cancelEntry: "キャンセル", notifyDriver: "📢 ドライバーに通知", driverNotified: "✓ ドライバーに通知済み", includesAdj: "調整を含む:", missingSeconds: "不足", proceedToPit: "ピットに進む?", wait: "待機中...", getReady: "準備中...", go: "行け! 行け!", goOutIn: "あと", orangeZone: "⚠️ オレンジゾーン - 通知のみ", stintNotifySoon: "ドライバーへの通知開始まで", stintNotifyNow: "ドライバーに通知 — ピット入口ウィンドウ開", stintNotifyLate: "最大スティントリスク — 今すぐピットイン", stintNotifyInfo: "{{time}}から通知 (最大{{max}}分 − in-lap{{inlap}}秒 − {{lead}}分前)", pitNotifyPreview: "→ スティント{{time}}でドライバーに通知", driverNotifiedShort: "✓ 通知済", targetLabel: "ターゲット", driverLink: "ドライバーリンク", tapToPit: "タップしてピットイン", tapToExit: "タップしてピットアウト", pitsConfirm: "ピット?", tapAgainConfirm: "もう一度タップして確認", stintBest: "S.ベスト",
         googleLoginBtn: "ログイン",
         testBtn: "テスト",
         demoBtn: "デモ",
@@ -1876,7 +2018,7 @@ window.translations = {
         teamLogoInvalidType: "JPG、PNG、または SVG のみ",
         stintAvg: "スティント平均",
         norm: "NORM",
-        pitLatestExitIn: "最遅出発まで", pitLeaveNow: "⚠️ 今すぐ出発!", pitLatestExitPassed: "🚨 出発超過",
+        pitLatestExitIn: "最遅出発まで", pitLeaveNow: "⚠️ 今すぐ出発!", pitEarlyExit: "⚠️ 早期出発", pitLatestExitPassed: "🚨 出発超過",
     },
     el: {
         ltSearchType: "Φιλτράρισμα:", ltTeam: "Ομάδα", ltDriver: "Οδηγός", ltKart: "Καρτ αρ.", ltPlaceholder: "Αναζήτηση...",
@@ -1885,7 +2027,7 @@ window.translations = {
         errImpossible: "Αδύνατη στρατηγική!", errAvgHigh: "Μέσος > Μέγιστος. Προσθέστε στάσεις.", errAvgLow: "Μέσος < Ελάχιστος. Μειώστε στάσεις.",
         appSubtitle: "Διαχειριστής Στρατηγικής", generalInfo: "Γενικές Πληροφορίες", advancedConstraints: "Προχωρημένοι Περιορισμοί", driverConfig: "Οδηγοί", aiTitle: "Στρατηγική AI",
         lblDuration: "Διάρκεια (Ω)", lblStops: "Απαιτ. στάσεις", lblMinStint: "Ελάχ. stint", lblMaxStint: "Μέγ. stint", lblPitTime: "Χρόνος pit", lblPitClosedStart: "🚫 Κλειστό στην αρχή", lblPitClosedEnd: "🚫 Κλειστό στο τέλος",
-        lblMinDrive: "Ελάχ. σύνολο (λεπ)", lblMaxDrive: "Μέγ. σύνολο (λεπ)", lblBuffer: "Ειδοποίηση (δευτ)", lblDoubles: "Επιτρεπτά διπλά", lblSquads: "Χρήση ομάδων", lblFuel: "Καύσιμο", lblFuelTank: "Ντεπόζιτο (λεπ)",
+        lblMinDrive: "Ελάχ. σύνολο (λεπ)", lblMaxDrive: "Μέγ. σύνολο (λεπ)", lblBuffer: "Buffer εξόδου pit (δευτ)", lblBufferHint: "Δευτερόλεπτα πριν το τέλος του ελάχ. pit — ο οδηγός πάει στην έξοδο", lblPitNotifyLead: "Χρόνος προειδοποίησης (λεπ)", lblPitNotifyLeadHint: "Λεπτά πριν το μέγ. stint (μείον in-lap) για ειδοποίηση οδηγού", lblInLapSec: "In-lap προς pit (δευτ, στεγνό)", lblInLapHint: "Χρόνος πίστας μέχρι είσοδο pit. 0 = αυτόματα από όνομα πίστας.", lblDoubles: "Επιτρεπτά διπλά", lblSquads: "Χρήση ομάδων", lblFuel: "Καύσιμο", lblFuelTank: "Ντεπόζιτο (λεπ)",
         addDriver: "+ Προσθήκη", generateStrategy: "Δημιουργία (AI)", previewStrategy: "Προεπισκόπηση", startRace: "Εκκίνηση", loadSaved: "Φόρτωση",
         raceTime: "ΧΡΟΝΟΣ ΑΓΩΝΑ", stops: "ΣΤΑΣΕΙΣ", live: "LIVE", stop: "Στοπ", pos: "ΘΕΣ", last: "ΤΕΛ", best: "ΚΑΛ", targetStint: "ΣΤΟΧΟΣ STINT", buildTime: "ΧΡΟΝΟΣ ΚΑΤΑΣΚ",
         current: "ΤΡΕΧΩΝ", stintTime: "ΧΡΟΝΟΣ STINT", nextDriver: "Επόμενος", penalty: "Ποινή", enterPit: "ΕΙΣΟΔΟΣ PIT", push: "ΠΙΕΣΗ", problem: "ΠΡΟΒΛΗΜΑ",
@@ -1931,7 +2073,7 @@ window.translations = {
         exitPits: "Exit Pits",
         driverExitedEarly: "Ο οδηγός βγήκε νωρίς",
         driverExitedEarlyNotice: "Ο οδηγός βγήκε από τα pits πριν από τον απαιτούμενο χρόνο – επιβεβαιώστε για αποδοχή.",
-        orangeZone: "⚠️ Πορτοκαλί ζώνη - μόνο ΕΙΔΟΠΟΙΗΣΗ",
+        orangeZone: "⚠️ Πορτοκαλί ζώνη - μόνο ΕΙΔΟΠΟΙΗΣΗ", stintNotifySoon: "Ξεκινήστε ειδοποίηση οδηγού σε", stintNotifyNow: "ΕΙΔΟΠΟΙΗΣΤΕ ΟΔΗΓΟ — Ανοιχτό παράθυρο εισόδου pit", stintNotifyLate: "ΚΙΝΔΥΝΟΣ ΜΕΓ. STINT — Ο οδηγός πρέπει να μπει τώρα", stintNotifyInfo: "Ειδοποίηση από {{time}} (μέγ {{max}}λ − {{inlap}}δ in-lap − {{lead}}λ πριν)", pitNotifyPreview: "→ Ειδοποίηση οδηγού στο stint {{time}}", driverNotifiedShort: "✓ Ειδοποιήθηκε",
         targetLabel: "ΣΤΟΧΟΣ",
         driverLink: "Σύνδεσμος οδηγού",
         tapToPit: "ΠΑΤΗΣΤΕ ΓΙΑ ΕΙΣΟΔΟ ΣΤΟ PIT",
@@ -2029,9 +2171,702 @@ window.translations = {
         teamLogoInvalidType: "Μόνο JPG, PNG ή SVG",
         stintAvg: "Μέσος Stint",
         norm: "ΚΑΝΟΝ",
-        pitLatestExitIn: "Ύστατη έξοδος σε", pitLeaveNow: "⚠️ Βγες τώρα!", pitLatestExitPassed: "🚨 ΕΞΟΔΟΣ ΕΚΠΡΌΘΕΣΜΗ",
+        pitLatestExitIn: "Ύστατη έξοδος σε", pitLeaveNow: "⚠️ Βγες τώρα!", pitEarlyExit: "⚠️ ΠΡΩΪΜΗ ΕΞΟΔΟΣ", pitLatestExitPassed: "🚨 ΕΞΟΔΟΣ ΕΚΠΡΌΘΕΣΜΗ",
+        // Completed Greek strings (previously fell back to English)
+        lblExtraPits: "Επιπλέον pit stop", lblReqExtraPits: "Απαιτούμενα επιπλέον pit stop", lblMinPitLapSec: "Ελάχιστος γύρος pit (δευτ.)",
+        lblExtraPitsHint: "Υποχρεωτικά επιπλέον pit stop στην αριστερή λωρίδα. Το pit lane είναι κλειστό τα πρώτα και τα τελευταία 10 λεπτά.", markExtraPit: "Σήμανση ως επιπλέον pit", extraPitDone: "Επιπλέον pit",
+        driverMaxTimeWarning: "⚠️ Κοντά στον μέγιστο χρόνο οδήγησης!", driverOverMaxTime: "🚨 ΥΠΕΡΒΑΣΗ μέγιστου χρόνου οδήγησης!", qpKart24h: "🏎 Καρτ 24Ω",
+        extraPitMissing: "Λείπουν επιπλέον pit", extraPitOnPace: "Τα επιπλέον pit είναι στον ρυθμό", lblNoLimitEndurance: "Αντοχής χωρίς όριο",
+        lblNumTeams: "Ομάδες που συμμετέχουν (εναλλαγή καρτ)", lblExtraPitsShort: "Αλλαγή καρτ", lblKartChangeInterval: "Διάστημα αλλαγής καρτ (λεπτά)",
+        lblKartChangeIntervalHint: "Ο διοργανωτής ορίζει κάθε πότε η ομάδα σας πρέπει να αλλάζει καρτ.", stepRaceSettings: "Ρυθμίσεις αγώνα", stepDrivers: "Οδηγοί",
+        stepGo: "Πάμε", optional: "προαιρετικό", joinAsDriverHint: "Εισάγετε έναν αγώνα που τρέχει σε άλλη συσκευή",
+        advancedConnection: "Σύνδεση για προχωρημένους", wsPortOverrideLabel: "Αλλαγή θύρας Apex WS (κενό = αυτόματα):", wsPortOverridePlaceholder: "π.χ. 8523 ή 8913",
+        wsPortOverrideHint: "Αν η χρονομέτρηση συνδέεται αλλά δεν δείχνει δεδομένα, η θύρα WebSocket της τροφοδοσίας μπορεί να διαφέρει από την αυτόματη. Δοκιμάστε τη configPort+3 (HTTPS) ή +2 (HTTP) της πίστας.", swapDriver: "Αλλαγή οδηγού", holdToReorder: "Κρατήστε 3 δευτ. και σύρετε στη νέα θέση",
+        holdToSwapDriver: "Κρατήστε 3 δευτ. για αλλαγή οδηγού", holdToChangeNext: "Κρατήστε 3 δευτ. για αλλαγή του επόμενου οδηγού", dragToPosition: "🔀 Σύρετε στη θέση-στόχο",
+        nextDriverChanged: "Ο επόμενος οδηγός ενημερώθηκε", stintFixApplied: "✓ Τα stint ανακατανεμήθηκαν ώστε να τηρούν τα όρια ελάχ./μέγ.", stintFixPartial: "⚠️ Ορισμένα stint είναι ακόμα εκτός ορίων — προσθέστε στάσεις ή αλλάξτε τα όρια",
+        stintViolationsBanner: "{{count}} stint εκτός ελάχ./μέγ. — πατήστε Αυτόματη διόρθωση", stintFixBtn: "Αυτόματη διόρθωση", startDemoTooltip: "Έναρξη demo",
+        startDemoMidRaceWarning: "Αυτό θα τερματίσει τον τρέχοντα αγώνα και θα τον αντικαταστήσει με demo. Δεν μπορεί να αναιρεθεί.", startDemoConfirm: "Έναρξη demo", qualifyPitAny: "Οποιαδήποτε στάση",
+        qualifyStop: "Λήξη δοκιμαστικών", qualifySession: "Περίοδος", wtLangTitle: "Επιλέξτε γλώσσα",
+        wtLangSub: "Περισσότερες γλώσσες είναι διαθέσιμες στην κεφαλίδα μετά τη ρύθμιση.", wtGuideBtn: "Οδηγός", wtTitleWelcome: "Καλώς ήρθατε στο Strateger!",
+        wtDescWelcome: "Ο βοηθός στρατηγικής pit για αγώνες αντοχής καρτ. Αυτή η σύντομη ξενάγηση δείχνει πώς να ρυθμίσετε έναν αγώνα, να συνδέσετε live χρονομέτρηση (Apex / RaceFacer) και να τρέξετε μια γρήγορη προσομοίωση.", wtTitleHero: "Γρήγορα προφίλ αγώνα", wtDescHero: "Διαλέξτε προεπιλογές Sprint, Αντοχής ή Χωρίς όριο. Συμπληρώνουν διάρκεια, pit stop και όρια stint με βάση τους συνήθεις κανονισμούς.",
+        wtTitleRules: "Κανονισμοί αγώνα", wtDescRules: "Ορίστε διάρκεια, υποχρεωτικά pit stop, ελάχ./μέγ. stint και χρόνο pit. Το Strateger ελέγχει το πλάνο σας και προειδοποιεί αν τα stint είναι αδύνατα.", wtTitleLT: "Live χρονομέτρηση — Apex & RaceFacer",
+        wtDescLT: "Επικολλήστε τη διεύθυνση της πίστας από Apex Timing ή RaceFacer. Φιλτράρετε με το όνομα της ομάδας ώστε να βλέπετε μόνο το καρτ σας — ακόμα και με 20+ ομάδες στην πίστα.", wtTitleDrivers: "Οδηγοί", wtDescDrivers: "Προσθέστε τους οδηγούς σας, διαλέξτε ποιος ξεκινά και ορίστε ομάδες για τις νυχτερινές βάρδιες. Απαιτούνται τουλάχιστον 2 οδηγοί.",
+        wtTitlePreview: "Προεπισκόπηση στρατηγικής", wtDescPreview: "Το πλήρες χρονοδιάγραμμα των stint πριν τον αγώνα — κάθε μπάρα είναι μια βάρδια οδηγού. Μπορείτε να σύρετε για αναδιάταξη ή να αλλάξετε διάρκειες.", wtTitleSim: "Καθοδηγούμενη προσομοίωση",
+        wtDescSim: "Ένα demo αντοχής 6 ωρών με προσομοιωμένη live χρονομέτρηση. Το ρολόι τρέχει για λίγο και μετά προχωρά ώρες μεταξύ των stint για να δείξει τα pit stop και τις ενημερώσεις στρατηγικής.", wtStartSim: "▶ Έναρξη προσομοίωσης", wtTitleRaceTimer: "Ρολόι αγώνα 6 ωρών",
+        wtDescRaceTimer: "Ένας πραγματικός αγώνας αντοχής — 6 ώρες στο ρολόι. Πατήστε Επόμενο για να δείτε μερικά δευτερόλεπτα να τρέχουν και μετά θα προχωρήσουμε μέσα στον αγώνα.", wtTitleTimeSkip: "Γρήγορη προώθηση", wtDescTimeSkip1: "Σε αγώνα 6 ωρών περνούν ώρες ανάμεσα στις αλλαγές οδηγών. Προχωράμε +2ω 30λ — το ρολόι και ο χρονομετρητής του stint ενημερώνονται αμέσως.",
+        wtDescTimeSkip2: "Άλλα +1ω 30λ μπροστά — τώρα είμαστε βαθιά μέσα στον αγώνα. Ο πίνακας live χρονομέτρησης δείχνει το μεταγενέστερο στάδιο.", wtSkipToast: "{delta} — προχωράμε στον αγώνα", wtTitleStintDriver: "Stint & οδηγός",
+        wtDescStintDriver: "Μέσα στον αγώνα: τρέχων οδηγός, χρονομετρητής stint (stint ~25–55 λεπτών) και γραμμή προόδου. Πατήστε Επόμενο για σύντομη live ενημέρωση.", wtTitleStrategy: "Προοπτική στρατηγικής", wtDescStrategy: "Οι live ετικέτες δείχνουν τα stint που απομένουν για το υπόλοιπο αυτού του αγώνα 6 ωρών. Μετά από κάθε pit, οι χρόνοι υπολογίζονται ξανά από τις πραγματικές στάσεις.",
+        wtTitleLivePreview: "Ενημερωμένο πλάνο", wtDescLivePreview: "▶ ΠΛΑΝΟ μετά από pit stop: τα ολοκληρωμένα stint δείχνουν πραγματικές διάρκειες, τα επόμενα ανακατανέμονται στις ώρες που απομένουν.", wtTitleLTRace: "Πίνακας live χρονομέτρησης",
+        wtDescLTRace: "Προσομοιωμένη βαθμολογία αργά στον αγώνα. Συμπτύξτε τον πίνακα (📋) όταν χρειάζεστε μόνο τη γραμμή σας.", wtTitlePit: "Pit stop", wtDescPit: "Demo pit stop: είσοδος, ελάχιστος χρόνος pit, έξοδος και αλλαγή οδηγού — και μετά το πλάνο των 6 ωρών υπολογίζεται ξανά.",
+        wtTitleDone: "Είστε έτοιμοι!", wtDescDone: "Ρυθμίστε τον πραγματικό σας αγώνα, συνδέστε live χρονομέτρηση και ξεκινήστε. Επαναλάβετε αυτόν τον οδηγό όποτε θέλετε από το κουμπί Οδηγός στην κεφαλίδα.", wtFinishedToast: "Η ξενάγηση ολοκληρώθηκε — καλή επιτυχία στον αγώνα!",
+        addDriverToGroup: "Προσθήκη οδηγού στην ομάδα…", driverGroupHint: "Πατήστε έναν οδηγό για να τον συμπεριλάβετε/εξαιρέσετε από αυτόν τον αγώνα", clickToAddToRace: "Προσθήκη στον αγώνα",
+        clickToRemoveFromRace: "Αφαίρεση από τον αγώνα", removeFromGroup: "Αφαίρεση από την ομάδα", minTwoDrivers: "Απαιτούνται τουλάχιστον 2 οδηγοί",
+        lblTeamName: "Όνομα ομάδας", ltNoTeamSet: "Εμφανίζονται όλα τα οχήματα — πατήστε για να διαλέξετε την ομάδα σας", ltFilterOptional: "Φίλτρο ομάδας / καρτ (προαιρετικό)",
+        rulesOrPaste: "ή επικολλήστε το κείμενο των κανονισμών", rulesPastePlaceholder: "Επικολλήστε εδώ τους κανονισμούς του αγώνα…", rulesPastedText: "Επικολλημένο κείμενο",
+        chars: "χαρακτήρες", ltOriginalView: "Πρωτότυπο", ltTableView: "Πίνακας",
+        ltTeamNotFound: "δεν βρέθηκε στην τροφοδοσία", connLost: "⚠️ Η σύνδεση χάθηκε — επανασύνδεση…", feedStale: "⚠️ Η live χρονομέτρηση δεν ενημερώνεται",
+        watchingLive: "Παρακολούθηση live · μόνο ανάγνωση", pitClosed: "PIT ΚΛΕΙΣΤΟ", watchStale: "Καμία ενημέρωση",
+        pickYourTeam: "Διαλέξτε την ομάδα σας", pickTeamFilter: "Φίλτρο με όνομα ή αρ. καρτ", durationMismatch: "Η live χρονομέτρηση έχει περισσότερο χρόνο από τη ρυθμισμένη διάρκεια αγώνα - ορίστε τη Διάρκεια ώστε να ταιριάζει, αλλιώς το ρολόι δεν θα κινηθεί",
+        bufferDefault: "προεπ.", watchingSecondTeam: "Παρακολούθηση", yourTeam: "Η ομάδα σας",
+        guidedTourMidRaceWarning: "Αυτό θα τερματίσει τον τρέχοντα αγώνα και θα ξεκινήσει την καθοδηγούμενη ξενάγηση. Δεν μπορεί να αναιρεθεί.", consistentFastPitAlert: "⚡ Καρτ #{{kart}} ({{team}}) — γρήγορο & σταθερό — μόλις μπήκε pit. Πιθανή ευκαιρία.", penaltiesWarnings: "Ποινές & προειδοποιήσεις",
+        penaltyServe: "Εκτέλεση", acknowledge: "OK", autoPit: "Αυτόματα",
+        autoPitOn: "Αυτόματα", autoPitOff: "Χειροκίνητα",
     }
 };
+
+// UI wording added by the header/setup simplification (all languages)
+(function() {
+    const extra = {
+    "en": {
+        "menuTeam": "Team",
+        "menuDisplay": "Display",
+        "menuHelp": "Help",
+        "menuAccount": "Account",
+        "manageViewers": "Manage viewers",
+        "menuSound": "Sound",
+        "menuSoundOff": "Sound off",
+        "menuShortcuts": "Shortcuts",
+        "adjust": "Adjust",
+        "pitTimeAdj": "Pit time",
+        "phasePlan": "Plan",
+        "phaseQualify": "Qualify",
+        "phaseRace": "Race",
+        "grpRotation": "Driver rotation",
+        "grpPitRules": "Pit rules",
+        "grpDriverLimits": "Driver limits",
+        "grpAlerts": "Alerts and timing",
+        "rulesIntro": "Optional rules from the organizer. Leave a number at 0 to switch that rule off.",
+        "kartChanges": "Kart changes",
+        "kartChangesShown": "Shown because a key value is 0",
+        "kartChangeEvery": "Kart change every (min)",
+        "kartChangeHint": "How often the organizer makes you change karts, e.g. 90 for every 90 min. 0 = off.",
+        "offHint": "0 = off.",
+        "numTeamsHint": "Required stops = teams − 1, so each team drives every kart once. 0 = off."
+    },
+    "he": {
+        "menuTeam": "צוות",
+        "menuDisplay": "תצוגה",
+        "menuHelp": "עזרה",
+        "menuAccount": "חשבון",
+        "manageViewers": "ניהול צופים",
+        "menuSound": "צליל",
+        "menuSoundOff": "צליל כבוי",
+        "menuShortcuts": "קיצורי מקלדת",
+        "adjust": "התאמה",
+        "pitTimeAdj": "זמן פיט",
+        "phasePlan": "תכנון",
+        "phaseQualify": "מוקדמות",
+        "phaseRace": "מירוץ",
+        "grpRotation": "רוטציית נהגים",
+        "grpPitRules": "חוקי פיט",
+        "grpDriverLimits": "מגבלות נהגים",
+        "grpAlerts": "התראות וזמנים",
+        "rulesIntro": "חוקים אופציונליים מהמארגן. השאירו 0 כדי לכבות חוק.",
+        "kartChanges": "החלפות קארט",
+        "kartChangesShown": "מוצג כי ערך מפתח הוא 0",
+        "kartChangeEvery": "החלפת קארט כל (דק')",
+        "kartChangeHint": "באיזו תדירות המארגן מחייב להחליף קארטים, למשל 90 = כל 90 דקות. 0 = כבוי.",
+        "offHint": "0 = כבוי.",
+        "numTeamsHint": "עצירות נדרשות = קבוצות − 1, כך שכל קבוצה נוהגת בכל קארט פעם אחת. 0 = כבוי."
+    },
+    "fr": {
+        "menuTeam": "Équipe",
+        "menuDisplay": "Affichage",
+        "menuHelp": "Aide",
+        "menuAccount": "Compte",
+        "manageViewers": "Gérer les spectateurs",
+        "menuSound": "Son",
+        "menuSoundOff": "Son coupé",
+        "menuShortcuts": "Raccourcis",
+        "adjust": "Ajuster",
+        "pitTimeAdj": "Temps au stand",
+        "phasePlan": "Plan",
+        "phaseQualify": "Qualifs",
+        "phaseRace": "Course",
+        "grpRotation": "Rotation des pilotes",
+        "grpPitRules": "Règles de stand",
+        "grpDriverLimits": "Limites pilotes",
+        "grpAlerts": "Alertes et timing",
+        "rulesIntro": "Règles facultatives de l'organisateur. Laissez 0 pour désactiver une règle.",
+        "kartChanges": "Changements de kart",
+        "kartChangesShown": "Affiché car une valeur clé est à 0",
+        "kartChangeEvery": "Changement de kart toutes les (min)",
+        "kartChangeHint": "Fréquence imposée par l'organisateur, ex. 90 = toutes les 90 min. 0 = désactivé.",
+        "offHint": "0 = désactivé.",
+        "numTeamsHint": "Arrêts requis = équipes − 1, chaque équipe pilote chaque kart une fois. 0 = désactivé."
+    },
+    "pt": {
+        "menuTeam": "Equipe",
+        "menuDisplay": "Exibição",
+        "menuHelp": "Ajuda",
+        "menuAccount": "Conta",
+        "manageViewers": "Gerir espectadores",
+        "menuSound": "Som",
+        "menuSoundOff": "Som desligado",
+        "menuShortcuts": "Atalhos",
+        "adjust": "Ajustar",
+        "pitTimeAdj": "Tempo no box",
+        "phasePlan": "Plano",
+        "phaseQualify": "Qualificação",
+        "phaseRace": "Corrida",
+        "grpRotation": "Rotação de pilotos",
+        "grpPitRules": "Regras de box",
+        "grpDriverLimits": "Limites de pilotos",
+        "grpAlerts": "Alertas e tempos",
+        "rulesIntro": "Regras opcionais do organizador. Deixe 0 para desligar uma regra.",
+        "kartChanges": "Trocas de kart",
+        "kartChangesShown": "Mostrado porque um valor-chave é 0",
+        "kartChangeEvery": "Troca de kart a cada (min)",
+        "kartChangeHint": "Com que frequência o organizador exige trocar de kart, ex. 90 = a cada 90 min. 0 = desligado.",
+        "offHint": "0 = desligado.",
+        "numTeamsHint": "Paradas necessárias = equipes − 1, cada equipe guia todos os karts uma vez. 0 = desligado."
+    },
+    "ru": {
+        "menuTeam": "Команда",
+        "menuDisplay": "Отображение",
+        "menuHelp": "Помощь",
+        "menuAccount": "Аккаунт",
+        "manageViewers": "Управление зрителями",
+        "menuSound": "Звук",
+        "menuSoundOff": "Звук выкл.",
+        "menuShortcuts": "Горячие клавиши",
+        "adjust": "Корректировка",
+        "pitTimeAdj": "Время в боксах",
+        "phasePlan": "План",
+        "phaseQualify": "Квалификация",
+        "phaseRace": "Гонка",
+        "grpRotation": "Ротация пилотов",
+        "grpPitRules": "Правила боксов",
+        "grpDriverLimits": "Лимиты пилотов",
+        "grpAlerts": "Оповещения и тайминг",
+        "rulesIntro": "Необязательные правила организатора. Оставьте 0, чтобы отключить правило.",
+        "kartChanges": "Смена картов",
+        "kartChangesShown": "Показано, так как ключевое значение равно 0",
+        "kartChangeEvery": "Смена карта каждые (мин)",
+        "kartChangeHint": "Как часто организатор требует менять карты, например 90 = каждые 90 мин. 0 = выкл.",
+        "offHint": "0 = выкл.",
+        "numTeamsHint": "Нужно остановок = команд − 1, каждая команда проезжает на каждом карте один раз. 0 = выкл."
+    },
+    "ar": {
+        "menuTeam": "الفريق",
+        "menuDisplay": "العرض",
+        "menuHelp": "مساعدة",
+        "menuAccount": "الحساب",
+        "manageViewers": "إدارة المشاهدين",
+        "menuSound": "الصوت",
+        "menuSoundOff": "الصوت مكتوم",
+        "menuShortcuts": "اختصارات",
+        "adjust": "تعديل",
+        "pitTimeAdj": "وقت الحفرة",
+        "phasePlan": "التخطيط",
+        "phaseQualify": "التصفيات",
+        "phaseRace": "السباق",
+        "grpRotation": "تناوب السائقين",
+        "grpPitRules": "قواعد الحفرة",
+        "grpDriverLimits": "حدود السائقين",
+        "grpAlerts": "التنبيهات والتوقيت",
+        "rulesIntro": "قواعد اختيارية من المنظم. اترك 0 لإيقاف القاعدة.",
+        "kartChanges": "تغيير الكارت",
+        "kartChangesShown": "ظاهر لأن قيمة أساسية تساوي 0",
+        "kartChangeEvery": "تغيير الكارت كل (دقيقة)",
+        "kartChangeHint": "كم مرة يطلب المنظم تغيير الكارت، مثلاً 90 = كل 90 دقيقة. 0 = متوقف.",
+        "offHint": "0 = متوقف.",
+        "numTeamsHint": "التوقفات المطلوبة = الفرق − 1، فيقود كل فريق كل كارت مرة. 0 = متوقف."
+    },
+    "es": {
+        "menuTeam": "Equipo",
+        "menuDisplay": "Pantalla",
+        "menuHelp": "Ayuda",
+        "menuAccount": "Cuenta",
+        "manageViewers": "Gestionar espectadores",
+        "menuSound": "Sonido",
+        "menuSoundOff": "Sonido apagado",
+        "menuShortcuts": "Atajos",
+        "adjust": "Ajustar",
+        "pitTimeAdj": "Tiempo en box",
+        "phasePlan": "Plan",
+        "phaseQualify": "Clasificación",
+        "phaseRace": "Carrera",
+        "grpRotation": "Rotación de pilotos",
+        "grpPitRules": "Reglas de box",
+        "grpDriverLimits": "Límites de pilotos",
+        "grpAlerts": "Alertas y tiempos",
+        "rulesIntro": "Reglas opcionales del organizador. Deja 0 para desactivar una regla.",
+        "kartChanges": "Cambios de kart",
+        "kartChangesShown": "Se muestra porque un valor clave es 0",
+        "kartChangeEvery": "Cambio de kart cada (min)",
+        "kartChangeHint": "Cada cuánto exige el organizador cambiar de kart, p. ej. 90 = cada 90 min. 0 = desactivado.",
+        "offHint": "0 = desactivado.",
+        "numTeamsHint": "Paradas requeridas = equipos − 1, cada equipo conduce cada kart una vez. 0 = desactivado."
+    },
+    "it": {
+        "menuTeam": "Squadra",
+        "menuDisplay": "Schermo",
+        "menuHelp": "Aiuto",
+        "menuAccount": "Account",
+        "manageViewers": "Gestisci spettatori",
+        "menuSound": "Suono",
+        "menuSoundOff": "Suono disattivato",
+        "menuShortcuts": "Scorciatoie",
+        "adjust": "Regola",
+        "pitTimeAdj": "Tempo ai box",
+        "phasePlan": "Piano",
+        "phaseQualify": "Qualifica",
+        "phaseRace": "Gara",
+        "grpRotation": "Rotazione piloti",
+        "grpPitRules": "Regole box",
+        "grpDriverLimits": "Limiti piloti",
+        "grpAlerts": "Avvisi e tempi",
+        "rulesIntro": "Regole facoltative dell'organizzatore. Lascia 0 per disattivare una regola.",
+        "kartChanges": "Cambi kart",
+        "kartChangesShown": "Mostrato perché un valore chiave è 0",
+        "kartChangeEvery": "Cambio kart ogni (min)",
+        "kartChangeHint": "Ogni quanto l'organizzatore impone il cambio kart, es. 90 = ogni 90 min. 0 = disattivato.",
+        "offHint": "0 = disattivato.",
+        "numTeamsHint": "Soste richieste = squadre − 1, ogni squadra guida ogni kart una volta. 0 = disattivato."
+    },
+    "ka": {
+        "menuTeam": "გუნდი",
+        "menuDisplay": "ეკრანი",
+        "menuHelp": "დახმარება",
+        "menuAccount": "ანგარიში",
+        "manageViewers": "მაყურებლების მართვა",
+        "menuSound": "ხმა",
+        "menuSoundOff": "ხმა გამორთულია",
+        "menuShortcuts": "სწრაფი კლავიშები",
+        "adjust": "მორგება",
+        "pitTimeAdj": "პიტის დრო",
+        "phasePlan": "გეგმა",
+        "phaseQualify": "კვალიფიკაცია",
+        "phaseRace": "რბოლა",
+        "grpRotation": "მძღოლების როტაცია",
+        "grpPitRules": "პიტის წესები",
+        "grpDriverLimits": "მძღოლების ლიმიტები",
+        "grpAlerts": "შეტყობინებები და დრო",
+        "rulesIntro": "ორგანიზატორის არასავალდებულო წესები. დატოვეთ 0 წესის გასათიშად.",
+        "kartChanges": "კარტის შეცვლა",
+        "kartChangesShown": "ნაჩვენებია, რადგან მთავარი მნიშვნელობა 0-ია",
+        "kartChangeEvery": "კარტის შეცვლა ყოველ (წთ)",
+        "kartChangeHint": "რამდენად ხშირად მოითხოვს ორგანიზატორი კარტის შეცვლას, მაგ. 90 = ყოველ 90 წთ. 0 = გამორთულია.",
+        "offHint": "0 = გამორთულია.",
+        "numTeamsHint": "საჭირო გაჩერებები = გუნდები − 1, ყოველი გუნდი ყველა კარტს ერთხელ მართავს. 0 = გამორთულია."
+    },
+    "de": {
+        "menuTeam": "Team",
+        "menuDisplay": "Anzeige",
+        "menuHelp": "Hilfe",
+        "menuAccount": "Konto",
+        "manageViewers": "Zuschauer verwalten",
+        "menuSound": "Ton",
+        "menuSoundOff": "Ton aus",
+        "menuShortcuts": "Tastenkürzel",
+        "adjust": "Anpassen",
+        "pitTimeAdj": "Boxenzeit",
+        "phasePlan": "Plan",
+        "phaseQualify": "Qualifying",
+        "phaseRace": "Rennen",
+        "grpRotation": "Fahrerrotation",
+        "grpPitRules": "Boxenregeln",
+        "grpDriverLimits": "Fahrerlimits",
+        "grpAlerts": "Warnungen und Timing",
+        "rulesIntro": "Optionale Regeln des Veranstalters. 0 lassen, um eine Regel auszuschalten.",
+        "kartChanges": "Kartwechsel",
+        "kartChangesShown": "Angezeigt, weil ein Schlüsselwert 0 ist",
+        "kartChangeEvery": "Kartwechsel alle (min)",
+        "kartChangeHint": "Wie oft der Veranstalter einen Kartwechsel verlangt, z. B. 90 = alle 90 Min. 0 = aus.",
+        "offHint": "0 = aus.",
+        "numTeamsHint": "Nötige Stopps = Teams − 1, jedes Team fährt jedes Kart einmal. 0 = aus."
+    },
+    "ja": {
+        "menuTeam": "チーム",
+        "menuDisplay": "表示",
+        "menuHelp": "ヘルプ",
+        "menuAccount": "アカウント",
+        "manageViewers": "視聴者を管理",
+        "menuSound": "サウンド",
+        "menuSoundOff": "サウンドオフ",
+        "menuShortcuts": "ショートカット",
+        "adjust": "調整",
+        "pitTimeAdj": "ピット時間",
+        "phasePlan": "計画",
+        "phaseQualify": "予選",
+        "phaseRace": "レース",
+        "grpRotation": "ドライバーのローテーション",
+        "grpPitRules": "ピットルール",
+        "grpDriverLimits": "ドライバー制限",
+        "grpAlerts": "通知とタイミング",
+        "rulesIntro": "主催者による任意のルールです。0のままにするとそのルールはオフになります。",
+        "kartChanges": "カート交換",
+        "kartChangesShown": "主要な値が0のため表示",
+        "kartChangeEvery": "カート交換の間隔（分）",
+        "kartChangeHint": "主催者がカート交換を求める頻度。例：90＝90分ごと。0＝オフ。",
+        "offHint": "0＝オフ。",
+        "numTeamsHint": "必要なピット回数＝チーム数−1。各チームが全カートを一度ずつ走行します。0＝オフ。"
+    },
+    "el": {
+        "menuTeam": "Ομάδα",
+        "menuDisplay": "Προβολή",
+        "menuHelp": "Βοήθεια",
+        "menuAccount": "Λογαριασμός",
+        "manageViewers": "Διαχείριση θεατών",
+        "menuSound": "Ήχος",
+        "menuSoundOff": "Ήχος off",
+        "menuShortcuts": "Συντομεύσεις",
+        "adjust": "Ρύθμιση",
+        "pitTimeAdj": "Χρόνος pit",
+        "phasePlan": "Πλάνο",
+        "phaseQualify": "Κατάταξη",
+        "phaseRace": "Αγώνας",
+        "grpRotation": "Εναλλαγή οδηγών",
+        "grpPitRules": "Κανόνες pit",
+        "grpDriverLimits": "Όρια οδηγών",
+        "grpAlerts": "Ειδοποιήσεις και χρόνοι",
+        "rulesIntro": "Προαιρετικοί κανόνες του διοργανωτή. Αφήστε 0 για απενεργοποίηση.",
+        "kartChanges": "Αλλαγές kart",
+        "kartChangesShown": "Εμφανίζεται επειδή μια βασική τιμή είναι 0",
+        "kartChangeEvery": "Αλλαγή kart κάθε (λεπτά)",
+        "kartChangeHint": "Πόσο συχνά απαιτεί ο διοργανωτής αλλαγή kart, π.χ. 90 = κάθε 90 λεπτά. 0 = off.",
+        "offHint": "0 = off.",
+        "numTeamsHint": "Απαιτούμενες στάσεις = ομάδες − 1, κάθε ομάδα οδηγεί κάθε kart μία φορά. 0 = off."
+    }
+};
+    Object.keys(extra).forEach(l => { if (window.translations[l]) Object.assign(window.translations[l], extra[l]); });
+    const extra2 = {
+    "en": {
+        "paceLabel": "Pace",
+        "paceHint": "Mark the team's pace as fast or slow. The target stint is recalculated.",
+        "noLiveHint": "Live timing is not connected. Positions and lap times appear here once a timing URL is set for this race.",
+        "targetHint": "Recommended time to pit, updated from the current pace."
+    },
+    "he": {
+        "paceLabel": "קצב",
+        "paceHint": "סמנו את קצב הצוות כמהיר או איטי. יעד הסטינט יחושב מחדש.",
+        "noLiveHint": "התזמון החי לא מחובר. מיקומים וזמני הקפות יופיעו כאן לאחר הגדרת כתובת תזמון למירוץ.",
+        "targetHint": "הזמן המומלץ להיכנס לפיט, מתעדכן לפי הקצב הנוכחי."
+    },
+    "fr": {
+        "paceLabel": "Rythme",
+        "paceHint": "Indiquez si l'équipe roule vite ou lentement. Le relais cible est recalculé.",
+        "noLiveHint": "Le chronométrage live n'est pas connecté. Positions et temps au tour apparaîtront ici dès qu'une URL de chrono est définie.",
+        "targetHint": "Moment recommandé pour rentrer au stand, mis à jour selon le rythme actuel."
+    },
+    "pt": {
+        "paceLabel": "Ritmo",
+        "paceHint": "Marque o ritmo da equipe como rápido ou lento. O stint alvo é recalculado.",
+        "noLiveHint": "O live timing não está conectado. Posições e tempos de volta aparecem aqui quando houver uma URL de cronometragem.",
+        "targetHint": "Momento recomendado para entrar no box, atualizado pelo ritmo atual."
+    },
+    "ru": {
+        "paceLabel": "Темп",
+        "paceHint": "Отметьте темп команды как быстрый или медленный. Целевой стинт пересчитается.",
+        "noLiveHint": "Live-тайминг не подключён. Позиции и время кругов появятся здесь после указания ссылки на тайминг.",
+        "targetHint": "Рекомендуемое время захода в боксы, обновляется по текущему темпу."
+    },
+    "ar": {
+        "paceLabel": "الإيقاع",
+        "paceHint": "حدّد إيقاع الفريق سريعًا أو بطيئًا. سيُعاد حساب مدة المقطع المستهدفة.",
+        "noLiveHint": "التوقيت المباشر غير متصل. ستظهر المراكز وأزمنة اللفات هنا بعد إدخال رابط التوقيت.",
+        "targetHint": "الوقت الموصى به لدخول الحفرة، يتحدث حسب الإيقاع الحالي."
+    },
+    "es": {
+        "paceLabel": "Ritmo",
+        "paceHint": "Marca el ritmo del equipo como rápido o lento. El stint objetivo se recalcula.",
+        "noLiveHint": "El cronometraje en vivo no está conectado. Posiciones y tiempos de vuelta aparecerán aquí al configurar una URL de cronometraje.",
+        "targetHint": "Momento recomendado para entrar a box, actualizado según el ritmo actual."
+    },
+    "it": {
+        "paceLabel": "Ritmo",
+        "paceHint": "Segna il ritmo della squadra come veloce o lento. Lo stint obiettivo viene ricalcolato.",
+        "noLiveHint": "Il live timing non è collegato. Posizioni e tempi sul giro appariranno qui dopo aver impostato un URL di cronometraggio.",
+        "targetHint": "Momento consigliato per rientrare ai box, aggiornato in base al ritmo attuale."
+    },
+    "ka": {
+        "paceLabel": "ტემპი",
+        "paceHint": "მონიშნეთ გუნდის ტემპი სწრაფად ან ნელად. სამიზნე სტინტი ხელახლა გამოითვლება.",
+        "noLiveHint": "ლაივ ტაიმინგი არ არის დაკავშირებული. პოზიციები და წრეების დრო აქ გამოჩნდება ტაიმინგის URL-ის მითითების შემდეგ.",
+        "targetHint": "პიტში შესვლის რეკომენდებული დრო, განახლდება მიმდინარე ტემპის მიხედვით."
+    },
+    "de": {
+        "paceLabel": "Tempo",
+        "paceHint": "Markiere das Teamtempo als schnell oder langsam. Der Ziel-Stint wird neu berechnet.",
+        "noLiveHint": "Live-Timing ist nicht verbunden. Positionen und Rundenzeiten erscheinen hier, sobald eine Timing-URL gesetzt ist.",
+        "targetHint": "Empfohlener Zeitpunkt für den Boxenstopp, aktualisiert nach dem aktuellen Tempo."
+    },
+    "ja": {
+        "paceLabel": "ペース",
+        "paceHint": "チームのペースを速い／遅いで指定します。目標スティントが再計算されます。",
+        "noLiveHint": "ライブタイミングが未接続です。タイミングURLを設定すると、順位とラップタイムがここに表示されます。",
+        "targetHint": "ピットインの推奨タイミング。現在のペースに合わせて更新されます。"
+    },
+    "el": {
+        "paceLabel": "Ρυθμός",
+        "paceHint": "Σημειώστε τον ρυθμό της ομάδας ως γρήγορο ή αργό. Το στόχος stint υπολογίζεται ξανά.",
+        "noLiveHint": "Το live timing δεν είναι συνδεδεμένο. Θέσεις και χρόνοι γύρων θα εμφανιστούν εδώ μόλις οριστεί URL χρονομέτρησης.",
+        "targetHint": "Προτεινόμενη στιγμή για pit, ενημερώνεται από τον τρέχοντα ρυθμό."
+    }
+};
+    Object.keys(extra2).forEach(l => { if (window.translations[l]) Object.assign(window.translations[l], extra2[l]); });
+    const extra3 = {
+    "en": {
+        "btnEmail": "Email",
+        "btnCalendar": "Calendar",
+        "btnCheck": "Check",
+        "scenarioActive": "Scenario active",
+        "scenarioTitle": "Scenario planner",
+        "scenarioSub": "Try decisions and see the outcome right away",
+        "ariaLiveView": "Toggle original timing view",
+        "ariaSecondTeam": "Watch a second team",
+        "ariaTeamLogo": "Upload team logo"
+    },
+    "he": {
+        "btnEmail": "אימייל",
+        "btnCalendar": "יומן",
+        "btnCheck": "בדיקה",
+        "scenarioActive": "תרחיש פעיל",
+        "scenarioTitle": "מתכנן תרחישים",
+        "scenarioSub": "נסו החלטות וראו את התוצאה מיד",
+        "ariaLiveView": "הצג/הסתר תצוגת תזמון מקורית",
+        "ariaSecondTeam": "צפייה בקבוצה שנייה",
+        "ariaTeamLogo": "העלאת לוגו קבוצה"
+    },
+    "fr": {
+        "btnEmail": "E-mail",
+        "btnCalendar": "Calendrier",
+        "btnCheck": "Vérifier",
+        "scenarioActive": "Scénario actif",
+        "scenarioTitle": "Planificateur de scénarios",
+        "scenarioSub": "Testez des décisions et voyez le résultat tout de suite",
+        "ariaLiveView": "Afficher la vue chrono d'origine",
+        "ariaSecondTeam": "Suivre une deuxième équipe",
+        "ariaTeamLogo": "Importer le logo de l'équipe"
+    },
+    "pt": {
+        "btnEmail": "E-mail",
+        "btnCalendar": "Calendário",
+        "btnCheck": "Verificar",
+        "scenarioActive": "Cenário ativo",
+        "scenarioTitle": "Planejador de cenários",
+        "scenarioSub": "Teste decisões e veja o resultado na hora",
+        "ariaLiveView": "Alternar a vista original do cronômetro",
+        "ariaSecondTeam": "Acompanhar uma segunda equipe",
+        "ariaTeamLogo": "Enviar logo da equipe"
+    },
+    "ru": {
+        "btnEmail": "Почта",
+        "btnCalendar": "Календарь",
+        "btnCheck": "Проверка",
+        "scenarioActive": "Сценарий активен",
+        "scenarioTitle": "Планировщик сценариев",
+        "scenarioSub": "Пробуйте решения и сразу видьте результат",
+        "ariaLiveView": "Переключить исходный вид тайминга",
+        "ariaSecondTeam": "Следить за второй командой",
+        "ariaTeamLogo": "Загрузить логотип команды"
+    },
+    "ar": {
+        "btnEmail": "البريد",
+        "btnCalendar": "التقويم",
+        "btnCheck": "تحقق",
+        "scenarioActive": "السيناريو نشط",
+        "scenarioTitle": "مخطط السيناريوهات",
+        "scenarioSub": "جرّب القرارات وشاهد النتيجة فورًا",
+        "ariaLiveView": "تبديل عرض التوقيت الأصلي",
+        "ariaSecondTeam": "متابعة فريق ثانٍ",
+        "ariaTeamLogo": "رفع شعار الفريق"
+    },
+    "es": {
+        "btnEmail": "Correo",
+        "btnCalendar": "Calendario",
+        "btnCheck": "Comprobar",
+        "scenarioActive": "Escenario activo",
+        "scenarioTitle": "Planificador de escenarios",
+        "scenarioSub": "Prueba decisiones y mira el resultado al instante",
+        "ariaLiveView": "Alternar la vista original del cronometraje",
+        "ariaSecondTeam": "Seguir a un segundo equipo",
+        "ariaTeamLogo": "Subir logo del equipo"
+    },
+    "it": {
+        "btnEmail": "Email",
+        "btnCalendar": "Calendario",
+        "btnCheck": "Verifica",
+        "scenarioActive": "Scenario attivo",
+        "scenarioTitle": "Pianificatore di scenari",
+        "scenarioSub": "Prova le decisioni e vedi subito il risultato",
+        "ariaLiveView": "Mostra/nascondi la vista cronometraggio originale",
+        "ariaSecondTeam": "Segui una seconda squadra",
+        "ariaTeamLogo": "Carica logo squadra"
+    },
+    "ka": {
+        "btnEmail": "ელფოსტა",
+        "btnCalendar": "კალენდარი",
+        "btnCheck": "შემოწმება",
+        "scenarioActive": "სცენარი აქტიურია",
+        "scenarioTitle": "სცენარების დამგეგმავი",
+        "scenarioSub": "სცადეთ გადაწყვეტილებები და ნახეთ შედეგი დაუყოვნებლივ",
+        "ariaLiveView": "ორიგინალი ტაიმინგის ხედის გადართვა",
+        "ariaSecondTeam": "მეორე გუნდის თვალყურის დევნება",
+        "ariaTeamLogo": "გუნდის ლოგოს ატვირთვა"
+    },
+    "de": {
+        "btnEmail": "E-Mail",
+        "btnCalendar": "Kalender",
+        "btnCheck": "Prüfen",
+        "scenarioActive": "Szenario aktiv",
+        "scenarioTitle": "Szenario-Planer",
+        "scenarioSub": "Entscheidungen testen und das Ergebnis sofort sehen",
+        "ariaLiveView": "Originale Timing-Ansicht umschalten",
+        "ariaSecondTeam": "Zweites Team beobachten",
+        "ariaTeamLogo": "Team-Logo hochladen"
+    },
+    "ja": {
+        "btnEmail": "メール",
+        "btnCalendar": "カレンダー",
+        "btnCheck": "確認",
+        "scenarioActive": "シナリオ有効",
+        "scenarioTitle": "シナリオプランナー",
+        "scenarioSub": "判断を試して結果をすぐ確認",
+        "ariaLiveView": "元のタイミング画面を切り替え",
+        "ariaSecondTeam": "2チーム目を追跡",
+        "ariaTeamLogo": "チームロゴをアップロード"
+    },
+    "el": {
+        "btnEmail": "Email",
+        "btnCalendar": "Ημερολόγιο",
+        "btnCheck": "Έλεγχος",
+        "scenarioActive": "Ενεργό σενάριο",
+        "scenarioTitle": "Σχεδιαστής σεναρίων",
+        "scenarioSub": "Δοκιμάστε αποφάσεις και δείτε αμέσως το αποτέλεσμα",
+        "ariaLiveView": "Εναλλαγή αρχικής προβολής χρονομέτρησης",
+        "ariaSecondTeam": "Παρακολούθηση δεύτερης ομάδας",
+        "ariaTeamLogo": "Ανέβασμα λογότυπου ομάδας"
+    }
+};
+    Object.keys(extra3).forEach(l => { if (window.translations[l]) Object.assign(window.translations[l], extra3[l]); });
+    const extra4 = {
+    "en": {
+        "enterUrl": "Enter the live timing URL",
+        "enterValue": "Enter a value for",
+        "testing": "Connecting",
+        "found": "Found",
+        "notFound": "Not found. Check the URL and the search value.",
+        "team": "team",
+        "kart": "kart",
+        "driver": "driver"
+    },
+    "he": {
+        "enterUrl": "הזינו כתובת תזמון חי",
+        "enterValue": "הזינו ערך עבור",
+        "testing": "מתחבר",
+        "found": "נמצא",
+        "notFound": "לא נמצא. בדקו את הכתובת ואת ערך החיפוש.",
+        "team": "קבוצה",
+        "kart": "קארט",
+        "driver": "נהג"
+    },
+    "fr": {
+        "enterUrl": "Saisissez l'URL du chronométrage",
+        "enterValue": "Saisissez une valeur pour",
+        "testing": "Connexion",
+        "found": "Trouvé",
+        "notFound": "Introuvable. Vérifiez l'URL et la valeur de recherche.",
+        "team": "équipe",
+        "kart": "kart",
+        "driver": "pilote"
+    },
+    "pt": {
+        "enterUrl": "Insira a URL da cronometragem",
+        "enterValue": "Insira um valor para",
+        "testing": "Conectando",
+        "found": "Encontrado",
+        "notFound": "Não encontrado. Verifique a URL e o valor da busca.",
+        "team": "equipe",
+        "kart": "kart",
+        "driver": "piloto"
+    },
+    "ru": {
+        "enterUrl": "Введите ссылку на тайминг",
+        "enterValue": "Введите значение для",
+        "testing": "Подключение",
+        "found": "Найдено",
+        "notFound": "Не найдено. Проверьте ссылку и значение поиска.",
+        "team": "команда",
+        "kart": "карт",
+        "driver": "пилот"
+    },
+    "ar": {
+        "enterUrl": "أدخل رابط التوقيت المباشر",
+        "enterValue": "أدخل قيمة لـ",
+        "testing": "جارٍ الاتصال",
+        "found": "تم العثور",
+        "notFound": "غير موجود. تحقق من الرابط وقيمة البحث.",
+        "team": "الفريق",
+        "kart": "الكارت",
+        "driver": "السائق"
+    },
+    "es": {
+        "enterUrl": "Introduce la URL del cronometraje",
+        "enterValue": "Introduce un valor para",
+        "testing": "Conectando",
+        "found": "Encontrado",
+        "notFound": "No encontrado. Revisa la URL y el valor de búsqueda.",
+        "team": "equipo",
+        "kart": "kart",
+        "driver": "piloto"
+    },
+    "it": {
+        "enterUrl": "Inserisci l'URL del cronometraggio",
+        "enterValue": "Inserisci un valore per",
+        "testing": "Connessione",
+        "found": "Trovato",
+        "notFound": "Non trovato. Controlla l'URL e il valore di ricerca.",
+        "team": "squadra",
+        "kart": "kart",
+        "driver": "pilota"
+    },
+    "ka": {
+        "enterUrl": "შეიყვანეთ ტაიმინგის URL",
+        "enterValue": "შეიყვანეთ მნიშვნელობა:",
+        "testing": "უკავშირდება",
+        "found": "ნაპოვნია",
+        "notFound": "ვერ მოიძებნა. შეამოწმეთ URL და საძიებო მნიშვნელობა.",
+        "team": "გუნდი",
+        "kart": "კარტი",
+        "driver": "მძღოლი"
+    },
+    "de": {
+        "enterUrl": "Live-Timing-URL eingeben",
+        "enterValue": "Wert eingeben für",
+        "testing": "Verbinde",
+        "found": "Gefunden",
+        "notFound": "Nicht gefunden. URL und Suchwert prüfen.",
+        "team": "Team",
+        "kart": "Kart",
+        "driver": "Fahrer"
+    },
+    "ja": {
+        "enterUrl": "ライブタイミングのURLを入力",
+        "enterValue": "値を入力：",
+        "testing": "接続中",
+        "found": "見つかりました",
+        "notFound": "見つかりません。URLと検索値を確認してください。",
+        "team": "チーム",
+        "kart": "カート",
+        "driver": "ドライバー"
+    },
+    "el": {
+        "enterUrl": "Εισάγετε το URL χρονομέτρησης",
+        "enterValue": "Εισάγετε τιμή για",
+        "testing": "Σύνδεση",
+        "found": "Βρέθηκε",
+        "notFound": "Δεν βρέθηκε. Ελέγξτε το URL και την τιμή αναζήτησης.",
+        "team": "ομάδα",
+        "kart": "kart",
+        "driver": "οδηγός"
+    }
+};
+    Object.keys(extra4).forEach(l => { if (window.translations[l]) window.translations[l] = Object.assign({}, extra4[l], window.translations[l]); });
+
+})();
+
 
 // Normalize keys that should stay consistent across all languages.
 (function normalizeGlobalTranslations() {
@@ -2135,6 +2970,13 @@ window.setLanguage = function(lang) {
     if (langSelect && langSelect.value !== lang) {
         langSelect.value = lang;
     }
+    const langSelectMobile = document.getElementById('langSelectMobile');
+    if (langSelectMobile) {
+        if (langSelectMobile.options.length === 0 && langSelect) {
+            langSelectMobile.innerHTML = langSelect.innerHTML;
+        }
+        if (langSelectMobile.value !== lang) langSelectMobile.value = lang;
+    }
 
     document.querySelectorAll('[data-i18n]').forEach(el => {
         const key = el.getAttribute('data-i18n');
@@ -2144,6 +2986,10 @@ window.setLanguage = function(lang) {
              el.innerText = window.t(key);
         }
     });
+
+    document.querySelectorAll('[data-i18n-aria]').forEach(el => { el.setAttribute('aria-label', window.t(el.getAttribute('data-i18n-aria'))); });
+    // Tooltips: data-i18n-title
+    document.querySelectorAll('[data-i18n-title]').forEach(el => { el.title = window.t(el.getAttribute('data-i18n-title')); });
 
     // Translate <option> elements with data-i18n-opt attribute
     document.querySelectorAll('option[data-i18n-opt]').forEach(opt => {
@@ -2156,6 +3002,8 @@ window.setLanguage = function(lang) {
     if (typeof window.renderFrame === 'function') window.renderFrame();
     if (typeof window.renderPreview === 'function' && window.previewData) window.renderPreview();
     if (typeof window._applyHeroState === 'function') window._applyHeroState();
+    if (typeof window._refreshWalkthroughStep === 'function') window._refreshWalkthroughStep();
+    if (typeof window._updatePitNotifyPreview === 'function') window._updatePitNotifyPreview();
     // Re-run sim so simResult text is translated to the new language (skip during init burst)
     if (!window._initRunSimSuppressed && typeof window.runSim === 'function' && window.drivers && window.drivers.length > 0) window.runSim();
 };
@@ -2312,6 +3160,14 @@ window.loadSavedSettings = function() {
 
 window.saveRaceState = function() {
     if (window.role !== 'host' || (!window.state.isRunning && !window.state.isFinished)) return;
+    // Cross-tab guard: if this race was just discarded (e.g. from a different tab/window still
+    // open on the same race -- its own autosave interval, or its beforeunload/pagehide hook,
+    // would otherwise re-write the very key that was just deleted, which is exactly what made
+    // Discard need several attempts before it actually stuck).
+    try {
+        const discardedAt = parseInt(sessionStorage.getItem('strateger_race_discarded_at') || '0', 10);
+        if (discardedAt && (Date.now() - discardedAt) < 10000) return;
+    } catch (e) {}
     const snapshot = {
         config: window.config,
         state: window.state,
@@ -2326,7 +3182,7 @@ window.saveRaceState = function() {
         hostId: window.myId, 
         timestamp: Date.now()
     };
-    localStorage.setItem(window.RACE_STATE_KEY, JSON.stringify(snapshot));
+    sessionStorage.setItem(window.RACE_STATE_KEY, JSON.stringify(snapshot));
 };
 
 // Save a final snapshot on refresh/back-navigation
@@ -2352,13 +3208,13 @@ window.checkForSavedRace = function() {
     else if (typeof window.runSim === 'function') window.runSim();
 
     // 2. בדיקת מירוץ פעיל
-    const savedData = localStorage.getItem(window.RACE_STATE_KEY);
+    const savedData = sessionStorage.getItem(window.RACE_STATE_KEY);
     if (!savedData) return;
 
     try {
         const data = JSON.parse(savedData);
         if (Date.now() - new Date(data.timestamp).getTime() > 24 * 60 * 60 * 1000) {
-            localStorage.removeItem(window.RACE_STATE_KEY);
+            sessionStorage.removeItem(window.RACE_STATE_KEY);
             return;
         }
 
@@ -2383,13 +3239,13 @@ window.checkForSavedRace = function() {
         }
     } catch (e) {
         console.error("Error parsing saved race:", e);
-        localStorage.removeItem(window.RACE_STATE_KEY);
+        sessionStorage.removeItem(window.RACE_STATE_KEY);
         document.getElementById('setupScreen').classList.remove('hidden');
     }
 };
 
 window.continueRace = function() {
-    const savedData = localStorage.getItem(window.RACE_STATE_KEY);
+    const savedData = sessionStorage.getItem(window.RACE_STATE_KEY);
     if (!savedData) return window.finalDiscardRace();
 
     try {
@@ -2408,11 +3264,12 @@ window.continueRace = function() {
 
         // Restore Host ID from the confirmed saved race
         if (data.hostId) {
-            localStorage.setItem('strateger_host_id', data.hostId);
+            sessionStorage.setItem('strateger_host_id', data.hostId);
             window.myId = data.hostId; 
         }
 
         document.getElementById('savedRaceModal').classList.add('hidden');
+        document.getElementById('setupScreen')?.classList.add('hidden');   // was never hidden on resume -- left ~1500px of dead space below the race dashboard, only visible by scrolling down (tablet-height reports)
         document.getElementById('raceDashboard').classList.remove('hidden');
 
         // If race was already finished when saved, show the summary instead of running
@@ -2522,11 +3379,12 @@ window.cancelDiscard = function() {
 };
 
 window.finalDiscardRace = function() {
-    localStorage.removeItem(window.RACE_STATE_KEY);
+    try { sessionStorage.setItem('strateger_race_discarded_at', String(Date.now())); } catch (e) {}
+    sessionStorage.removeItem(window.RACE_STATE_KEY);
     // Delete Host ID
-    localStorage.removeItem('strateger_host_id');
+    sessionStorage.removeItem('strateger_host_id');
     // Delete Chat History
-    localStorage.removeItem('strateger_chat_history');
+    sessionStorage.removeItem('strateger_chat_history');
 
     document.getElementById('confirmDiscardModal').classList.add('hidden');
     document.getElementById('savedRaceModal').classList.add('hidden');

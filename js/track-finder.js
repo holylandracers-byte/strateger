@@ -56,11 +56,22 @@ function tfCandidates(name) {
     return [...out].filter(Boolean).slice(0, 6);
 }
 
+// The page's own proxy path only exists on the web build; the native app has to go through the Render server.
+function tfProxies() {
+    const cfg = window.APP_CONFIG || {};
+    const remote = (cfg.API_BASE || '') + '/cors-proxy?url=';
+    return cfg.IS_NATIVE ? [remote] : ['/.netlify/functions/cors-proxy?url=', remote];
+}
+
+// True when the venue page exists. A proxy that cannot be reached is skipped; the first one that answers decides.
 async function tfExists(url) {
-    try {
-        const res = await fetch('/.netlify/functions/cors-proxy?url=' + encodeURIComponent(url), { signal: AbortSignal.timeout(15000) });
-        return res.status === 200;
-    } catch (e) { return false; }
+    for (const proxy of tfProxies()) {
+        try {
+            const res = await fetch(proxy + encodeURIComponent(url), { signal: AbortSignal.timeout(15000) });
+            return res.status === 200;
+        } catch (e) { /* try the next proxy */ }
+    }
+    return false;
 }
 
 // Resolves to a URL, or null. `system` is 'racefacer' | 'apex' | 'alpha'.

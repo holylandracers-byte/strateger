@@ -4,6 +4,51 @@
 
 // Touch device detection — used to disable HTML5 drag on mobile (allows native scroll)
 window._isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+window.LONG_PRESS_MS = 3000;
+window.SCROLL_MOVE_THRESHOLD = 12;
+window._suppressClickUntil = 0;
+
+// Suppress ghost-clicks after scroll gestures so taps on interactive elements don't fire accidentally
+(function() {
+    if (!window._isTouchDevice) return;
+    let startX = 0, startY = 0, moved = false;
+    document.addEventListener('touchstart', (e) => {
+        if (e.touches.length !== 1) return;
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+        moved = false;
+    }, { passive: true, capture: true });
+    document.addEventListener('touchmove', (e) => {
+        if (e.touches.length !== 1) return;
+        const dx = e.touches[0].clientX - startX;
+        const dy = e.touches[0].clientY - startY;
+        if (Math.abs(dx) > window.SCROLL_MOVE_THRESHOLD || Math.abs(dy) > window.SCROLL_MOVE_THRESHOLD) {
+            moved = true;
+        }
+    }, { passive: true, capture: true });
+    document.addEventListener('touchend', () => {
+        if (moved) window._suppressClickUntil = Date.now() + 450;
+    }, { passive: true, capture: true });
+    document.addEventListener('click', (e) => {
+        if (Date.now() < window._suppressClickUntil) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+        }
+    }, true);
+})();
+
+window._initTouchLongPressActions = function() {
+    if (!window._isTouchDevice) return;
+    const nextEl = document.getElementById('nextDriverName');
+    if (nextEl && !nextEl.dataset.longPressBound) {
+        nextEl.dataset.longPressBound = '1';
+        nextEl.removeAttribute('onclick');
+        window._bindLongPressAction(nextEl, {
+            onActivate: () => { if (typeof window.cycleNextDriver === 'function') window.cycleNextDriver(false, true); },
+            activeKey: 'nextDriverChanged'
+        });
+    }
+};
 
 document.addEventListener('DOMContentLoaded', () => {
     console.log("🚀 Strateger Initializing...");
@@ -13,16 +58,32 @@ document.addEventListener('DOMContentLoaded', () => {
     // a single deferred run fires at the end via checkForSavedRace → scheduleRunSim.
     window._initRunSimSuppressed = true;
 
-    // 🟢 Load viewer's own language preference if available
+    // 🟢 Language — explicit pick on first visit; migrate existing users
+    if (localStorage.getItem('strateger_onboarded') === 'true' && !localStorage.getItem('strateger_lang_explicit')) {
+        localStorage.setItem('strateger_lang_explicit', 'true');
+    }
+
+    const langExplicit = localStorage.getItem('strateger_lang_explicit');
     let savedLang = window.role === 'viewer'
         ? localStorage.getItem('strateger_viewer_lang') || localStorage.getItem('strateger_lang')
         : localStorage.getItem('strateger_lang');
-    
-    if (!savedLang) {
+
+    if (langExplicit && savedLang && typeof window.setLanguage === 'function') {
+        window.setLanguage(savedLang);
+    } else if (!langExplicit && savedLang && typeof window.setLanguage === 'function') {
+        // Returning user before explicit flag existed — keep their language
+        localStorage.setItem('strateger_lang_explicit', 'true');
+        window.setLanguage(savedLang);
+    } else if (!langExplicit) {
+        // First visit: language picker will run; HTML defaults stay until chosen
+    } else if (typeof window.setLanguage === 'function') {
         const browserLang = navigator.language.split('-')[0];
         savedLang = (['he', 'fr', 'pt'].includes(browserLang)) ? browserLang : 'en';
+        window.setLanguage(savedLang);
     }
-    if (typeof window.setLanguage === 'function') window.setLanguage(savedLang);
+    const _langMob = document.getElementById('langSelectMobile');
+    const _langSrc = document.getElementById('langSelect');
+    if (_langMob && _langSrc && _langMob.options.length === 0) _langMob.innerHTML = _langSrc.innerHTML;
 
     // Restore saved page background
     const savedBg = localStorage.getItem('strateger_bg');
@@ -51,6 +112,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (typeof window.initVenueLocationPicker === 'function') {
         window.initVenueLocationPicker();
+    }
+    if (typeof window._initTouchLongPressActions === 'function') {
+        window._initTouchLongPressActions();
     }
     // runSim is triggered once by checkForSavedRace (called below) — no separate call needed
     
@@ -127,13 +191,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize mute button icon
     const muteBtn = document.getElementById('muteToggleBtn');
     if (muteBtn && window._soundMuted) {
-        muteBtn.innerHTML = '<i class="fas fa-volume-mute"></i>';
+        muteBtn.innerHTML = '<i class="fas fa-volume-mute"></i><span>' + (window.t ? window.t('menuSoundOff') : 'Sound off') + '</span>';
         muteBtn.title = 'Unmute';
     }
 
-    // Start onboarding for first-time visitors (host only, no join code)
-    if (window.role === 'host' && typeof window.startOnboarding === 'function') {
-        setTimeout(() => window.startOnboarding(), 800);
+    // First-visit language picker + guided walkthrough (host only)
+    if (window.role === 'host' && typeof window.initWalkthroughFlow === 'function') {
+        setTimeout(() => window.initWalkthroughFlow(), 800);
     }
 });
 
@@ -428,6 +492,8 @@ window.startDemoRace = function() {
     setVal('minDriverTime', '0');
     setVal('maxDriverTime', String(Math.max(15, Math.round((profile.duration * 60) / 2))));
     setVal('releaseBuffer', '5');
+    setVal('pitNotifyLeadMin', '3');
+    setVal('inLapSec', '0');
     setChecked('allowDouble', false);
     setChecked('trackFuel', window.demoConfig?.fuel ?? false);
     if (window.demoConfig?.fuel) {
@@ -572,14 +638,14 @@ function updateModeUI() {
             }
         } else if (window.state.mode === 'push') {
             adviceText.innerText = "🔥 " + t('pushMode');
-            adviceText.className = "text-[10px] font-bold text-green-400 uppercase tracking-widest";
+            adviceText.className = "text-[11px] font-bold text-green-400 uppercase tracking-widest";
             if (window.alertState.lastMode !== 'push') {
                 window.alertState.lastMode = 'push';
                 window.playAlertBeep('info');
             }
         } else {
             adviceText.innerText = t('buildTime');
-            adviceText.className = "text-[10px] text-gray-500 font-bold uppercase tracking-widest";
+            adviceText.className = "text-[11px] text-gray-500 font-bold uppercase tracking-widest";
             window.alertState.lastMode = 'normal';
         }
     }
@@ -913,8 +979,9 @@ window.stopAllClocks = function() {
 };
 
 // Returns Date.now() adjusted by host clock offset (for viewers/drivers)
+// and walkthrough time boost during guided simulation
 window.getSyncedNow = function() {
-    return Date.now() + (window._hostTimeOffset || 0);
+    return Date.now() + (window._hostTimeOffset || 0) + (window._walkthroughTimeOffset || 0);
 };
 
 window.renderFrame = function() {
@@ -1087,6 +1154,25 @@ window.renderFrame = function() {
                 targetLine.classList.remove('hidden');
                 targetLine.style.left = `${targetPct}%`;
             }
+
+            const notifyTimings = window._getStintNotifyTimings ? window._getStintNotifyTimings() : null;
+            const maxLine = document.getElementById('maxStintLine');
+            const notifyLine = document.getElementById('notifyStintLine');
+            if (notifyTimings && cfgMax > 0) {
+                const maxPct = Math.min(100, (notifyTimings.maxStintMs / maxStintMs) * 100);
+                const notifyPct = Math.min(100, (notifyTimings.notifyStartMs / maxStintMs) * 100);
+                if (maxLine) {
+                    maxLine.classList.remove('hidden');
+                    maxLine.style.left = `${maxPct}%`;
+                }
+                if (notifyLine) {
+                    notifyLine.classList.remove('hidden');
+                    notifyLine.style.left = `${notifyPct}%`;
+                }
+            } else {
+                if (maxLine) maxLine.classList.add('hidden');
+                if (notifyLine) notifyLine.classList.add('hidden');
+            }
         }
 
         updateRemainingStrategyLogic(raceRemaining);
@@ -1115,6 +1201,7 @@ window.renderFrame = function() {
 
         // === Update new dashboard overlays ===
         window.updatePitWindowBanner();
+        window.updateStintNotifyBanner();
         window.updateNextDriverBanner();
         window.updateDriverColourDots();
 
@@ -1172,14 +1259,23 @@ function _maybeRecalcAfterDrift() {
     const clampedAvg = Math.max(safMin, Math.min(safMax, avgMs));
 
     const newTargets = [...(window.state.stintTargets || [])];
-    // Fix current stint to actual elapsed so far
     newTargets[currentStintIdx] = elapsed;
-    // Spread remaining evenly
-    for (let i = currentStintIdx + 1; i < currentStintIdx + 1 + futureStints && i < newTargets.length; i++) {
-        newTargets[i] = clampedAvg;
+    const remainingSlice = newTargets.slice(currentStintIdx + 1, currentStintIdx + 1 + futureStints);
+    if (remainingSlice.length > 0 && typeof window.normalizeStintDurationsMs === 'function') {
+        const norm = window.normalizeStintDurationsMs(remainingSlice, {
+            totalTargetMs: futurePool,
+            bounds: window.getStintBoundsMs(window.config)
+        });
+        for (let i = 0; i < norm.durations.length; i++) {
+            newTargets[currentStintIdx + 1 + i] = norm.durations[i];
+        }
+    } else {
+        for (let i = currentStintIdx + 1; i < currentStintIdx + 1 + futureStints && i < newTargets.length; i++) {
+            newTargets[i] = clampedAvg;
+        }
     }
     window.state.stintTargets = newTargets;
-    console.log(`♻️ Stint drift ${(drift/60000).toFixed(1)}m — recalculated remaining targets`);
+    console.log(`♻️ Stint overrun ${(overrun/60000).toFixed(1)}m — recalculated remaining targets`);
 }
 
 function updateRemainingStrategyLogic(raceRemainingMs) {
@@ -1193,6 +1289,9 @@ function updateRemainingStrategyLogic(raceRemainingMs) {
 
     // Check if actual stint diverged from plan and update targets accordingly
     _maybeRecalcAfterDrift();
+    if (typeof window.fixRemainingStintTargets === 'function') {
+        window.fixRemainingStintTargets(true);
+    }
 
     // Support optional min/max — if not set, treat as unconstrained
     const maxStintRaw = parseFloat(window.config.maxStint);
@@ -1225,9 +1324,12 @@ function updateRemainingStrategyLogic(raceRemainingMs) {
 
     timeField.innerText = window.formatTimeHMS(raceRemainingMs);
 
-    // Helper: build one stint pill
-    function pill(label, cls, title) {
-        return `<span class="stint-outlook-pill ${cls}" title="${title || ''}">${label}</span>`;
+    // Helper: build one stint pill. Pass idx to make it tap-to-edit (current/future
+    // stints only — completed stints are flagged via pill-done and never get an idx).
+    function pill(label, cls, title, idx) {
+        const editable = idx != null ? ' pill-editable' : '';
+        const onclick = idx != null ? ` onclick="window.editLiveStintTarget(${idx})"` : '';
+        return `<span class="stint-outlook-pill ${cls}${editable}" title="${title || ''}"${onclick}>${label}</span>`;
     }
 
     // Classify a stint duration in ms using 2-minute tolerance bands
@@ -1271,10 +1373,10 @@ function updateRemainingStrategyLogic(raceRemainingMs) {
     const upcomingTargets = stintTargets.slice(currentStintIdx + 1, currentStintIdx + 1 + futureStints);
 
     if (upcomingTargets.length === futureStints) {
-        upcomingTargets.forEach(ms => {
+        upcomingTargets.forEach((ms, i) => {
             const safeMs = Math.max(0, Number(ms) || 0);
             const type = classifyStint(safeMs);
-            stintDescriptors.push({ type, ms: safeMs, min: Math.round(safeMs / 60000) });
+            stintDescriptors.push({ type, ms: safeMs, min: Math.round(safeMs / 60000), idx: currentStintIdx + 1 + i });
         });
     } else {
         const avgMs = futurePoolMs / futureStints;
@@ -1304,31 +1406,49 @@ function updateRemainingStrategyLogic(raceRemainingMs) {
         }
     }
 
-    // Collapse consecutive identical pills into "Nx" groups, then render
+    // Collapse consecutive identical pills into "Nx" groups (keeping each group's
+    // underlying stint indices so a tap can still target a real stint), then render.
     const groups = [];
     stintDescriptors.forEach(s => {
         const last = groups[groups.length - 1];
         const key = (s.type === 'normal' || s.type === 'min') ? `${s.type}-${s.min}` : s.type;
-        if (last && last.key === key) {
+        if (last && last.key === key && s.idx != null) {
             last.count++;
+            last.idxs.push(s.idx);
         } else {
-            groups.push({ key, type: s.type, min: s.min, count: 1 });
+            groups.push({ key, type: s.type, min: s.min, count: 1, idxs: s.idx != null ? [s.idx] : [] });
         }
     });
 
     let phtml = '';
+
+    // Flag already-completed stints so it's clear they're locked — they never
+    // appear below and can't be edited from here, only the current stint and
+    // whatever comes after it can.
+    if (stopsDone > 0) {
+        phtml += pill(`✓ ${stopsDone} done`, 'pill-done', 'Completed stints — locked');
+    }
+
+    // Current (in-progress) stint — editable, changing it only reflows the pool
+    // for the stints after it, never the completed ones above.
+    const currentTargetMs = window.state?.targetStintMs || stintTargets[currentStintIdx] || 0;
+    if (currentTargetMs > 0) {
+        phtml += pill(`NOW ${Math.round(currentTargetMs / 60000)}m`, 'pill-normal pill-current', "Tap to change this stint's target", currentStintIdx);
+    }
+
     groups.forEach(g => {
         const prefix = g.count > 1 ? `${g.count}× ` : '';
+        const idx = g.idxs.length === 1 ? g.idxs[0] : null; // only single-stint groups are unambiguous to edit
         if (g.type === 'max') {
             const label = hasMaxStint ? ` (${maxStintVal}m)` : '';
-            phtml += pill(`${prefix}${t('max')}${label}`, 'pill-max');
+            phtml += pill(`${prefix}${t('max')}${label}`, 'pill-max', null, idx);
         } else if (g.type === 'min') {
             const label = hasMinStint ? ` (${minStintVal}m)` : '';
-            phtml += pill(`${prefix}${t('min') || 'MIN'}${label}`, 'pill-min');
+            phtml += pill(`${prefix}${t('min') || 'MIN'}${label}`, 'pill-min', null, idx);
         } else if (g.type === 'normal') {
-            phtml += pill(`${prefix}${t('norm') || 'NORM'} ${g.min}m`, 'pill-normal');
+            phtml += pill(`${prefix}${t('norm') || 'NORM'} ${g.min}m`, 'pill-normal', null, idx);
         } else {
-            phtml += pill(`${prefix}${g.min}m ⚠`, 'pill-impossible');
+            phtml += pill(`${prefix}${g.min}m ⚠`, 'pill-impossible', null, idx);
         }
     });
 
@@ -1336,12 +1456,114 @@ function updateRemainingStrategyLogic(raceRemainingMs) {
     if (hasMinStint) {
         const bufferMin = Math.floor(bufferMs / 60000);
         if (bufferMin > 0) {
-            phtml += `<span class="text-[9px] text-gray-600 self-center ml-1">+${bufferMin}m</span>`;
+            phtml += `<span class="text-[11px] text-gray-600 self-center ml-1">+${bufferMin}m</span>`;
         }
     }
 
     pillsEl.innerHTML = phtml;
 }
+
+// ==========================================
+// ✏️ LIVE STRATEGY OUTLOOK — TAP TO EDIT (mid-race)
+// ==========================================
+// Lets the strategist tap the current or a future stint pill in the outlook to
+// override its target duration mid-race. Completed stints are flagged (pill-done)
+// above and never reachable here — only the current stint and stints after it can
+// change, and every edit is re-clamped to config min/max and redistributes the
+// remaining future pool so total race time stays consistent (same pattern as the
+// drift auto-recalc in _maybeRecalcAfterDrift above).
+window.editLiveStintTarget = function(stintIdx) {
+    if (!window.state?.isRunning || window.role !== 'host' || stintIdx == null) return;
+    const currentStintIdx = Math.max(0, (window.state.globalStintNumber || 1) - 1);
+    if (stintIdx < currentStintIdx) return; // completed stint — flagged, not editable
+
+    const stintTargets = Array.isArray(window.state.stintTargets) ? window.state.stintTargets : [];
+    const existingMs = stintIdx === currentStintIdx
+        ? (window.state.targetStintMs || stintTargets[stintIdx])
+        : stintTargets[stintIdx];
+    const input = prompt('Set target stint duration (minutes):', existingMs ? String(Math.round(existingMs / 60000)) : '');
+    if (input == null) return; // cancelled
+    const mins = parseFloat(input);
+    if (!(mins > 0)) return;
+
+    window._setLiveStintTargetMs(stintIdx, mins * 60000);
+};
+
+// Core of the mid-race stint-target edit above, split out so any UI that lets the
+// host change a current/future stint's duration mid-race (the outlook pills here,
+// and the "▶ PLAN" preview's duration input) drives the SAME live state — otherwise
+// an edit made in one place doesn't move the clock/box-time logic, which only ever
+// reads window.state.stintTargets/targetStintMs, not window.previewData.
+window._setLiveStintTargetMs = function(stintIdx, newMs, opts) {
+    opts = opts || {};
+    if (!window.state?.isRunning || stintIdx == null || !(newMs > 0)) return false;
+    const currentStintIdx = Math.max(0, (window.state.globalStintNumber || 1) - 1);
+    if (stintIdx < currentStintIdx) return false; // completed stint — never editable
+
+    const bounds = typeof window.getStintBoundsMs === 'function'
+        ? window.getStintBoundsMs(window.config)
+        : { minStintMs: (parseFloat(window.config?.minStint) || 0) * 60000, effectiveMaxStint: (parseFloat(window.config?.maxStint) || 0) > 0 ? window.config.maxStint * 60000 : Infinity };
+
+    const stintTargets = Array.isArray(window.state.stintTargets) ? window.state.stintTargets : [];
+
+    const minMs = bounds.minStintMs > 0 ? bounds.minStintMs : 0;
+    const maxMs = bounds.effectiveMaxStint === Infinity ? newMs : bounds.effectiveMaxStint;
+    newMs = Math.max(minMs, Math.min(maxMs, newMs));
+
+    const now = (window.getSyncedNow && typeof window.getSyncedNow === 'function') ? window.getSyncedNow() : Date.now();
+    const raceMs = window.config?.raceMs || (parseFloat(window.config?.duration) || 0) * 3600000;
+    const raceStartMs = window.state.startTime || now;
+    const raceRemainingMs = Math.max(0, raceMs - (now - raceStartMs));
+
+    const pitTimeSec = parseFloat(window.config?.minPitSec) || parseFloat(window.config?.pitTime) || 0;
+    const pitTimeMs = pitTimeSec * 1000;
+    const stopsDone = window.state.pitCount || 0;
+    const totalStops = parseInt(window.config?.reqStops) || 0;
+    const futureStints = Math.max(0, totalStops - stopsDone);
+    if (futureStints === 0 || stintIdx >= currentStintIdx + 1 + futureStints) return false; // nothing to redistribute into beyond the required stops
+
+    const newTargets = [...stintTargets];
+    newTargets[stintIdx] = newMs;
+
+    const elapsed = (now - window.state.stintStart) + (window.state.stintOffset || 0);
+
+    if (stintIdx === currentStintIdx) {
+        window.state.targetStintMs = newMs;
+        const timeToFinishCurrent = Math.max(0, newMs - elapsed);
+        const futurePool = raceRemainingMs - timeToFinishCurrent - futureStints * pitTimeMs;
+        const remainingSlice = newTargets.slice(currentStintIdx + 1, currentStintIdx + 1 + futureStints);
+        if (remainingSlice.length > 0 && futurePool > 0 && typeof window.normalizeStintDurationsMs === 'function') {
+            const norm = window.normalizeStintDurationsMs(remainingSlice, { totalTargetMs: futurePool, bounds });
+            for (let i = 0; i < norm.durations.length; i++) newTargets[currentStintIdx + 1 + i] = norm.durations[i];
+        }
+    } else {
+        // Editing a future stint: hold it fixed, redistribute only the *other*
+        // future stints across whatever pool is left — current stint and every
+        // completed stint stay untouched.
+        const currentTargetMs = window.state.targetStintMs || newTargets[currentStintIdx] || 0;
+        const timeToFinishCurrent = Math.max(0, currentTargetMs - elapsed);
+        const futurePool = raceRemainingMs - timeToFinishCurrent - futureStints * pitTimeMs;
+        const otherFuturePool = futurePool - newMs;
+
+        const otherIdxs = [];
+        for (let i = currentStintIdx + 1; i < currentStintIdx + 1 + futureStints; i++) {
+            if (i !== stintIdx) otherIdxs.push(i);
+        }
+        if (otherIdxs.length > 0 && otherFuturePool > 0 && typeof window.normalizeStintDurationsMs === 'function') {
+            const norm = window.normalizeStintDurationsMs(otherIdxs.map(i => newTargets[i]), { totalTargetMs: otherFuturePool, bounds });
+            otherIdxs.forEach((i, k) => { newTargets[i] = norm.durations[k]; });
+        }
+    }
+
+    window.state.stintTargets = newTargets;
+    if (!opts.silent && typeof window.showToast === 'function') {
+        window.showToast(`✏️ Stint target set to ${Math.round(newMs / 60000)}m`, 'info', 1800);
+    }
+    if (typeof window.broadcast === 'function') window.broadcast();
+    updateRemainingStrategyLogic(raceRemainingMs);
+    return true;
+};
+
 
 window.updatePitModalLogic = function() {
     // Guard: bail out if we're not actually in a pit stop (prevents NaN cascade)
@@ -1490,7 +1712,13 @@ window.confirmPitEntry = function(autoDetected) {
     if (window.state.isInPit) return;
 
     // Note: when live timing is active it will also auto-detect pits, but manual entry is always allowed.
-    
+    if (!autoDetected && window.liveTimingConfig && window.liveTimingConfig.enabled && window.liveTimingManager) {
+        const stats = window.liveTimingManager.getStats();
+        if (stats && stats.isRunning && typeof window._fireStrategyNotification === 'function') {
+            window._fireStrategyNotification('ℹ️ Live timing is tracking pits automatically — manual entry may drift from the feed', 'info');
+        }
+    }
+
     // Guard: cooldown to prevent rapid pit cycling (min 10s between manual pit entries)
     // Skip cooldown if auto-detected from live timing — live timing is authoritative
     const now = (window.getSyncedNow && typeof window.getSyncedNow === 'function') ? window.getSyncedNow() : Date.now();
@@ -1935,9 +2163,8 @@ window.confirmPitExit = function(autoDetected) {
     // Guard: only exit if actually in pit
     if (!window.state.isInPit) return;
 
-    // Guard: when live timing is active AND set to Auto, block manual pit exit — live
-    // timing is authoritative. When the user has switched to Manual (_autoPitEnabled
-    // false), they always get full manual control regardless of live-timing connection.
+    // Guard: while live timing is connected and running, block manual pit exit — live
+    // timing is authoritative for exit (use the "Force Pit Out" override if it's wrong).
     if (!autoDetected && window._liveTimingMayForcePit() && window.liveTimingConfig && window.liveTimingConfig.enabled && window.liveTimingManager) {
         const stats = window.liveTimingManager.getStats();
         if (stats && stats.isRunning) {
@@ -2012,7 +2239,14 @@ window.confirmPitExit = function(autoDetected) {
         const newTotal = totalPlannedRemaining + timeSaved;
         if (newTotal <= 0) return;
         const scale = newTotal / totalPlannedRemaining;
-        const newRemaining = remaining.map(t => Math.round(t * scale));
+        let newRemaining = remaining.map(t => Math.round(t * scale));
+        if (typeof window.normalizeStintDurationsMs === 'function') {
+            const norm = window.normalizeStintDurationsMs(newRemaining, {
+                totalTargetMs: newTotal,
+                bounds: window.getStintBoundsMs(window.config)
+            });
+            newRemaining = norm.durations;
+        }
         for (let i = 0; i < newRemaining.length; i++) {
             targets[completedIdx + 1 + i] = newRemaining[i];
         }
@@ -2064,9 +2298,12 @@ window.confirmPitExit = function(autoDetected) {
     if (window._strategyNotifState) {
         window._strategyNotifState.pitAlert5Fired = false;
         window._strategyNotifState.pitAlert2Fired = false;
+        window._strategyNotifState.stintNotifyFired = false;
         window._strategyNotifState.squadChangeNotified = false;
         window._strategyNotifState.driverChangeNotified = false;
     }
+    window.state.driverPitNotified = false;
+    window.state.driverPitNotifiedAt = 0;
 
     if (typeof window.saveRaceState === 'function') window.saveRaceState();
     if (typeof window.broadcast === 'function') window.broadcast();
@@ -2123,6 +2360,62 @@ window._getOutlapSec = function() {
     return window.CIRCUIT_OUTLAP_SEC._default;
 };
 
+/** In-lap travel time (track → pit entry), seconds. Uses config override or circuit auto-detect. */
+window._getInlapSec = function() {
+    const fromConfig = parseInt(window.config?.inLapSec) || parseInt(window.config?.outlap) || 0;
+    if (fromConfig > 0) return fromConfig;
+    return window._getOutlapSec();
+};
+
+/**
+ * Pit-entry notification timings based on max stint limit.
+ * Returns null when max stint is unlimited (0).
+ */
+window._getStintNotifyTimings = function() {
+    const cfg = window.config || {};
+    const cfgMax = cfg.maxStint || 0;
+    if (cfgMax <= 0) return null;
+
+    const maxStintMs = cfgMax * 60000;
+    const inLapMs = window._getInlapSec() * 1000;
+    // Per-driver override: whoever is currently on track may need more/less advance warning
+    // than the race-wide default (slower to react, parked further from pit lane, etc).
+    const curDriver = (window.state && window.drivers) ? window.drivers[window.state.currentDriverIdx] : null;
+    const leadMinEff = (curDriver && curDriver.notifyLeadMin != null) ? curDriver.notifyLeadMin : (parseFloat(cfg.pitNotifyLeadMin) || 3);
+    const leadMs = leadMinEff * 60000;
+    const pitEntryDeadlineMs = Math.max(0, maxStintMs - inLapMs);
+    const notifyStartMs = Math.max(0, pitEntryDeadlineMs - leadMs);
+    const targetMs = window.state?.targetStintMs || maxStintMs;
+
+    return { maxStintMs, inLapMs, leadMs, pitEntryDeadlineMs, notifyStartMs, targetMs, inLapSec: Math.round(inLapMs / 1000) };
+};
+
+/** Setup preview: show when admin should start notifying the driver. */
+window._updatePitNotifyPreview = function() {
+    const el = document.getElementById('pitNotifyPreview');
+    if (!el) return;
+    const t = window.t || (k => k);
+    const maxMin = parseFloat(document.getElementById('maxStint')?.value) || 0;
+    if (maxMin <= 0) { el.classList.add('hidden'); return; }
+
+    const tmpCfg = {
+        maxStint: maxMin,
+        pitNotifyLeadMin: parseFloat(document.getElementById('pitNotifyLeadMin')?.value || '3') || 3,
+        inLapSec: parseInt(document.getElementById('inLapSec')?.value || '0') || 0,
+        outlap: parseInt(document.getElementById('inLapSec')?.value || '0') || 0
+    };
+    const prevCfg = window.config;
+    window.config = { ...(prevCfg || {}), ...tmpCfg };
+    const timings = window._getStintNotifyTimings();
+    window.config = prevCfg;
+    if (!timings) { el.classList.add('hidden'); return; }
+
+    let timeStr = window.formatTimeHMS(timings.notifyStartMs);
+    if (timeStr.startsWith('00:')) timeStr = timeStr.substring(3);
+    el.innerText = (t('pitNotifyPreview') || '→ Notify driver at stint {{time}}').replace('{{time}}', timeStr);
+    el.classList.remove('hidden');
+};
+
 /**
  * Scenario A — both pit-in and pit-out timestamps are known (live timing reported both).
  *
@@ -2144,7 +2437,7 @@ window._handlePitBothTimestamps = function() {
 
     const pitDurationMs   = pitOutAt - pitInAt;
     const minPitMs        = Math.max(0, (parseInt(window.config.minPitTime || window.config.pitTime) || 0) * 1000);
-    const buffer          = parseInt(document.getElementById('releaseBuffer')?.value || '5') * 1000;
+    const buffer          = (parseInt(document.getElementById('releaseBuffer')?.value || '5') || 5) * 1000;
     const outlap          = window._getOutlapSec() * 1000;
 
     // How far the kart is from pit-out (approximated by using the out-lap time).
@@ -2211,7 +2504,7 @@ window._handlePitInOnly = function() {
     const pitInAt    = window.state.pitStart;
     const minPitMs   = Math.max(0, (parseInt(window.config.minPitTime || window.config.pitTime) || 0) * 1000);
     const outlap     = window._getOutlapSec() * 1000;
-    const buffer     = parseInt(document.getElementById('releaseBuffer')?.value || '5') * 1000;
+    const buffer     = (parseInt(document.getElementById('releaseBuffer')?.value || '5') || 5) * 1000;
 
     // latestExit so that pitDuration + outlap = minPitTime exactly
     const latestExitAt  = pitInAt + minPitMs - outlap;
@@ -2231,6 +2524,21 @@ window._handlePitInOnly = function() {
         minPitMs,
         outlap
     };
+
+    // Minimum pit time not yet served -> leaving now would be an EARLY exit, never "late".
+    // (latestExit = pitIn + minPit - outlap can precede the end of the minimum, so the
+    // overdue/leave-now states only make sense once the minimum has been served.)
+    const reqMs = Math.max(0, minPitMs + (window.currentPitAdjustment || 0) * 1000);
+    if ((now - pitInAt) < reqMs) {
+        window._pitAdvice.scenario = 'inOnlyEarly';
+        const earlyEl = document.getElementById('pitAdviceStatus');
+        if (earlyEl) {
+            earlyEl.textContent = t('pitEarlyExit') || '⚠️ EARLY EXIT';
+            earlyEl.className   = 'pit-advice-status text-yellow-300 font-bold';
+            earlyEl.classList.remove('hidden');
+        }
+        return;
+    }
 
     const statusEl = document.getElementById('pitAdviceStatus');
     if (statusEl) {
@@ -2615,6 +2923,7 @@ window.toggleDriverMode = function() {
     if (!panel) return;
     
     const isActive = !panel.classList.contains('hidden');
+    document.body.classList.toggle('driver-mode-on', !isActive);   // hides the admin dashboard (its widgets out-stack the fixed driver panel)
     if (isActive) {
         panel.classList.add('hidden');
         window.alertState.driverModeActive = false;
@@ -2852,6 +3161,7 @@ window._strategyNotifState = {
     lastNotifiedStint: 0,
     pitAlert5Fired: false,
     pitAlert2Fired: false,
+    stintNotifyFired: false,
     squadChangeNotified: false,
     driverChangeNotified: false
 };
@@ -2876,11 +3186,14 @@ window.updateStrategyNotifications = function() {
         window._strategyNotifState.lastNotifiedStint = currentStintIdx;
         window._strategyNotifState.pitAlert5Fired = false;
         window._strategyNotifState.pitAlert2Fired = false;
+        window._strategyNotifState.stintNotifyFired = false;
         window._strategyNotifState.squadChangeNotified = false;
         window._strategyNotifState.driverChangeNotified = false;
+        window.state.driverPitNotified = false;
+        window.state.driverPitNotifiedAt = 0;
     }
     
-    // No next stint in schedule? Nothing to notify about
+    // No next stint in schedule? Skip next-driver alerts only.
     if (nextStintIdx >= schedule.length) return;
     
     const nextPlanned = schedule[nextStintIdx];
@@ -2898,17 +3211,17 @@ window.updateStrategyNotifications = function() {
         const nextDriverDisplay = nextDriverName;
         const stintsLeft = schedule.length - nextStintIdx;
         
-        let bannerHtml = `<span class="text-gray-400 text-[10px]">${t('nextLabel') || 'Next:'}</span> `;
+        let bannerHtml = `<span class="text-gray-400 text-[11px]">${t('nextLabel') || 'Next:'}</span> `;
         bannerHtml += `<span class="text-ice font-bold text-xs">${nextDriverDisplay}</span>`;
         
         if (nextPlanned.squadModeActive && nextSquad) {
-            bannerHtml += ` <span class="text-[9px] px-1 rounded bg-purple-600/30 text-purple-300">Squad ${nextSquad}</span>`;
+            bannerHtml += ` <span class="text-[11px] px-1 rounded bg-purple-600/30 text-purple-300">Squad ${nextSquad}</span>`;
         }
         
         // Show time to pit
         if (timeToTarget > 0) {
             const minLeft = Math.ceil(timeToTarget / 60000);
-            bannerHtml += ` <span class="text-gray-500 text-[10px]">(${minLeft}m)</span>`;
+            bannerHtml += ` <span class="text-gray-500 text-[11px]">(${minLeft}m)</span>`;
         }
         
         banner.innerHTML = bannerHtml;
@@ -2953,7 +3266,7 @@ window.updateStrategyNotifications = function() {
         // Show upcoming squad change if different
         if (nextSquad && nextSquad !== active && nextPlanned.squadModeActive) {
             const minLeft = Math.max(0, Math.ceil(timeToTarget / 60000));
-            html += ` <span class="text-purple-400 text-[10px] ml-1">→ Squad ${nextSquad} in ${minLeft}m</span>`;
+            html += ` <span class="text-purple-400 text-[11px] ml-1">→ Squad ${nextSquad} in ${minLeft}m</span>`;
         }
         
         squadInfoEl.innerHTML = html;
@@ -3009,6 +3322,23 @@ window.updateDriverMode = function() {
     
     const now = window.getSyncedNow();
     const t = window.t || (k => k);
+
+    // Stale-data / lost-connection warning: a driver must know when the numbers are not live.
+    try {
+        const staleEl = document.getElementById('driverStaleBanner');
+        if (staleEl) {
+            let msg = '';
+            const lt = window.liveTimingConfig || {};
+            const hbAt = window.liveData && window.liveData.heartbeatAt;
+            if (window.role === 'client' && window.conn && window.conn.open === false) {
+                msg = t('connLost') || '⚠️ Connection lost — reconnecting…';
+            } else if (lt.enabled && !lt.demoMode && hbAt && (Date.now() - hbAt) > 15000) {
+                msg = (t('feedStale') || '⚠️ Live timing stale') + ' (' + Math.round((Date.now() - hbAt) / 1000) + 's)';
+            }
+            staleEl.textContent = msg;
+            staleEl.classList.toggle('hidden', !msg);
+        }
+    } catch (e) {}
     const raceMs = window.config.raceMs || (parseFloat(window.config.duration) * 3600000);
     let raceRemaining = raceMs - (now - window.state.startTime);
     // Use live timing race clock when available — interpolate between API updates
@@ -3430,7 +3760,7 @@ window.updateProUI = function() {
 
     if (isPro) {
         if (banner) banner.classList.add('hidden');
-        if (proBtn) { proBtn.classList.remove('hidden'); proBtn.innerHTML = '<i class="fas fa-star text-[10px]"></i> <span>PRO</span>'; }
+        if (proBtn) { proBtn.classList.remove('hidden'); proBtn.innerHTML = '<i class="fas fa-star text-[11px]"></i> <span>PRO</span>'; }
         if (lockLT) lockLT.classList.add('hidden');
         if (modal) modal.classList.add('hidden');
     } else if (isTrial) {
@@ -3438,7 +3768,7 @@ window.updateProUI = function() {
         const hoursLeft = typeof window.trialHoursLeft === 'function' ? window.trialHoursLeft() : 0;
         if (proBtn) {
             proBtn.classList.remove('hidden');
-            proBtn.innerHTML = `<i class="fas fa-clock text-[10px]"></i> <span>TRIAL ${hoursLeft}h</span>`;
+            proBtn.innerHTML = `<i class="fas fa-clock text-[11px]"></i> <span>TRIAL ${hoursLeft}h</span>`;
             proBtn.className = proBtn.className.replace(/from-gold[^\s]*/g, '').replace(/to-amber[^\s]*/g, '').trim();
             proBtn.style.cssText = 'background:linear-gradient(to right,rgba(34,211,238,0.2),rgba(16,185,129,0.2));border-color:rgba(34,211,238,0.4);color:#22d3ee';
         }
@@ -3451,22 +3781,7 @@ window.updateProUI = function() {
     if (typeof window._refreshTeamLogoBtn === 'function') window._refreshTeamLogoBtn();
 };
 
-// ==========================================
-// 🎓 ONBOARDING TUTORIAL
-// ==========================================
-
-window._onboardStep = 0;
-window.startOnboarding = function() {
-    if (localStorage.getItem('strateger_onboarded') === 'true') return;
-    const savedRaceModal = document.getElementById('savedRaceModal');
-    if (savedRaceModal && !savedRaceModal.classList.contains('hidden')) return;
-    document.getElementById('onboardingOverlay').classList.remove('hidden');
-};
-
-window.skipOnboarding = function() {
-    localStorage.setItem('strateger_onboarded', 'true');
-    document.getElementById('onboardingOverlay').classList.add('hidden');
-};
+// Onboarding / walkthrough — see js/walkthrough.js
 
 // ==========================================
 // 📄 PDF / IMAGE EXPORT
@@ -4202,7 +4517,7 @@ document.addEventListener('keydown', function(e) {
             const muteBtn = document.getElementById('muteBtn');
             if (muteBtn) {
                 muteBtn.innerHTML = window._soundMuted
-                    ? '<i class="fas fa-volume-mute"></i>'
+                    ? '<i class="fas fa-volume-mute"></i><span>' + (window.t ? window.t('menuSoundOff') : 'Sound off') + '</span>'
                     : '<i class="fas fa-volume-up"></i>';
             }
             window.showToast(window._soundMuted ? '🔇 Sound muted' : '🔊 Sound on', 'info', 2000);
@@ -4367,30 +4682,179 @@ window.openLivePreview = function() {
     }
 
     if (typeof window.renderPreview === 'function') window.renderPreview();
-    // Disable editing while in live-preview mode
-    document.querySelectorAll('#previewScreen input, #previewScreen button:not(#livePreviewBackBtn)').forEach(el => {
-        el._wasDisabled = el.disabled;
-        el.disabled = true;
-        el.style.pointerEvents = 'none';
-        el.style.opacity = '0.5';
-    });
+    // Mid-race the plan can still be adjusted — but only for stints that haven't
+    // happened yet (renderPreview locks the rest to read-only). The one control that
+    // never makes sense here is starting a race that's already running.
+    const startBtn = document.getElementById('previewStartRaceBtn');
+    if (startBtn) startBtn.classList.add('hidden');
+    // The chat bubble/panel sit bottom-right, same corner as this screen's action bar
+    // (Start Race/Save/Export) — hide them while the plan preview covers that area.
+    const chatBtn = document.getElementById('chatToggleBtn');
+    const chatPanel = document.getElementById('chatPanel');
+    if (chatBtn) chatBtn.style.display = 'none';
+    if (chatPanel) chatPanel.classList.add('hidden');
 };
 
 window.closeLivePreview = function() {
     const previewScreen = document.getElementById('previewScreen');
     const raceDashboard = document.getElementById('raceDashboard');
     if (!previewScreen || !raceDashboard) return;
-    document.querySelectorAll('#previewScreen input, #previewScreen button:not(#livePreviewBackBtn)').forEach(el => {
-        el.disabled = !!el._wasDisabled;
-        el.style.pointerEvents = '';
-        el.style.opacity = '';
-    });
+    const startBtn = document.getElementById('previewStartRaceBtn');
+    if (startBtn) startBtn.classList.remove('hidden');
+    // Restore the chat bubble now that the plan preview (and its action bar) is gone —
+    // unless driver mode is active, which hides it for its own reasons.
+    if (!document.body.classList.contains('driver-mode-on')) {
+        const chatBtn = document.getElementById('chatToggleBtn');
+        if (chatBtn) chatBtn.style.display = 'block';
+    }
     previewScreen.classList.add('hidden');
     raceDashboard.classList.remove('hidden');
     const backBtn = document.getElementById('livePreviewBackBtn');
     if (backBtn) backBtn.classList.add('hidden');
     if (window.previewData && window.previewData.timeline) {
         window.previewData.timeline.forEach(s => { delete s._done; delete s._current; });
+    }
+};
+
+// ==========================================
+// 📢 STINT PIT-ENTRY NOTIFY (max stint + in-lap)
+// ==========================================
+
+window.notifyDriverForPit = function() {
+    if (window.role !== 'host' || !window.state?.isRunning || window.state.isInPit) return;
+    const t = window.t || (k => k);
+    window.haptic('medium');
+
+    const minStintMs = (window.config?.minStint || 0) * 60000;
+    const now = window.getSyncedNow();
+    const currentStintMs = (now - window.state.stintStart) + (window.state.stintOffset || 0);
+    const belowMin = minStintMs > 0 && currentStintMs < minStintMs;
+
+    window.state.driverPitNotified = true;
+    window.state.driverPitNotifiedAt = now;
+
+    if (!belowMin && window.state.mode !== 'bad') {
+        window.state.mode = 'bad';
+        updateModeUI();
+    }
+
+    const driver = window.drivers[window.state.currentDriverIdx];
+    const driverName = driver?.name || 'Driver';
+    const boxMsg = belowMin ? t('orangeZone') : window.getBoxMessage();
+    window._fireStrategyNotification(`📢 ${driverName} — ${boxMsg}`, 'warning');
+    window.playAlertBeep('warning');
+
+    if (typeof window.broadcast === 'function') window.broadcast();
+    if (typeof window.saveRaceState === 'function') window.saveRaceState();
+    if (typeof window.updateStintNotifyBanner === 'function') window.updateStintNotifyBanner();
+};
+
+window.updateStintNotifyBanner = function() {
+    const banner = document.getElementById('stintNotifyBanner');
+    const titleEl = document.getElementById('stintNotifyTitle');
+    const subEl = document.getElementById('stintNotifySub');
+    const countdownEl = document.getElementById('stintNotifyCountdown');
+    const notifyBtn = document.getElementById('stintNotifyBtn');
+    if (!banner || !titleEl) return;
+
+    const t = window.t || (k => k);
+    const hide = () => {
+        banner.classList.add('hidden');
+        if (notifyBtn) notifyBtn.classList.add('hidden');
+    };
+
+    if (window.role === 'client') { hide(); return; }
+    if (!window.state?.isRunning || window.state?.isFinished || window.state?.isInPit) { hide(); return; }
+
+    const timings = window._getStintNotifyTimings ? window._getStintNotifyTimings() : null;
+    if (!timings) { hide(); return; }
+
+    const now = window.getSyncedNow();
+    const currentStintMs = (now - window.state.stintStart) + (window.state.stintOffset || 0);
+
+    // Auto alert when pit-entry notify window opens
+    if (currentStintMs >= timings.notifyStartMs && !window._strategyNotifState.stintNotifyFired) {
+        window._strategyNotifState.stintNotifyFired = true;
+        const driver = window.drivers[window.state.currentDriverIdx];
+        const driverName = driver?.name || 'Driver';
+        const msg = `📢 ${driverName} — ${t('stintNotifyNow') || 'NOTIFY DRIVER — Pit entry window open'}`;
+        window._fireStrategyNotification(msg, 'warning');
+        window.playAlertBeep('warning');
+    }
+
+    const fmtStint = (ms) => {
+        let s = window.formatTimeHMS(Math.max(0, ms));
+        if (s.startsWith('00:')) s = s.substring(3);
+        return s;
+    };
+
+    const maxMin = Math.round(timings.maxStintMs / 60000);
+    const inLapSec = timings.inLapSec;
+    const leadMin = Math.round(timings.leadMs / 60000);
+    const infoTpl = t('stintNotifyInfo') || 'Notify from {{time}} (max {{max}}m − {{inlap}}s in-lap − {{lead}}m lead)';
+    const infoLine = infoTpl
+        .replace('{{time}}', fmtStint(timings.notifyStartMs))
+        .replace('{{max}}', String(maxMin))
+        .replace('{{inlap}}', String(inLapSec))
+        .replace('{{lead}}', String(leadMin));
+
+    const showBtn = () => {
+        if (!notifyBtn) return;
+        notifyBtn.classList.remove('hidden');
+        if (window.state.driverPitNotified) {
+            notifyBtn.innerText = t('driverNotifiedShort') || '✓ Notified';
+            notifyBtn.classList.remove('animate-pulse', 'bg-fuel');
+            notifyBtn.classList.add('bg-green-700', 'text-white');
+            notifyBtn.disabled = true;
+        } else {
+            notifyBtn.innerText = t('notifyDriver') || '📢 Notify Driver';
+            notifyBtn.classList.add('animate-pulse', 'bg-fuel');
+            notifyBtn.classList.remove('bg-green-700', 'text-white');
+            notifyBtn.disabled = false;
+        }
+    };
+
+    // Approaching notify window (within 10 min before)
+    const approachMs = 10 * 60000;
+    if (currentStintMs < timings.notifyStartMs - approachMs) {
+        hide();
+        return;
+    }
+
+    banner.classList.remove('hidden');
+
+    if (currentStintMs >= timings.maxStintMs) {
+        banner.className = 'bg-red-950/95 border-b border-red-500/60 px-3 py-2 shrink-0 animate-pulse';
+        titleEl.className = 'text-red-300 text-sm font-bold truncate';
+        titleEl.innerText = `🚨 ${t('stintNotifyLate') || 'MAX STINT RISK — Driver must pit now'}`;
+        subEl.innerText = infoLine;
+        if (countdownEl) countdownEl.innerText = fmtStint(currentStintMs);
+        showBtn();
+    } else if (currentStintMs >= timings.pitEntryDeadlineMs) {
+        banner.className = 'bg-red-950/90 border-b border-red-500/50 px-3 py-2 shrink-0 animate-pulse';
+        titleEl.className = 'text-red-300 text-sm font-bold truncate';
+        titleEl.innerText = `🚨 ${t('stintNotifyLate') || 'MAX STINT RISK — Driver must pit now'}`;
+        subEl.innerText = infoLine;
+        if (countdownEl) {
+            const over = currentStintMs - timings.pitEntryDeadlineMs;
+            countdownEl.innerText = `+${fmtStint(over)}`;
+        }
+        showBtn();
+    } else if (currentStintMs >= timings.notifyStartMs) {
+        banner.className = 'bg-orange-950/90 border-b border-orange-500/50 px-3 py-2 shrink-0';
+        titleEl.className = 'text-orange-300 text-sm font-bold truncate';
+        titleEl.innerText = `🟠 ${t('stintNotifyNow') || 'NOTIFY DRIVER — Pit entry window open'}`;
+        subEl.innerText = infoLine;
+        if (countdownEl) countdownEl.innerText = fmtStint(currentStintMs);
+        showBtn();
+    } else {
+        banner.className = 'bg-amber-950/80 border-b border-amber-500/40 px-3 py-2 shrink-0';
+        titleEl.className = 'text-amber-300 text-sm font-bold truncate';
+        titleEl.innerText = `⏳ ${t('stintNotifySoon') || 'Start notifying driver in'}`;
+        subEl.innerText = infoLine;
+        const until = timings.notifyStartMs - currentStintMs;
+        if (countdownEl) countdownEl.innerText = fmtStint(until);
+        if (notifyBtn) notifyBtn.classList.add('hidden');
     }
 };
 
@@ -4565,7 +5029,7 @@ window.showRaceHistory = function() {
         const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         
         const driverBadges = (race.drivers || []).map(d => 
-            `<span class="inline-flex items-center gap-1 text-[10px] bg-navy-800 px-1.5 py-0.5 rounded" style="border-left:3px solid ${d.color || '#3b82f6'}">
+            `<span class="inline-flex items-center gap-1 text-[11px] bg-navy-800 px-1.5 py-0.5 rounded" style="border-left:3px solid ${d.color || '#3b82f6'}">
                 ${d.name} <span class="text-gray-500">${window.formatTimeHMS(d.totalTime)}</span>
             </span>`
         ).join(' ');
@@ -4577,16 +5041,16 @@ window.showRaceHistory = function() {
                         <span class="text-lg">🏁</span>
                         <div>
                             <div class="text-sm font-bold text-white">${race.durationFormatted || race.duration + 'h'} Race</div>
-                            <div class="text-[10px] text-gray-500">${dateStr} · ${timeStr}</div>
+                            <div class="text-[11px] text-gray-500">${dateStr} · ${timeStr}</div>
                         </div>
                     </div>
                     <div class="text-right">
                         <div class="text-xs text-gray-400">🛑 ${race.pitStops} stops</div>
-                        <div class="text-[10px] text-gray-500">${race.totalDrivers} drivers</div>
+                        <div class="text-[11px] text-gray-500">${race.totalDrivers} drivers</div>
                     </div>
                 </div>
                 <div class="flex flex-wrap gap-1">${driverBadges}</div>
-                <button onclick="window.deleteRaceHistory(${idx})" class="mt-2 text-[10px] text-gray-600 hover:text-red-400 transition">
+                <button onclick="window.deleteRaceHistory(${idx})" class="mt-2 text-[11px] text-gray-600 hover:text-red-400 transition">
                     <i class="fas fa-trash-alt"></i> Delete
                 </button>
             </div>
@@ -4757,6 +5221,33 @@ window.clearRulesPdf = function() {
     if (badge) badge.classList.add('hidden');
     if (analyzeBtn) analyzeBtn.disabled = true;
     if (input) input.value = '';
+    const ta = document.getElementById('rulesTextInput');
+    if (ta) ta.value = '';
+};
+
+// Pasted rules text: same pipeline as a PDF, minus the reading step
+window.handleRulesTextInput = function(value) {
+    const text = String(value || '').trim();
+    const previewEl = document.getElementById('rulesPdfPreview');
+    const nameEl = document.getElementById('rulesPdfName');
+    const pagesEl = document.getElementById('rulesPdfPages');
+    const analyzeBtn = document.getElementById('rulesPdfAnalyzeBtn');
+    const badge = document.getElementById('rulesPdfBadge');
+    if (!text) {
+        window._rulesPdfText = null;
+        window._rulesPdfFileName = null;
+        if (previewEl) previewEl.classList.add('hidden');
+        if (badge) badge.classList.add('hidden');
+        if (analyzeBtn) analyzeBtn.disabled = true;
+        return;
+    }
+    window._rulesPdfText = text.slice(0, 12000);
+    window._rulesPdfFileName = 'pasted-text';
+    if (nameEl) nameEl.textContent = (window.t && window.t('rulesPastedText')) || 'Pasted text';
+    if (pagesEl) pagesEl.textContent = text.length.toLocaleString() + ' ' + ((window.t && window.t('chars')) || 'characters') + (text.length > 12000 ? ' · ✂️ 12,000' : '');
+    if (previewEl) previewEl.classList.remove('hidden');
+    if (badge) badge.classList.remove('hidden');
+    if (analyzeBtn) analyzeBtn.disabled = false;
 };
 
 // A real rules page run through pdf.js's text layer normally yields well over a hundred
@@ -4780,6 +5271,16 @@ window.handleRulesPdfUpload = async function(input) {
     if (statusEl) { statusEl.textContent = (window.t && window.t('rulesPdfReading')) || 'Reading PDF…'; statusEl.classList.remove('hidden'); }
 
     try {
+        if (/\.txt$/i.test(file.name) || file.type === 'text/plain') {
+            const txt = await file.text();
+            const ta = document.getElementById('rulesTextInput');
+            if (ta) ta.value = txt.slice(0, 12000);
+            window.handleRulesTextInput(txt);
+            window._rulesPdfFileName = file.name;
+            if (nameEl) nameEl.textContent = file.name;
+            if (statusEl) statusEl.classList.add('hidden');
+            return;
+        }
         if (!window.pdfjsLib) throw new Error('PDF.js not loaded');
         window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
@@ -4884,8 +5385,13 @@ ${(window.previewData?.timeline || []).filter(t => t.type === 'stint').length > 
 IMPORTANT: Respond in language "${lang}". Give:
 1. Key rules that affect strategy (mandatory stops, min/max driver times, pit window restrictions, etc.)
 2. Your strategic recommendation based on the rules
-3. Optional: a JSON block for stint adjustments in this exact format:
-{"stints": [{"driverIdx": 0, "durationMin": 45}, ...]}
+3. A JSON block, always included, in this exact format (omit any "settings" key the rules do not state; never guess numbers):
+{"settings": {"raceDuration": hours, "reqPitStops": n, "minStint": min, "maxStint": min, "minPitTime": sec, "pitClosedStart": min, "pitClosedEnd": min, "minDriverTime": min, "maxDriverTime": min, "kartChangeInterval": min, "reqExtraPits": n, "numTeams": n, "minPitLapSec": sec},
+ "closedWindows": [[fromMin, toMin]],   // pit lane closed windows, minutes from race start
+ "minStintsPerDriver": n,
+ "maxStintsPerDriver": n,
+ "notes": ["short rule the setup fields cannot express, e.g. Pit lane closed under red flag"],
+ "stints": [{"driverIdx": 0, "durationMin": 45}]}
 
 Be concise and practical.`;
 
@@ -4927,6 +5433,8 @@ Be concise and practical.`;
             } catch (e) { /* no valid stint JSON — fine */ }
         }
 
+        window._showRulesProposal(text);
+
         // Show full analysis in a toast + console
         const shortAdvice = text.replace(/\{[\s\S]*\}/g, '').trim().slice(0, 300);
         window.showToast(`📄 ${shortAdvice}`, 'success', 12000);
@@ -4950,3 +5458,74 @@ document.addEventListener('visibilitychange', () => {
     }
 });
 
+
+
+// ==========================================
+// PHASE STEPS (Plan -> Qualify -> Race) — shows where the team is
+// ==========================================
+(function() {
+    const shown = id => { const el = document.getElementById(id); return !!el && !el.classList.contains('hidden'); };
+    function updatePhaseSteps() {
+        const list = document.getElementById('phaseSteps');
+        if (!list) return;
+        let phase = 'plan';
+        if (shown('qualifyingDashboard')) phase = 'qualify';
+        else if (shown('raceDashboard') || shown('driverModePanel')) phase = 'race';
+        const qualifyStep = list.querySelector('[data-phase="qualify"]');
+        if (qualifyStep) qualifyStep.classList.toggle('hidden', !(window._sessionMode === 'qualify' || phase === 'qualify' || !!window._qualifyState));
+        list.querySelectorAll('li').forEach(li => {
+            if (li.dataset.phase === phase) li.setAttribute('aria-current', 'step');
+            else li.removeAttribute('aria-current');
+        });
+    }
+    window.updatePhaseSteps = updatePhaseSteps;
+
+    // Steps are clickable: move between planning, qualifying and the race without ending any of them.
+    window.gotoPhase = function(phase) {
+        const hide = id => document.getElementById(id)?.classList.add('hidden');
+        const show = id => document.getElementById(id)?.classList.remove('hidden');
+        const raceOn = !!(window.state && window.state.isRunning);
+        const toast = (m) => window.showToast && window.showToast(m, 'info', 3000);
+        if (phase === 'qualify') {
+            if (!window._qualifyState) return toast('Qualifying is not running');
+            show('qualifyingDashboard');
+        } else if (phase === 'race') {
+            if (!raceOn) { hide('qualifyingDashboard'); show('setupScreen'); return toast('Start the race from the plan'); }
+            hide('qualifyingDashboard'); hide('setupScreen'); hide('previewScreen'); show('raceDashboard');
+        } else {
+            if (raceOn) return toast('Race in progress');
+            hide('qualifyingDashboard'); hide('previewScreen'); hide('raceDashboard'); show('setupScreen');
+        }
+        updatePhaseSteps();
+    };
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('#phaseSteps li').forEach(li => {
+            li.setAttribute('role', 'button'); li.tabIndex = 0; li.style.cursor = 'pointer';
+            li.addEventListener('click', () => window.gotoPhase(li.dataset.phase));
+            li.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); window.gotoPhase(li.dataset.phase); } });
+        });
+    });
+    document.addEventListener('DOMContentLoaded', () => {
+        const obs = new MutationObserver(updatePhaseSteps);
+        ['setupScreen', 'previewScreen', 'raceDashboard', 'driverModePanel', 'qualifyingDashboard'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) obs.observe(el, { attributes: true, attributeFilter: ['class'] });
+        });
+        const origMode = window.setSessionMode;
+        if (typeof origMode === 'function') {
+            window.setSessionMode = function() { const r = origMode.apply(this, arguments); updatePhaseSteps(); return r; };
+        }
+        updatePhaseSteps();
+    });
+})();
+
+
+// Escape closes the header menu
+document.addEventListener('keydown', function(e) {
+    if (e.key !== 'Escape') return;
+    const menu = document.getElementById('headerOverflowMenu');
+    if (menu && !menu.classList.contains('hidden')) {
+        menu.classList.add('hidden');
+        document.getElementById('headerMenuBtn')?.focus();
+    }
+});

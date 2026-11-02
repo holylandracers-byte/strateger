@@ -2,38 +2,18 @@
 // ⏱️ LIVE TIMING CONTROLLER
 // ==========================================
 
-// Auto-pit: when true, live timing automatically confirms pit entry/exit.
-// When false, the user handles pit manually and live timing is display-only for pits.
-window._autoPitEnabled = (function() {
-    return localStorage.getItem('strateger_auto_pit') !== 'false'; // on by default
-})();
-
-window.toggleAutoPit = function() {
-    window._autoPitEnabled = !window._autoPitEnabled;
-    localStorage.setItem('strateger_auto_pit', window._autoPitEnabled ? 'true' : 'false');
-    window._updateAutoPitUI();
-};
-
-window._updateAutoPitUI = function() {
-    const btn = document.getElementById('autoPitToggleBtn');
-    const lbl = document.getElementById('autoPitLabel');
-    if (!btn) return;
-    if (window._autoPitEnabled) {
-        btn.className = 'flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded border transition bg-green-900/40 border-green-500/50 text-green-400';
-        if (lbl) lbl.textContent = window.t ? window.t('autoPitOn') || 'Auto' : 'Auto';
-    } else {
-        btn.className = 'flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded border transition bg-navy-700/60 border-gray-600/50 text-gray-400';
-        if (lbl) lbl.textContent = window.t ? window.t('autoPitOff') || 'Manual' : 'Manual';
-    }
-};
+// Pit detection is always driven by live timing when it's connected — the manual/auto
+// toggle was removed because switching to Manual while live timing stayed connected
+// produced a pit loop (the feed and the user's manual entry fought over state). The
+// user can still press "Enter Pit" manually at any time (see confirmPitEntry); it's
+// just no longer possible to tell live timing to stop auto-tracking pits.
+window._autoPitEnabled = true;
 
 // Single chokepoint for every place that wants live timing (real feed or demo
-// simulation) to force a pit entry/exit/penalty-adjustment. Every such call MUST go
-// through this guard instead of checking _autoPitEnabled inline — that's what let the
-// demo-mode pit bridge slip through ungated before. When Manual is selected this
-// always returns false and the caller must do nothing.
+// simulation) to force a pit entry/exit/penalty-adjustment. Kept as a function (rather
+// than inlining `true`) so call sites and intent stay unchanged.
 window._liveTimingMayForcePit = function() {
-    return !!window._autoPitEnabled;
+    return true;
 };
 
 function getLapWord(count) {
@@ -135,23 +115,18 @@ window.testLiveTiming = function() {
     
     if (!url) {
         statusEl.innerText = window.t('enterUrl');
-        statusEl.className = "text-[10px] text-red-500 text-center";
+        statusEl.className = "text-[11px] text-red-500 text-center";
         return;
     }
     
-    if (!searchValue) {
-        const typeNames = { team: window.t('team'), kart: window.t('kart'), driver: window.t('driver') };
-        statusEl.innerText = `${window.t('enterValue')} ${typeNames[searchType]}`;
-        statusEl.className = "text-[10px] text-red-500 text-center";
-        return;
-    }
+    // Team filter is optional: with no value the whole field is shown and the team can be picked later, inside the race.
     
     window.liveTimingConfig.url = url;
     window.liveTimingConfig.enabled = true;
     window.updateSearchConfig();
     
     statusEl.innerText = window.t('testing');
-    statusEl.className = "text-[10px] text-yellow-500 text-center animate-pulse";
+    statusEl.className = "text-[11px] text-yellow-500 text-center animate-pulse";
     
     // Stop existing scraper to force fresh test
     if (window.liveTimingManager) {
@@ -174,10 +149,13 @@ window.testLiveTiming = function() {
     const checkTimer = setInterval(() => {
         elapsed += pollInterval;
         
-        if (window.liveData.position) {
+        const feedComps = (window.liveData.competitors || []).length;
+        if (window.liveData.position || (!searchValue && feedComps > 0)) {
             clearInterval(checkTimer);
-            statusEl.innerText = `${window.t('found')} P${window.liveData.position}`;
-            statusEl.className = "text-[10px] text-green-500 text-center font-bold";
+            statusEl.innerText = window.liveData.position
+                ? `${window.t('found')} P${window.liveData.position}`
+                : `✓ ${feedComps} ${window.t('totalCompetitors') || 'cars'}`;
+            statusEl.className = "text-[11px] text-green-500 text-center font-bold";
             return;
         }
         
@@ -192,7 +170,7 @@ window.testLiveTiming = function() {
                 window.liveData.position = prevPosition;
             }
             statusEl.innerText = window.t('notFound');
-            statusEl.className = "text-[10px] text-red-500 text-center";
+            statusEl.className = "text-[11px] text-red-500 text-center";
         }
     }, pollInterval);
 };
@@ -237,6 +215,16 @@ window.fetchLiveTimingFromProxy = async function() {
         window.liveTimingManager.stop();
     }
     
+    // New feed or a different tracked team: pit baselines from the previous target are meaningless
+    // and would make the first real pitCount look like a fresh pit stop.
+    if (window._liveTimingConfigSignature !== configSignature) {
+        window.liveData._pitCountMax = null;
+        window.liveData.ourTeamPitCount = null;
+        window.liveData.ourTeamInPit = null;
+        window.liveData._lastFeedInPit = undefined;
+        window.liveData._lastFeedPitCount = undefined;
+    }
+
     window.updateProxyStatus("🔄 " + window.t('connecting'));
 
     // התחלת הסקרייפר דרך המנהל
@@ -261,11 +249,39 @@ window.fetchLiveTimingFromProxy = async function() {
             }
 
             if (data.ourTeam) {
+                // Pit event log (diagnostics): every inPit / pitCount change with source + state,
+                // so a phantom auto pit can be traced afterwards via window._pitEventLog.
+                if (!window._pitEventLog) window._pitEventLog = [];
+                if (data.ourTeam.inPit !== window.liveData._lastFeedInPit || data.ourTeam.pitCount !== window.liveData._lastFeedPitCount) {
+                    window._pitEventLog.push({
+                        at: new Date().toISOString(), provider: data.provider || 'http',
+                        inPit: !!data.ourTeam.inPit, pitCount: data.ourTeam.pitCount ?? null,
+                        appInPit: !!(window.state && window.state.isInPit),
+                        auto: !!window._autoPitEnabled, lap: data.ourTeam.totalLaps ?? null
+                    });
+                    if (window._pitEventLog.length > 200) window._pitEventLog.shift();
+                    window.liveData._lastFeedInPit = data.ourTeam.inPit;
+                    window.liveData._lastFeedPitCount = data.ourTeam.pitCount;
+                }
+                // A pit stop cannot start within 30 s of leaving the previous one, and pitCount
+                // can only legitimately grow past its high-water mark; anything else is feed noise.
+                const sinceStintStart = (window.state && window.state.stintStart) ? (Date.now() - window.state.stintStart) : Infinity;
+                const pitEntryCooldownOk = sinceStintStart > 30000;
+                const pcNow = data.ourTeam.pitCount;
+                const pcMax = window.liveData._pitCountMax;
+                const pitCountIsNewHigh = pcNow != null && (pcMax == null || pcNow > pcMax);
+                if (pcNow != null && pitCountIsNewHigh) window.liveData._pitCountMax = pcNow;
+
                 window.liveData.previousPosition = window.liveData.position;
                 window.liveData.position = data.ourTeam.position;
                 window.liveData.lastLap = data.ourTeam.lastLap;
                 window.liveData.bestLap = data.ourTeam.bestLap;
-                window.liveData.laps = data.ourTeam.totalLaps;
+                // Laps can only go up. A provider's column mapping can occasionally latch onto
+                // the wrong field (pit count, position, a category index) instead of the true lap
+                // counter; that shows up as the value jumping backward or by an implausible amount.
+                // Guard instead of trusting it blindly, and log it so a mis-mapped provider is
+                // visible immediately rather than silently corrupting stint/strategy math.
+                window.liveData.laps = window._sanityCheckedLaps(data.ourTeam.totalLaps, window.liveData.laps, data.provider);
                 window.liveData.gapToLeader = data.ourTeam.gap;
 
                 // === Track stint lap history for pace analysis ===
@@ -288,7 +304,7 @@ window.fetchLiveTimingFromProxy = async function() {
                 // Auto-detect pit entry from live timing — AUTHORITATIVE: live timing always wins
                 const now = Date.now();
 
-                if (window._liveTimingMayForcePit() && window.state && window.state.isRunning && !window.state.isInPit && data.ourTeam.inPit) {
+                if (window._liveTimingMayForcePit() && window.state && window.state.isRunning && !window.state.isInPit && data.ourTeam.inPit && pitEntryCooldownOk) {
                     // Live timing says we are in pit — override everything
                     console.log('[LiveTiming] 🛑 AUTHORITATIVE PIT ENTRY from live data (inPit=true)');
                     if (typeof window.confirmPitEntry === 'function') {
@@ -299,7 +315,7 @@ window.fetchLiveTimingFromProxy = async function() {
                 // Fallback: detect pit entry from pitCount increase (catches cases where inPit flag was missed between polls)
                 else if (window._liveTimingMayForcePit() && window.state && window.state.isRunning && !window.state.isInPit
                     && prevPitCount != null && data.ourTeam.pitCount != null
-                    && data.ourTeam.pitCount > prevPitCount) {
+                    && data.ourTeam.pitCount > prevPitCount && pitCountIsNewHigh && pitEntryCooldownOk) {
                     console.log(`[LiveTiming] 🛑 PIT ENTRY detected via pitCount increase (${prevPitCount} → ${data.ourTeam.pitCount})`);
                     window.liveData.ourTeamInPit = true; // Force so exit detection works
                     window.liveData._pitEntryForcedAt = now; // Track when we forced entry
@@ -350,6 +366,11 @@ window.fetchLiveTimingFromProxy = async function() {
                         const msg = `⚠️ PENALTY! ${newPenaltyTime > 0 ? `${newPenaltyTime} Lap` : ''} ${penaltyMsg}`;
                         window._fireStrategyNotification(msg, 'warning');
                     }
+                    // Persistent, actionable item: OUR team's own penalty needs serving (pit-time
+                    // added), not just a fleeting toast that scrolls away.
+                    if (typeof window._queuePenaltyItem === 'function') {
+                        window._queuePenaltyItem('serve', `${newPenaltyTime > 0 ? newPenaltyTime + 's — ' : ''}${penaltyMsg || (window.t ? window.t('penaltiesWarnings') : 'Penalty')}`);
+                    }
                     
                     // Auto-adjust pit time if penalty has a time component — only when
                     // auto-pit is enabled. In Manual mode the admin is notified above but
@@ -376,9 +397,28 @@ window.fetchLiveTimingFromProxy = async function() {
 
             // === Race time from live timing (RaceFacer provides timeLeftSeconds) ===
             if (data.race && data.race.timeLeftSeconds != null) {
-                window.liveData.raceTimeLeftMs = data.race.timeLeftSeconds * 1000;
-                // Store the timestamp when we received this so we can count down locally between API updates
-                window.liveData._raceTimeReceivedAt = Date.now();
+                const feedMs = data.race.timeLeftSeconds * 1000;
+                const feedAt = data.race.receivedAt || null;
+                // Only re-stamp when the feed value actually changed; otherwise every poll would
+                // reset the interpolation origin and freeze the clock at a stale value.
+                // Providers that report their own receive time (Apex) keep that origin.
+                if (feedAt) {
+                    window.liveData.raceTimeLeftMs = feedMs;
+                    window.liveData._raceTimeReceivedAt = feedAt;
+                } else if (feedMs !== window.liveData._lastFeedRaceMs) {
+                    window.liveData.raceTimeLeftMs = feedMs;
+                    window.liveData._raceTimeReceivedAt = Date.now();
+                }
+                window.liveData._lastFeedRaceMs = feedMs;
+                // The app derives elapsed = configured duration - feed remaining. If the feed has MORE
+                // time left than the configured race length, that is clamped and the clock sits frozen
+                // at full time -- tell the admin once instead of failing silently.
+                const cfgMs = window.config && (window.config.raceMs || (parseFloat(window.config.duration) || 0) * 3600000);
+                if (cfgMs > 0 && feedMs > cfgMs * 1.02 && !window._durationMismatchWarned && window.state && window.state.isRunning) {
+                    window._durationMismatchWarned = true;
+                    const fmt = ms => (ms / 3600000).toFixed(1) + 'h';
+                    if (window.showToast) window.showToast(`⚠️ ${window.t('durationMismatch')} (${fmt(feedMs)} vs ${fmt(cfgMs)})`, 'warning', 12000);
+                }
             }
             
             // Force enable if data arrived
@@ -416,6 +456,9 @@ window.fetchLiveTimingFromProxy = async function() {
             // Also fire as strategy notification if race is running
             if (window.state && window.state.isRunning && typeof window._fireStrategyNotification === 'function') {
                 window._fireStrategyNotification(`📢 ${entry.text}`, 'info');
+            }
+            if (/penalty|warning/i.test(entry.text) && typeof window._queuePenaltyItem === 'function') {
+                window._queuePenaltyItem('ack', entry.text);
             }
         }
     });
@@ -465,8 +508,6 @@ window.startProxyLiveTiming = function() {
     window.proxyFetchInterval = setInterval(window.fetchLiveTimingFromProxy, 5000);
     // Start stale-feed watchdog
     if (typeof window._startHbWatchdog === 'function') window._startHbWatchdog();
-    // Sync auto-pit toggle UI
-    if (typeof window._updateAutoPitUI === 'function') window._updateAutoPitUI();
 };
 
 window.stopProxyLiveTiming = function() {
@@ -507,7 +548,7 @@ window.stopProxyLiveTiming = function() {
             if (age > HB_STALE_MS) {
                 // Feed is stale
                 if (heartbeatEl) {
-                    heartbeatEl.className = 'text-[10px] text-red-500 font-bold animate-pulse';
+                    heartbeatEl.className = 'text-[11px] text-red-500 font-bold animate-pulse';
                 }
                 window.updateProxyStatus('⚠️ Feed stale — reconnecting…');
                 console.warn(`[HB Watchdog] Feed stale (${Math.round(age/1000)}s) — attempting restart`);
@@ -530,6 +571,30 @@ window.stopProxyLiveTiming = function() {
         }, 10000);
     };
 })();
+
+// Shared across every provider (Apex/RaceFacer/Alpha/Hakafast): a lap counter must be
+// monotonic. Reject a regression outright (keep the last good value) and flag — but still
+// accept — an implausibly large single-update jump, since that can be a legitimate catch-up
+// after a reconnect. Every rejection/flag is recorded in window._columnMapWarnings so a
+// mis-mapped provider column can be diagnosed from the console instead of guessed at.
+window._columnMapWarnings = window._columnMapWarnings || [];
+window._sanityCheckedLaps = function(nextLaps, prevLaps, provider) {
+    const n = Number(nextLaps);
+    if (!Number.isFinite(n)) return prevLaps;
+    if (prevLaps == null) return n;
+    if (n < prevLaps) {
+        window._columnMapWarnings.push({ at: new Date().toISOString(), provider: provider || '?', type: 'laps-regressed', from: prevLaps, to: n });
+        if (window._columnMapWarnings.length > 100) window._columnMapWarnings.shift();
+        console.warn(`[LiveTiming] ⚠️ Ignored lap count going backward (${prevLaps} → ${n}) from ${provider || 'feed'} — likely a mis-mapped column, not a real lap loss.`);
+        return prevLaps;
+    }
+    if (n - prevLaps > 10) {
+        window._columnMapWarnings.push({ at: new Date().toISOString(), provider: provider || '?', type: 'laps-jumped', from: prevLaps, to: n });
+        if (window._columnMapWarnings.length > 100) window._columnMapWarnings.shift();
+        console.warn(`[LiveTiming] ⚠️ Lap count jumped by ${n - prevLaps} in one update (${prevLaps} → ${n}) from ${provider || 'feed'} — accepted, but check window._columnMapWarnings if this looks wrong.`);
+    }
+    return n;
+};
 
 // ==================== LIVE TIMING UI ====================
 
@@ -564,10 +629,27 @@ window.updateLiveTimingUI = function() {
         const ageSec = ageMs == null ? '--' : Math.floor(ageMs / 1000);
         heartbeatEl.innerText = `HB ${count} (${ageSec}s)`;
         heartbeatEl.className = ageMs != null && ageMs > 7000
-            ? 'text-[10px] text-red-400'
-            : 'text-[10px] text-gray-400';
+            ? 'text-[11px] text-red-400'
+            : 'text-[11px] text-gray-400';
     }
     
+    // Feed is alive but none of its rows matched our team/kart/driver -> the top cells can
+    // never fill. Say so instead of leaving silent dashes.
+    const hintEl = document.getElementById('liveTeamHint');
+    if (hintEl) {
+        const comps = window.liveData.competitors || [];
+        const sc = window.searchConfig || {};
+        const term = (sc.kartNumber || sc.driverName || sc.teamName || '').trim();
+        const unmatched = comps.length > 0 && !comps.some(c => c.isOurTeam);
+        if (unmatched) {
+            const tt = window.t || (k => k);
+            hintEl.textContent = term ? `⚠️ "${term}" ${tt('ltTeamNotFound')}` : `⚠️ ${tt('ltNoTeamSet')}`;
+            hintEl.classList.remove('hidden');
+        } else {
+            hintEl.classList.add('hidden');
+        }
+    }
+
     const posEl = document.getElementById('livePosition');
     if (posEl) posEl.innerText = window.liveData.position || '-';
     
@@ -576,13 +658,13 @@ window.updateLiveTimingUI = function() {
         const diff = window.liveData.previousPosition - window.liveData.position;
         if (diff > 0) {
             changeEl.innerText = `▲ ${diff}`;
-            changeEl.className = 'text-[10px] position-up';
+            changeEl.className = 'text-[11px] position-up';
         } else if (diff < 0) {
             changeEl.innerText = `▼ ${Math.abs(diff)}`;
-            changeEl.className = 'text-[10px] position-down';
+            changeEl.className = 'text-[11px] position-down';
         } else {
             changeEl.innerText = '—';
-            changeEl.className = 'text-[10px] position-same';
+            changeEl.className = 'text-[11px] position-same';
         }
     }
     
@@ -632,6 +714,8 @@ window.updateLiveTimingUI = function() {
     }
     
     window.updateCompetitorsTable();
+    if (typeof window._updateSecondaryTeamCard === 'function') window._updateSecondaryTeamCard();
+    if (typeof window._updateCategoryFilterChips === 'function') window._updateCategoryFilterChips();
 
     // ---- Competitor table header: show/hide based on whether we have sector data ----
     const tableHeader = document.getElementById('competitorsTableHeader');
@@ -676,6 +760,23 @@ window.updateCompetitorsTable = function() {
     const tableEl = document.getElementById('competitorsTable');
     if (!tableEl) return;
 
+    // A real endurance race practically never has every single car in the pit lane at once.
+    // When a feed's column mapping misreads the wrong field as pit status, that's exactly what
+    // it looks like -- so distrust an all-true reading instead of showing it as fact, and log it
+    // for diagnosis (window._columnMapWarnings) rather than guess at which column is wrong.
+    (function guardAgainstImplausibleAllInPit() {
+        const comps = window.liveData.competitors || [];
+        if (comps.length < 5) { window._pitStatusUnreliable = false; return; }
+        const inPitCount = comps.filter(c => c.inPit).length;
+        const wasUnreliable = window._pitStatusUnreliable;
+        window._pitStatusUnreliable = (inPitCount / comps.length) > 0.9;
+        if (window._pitStatusUnreliable && !wasUnreliable) {
+            window._columnMapWarnings = window._columnMapWarnings || [];
+            window._columnMapWarnings.push({ at: new Date().toISOString(), type: 'pit-status-implausible', inPitCount, total: comps.length });
+            console.warn(`[LiveTiming] ⚠️ ${inPitCount}/${comps.length} competitors read as "in pit" at once -- almost certainly a mis-mapped column for this feed, not reality. Suppressing PIT badges.`);
+        }
+    })();
+
     // ---- Stable data: cache last known so table never flickers ----
     const fresh = window.liveData.competitors;
     if (fresh && fresh.length > 0) {
@@ -701,6 +802,7 @@ window.updateCompetitorsTable = function() {
 
     // ---- Update kart performance tracking ----
     window._updateKartStats(allCompetitors);
+    window._checkConsistentFastPitEntries(allCompetitors);
 
     // ---- Stable DOM: only rebuild when row count changes ----
     const existingRows = tableEl.querySelectorAll('.competitor-row');
@@ -732,18 +834,25 @@ window.updateCompetitorsTable = function() {
         const isUs = comp.isOurTeam;
         if (isUs) ourTeamRow = row;
 
-        const isDanger = !isUs && window.liveData.position && Math.abs(comp.position - window.liveData.position) <= 2;
-        const isGoodPace = !isUs && goodPaceThreshold && comp.bestLap && comp.bestLap <= goodPaceThreshold;
+        const compBestMs = _lapMs(comp, 'bestLap');
+        const compLastMs = _lapMs(comp, 'lastLap');
+        const isGoodPace = !isUs && goodPaceThreshold && compBestMs > 0 && compBestMs <= goodPaceThreshold;
         // PB glow is scoped to the current stint (since last pit), not the whole race —
         // a driver going faster in stint 3 than their stint-1 best should still glow.
-        const isPB = comp.lastLap && comp.stintBestLap && comp.lastLap > 0 && comp.lastLap <= comp.stintBestLap;
+        const isPB = compLastMs > 0 && comp.stintBestLap && compLastMs <= comp.stintBestLap;
         const kartKey = comp.kart || '';
         const isTopKart = kartKey && window._fastKarts && window._fastKarts.has(kartKey);
 
         // ---- Row class (only update if changed) ----
+        const isSecondaryTeam = !!(window.secondaryWatch && window.secondaryWatch.kart && (comp.kart || '').trim() === window.secondaryWatch.kart);
+        const isConsistentFast = !!(window._consistentFastKarts && kartKey && window._consistentFastKarts.has(kartKey));
+        const catFiltered = window._categoryFilter && _competitorCategory(comp) !== window._categoryFilter;
+        row.classList.toggle('cr-filtered-out', !!catFiltered);
         let rowCls = 'competitor-row';
         if (isUs) rowCls += ' our-team';
-        else if (isDanger) rowCls += ' danger-zone';
+        else if (isSecondaryTeam) rowCls += ' second-team';
+        if (isConsistentFast) rowCls += ' consistent-fast';
+        if (catFiltered) rowCls += ' cr-filtered-out';
         if (row.className !== rowCls) row.className = rowCls;
 
         // ---- Position ----
@@ -835,7 +944,7 @@ window.updateCompetitorsTable = function() {
         const badgesEl = row.querySelector('.cr-badges');
         if (badgesEl) {
             let badges = '';
-            if (comp.inPit) badges += `<span class="badge-pit">${window.t ? window.t('pitLabel') : 'PIT'}</span>`;
+            if (comp.inPit && !window._pitStatusUnreliable) badges += `<span class="badge-pit">${window.t ? window.t('pitLabel') : 'PIT'}</span>`;
             const penaltyVal = comp.penalty || comp.penaltyTime || 0;
             if (penaltyVal > 0) {
                 const penLabel = comp.penaltyTime ? `${comp.penaltyTime} Lap` : '';
@@ -931,7 +1040,7 @@ window.updateCompetitorsTable = function() {
         // ---- Last lap + personal best glow ----
         const lapEl = row.querySelector('.cr-lap');
         if (lapEl) {
-            const lapTxt = comp.lastLap ? window.formatLapTime(comp.lastLap) : '';
+            const lapTxt = _lapDisplayText(comp, 'lastLap');
             if (lapEl.textContent !== lapTxt) lapEl.textContent = lapTxt;
             const lapCls = isPB ? 'cr-lap lap-pb' : 'cr-lap';
             if (lapEl.className !== lapCls) lapEl.className = lapCls;
@@ -957,8 +1066,6 @@ window.updateCompetitorsTable = function() {
         }
     });
 
-    // ---- Update kart ranking mini-panel ----
-    window._updateKartRankingPanel();
 };
 
 // ==================== PER-STINT LAP TRACKING (real-feed) ====================
@@ -1015,6 +1122,30 @@ window._trackCompetitorStints = function(competitors) {
     });
 };
 
+// Real-feed competitors carry the raw display string in .lastLap/.bestLap and the parsed
+// milliseconds separately in .lastLapMs/.bestLapMs; demo-mode competitors only ever set
+// .lastLap/.bestLap directly as plain ms numbers. Reading .lastLap/.bestLap as if they were
+// always numeric (as several call sites below used to) works by accident in demo mode but
+// on a real feed compares/concatenates display strings ("17.818" + "18.201" via Array#reduce
+// becomes string concatenation, not addition) — that's what was flagging nearly every kart as
+// "fast" and glowing every row green on a real feed (reported live on Karting Events Bulgaria).
+function _lapMs(c, field) {
+    const msField = c[field + 'Ms'];
+    if (typeof msField === 'number' && msField > 0) return msField;
+    return typeof c[field] === 'number' ? c[field] : 0;
+}
+
+// Same real-feed-vs-demo split for display text: a real-feed .lastLap/.bestLap is already
+// a formatted string ("17.818") and must be shown as-is — re-running it through
+// formatLapTime() (which expects raw ms) silently mangled it into a near-zero time.
+// Demo mode's .lastLap/.bestLap are raw ms numbers and still need formatting.
+function _lapDisplayText(c, field) {
+    const raw = c[field];
+    if (typeof raw === 'string') return raw;
+    if (typeof raw === 'number' && raw > 0) return window.formatLapTime(raw);
+    return '';
+}
+
 // ==================== KART PERFORMANCE TRACKING ====================
 window._kartStatsMap = window._kartStatsMap || {};
 window._fastKarts = window._fastKarts || new Set();
@@ -1037,29 +1168,121 @@ window._updateKartStats = function(competitors) {
         s.inPit = !!c.inPit;
         if (c.pitCount != null) s.pitCount = c.pitCount;
 
-        if (c.bestLap && c.bestLap > 0 && c.bestLap < s.bestLapMs && c.bestLap >= 20000 && c.bestLap <= 180000) {
-            s.bestLapMs = c.bestLap;
+        // Outlier guard: a value inside the 20-180s absolute band can still be a sector time
+        // mistaken for a full lap on a longer circuit (e.g. a leaked "On track"/type-code mixup
+        // upstream -- seen live on more than one feed). A real personal best is rarely
+        // dramatically faster than the kart's own recent pace, so once there's history, reject
+        // anything under 80% of it instead of trusting the absolute band alone.
+        const recentAvg = s.recentLaps.length >= 3
+            ? s.recentLaps.slice(-8).reduce((a, b) => a + b, 0) / Math.min(s.recentLaps.length, 8)
+            : null;
+        const plausibleFloor = recentAvg ? recentAvg * 0.8 : 20000;
+        const bestMs = _lapMs(c, 'bestLap');
+        const lastMs = _lapMs(c, 'lastLap');
+        if (bestMs > 0 && bestMs < s.bestLapMs && bestMs >= plausibleFloor && bestMs <= 180000) {
+            s.bestLapMs = bestMs;
         }
-        if (c.lastLap && c.lastLap > 0 && c.lastLap >= 20000 && c.lastLap <= 180000) {
-            s.recentLaps.push(c.lastLap);
+        if (lastMs > 0 && lastMs >= plausibleFloor && lastMs <= 180000) {
+            s.recentLaps.push(lastMs);
             if (s.recentLaps.length > 30) s.recentLaps.shift();
         }
     });
 
-    // Determine fast karts: within 101.5% of the best kart's best lap
-    let bestKartLap = Infinity;
+    // Fast karts, by real recent-lap AVERAGE -- never by a single best lap (one leaked sector
+    // time, a lucky tow, both make "best lap" unreliable as a pace signal). Needs at least 3
+    // recorded laps before a kart is judged. Flags everyone within the pace band, uncapped --
+    // a tight spec-kart field legitimately has several karts on the same real pace, and that's
+    // the point: the green highlight + pit-entry alert should catch all of them, not an
+    // arbitrary top N.
+    const avgOf = s => s.recentLaps.length >= 3
+        ? s.recentLaps.slice(-8).reduce((a, b) => a + b, 0) / Math.min(s.recentLaps.length, 8)
+        : null;
+    let bestKartAvg = Infinity;
     Object.values(stats).forEach(s => {
-        if (s.bestLapMs < bestKartLap) bestKartLap = s.bestLapMs;
+        const avg = avgOf(s);
+        if (avg != null && avg < bestKartAvg) bestKartAvg = avg;
     });
-    const threshold = bestKartLap < Infinity ? bestKartLap * 1.015 : null;
+    const threshold = bestKartAvg < Infinity ? bestKartAvg * 1.015 : null;
     const fastSet = new Set();
     if (threshold) {
         Object.entries(stats).forEach(([kart, s]) => {
-            if (s.bestLapMs <= threshold) fastSet.add(kart);
+            const avg = avgOf(s);
+            if (avg != null && avg <= threshold) fastSet.add(kart);
         });
     }
     window._fastKarts = fastSet;
+    window._consistentFastKarts = fastSet;   // same set now drives both the row highlight and the pit-entry alert
 };
+
+// === Penalties & Warnings queue ===
+// 'serve' = our own penalty, needs pit-time action from the admin. 'ack' = a race-control
+// comment (penalty/warning for anyone) the admin should be aware of. Both persist until
+// explicitly dismissed -- unlike the toast, this can't be missed by looking away for a moment.
+window._penaltyQueue = window._penaltyQueue || [];
+
+window._queuePenaltyItem = function(type, text) {
+    if (!text) return;
+    const dup = window._penaltyQueue.some(it => !it.acknowledged && it.type === type && it.text === text);
+    if (dup) return;
+    window._penaltyQueue.unshift({ id: 'pq' + Date.now() + Math.random().toString(36).slice(2, 6), type, text, at: Date.now(), acknowledged: false });
+    if (window._penaltyQueue.length > 40) window._penaltyQueue.length = 40;
+    window._renderPenaltyQueue();
+};
+
+window.acknowledgePenaltyItem = function(id) {
+    const item = window._penaltyQueue.find(it => it.id === id);
+    if (item) item.acknowledged = true;
+    window._renderPenaltyQueue();
+};
+
+window._renderPenaltyQueue = function() {
+    const panel = document.getElementById('penaltyQueuePanel');
+    const list = document.getElementById('penaltyQueueList');
+    const countEl = document.getElementById('penaltyQueueCount');
+    if (!panel || !list) return;
+    const pending = window._penaltyQueue.filter(it => !it.acknowledged);
+    panel.classList.toggle('hidden', pending.length === 0);
+    if (countEl) countEl.textContent = String(pending.length);
+    const t = window.t || (k => k);
+    const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    list.innerHTML = pending.map(it => `
+        <div class="flex items-center justify-between gap-2 px-2 py-1.5 text-[11px]">
+            <span class="flex-1 min-w-0 ${it.type === 'serve' ? 'text-amber-300 font-bold' : 'text-gray-300'}">
+                ${it.type === 'serve' ? '🔧 ' + (t('penaltyServe') || 'Serve') + ': ' : '📢 '}${esc(it.text)}
+            </span>
+            <button type="button" onclick="window.acknowledgePenaltyItem('${it.id}')" class="shrink-0 text-[11px] font-bold px-2 py-1 rounded border border-gray-600 text-gray-400 hover:text-white hover:border-gray-400 min-h-[28px]">✓ ${t('acknowledge') || 'OK'}</button>
+        </div>`).join('');
+};
+
+// === Pit-entry opportunity alert ===
+// A kart identified as fast + consistent pitting is a signal worth the admin's attention --
+// their competitor is about to lose track position, which can be a good moment to push or
+// plan around. Tracks every kart's inPit transition (not just our own team) and fires once
+// per entry, logging the kart number/team so it's reviewable afterward.
+window._consistentFastPitLog = window._consistentFastPitLog || [];
+window._prevInPitByKart = window._prevInPitByKart || {};
+
+window._checkConsistentFastPitEntries = function(competitors) {
+    const consistent = window._consistentFastKarts;
+    if (!consistent || consistent.size === 0) return;
+    (competitors || []).forEach(c => {
+        const kart = (c.kart || '').trim();
+        if (!kart) return;
+        const wasInPit = window._prevInPitByKart[kart];
+        window._prevInPitByKart[kart] = !!c.inPit;
+        if (c.inPit && wasInPit === false && consistent.has(kart)) {
+            const entry = { at: new Date().toISOString(), kart, team: c.name || c.team || '' };
+            window._consistentFastPitLog.push(entry);
+            if (window._consistentFastPitLog.length > 50) window._consistentFastPitLog.shift();
+            const t = window.t || (k => k);
+            const msg = (t('consistentFastPitAlert') || '⚡ Kart #{{kart}} ({{team}}) — fast & consistent — just pitted. Possible opportunity.')
+                .replace('{{kart}}', kart).replace('{{team}}', entry.team);
+            if (typeof window.showToast === 'function') window.showToast(msg, 'info', 7000);
+            if (typeof window.playAlertBeep === 'function') window.playAlertBeep('info');
+        }
+    });
+};
+
 
 // Foldable state for kart panel (persisted in session)
 if (window._kartPanelOpen == null) window._kartPanelOpen = true;
@@ -1098,10 +1321,10 @@ window._updateKartRankingPanel = function() {
             : null;
         const avgStr = avg ? window.formatLapTime(Math.round(avg)) : '-';
         const cls = isOurs ? 'text-ice font-bold' : isFast ? 'text-neon' : 'text-gray-400';
-        const pitInfo = s.pitCount > 0 ? `<span class="text-[8px] text-fuel"> P${s.pitCount}</span>` : '';
-        html += `<div class="flex justify-between items-center text-[10px] ${cls}">`;
-        html += `<span>#${kart} <span class="text-[9px] text-gray-500">${s.team.substring(0, 12)}</span>${pitInfo}</span>`;
-        html += `<span>${window.formatLapTime(s.bestLapMs)} <span class="text-[9px] text-gray-600">(avg ${avgStr})</span></span>`;
+        const pitInfo = s.pitCount > 0 ? `<span class="text-[11px] text-fuel"> P${s.pitCount}</span>` : '';
+        html += `<div class="flex justify-between items-center text-[11px] ${cls}">`;
+        html += `<span>#${kart} <span class="text-[11px] text-gray-500">${s.team.substring(0, 12)}</span>${pitInfo}</span>`;
+        html += `<span>${window.formatLapTime(s.bestLapMs)} <span class="text-[11px] text-gray-600">(avg ${avgStr})</span></span>`;
         html += `</div>`;
     });
     html += `</div>`;
@@ -1126,8 +1349,9 @@ window._calcGoodPaceThreshold = function(competitors) {
 
     let overallBest = Infinity;
     competitors.forEach(c => {
-        if (c.bestLap && c.bestLap > 0 && c.bestLap < overallBest) {
-            overallBest = c.bestLap;
+        const bestMs = _lapMs(c, 'bestLap');
+        if (bestMs > 0 && bestMs < overallBest) {
+            overallBest = bestMs;
         }
     });
 
@@ -1206,7 +1430,7 @@ window.toggleApexIframe = function() {
         iframeContainer.classList.add('hidden');
         if (tableContainer) tableContainer.classList.toggle('hidden', window._competitorsTableOpen === false);
         if (btn) {
-            btn.textContent = '🌐';
+            btn.textContent = '🌐 ' + (window.t('ltOriginalView') || 'Original');
             btn.classList.remove('bg-ice', 'text-navy-900');
             btn.classList.add('bg-navy-700', 'text-gray-300');
         }
@@ -1220,7 +1444,7 @@ window.toggleApexIframe = function() {
         iframeContainer.classList.remove('hidden');
         if (tableContainer) tableContainer.classList.add('hidden');
         if (btn) {
-            btn.textContent = '📊';
+            btn.textContent = '📊 ' + (window.t('ltTableView') || 'Table');
             btn.classList.remove('bg-navy-700', 'text-gray-300');
             btn.classList.add('bg-ice', 'text-navy-900');
         }
@@ -1277,9 +1501,9 @@ window.stopLiveTiming = function() {
     const carsEl = document.getElementById('liveTotalCars');
     if (carsEl) carsEl.innerText = '-';
     const changeEl = document.getElementById('livePositionChange');
-    if (changeEl) { changeEl.innerText = ''; changeEl.className = 'text-[10px] position-same'; }
+    if (changeEl) { changeEl.innerText = ''; changeEl.className = 'text-[11px] position-same'; }
     const heartbeatEl = document.getElementById('liveHeartbeat');
-    if (heartbeatEl) { heartbeatEl.innerText = 'HB --'; heartbeatEl.className = 'text-[10px] text-gray-400'; }
+    if (heartbeatEl) { heartbeatEl.innerText = 'HB --'; heartbeatEl.className = 'text-[11px] text-gray-400'; }
     const tableEl = document.getElementById('competitorsTable');
     if (tableEl) tableEl.innerHTML = '';
     const kartPanel = document.getElementById('kartRankingPanel');
@@ -1337,7 +1561,7 @@ window.startDemoMode = function() {
     const statusEl = document.getElementById('liveTimingStatus');
     if (statusEl) {
         statusEl.innerText = "🎮 Demo Mode Active";
-        statusEl.className = "text-[10px] text-neon text-center font-bold";
+        statusEl.className = "text-[11px] text-neon text-center font-bold";
     }
 };
 
@@ -1797,6 +2021,197 @@ window.toggleCompetitorsTable = function() {
     if (btn) btn.textContent = window._competitorsTableOpen ? '📋' : '🗂️';
 };
 
+// ==================== TEAM PICKER ====================
+// When the feed is connected but none of its rows matched the typed team/kart/driver, the
+// admin can tap the warning and pick their team straight from the feed's own list.
+window.openTeamPicker = function(target) {
+    target = target || 'primary';
+    if (window.role === 'client') return;   // spectators cannot change what the admin follows
+    const comps = dedupeLiveCompetitors(window.liveData.competitors || []);
+    if (!comps.length) { if (window.showToast) window.showToast(window.t('waitingData'), 'info', 2500); return; }
+    document.getElementById('teamPickerOverlay')?.remove();
+    const t = window.t || (k => k);
+    const ov = document.createElement('div');
+    ov.id = 'teamPickerOverlay';
+    ov.className = 'fixed inset-0 z-[120] bg-navy-950/95 flex flex-col p-3';
+    ov.setAttribute('role', 'dialog');
+    ov.setAttribute('aria-modal', 'true');
+    ov.innerHTML = `<div class="flex items-center justify-between mb-2">
+            <h3 class="text-ice font-bold text-lg">${t('pickYourTeam')}</h3>
+            <button type="button" id="teamPickerClose" class="w-11 h-11 rounded-full text-gray-300 text-2xl" aria-label="Close">&times;</button>
+        </div>
+        <input id="teamPickerFilter" type="search" class="input-field mb-2" placeholder="${t('pickTeamFilter')}" autocomplete="off">
+        <div id="teamPickerList" class="flex-1 overflow-y-auto space-y-1.5 overscroll-contain"></div>`;
+    document.body.appendChild(ov);
+    const listEl = ov.querySelector('#teamPickerList');
+    const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    const render = q => {
+        const needle = (q || '').trim().toLowerCase();
+        listEl.innerHTML = '';
+        comps.filter(c => !needle || (String(c.name || '') + ' #' + String(c.kart || '')).toLowerCase().includes(needle)).forEach(c => {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'w-full flex items-center gap-3 text-start bg-navy-900 border border-gray-700 rounded-lg px-3 py-2 min-h-[48px] active:scale-[0.99]';
+            b.innerHTML = `<span class="w-8 text-gray-400 font-mono">${esc(c.position)}</span><span class="w-10 text-gray-500 font-mono">#${esc(c.kart)}</span><span class="flex-1 font-bold text-white truncate">${esc(c.name)}</span>`;
+            b.onclick = () => (target === 'secondary' ? window._selectSecondaryTeam(c) : window._selectOurTeam(c));
+            listEl.appendChild(b);
+        });
+        if (!listEl.children.length) listEl.innerHTML = `<div class="text-gray-500 text-center py-4">${t('notFound')}</div>`;
+    };
+    render('');
+    ov.querySelector('#teamPickerFilter').addEventListener('input', e => render(e.target.value));
+    ov.dataset.target = target;
+    ov.querySelector('#teamPickerClose').onclick = () => ov.remove();
+    ov.addEventListener('keydown', e => { if (e.key === 'Escape') ov.remove(); });
+    ov.querySelector('#teamPickerFilter').focus();
+};
+
+window._selectOurTeam = function(c) {
+    // Kart number is the unambiguous key (team names can repeat or be renamed by the feed)
+    const useKart = !!(c.kart && String(c.kart).trim());
+    window.searchConfig.teamName = useKart ? '' : (c.name || '');
+    window.searchConfig.driverName = '';
+    window.searchConfig.kartNumber = useKart ? String(c.kart).trim() : '';
+    const input = document.getElementById('searchValue');
+    if (input) input.value = useKart ? window.searchConfig.kartNumber : window.searchConfig.teamName;
+    const radio = document.querySelector('input[name="searchType"][value="' + (useKart ? 'kart' : 'team') + '"]');
+    if (radio) radio.checked = true;
+    document.getElementById('teamPickerOverlay')?.remove();
+    if (window.showToast) window.showToast('✓ ' + (c.name || '') + (useKart ? ' #' + c.kart : ''), 'success', 2500);
+    if (typeof window.saveRaceState === 'function') window.saveRaceState();
+    window.fetchLiveTimingFromProxy();   // signature changed -> scraper restarts with the new target
+};
+
+// === Secondary team (laptop-only monitor for a second entry from the same org) ===
+// Deliberately NOT a second strategy engine: one race, one pit workflow. This just tracks the
+// second entry's live-timing numbers so an admin managing two cars from a laptop can see both
+// at a glance, without the (much larger) scope of running two independent stint plans at once.
+window.secondaryWatch = null;   // { kart, name }
+
+window._selectSecondaryTeam = function(c) {
+    window.secondaryWatch = { kart: c.kart ? String(c.kart).trim() : '', name: c.name || '' };
+    document.getElementById('teamPickerOverlay')?.remove();
+    if (window.showToast) window.showToast('✓ ' + (window.t('watchingSecondTeam') || 'Watching') + ' ' + (c.name || '') + (c.kart ? ' #' + c.kart : ''), 'success', 2500);
+    if (typeof window.saveRaceState === 'function') window.saveRaceState();
+    window._updateSecondaryTeamCard();
+};
+
+window.clearSecondaryTeam = function() {
+    window.secondaryWatch = null;
+    window._updateSecondaryTeamCard();
+    if (typeof window.saveRaceState === 'function') window.saveRaceState();
+};
+
+function _formatGapCell(match) {
+    if (match?.position === 1) return window.t ? window.t('leaderLabel') : 'LEADER';
+    if (match?.gap) { const decSep = window.t ? window.t('numDecSep') : '.'; const g = (match.gap / 1000).toFixed(1); return '+' + (decSep !== '.' ? g.replace('.', decSep) : g) + 's'; }
+    return '-';
+}
+
+window._updateSecondaryTeamCard = function() {
+    const card = document.getElementById('secondaryTeamCard');
+    const strip = document.getElementById('dualTeamStrip');
+    const w = window.secondaryWatch;
+
+    if (strip) {
+        if (!w) { strip.classList.add('hidden'); }
+        else {
+            const comps = dedupeLiveCompetitors(window.liveData.competitors || window._lastKnownCompetitors || []);
+            const primary = comps.find(c => c.isOurTeam);
+            const secondary = w.kart ? comps.find(c => (c.kart || '').trim() === w.kart) : comps.find(c => (c.name || '') === w.name);
+            strip.classList.remove('hidden');
+            document.getElementById('dualTeamPrimaryName').textContent = primary?.name || window.t('yourTeam') || 'Your Team';
+            document.getElementById('dualTeamPrimaryPos').textContent = primary?.position ?? window.liveData.position ?? '-';
+            document.getElementById('dualTeamPrimaryGap').textContent = _formatGapCell(primary) !== '-' ? _formatGapCell(primary) : '-';
+            document.getElementById('dualTeamSecondaryName').textContent = (secondary?.name || w.name || '?') + (w.kart ? ' #' + w.kart : '');
+            document.getElementById('dualTeamSecondaryPos').textContent = secondary?.position ?? '-';
+            document.getElementById('dualTeamSecondaryGap').textContent = _formatGapCell(secondary);
+        }
+    }
+
+    if (!card) return;
+    if (!w) { card.classList.add('hidden'); return; }
+    const comps = dedupeLiveCompetitors(window.liveData.competitors || window._lastKnownCompetitors || []);
+    const match = w.kart
+        ? comps.find(c => (c.kart || '').trim() === w.kart)
+        : comps.find(c => (c.name || '') === w.name);
+    card.classList.remove('hidden');
+    document.getElementById('secondaryTeamName').textContent = (match?.name || w.name || '?') + (w.kart ? ' #' + w.kart : '');
+    document.getElementById('secondaryPos').textContent = match?.position ?? '-';
+    document.getElementById('secondaryLast').textContent = match ? (_lapDisplayText(match, 'lastLap') || '-') : '-';
+    document.getElementById('secondaryBest').textContent = match ? (_lapDisplayText(match, 'bestLap') || '-') : '-';
+    document.getElementById('secondaryGap').textContent = _formatGapCell(match);
+};
+
+// === Category filter (laptop): jump to SK1/SK2/AM etc. instead of scanning every row ===
+// Category comes from the feed's own column when present; otherwise this falls back to a
+// leading all-caps/alnum token shared by many rows (seen live: "SK1 TEAM FDP", "AM AMS", ...),
+// which is the only place the category actually appears for that particular event. On feeds
+// with no real class column (seen live on Karting Events Bulgaria), that fallback regex just
+// matches each team's own name prefix, giving one "category" per team — a filter with as many
+// options as there are teams isn't a class filter, so a token only counts as a real category
+// once it's shared by at least 2 competitors.
+window._categoryFilter = null;   // null = show all
+
+function _competitorCategory(c) {
+    if (c.category) return c.category;
+    const m = String(c.name || '').match(/^([A-Z0-9]{2,4})\s+\S/);
+    return m ? m[1] : null;
+}
+
+window._updateCategoryFilterChips = function() {
+    const row = document.getElementById('categoryFilterRow');
+    if (!row) return;
+    const comps = dedupeLiveCompetitors(window.liveData.competitors || window._lastKnownCompetitors || []);
+    const counts = new Map();
+    comps.forEach(c => {
+        const cat = _competitorCategory(c);
+        if (cat) counts.set(cat, (counts.get(cat) || 0) + 1);
+    });
+    const cats = [...counts.keys()].filter(cat => counts.get(cat) >= 2).sort();
+    if (cats.length < 2) { row.classList.add('hidden'); row.innerHTML = ''; window._categoryFilter = null; return; }
+    if (window._categoryFilter && !cats.includes(window._categoryFilter)) window._categoryFilter = null;
+    row.classList.remove('hidden');
+    const chip = (label, active, onClick) =>
+        `<button type="button" data-cat="${label}" class="text-[11px] font-bold px-2 py-1 rounded-full border transition ${active ? 'bg-cyan-600 border-cyan-400 text-white' : 'bg-navy-900 border-gray-600 text-gray-400'}">${label}</button>`;
+    row.innerHTML = chip('ALL', !window._categoryFilter) + cats.map(c => chip(c, window._categoryFilter === c)).join('');
+    row.querySelectorAll('button').forEach(btn => {
+        btn.onclick = () => {
+            window._categoryFilter = btn.dataset.cat === 'ALL' ? null : btn.dataset.cat;
+            window._updateCategoryFilterChips();
+            window.updateCompetitorsTable();
+        };
+    });
+};
+
+// === Strategy-outlook collapse (tablet: default collapsed, tap OUTLOOK to expand) ===
+window.toggleOutlookCollapse = function() {
+    const collapsed = document.getElementById('remainingStintsPanel')?.classList.toggle('outlook-collapsed');
+    try { localStorage.setItem('strateger_outlook_collapsed', collapsed ? '1' : '0'); } catch (e) {}
+    const icon = document.getElementById('outlookCollapseIcon');
+    if (icon) icon.textContent = collapsed ? '▸' : '▾';
+};
+(function initOutlookCollapseDefault() {
+    let stored = null;
+    try { stored = localStorage.getItem('strateger_outlook_collapsed'); } catch (e) {}
+    // No saved preference yet: default collapsed on tablet/phone widths (space is scarce there),
+    // expanded on laptop. Only applied once, on first render, via a one-shot flag.
+    window._outlookCollapseDefaultApplied = false;
+    const apply = () => {
+        if (window._outlookCollapseDefaultApplied) return;
+        const panel = document.getElementById('remainingStintsPanel');
+        if (!panel || panel.classList.contains('hidden')) return;   // wait until it actually renders
+        window._outlookCollapseDefaultApplied = true;
+        const shouldCollapse = stored != null ? stored === '1' : window.matchMedia('(max-width:1279px)').matches;
+        panel.classList.toggle('outlook-collapsed', shouldCollapse);
+        const icon = document.getElementById('outlookCollapseIcon');
+        if (icon) icon.textContent = shouldCollapse ? '▸' : '▾';
+    };
+    const iv = setInterval(() => { apply(); if (window._outlookCollapseDefaultApplied) clearInterval(iv); }, 500);
+})();
+
+
+
 // ==================== LIVE-TIMING WIDGET HEIGHT RESIZE (≥1024px) ====================
 // The widget stays docked inside raceInfoPanel at all times — this only adjusts its
 // height within that column, dragging #liveTimingHeightHandle up/down. Width is fixed
@@ -1837,7 +2252,13 @@ window.toggleCompetitorsTable = function() {
         window.removeEventListener('touchend', onEnd);
     }
     function onStart(e) {
-        if (!window.matchMedia('(min-width:1024px)').matches) return;
+        // Drag-to-resize works wherever the CSS actually binds the widget's height to
+        // --lt-widget-h: always at ≥1024px, and on tablet landscape (768–1023px) too
+        // (see style.css) — but not in the portrait/phone single-scroll-column layout,
+        // where raceInfoPanel has no bounded height for this to resize against.
+        const resizable = window.matchMedia('(min-width:1024px)').matches
+            || window.matchMedia('(min-width:768px) and (orientation:landscape)').matches;
+        if (!resizable) return;
         dragging = true;
         handle.classList.add('active');
         const clientY = e.touches ? e.touches[0].clientY : e.clientY;
@@ -1916,6 +2337,17 @@ window.toggleCompetitorsTable = function() {
             const remainingSec = Math.max(0, totalSec - elapsedSec);
             el.textContent = formatRaceTime(remainingSec * 1000);
             el.title = window.t ? window.t('raceClockLabel') : 'RACE TIME';
+            // Verify against the app's own start-based timer: if the two differ by >3s the
+            // feed clock is winning (the app follows the feed) — flag it so it is visible.
+            window.clockDriftSec = null;
+            if (st && st.isRunning && st.startTime) {
+                const ownRemainingMs = Math.max(0, raceMs - (syncedNow - st.startTime));
+                window.clockDriftSec = Math.round((ownRemainingMs - remainingSec * 1000) / 1000);
+                if (Math.abs(window.clockDriftSec) > 3) {
+                    el.textContent += ' ⚠';
+                    el.title += ' — app timer differs from live timing by ' + window.clockDriftSec + 's (following live timing)';
+                }
+            }
             return;
         }
 
@@ -1932,8 +2364,10 @@ window.toggleCompetitorsTable = function() {
         el.textContent = '';
     }
 
-    // Run every second regardless of feed heartbeat rate
-    setInterval(tick, 1000);
+    // Runs twice a second so the widget clock doesn't visibly lag the raw feed by up to a
+    // full second just from local tick phase -- some of the "1-2s delay" reported was this,
+    // on top of the feed's own network/parse latency (which this can't remove).
+    setInterval(tick, 500);
     tick();
 })();
 
@@ -2091,3 +2525,107 @@ window.toggleCompetitorsTable = function() {
     }
 })();
 
+
+
+// Connect live timing during a race (the setup inputs stay in the DOM, so they hold the same values)
+window.connectLiveTimingMidRace = function() {
+    if (window.role !== 'host') return;
+    if (typeof window.checkProFeature === 'function' && !window.checkProFeature('liveTiming')) {
+        window.showProGate('Live Timing');
+        return;
+    }
+    const t = window.t || (k => k);
+    const status = document.getElementById('raceLtStatus');
+    const btn = document.querySelector('#raceLtForm .no-live-btn');
+    const url = document.getElementById('raceLtUrl').value.trim();
+    const value = document.getElementById('raceLtValue').value.trim();
+    const setStatus = (text, cls) => { if (status) { status.textContent = text; status.className = 'no-live-status' + (cls ? ' ' + cls : ''); } };
+    if (!url) { setStatus(t('enterUrl'), 'is-error'); return; }
+
+    // Keep the setup form in sync so saved state and updateSearchConfig() read the same values
+    const setupUrl = document.getElementById('liveTimingUrl');
+    const setupValue = document.getElementById('searchValue');
+    if (setupUrl) setupUrl.value = url;
+    if (setupValue) setupValue.value = value;
+
+    window.liveTimingConfig.url = url;
+    window.liveTimingConfig.demoMode = false;
+    window.liveTimingConfig.enabled = true;
+    window.updateSearchConfig();
+
+    if (window.liveTimingManager) { window.liveTimingManager.stop(); window.liveTimingManager = null; }
+    window.__liveTimingStarted = false;
+    window.liveData.position = null;
+    window.startLiveTimingUpdates();
+    if (typeof window.updateLiveTimingUI === 'function') window.updateLiveTimingUI();
+
+    if (btn) btn.disabled = true;
+    setStatus(t('testing') + '…');
+    let elapsed = 0;
+    const timer = setInterval(() => {
+        elapsed += 500;
+        const feedComps = (window.liveData.competitors || []).length;
+        if (window.liveData.position || (!value && feedComps > 0)) {
+            clearInterval(timer);
+            setStatus(window.liveData.position ? t('found') + ' P' + window.liveData.position : '✓ ' + feedComps, 'is-ok');
+            if (btn) btn.disabled = false;
+        } else if (elapsed >= 15000) {
+            clearInterval(timer);
+            setStatus(t('notFound'), 'is-error');
+            if (btn) btn.disabled = false;
+        }
+    }, 500);
+};
+
+
+// ==================== LIVE TIMING VISIBILITY: full / compact / hidden ====================
+// Lets a team reclaim screen space mid-race or mid-qualifying. Remembered per device.
+window.ltView = 'full';
+try { window.ltView = localStorage.getItem('strateger_lt_view') || 'full'; } catch (e) {}
+
+window.setLtView = function(view) {
+    if (view !== 'compact' && view !== 'hidden') view = 'full';
+    window.ltView = view;
+    try { localStorage.setItem('strateger_lt_view', view); } catch (e) {}
+    document.body.classList.toggle('lt-compact', view === 'compact');
+    document.body.classList.toggle('lt-hidden', view === 'hidden');
+    window.updateLtRestoreChip();
+    window.updateLtCompactSummary();
+};
+
+window.updateLtCompactSummary = function() {
+    const el = document.getElementById('ltCompactText');
+    if (!el || window.ltView !== 'compact') return;
+    const d = window.liveData || {};
+    const fmt = window.formatLapTime || function(x) { return x; };
+    const parts = [d.position ? 'P' + d.position : 'P-'];
+    if (d.lastLap) parts.push(fmt(d.lastLap));
+    if (d.bestLap) parts.push('★ ' + fmt(d.bestLap));
+    if (d.laps != null) parts.push('L' + d.laps);
+    el.textContent = parts.join(' · ');
+};
+
+window.updateLtRestoreChip = function() {
+    let chip = document.getElementById('ltRestoreChip');
+    const visible = id => { const e = document.getElementById(id); return !!e && !e.classList.contains('hidden'); };
+    const wanted = window.ltView === 'hidden' && (visible('raceDashboard') || visible('qualifyingDashboard'));
+    if (!wanted) { if (chip) chip.classList.add('hidden'); return; }
+    if (!chip) {
+        chip = document.createElement('button');
+        chip.id = 'ltRestoreChip';
+        chip.type = 'button';
+        chip.className = 'lt-restore-chip';
+        chip.onclick = function() { window.setLtView('full'); };
+        document.body.appendChild(chip);
+    }
+    chip.textContent = '📡 ' + ((window.t && window.t('live')) || 'Live') + ' ▸';
+    chip.setAttribute('aria-label', 'Show live timing');
+    chip.classList.remove('hidden');
+};
+
+(function initLtView() {
+    const apply = function() { window.setLtView(window.ltView); };
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', apply); else apply();
+    // keep the chip and compact summary current without touching the main UI update path
+    setInterval(function() { window.updateLtRestoreChip(); window.updateLtCompactSummary(); }, 1000);
+})();

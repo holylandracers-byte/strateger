@@ -57,7 +57,7 @@ window.updateShareUI = function() {
     if (window.myId && window.role === 'host') {
         if (shareBtn) {
             shareBtn.classList.remove('hidden');
-            shareBtn.innerHTML = '<i class="fas fa-link"></i> <span class="hidden sm:inline">Invite</span>';
+            shareBtn.innerHTML = '<i class="fas fa-link"></i><span>Invite</span>';
         }
         
         if (driverLinkBtn) {
@@ -310,16 +310,16 @@ window.initHostPeer = function() {
 
     try {
         const hasSavedRace = localStorage.getItem('strateger_race_state');
-        let storedId = localStorage.getItem('strateger_host_id');
+        let storedId = sessionStorage.getItem('strateger_host_id');
         
         // יצירת ID חדש אם אין מירוץ שמור
         if (!hasSavedRace) {
             storedId = String(Math.floor(1000000 + Math.random() * 9000000));
-            localStorage.setItem('strateger_host_id', storedId);
+            sessionStorage.setItem('strateger_host_id', storedId);
             console.log("🆕 New Race Setup: Generated New Host ID");
         } else if (!storedId) {
             storedId = String(Math.floor(1000000 + Math.random() * 9000000));
-            localStorage.setItem('strateger_host_id', storedId);
+            sessionStorage.setItem('strateger_host_id', storedId);
         }
         
         window.myId = storedId;
@@ -360,7 +360,7 @@ window.initHostPeer = function() {
                 }
                 // Only send chat history to previously approved viewers (reconnections)
                 if (window.approvedViewers.has(c.peer)) {
-                    const chatHistory = JSON.parse(localStorage.getItem('strateger_chat_history') || '[]');
+                    const chatHistory = JSON.parse(sessionStorage.getItem('strateger_chat_history') || '[]');
                     if(chatHistory.length) {
                         chatHistory.forEach(msg => c.send(msg));
                     }
@@ -588,7 +588,7 @@ window.initHostPeer = function() {
         window.peer.on('error', (err) => {
             console.error("Peer Error:", err);
              if (err.type === 'unavailable-id') {
-                localStorage.removeItem('strateger_host_id');
+                sessionStorage.removeItem('strateger_host_id');
                 window.initHostPeer(); 
              }
         });
@@ -605,12 +605,11 @@ window.copyInviteLink = function() {
     navigator.clipboard.writeText(link).then(() => {
         const btn = document.getElementById('shareRaceBtn');
         const original = btn.innerHTML;
-        btn.innerHTML = '<i class="fas fa-check"></i>';
-        btn.classList.add('bg-green-500', 'text-white');
+        btn.innerHTML = '<i class="fas fa-check"></i><span>Copied</span>';
         
         setTimeout(() => {
             btn.innerHTML = original;
-            btn.classList.remove('bg-green-500', 'text-white');
+            
         }, 2000);
     }).catch(err => {
         prompt("Copy this link:", link);
@@ -626,12 +625,10 @@ window.copyDriverLink = function() {
         const btn = document.getElementById('driverLinkBtn');
         if (!btn) return;
         const original = btn.innerHTML;
-        btn.innerHTML = '<i class="fas fa-check"></i> <span class="hidden sm:inline">Copied!</span>';
-        btn.style.background = '#15803d';
+        btn.innerHTML = '<i class="fas fa-check"></i><span>Copied</span>';
         
         setTimeout(() => {
             btn.innerHTML = original;
-            btn.style.background = '';
         }, 2000);
     }).catch(err => {
         prompt("Copy this driver link:", link);
@@ -803,6 +800,7 @@ window.connectToHost = function(hostId) {
             window.conn.on('data', (data) => {
                 if (data.type === 'UPDATE' || data.type === 'INIT') {
                     // Always absorb state data
+                    window._lastHostUpdateAt = Date.now();   // spectator freshness indicator
                     if (data.state) window.state = data.state;
                     if (data.config) window.config = data.config;
                     if (data.drivers) window.drivers = data.drivers;
@@ -930,7 +928,7 @@ window.connectToHost = function(hostId) {
                     const feed = document.getElementById('chatFeed');
                     if (feed && feed.children.length === 0) {
                         try {
-                            const history = JSON.parse(localStorage.getItem('strateger_chat_history') || '[]');
+                            const history = JSON.parse(sessionStorage.getItem('strateger_chat_history') || '[]');
                             history.forEach(msg => window.renderChatMessage(msg));
                         } catch(e) {}
                     }
@@ -1067,12 +1065,12 @@ window.broadcast = function(specificPayload = null) {
         if (payload.type === 'CHAT') {
             // Save to host history locally
             try {
-                let history = JSON.parse(localStorage.getItem('strateger_chat_history') || '[]');
+                let history = JSON.parse(sessionStorage.getItem('strateger_chat_history') || '[]');
                 const exists = history.some(m => m.timestamp === payload.timestamp && m.text === payload.text && m.sender === payload.sender);
                 if (!exists) {
                     history.push(payload);
                     if (history.length > 200) history.shift();
-                    localStorage.setItem('strateger_chat_history', JSON.stringify(history));
+                    sessionStorage.setItem('strateger_chat_history', JSON.stringify(history));
                 }
             } catch (e) { console.error('Failed saving chat history', e); }
 
@@ -1152,3 +1150,24 @@ window.broadcast = function(specificPayload = null) {
         window.updateViewerDropdown();
         console.log('Cleared reserved viewer names');
     };
+
+
+// === Spectator (watcher) mode ===
+// A spectator is a joined client that is not a driver: read-only UI, no controls, and a
+// freshness badge so they know the numbers are live. Styling lives in css (body.watcher-mode).
+setInterval(function () {
+    const isWatcher = window.role === 'client' && !window._autoDriverMode;
+    document.body.classList.toggle('watcher-mode', isWatcher);
+    const badge = document.getElementById('watcherBadge');
+    if (!badge) return;
+    badge.classList.toggle('hidden', !isWatcher);
+    badge.classList.toggle('flex', isWatcher);
+    if (!isWatcher) return;
+    const fresh = document.getElementById('watcherFresh');
+    if (!fresh) return;
+    const age = window._lastHostUpdateAt ? Math.round((Date.now() - window._lastHostUpdateAt) / 1000) : null;
+    const t = window.t || (k => k);
+    if (age == null) { fresh.textContent = t('connecting') || 'Connecting…'; fresh.className = 'font-mono text-gray-400'; }
+    else if (age > 20) { fresh.textContent = '⚠ ' + (t('watchStale') || 'No update') + ' ' + age + 's'; fresh.className = 'font-mono text-red-400'; }
+    else { fresh.textContent = age + 's'; fresh.className = 'font-mono text-gray-400'; }
+}, 1000);

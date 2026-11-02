@@ -84,6 +84,26 @@ body {
     #chatPanel { bottom: calc(64px + var(--safe-bottom)); }
 }
 
+/* ==================== RACE CHAT — responsive sizing ==================== */
+/* Laptop/desktop: more screen to spare, so give the panel room to breathe */
+@media (min-width: 1024px) {
+    #chatPanel { width: 22rem; height: 26rem; }
+}
+/* Tablet: a bit larger than the mobile default, still compact */
+@media (min-width: 601px) and (max-width: 1023px) {
+    #chatPanel { width: 20rem; height: 24rem; }
+}
+/* Phones: a narrow fixed-width box wastes space and can crowd the screen edge —
+   widen it into a near-full-width sheet instead of a small floating box */
+@media (max-width: 600px) {
+    #chatPanel {
+        left: 12px;
+        right: 12px;
+        width: auto;
+        height: min(65vh, 26rem);
+    }
+}
+
 /* ==================== HEADER PROTECTION ==================== */
 
 /* ==================== RTL LAYOUT ==================== */
@@ -236,51 +256,140 @@ body:has(#qualifyingDashboard:not(.hidden)) {
 /* raceDashboard fills the space below the sticky header.
    Use a CSS var so it's easy to tune per device. */
 :root { --header-h: 46px; --dash-info-pct: 60%; --dash-ctrl-pct: 40%; }
+@media (min-width: 1024px) { :root { --dash-info-pct: 50%; } }
 
 #raceDashboard:not(.hidden) {
     height: calc(100dvh - var(--header-h));
     min-height: 0;
 }
 
-/* Portrait: raceInfoPanel height driven by CSS var (set by resizer JS) */
+/* Portrait: raceInfoPanel height driven by CSS var (set by resizer JS) — overridden below on narrow portrait */
 #racePanelsWrapper { display: flex !important; flex-direction: column !important; }
 #raceInfoPanel {
     flex: 0 0 var(--dash-info-pct, 60%) !important;
     min-height: 80px !important;
+    overflow-x: hidden !important;
     overflow-y: auto !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
 }
 #raceControlDock {
     flex: 0 0 auto !important;
     min-height: 80px !important;
+    overflow-x: hidden !important;
     overflow-y: auto !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+}
+#racePanelsWrapper {
+    overflow-x: hidden !important;
+    max-width: 100% !important;
 }
 
-/* Portrait tablet: sticky pit dock, scrollable info above */
-@media (min-width: 600px) and (max-width: 1023px) and (orientation: portrait) {
+/* Phone + tablet portrait: ONE scrollable column so every panel is reachable */
+@media (max-width: 1023px) and (orientation: portrait) {
     #racePanelsWrapper {
-        flex-direction: column !important;
+        flex: 1 1 0 !important;
         min-height: 0 !important;
-    }
-    #raceInfoPanel {
-        flex: 1 1 auto !important;
-        min-height: 0 !important;
-        max-height: none !important;
+        overflow-x: hidden !important;
         overflow-y: auto !important;
         -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+        padding-bottom: max(8px, env(safe-area-inset-bottom));
+    }
+    #raceInfoPanel {
+        flex: none !important;
+        width: 100% !important;
+        height: auto !important;
+        max-height: none !important;
+        min-height: 0 !important;
+        overflow: visible !important;
     }
     #raceControlDock {
-        flex: 0 0 auto !important;
-        position: sticky;
-        bottom: 0;
-        z-index: 15;
-        margin-top: auto;
-        box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.45);
-        border-top: 1px solid rgba(34, 211, 238, 0.25) !important;
-        padding-bottom: max(8px, env(safe-area-inset-bottom)) !important;
+        flex: none !important;
+        width: 100% !important;
+        height: auto !important;
+        min-height: 0 !important;
+        overflow: visible !important;
+        position: static !important;
+        box-shadow: none !important;
+        margin-top: 0 !important;
+        padding-bottom: max(12px, env(safe-area-inset-bottom)) !important;
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 8px !important;
     }
+    #raceControlDock > #pitActionGroup {
+        margin-top: 0 !important;
+    }
+    #dashPanelResizer {
+        display: none !important;
+    }
+    /* Live timing: compact — leave room for stint/strategy/pit below */
+    #raceInfoPanel #liveTimingWidgetWrapper {
+        height: auto !important;
+        max-height: min(36vh, 280px) !important;
+        min-height: 100px !important;
+    }
+    #liveTimingWidgetWrapper .lt-table-scroll {
+        max-height: min(110px, 18vh) !important;
+        flex: none !important;
+    }
+    /* Driver stats: flow with page scroll, no nested trap */
+    .stats-table-scroll {
+        max-height: none !important;
+        overflow: visible !important;
+    }
+}
+
+/* Short landscape phones: same unified scroll (split leaves no room) */
+@media (max-width: 767px) and (orientation: landscape) {
+    #racePanelsWrapper {
+        flex: 1 1 0 !important;
+        min-height: 0 !important;
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch;
+        flex-direction: column !important;
+    }
+    #raceInfoPanel,
+    #raceControlDock {
+        flex: none !important;
+        height: auto !important;
+        max-height: none !important;
+        overflow: visible !important;
+    }
+    #raceControlDock > #pitActionGroup {
+        margin-top: 0 !important;
+    }
+    #dashPanelResizer {
+        display: none !important;
+    }
+    #raceInfoPanel #liveTimingWidgetWrapper {
+        height: auto !important;
+        max-height: min(45vh, 220px) !important;
+    }
+    .stats-table-scroll {
+        max-height: none !important;
+        overflow: visible !important;
+    }
+}
+
+/* Portrait tablet (600–1023): sticky pit dock when side-by-side NOT active — kept for wide portrait only if needed; unified scroll above wins */
+@media (min-width: 600px) and (max-width: 1023px) and (orientation: portrait) {
     #pitEntryBtn {
         min-height: 52px;
         font-size: 1.125rem;
+    }
+    /* The single-scrolling-column layout above (line ~289) caps the live-timing
+       widget at a phone-tuned 280px/110px so the pit controls stay reachable below
+       it without much scrolling — but a tablet has plenty of vertical room to spare,
+       so give the standings table much more of it here. */
+    #raceInfoPanel #liveTimingWidgetWrapper {
+        max-height: min(60vh, 520px) !important;
+    }
+    #liveTimingWidgetWrapper .lt-table-scroll {
+        max-height: min(38vh, 360px) !important;
     }
 }
 
@@ -327,9 +436,9 @@ body.strateger-page-hidden * {
     /* Shrink hero so it doesn't eat half the screen height */
     .setup-hero { padding: 6px 12px !important; margin-bottom: 6px !important; }
     .setup-hero-title { font-size: 1.1rem !important; }
-    .setup-hero-sub { font-size: 0.6rem !important; }
+    .setup-hero-sub { font-size: 0.6875rem !important; }
     .quick-actions-strip { margin-top: 4px !important; gap: 3px !important; }
-    .quick-pill { padding: 3px 8px !important; font-size: 0.6rem !important; }
+    .quick-pill { padding: 3px 8px !important; font-size: 0.6875rem !important; }
 
     /* Ensure setup 2-col grid is active and well-spaced */
     #setupColumnsGrid {
@@ -461,7 +570,7 @@ body.strateger-page-hidden * {
 .theme-preview img { display: block; width: 100%; height: 100%; object-fit: cover; }
 
 .theme-label {
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 600;
     color: #9ca3af;
     text-align: center;
@@ -548,10 +657,75 @@ body.strateger-page-hidden * {
 header {
     position: sticky;
     top: 0;
-    z-index: 50; 
+    z-index: 120 !important; /* above the docked live-timing widget (100); below full-screen views (150) and modals (190) */
     background-color: var(--navy-900);
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
     width: 100%;
+}
+
+/* Header: logo, team name, status, one Menu */
+.header-menu-btn {
+    position: relative;
+    width: 36px; height: 36px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 8px;
+    color: #cbd5e1;
+    border: 1px solid #1e293b;
+    background: transparent;
+    transition: background .15s, color .15s;
+}
+.header-menu-btn:hover { background: var(--navy-800, #0f1c33); color: #fff; }
+.header-menu-btn:focus-visible, .hdr-menu-item:focus-visible { outline: 2px solid #22d3ee; outline-offset: 2px; }
+/* a pending viewer request puts a dot on the Menu button */
+.header-overflow-wrap:has(#viewerPendingBadge:not(.hidden)) .header-menu-btn::after {
+    content: ''; position: absolute; top: 4px; right: 4px;
+    width: 8px; height: 8px; border-radius: 50%; background: #ef4444;
+}
+.header-menu {
+    position: absolute; right: 0; top: calc(100% + 6px);
+    width: 248px; max-height: calc(100vh - 70px); overflow-y: auto;
+    background: #0f172a; opacity: 1;
+    border: 1px solid #334155; border-radius: 10px;
+    box-shadow: 0 16px 40px rgba(0,0,0,.7);
+    padding: 4px 0; z-index: 121;
+}
+.header-menu.hidden { display: none; }
+.hdr-menu-group { padding: 6px 6px; }
+.hdr-menu-group + .hdr-menu-group { border-top: 1px solid #1e293b; }
+.hdr-menu-label { padding: 2px 10px 4px; font-size: 12px; color: #94a3b8; }
+.hdr-menu-item {
+    width: 100%; display: flex; align-items: center; gap: 10px;
+    padding: 9px 10px; min-height: 40px;
+    border-radius: 6px; font-size: 14px; color: #e2e8f0; text-align: start;
+    background: transparent; border: 0; cursor: pointer;
+}
+.hdr-menu-item.hidden { display: none !important; }
+button.hdr-menu-item:hover { background: var(--navy-800, #0f1c33); color: #fff; }
+.hdr-menu-item > i { width: 18px; text-align: center; color: #94a3b8; flex-shrink: 0; }
+.hdr-menu-item span.hidden { display: inline !important; }
+.hdr-menu-lang select { flex: 1; min-width: 0; background: var(--navy-800, #0f1c33); color: #fff; border: 1px solid #334155; border-radius: 6px; padding: 4px 6px; font-size: 14px; }
+.hdr-menu-badge { margin-inline-start: auto; background: #ef4444; color: #fff; font-size: 12px; font-weight: 700; min-width: 20px; padding: 0 6px; border-radius: 10px; text-align: center; }
+.hdr-menu-signout { color: #94a3b8; padding: 6px; border-radius: 6px; }
+.hdr-menu-signout:hover { color: #f87171; }
+header.header-bar { gap: 8px; }
+.header-center { min-width: 0; }
+
+@media (max-width: 767px) {
+    :root { --header-h: 44px; }
+    header.header-bar { padding: 4px 8px; min-height: var(--header-h); }
+    .header-logo-link svg { width: 26px; height: 26px; }
+    .header-center { flex: 1 1 auto; padding: 0 4px; }
+    .header-center .team-identity-input { font-size: 0.8125rem; line-height: 1.2; padding-top: 1px; padding-bottom: 1px; }
+    #headerTeamLogoImg { width: 1.25rem !important; height: 1.25rem !important; }
+    .header-menu-btn { width: 40px; height: 40px; }
+}
+
+.scrollbar-none {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+    display: none;
 }
 
 /* ==================== WIDE SCREEN SUPPORT ==================== */
@@ -654,6 +828,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 /* Drag & Drop Stint Reorder */
 .draggable-source { opacity: 0.4; }
 .drag-over { outline: 2px dashed var(--ice); outline-offset: -2px; border-radius: 4px; }
+#driverScheduleList .stint-row,
+#driverScheduleList .stint-driver-swap {
+    touch-action: pan-y;
+}
 
 /* ==================== DASHBOARD PANEL RESIZER ==================== */
 /* Portrait (default): horizontal bar between top and bottom panels */
@@ -728,7 +906,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .stint-outlook-pill {
     display: inline-flex;
     align-items: center;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 700;
     padding: 2px 7px;
     border-radius: 999px;
@@ -742,6 +920,11 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .pill-rest     { background: rgba(107,114,128,0.15); color: #9ca3af; border: 1px solid rgba(107,114,128,0.3); }
 .pill-impossible { background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.4); animation: pulse 1.5s infinite; }
 .pill-add-stop   { background: rgba(239,68,68,0.12); color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
+.pill-done       { background: rgba(107,114,128,0.1); color: #6b7280; border: 1px dashed rgba(107,114,128,0.35); }
+.pill-current    { box-shadow: 0 0 0 1px rgba(34,211,238,0.5) inset; }
+.stint-outlook-pill.pill-editable { cursor: pointer; }
+.stint-outlook-pill.pill-editable:active { transform: scale(0.94); }
+.stint-outlook-pill.pill-editable:hover { filter: brightness(1.25); }
 
 /* ==================== DRIVER COLOR PICKER ==================== */
 .driver-color-picker {
@@ -939,7 +1122,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .driver-input:focus { color: #fff; }
 
 .driver-starter-label {
-    font-size: 9px;
+    font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.08em;
     color: #22d3ee;
@@ -972,7 +1155,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .driver-stamina-input::placeholder { color: #6b7280; font-weight: 400; }
 .driver-stamina-input:focus { border-color: #f97316; }
 .driver-stamina-label {
-    font-size: 9px;
+    font-size: 11px;
     color: #f97316;
     font-weight: 600;
     white-space: nowrap;
@@ -984,7 +1167,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
     min-width: 22px;
     height: 20px;
     border-radius: 4px;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 700;
     color: #fff;
     display: flex;
@@ -1051,22 +1234,22 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
     display: flex; align-items: center; gap: 6px; flex-shrink: 0;
 }
 .cr-pos  { width: 20px; text-align: right; font-weight: 700; font-size: 11px; color: #9ca3af; flex-shrink: 0; }
-.cr-kart { font-size: 10px; color: #6b7280; flex-shrink: 0; min-width: 22px; }
+.cr-kart { font-size: 11px; color: #6b7280; flex-shrink: 0; min-width: 22px; }
 .cr-kart.fast-kart { color: var(--neon); font-weight: 700; text-shadow: 0 0 4px rgba(163,230,53,0.4); }
-.cr-cat  { font-size: 8px; font-weight: 700; flex-shrink: 0; min-width: 0; padding: 0 3px; border-radius: 2px; text-transform: uppercase; letter-spacing: 0.5px; }
+.cr-cat  { font-size: 11px; font-weight: 700; flex-shrink: 0; min-width: 0; padding: 0 3px; border-radius: 2px; text-transform: uppercase; letter-spacing: 0.5px; }
 .cr-cat:empty { display: none; }
 .cat-gold   { color: #fbbf24; background: rgba(251,191,36,0.15); }
 .cat-silver { color: #94a3b8; background: rgba(148,163,184,0.15); }
 .cat-bronze { color: #d97706; background: rgba(217,119,6,0.15); }
 .cat-other  { color: #a78bfa; background: rgba(167,139,250,0.12); }
 .cr-name { font-size: 12px; color: #e5e7eb; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
-.cr-badges { font-size: 10px; display: flex; gap: 2px; flex-shrink: 0; }
+.cr-badges { font-size: 11px; display: flex; gap: 2px; flex-shrink: 0; }
 .cr-gap  { font-size: 11px; text-align: right; width: 58px; font-family: monospace; flex-shrink: 0; }
-.cr-int  { font-size: 10px; text-align: right; width: 46px; font-family: monospace; color: #6b7280; flex-shrink: 0; }
+.cr-int  { font-size: 11px; text-align: right; width: 46px; font-family: monospace; color: #6b7280; flex-shrink: 0; }
 .cr-lap  { font-size: 11px; text-align: right; width: 58px; font-family: monospace; color: #9ca3af; flex-shrink: 0; }
-.cr-avg  { font-size: 10px; text-align: right; width: 52px; font-family: monospace; color: #6b7280; flex-shrink: 0; }
-.cr-laps { font-size: 9px; text-align: right; width: 24px; color: #6b7280; flex-shrink: 0; }
-.cr-pits { font-size: 9px; text-align: center; width: 22px; color: var(--fuel); font-weight: 600; flex-shrink: 0; }
+.cr-avg  { font-size: 11px; text-align: right; width: 52px; font-family: monospace; color: #6b7280; flex-shrink: 0; }
+.cr-laps { font-size: 11px; text-align: right; width: 24px; color: #6b7280; flex-shrink: 0; }
+.cr-pits { font-size: 11px; text-align: center; width: 22px; color: var(--fuel); font-weight: 600; flex-shrink: 0; }
 
 /* Hide extra columns on very small phones */
 @media (max-width: 380px) {
@@ -1103,14 +1286,13 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 
 /* Row highlights */
 .competitor-row.our-team { background: rgba(34, 211, 238, 0.15); border: 1px solid var(--ice); }
-.competitor-row.danger-zone { background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.35); }
 .competitor-row:hover { background: rgba(255, 255, 255, 0.05); }
 
 /* Kart ranking panel — foldable header */
 .kart-panel-header {
     display: flex; justify-content: space-between; align-items: center;
     cursor: pointer; user-select: none;
-    font-size: 9px; color: #6b7280; font-weight: 700; letter-spacing: 0.1em;
+    font-size: 11px; color: #6b7280; font-weight: 700; letter-spacing: 0.1em;
     padding: 2px 0; margin-bottom: 2px;
 }
 .kart-panel-header:hover { color: #9ca3af; }
@@ -1285,10 +1467,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
         max-width: none !important;
     }
     
-    /* Header buttons: smaller padding for tight fit */
-    header button {
-        min-height: 36px;
-        min-width: 36px;
+    /* Header buttons: compact on small phones (detailed rules in 767px block) */
+    header.header-bar button:not(#pitEntryBtn) {
+        min-height: 34px;
+        min-width: 34px;
     }
     
     /* Preview footer: wrap buttons */
@@ -1681,7 +1863,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 0.6rem;
+    font-size: 0.6875rem;
     font-weight: 800;
     color: #4b5563;
     letter-spacing: 0.1em;
@@ -1753,7 +1935,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     width: 22px; height: 22px;
     border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
-    font-size: 0.6rem; font-weight: 900;
+    font-size: 0.6875rem; font-weight: 900;
     flex-shrink: 0;
     transition: all 0.2s;
 }
@@ -1820,7 +2002,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 }
 .outcome-row:last-child { border-bottom: none; }
 .outcome-label {
-    font-size: 0.6rem;
+    font-size: 0.6875rem;
     font-weight: 700;
     color: #6b7280;
     text-transform: uppercase;
@@ -1913,7 +2095,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     background: rgba(0,0,0,0.9);
     border: 1px solid rgba(255,255,255,0.15);
     color: white;
-    font-size: 0.6rem;
+    font-size: 0.6875rem;
     font-weight: 600;
     padding: 4px 8px;
     border-radius: 6px;
@@ -1991,12 +2173,45 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     height: 4px !important;
 }
 
-/* Onboarding overlay */
-#onboardingOverlay {
-    backdrop-filter: blur(4px);
+/* Walkthrough spotlight */
+body.wt-active {
+    overflow: hidden;
 }
-#onboardStep {
-    transition: opacity 0.3s ease;
+.wt-spotlight-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.72);
+    backdrop-filter: blur(2px);
+}
+.wt-spotlight-ring {
+    position: fixed;
+    border: 2px solid rgba(34, 211, 238, 0.85);
+    border-radius: 12px;
+    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.72), 0 0 24px rgba(34, 211, 238, 0.35);
+    transition: top 0.28s ease, left 0.28s ease, width 0.28s ease, height 0.28s ease;
+    z-index: 151;
+    box-sizing: border-box;
+    pointer-events: none;
+}
+.wt-tooltip {
+    position: fixed;
+    z-index: 152;
+    max-width: min(340px, calc(100vw - 24px));
+    background: #0f1a2e;
+    border: 1px solid rgba(34, 211, 238, 0.45);
+    border-radius: 16px;
+    padding: 16px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+}
+.wt-tooltip.wt-tooltip-center {
+    max-width: min(380px, calc(100vw - 32px));
+}
+.lang-pick-btn:focus-visible {
+    outline: 2px solid rgba(34, 211, 238, 0.6);
+    outline-offset: 2px;
+}
+#languageOverlay {
+    backdrop-filter: blur(6px);
 }
 
 /* Pro upgrade modal glow */
@@ -2033,7 +2248,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
     /* Qualifying quick-stats grid: 2-col is fine, just bump label size */
     #qualifyingDashboard .grid-cols-2 .text-\[9px\] {
-        font-size: 10px !important;
+        font-size: 11px !important;
     }
 
     /* Stint outlook pills: allow wrap on narrow screens */
@@ -2044,7 +2259,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
     /* Strategy overview: prevent pill overflow */
     .stint-outlook-pill {
-        font-size: 10px !important;
+        font-size: 11px !important;
         padding: 2px 6px !important;
     }
 
@@ -2150,7 +2365,53 @@ input[type="date"]::-webkit-calendar-picker-indicator {
    which silently clipped extra driver rows with no scrollbar at all instead of scrolling. */
 .stats-table-scroll {
     max-height: 260px;
+    overflow-x: hidden;
     overflow-y: auto;
+}
+#statsTableGroup {
+    min-width: 0;
+    max-width: 100%;
+}
+#statsTableGroup table {
+    table-layout: fixed;
+    width: 100%;
+}
+#statsTableGroup col.toggle-col { width: 24px; }
+#statsTableGroup col.stops-col { width: 28px; }
+#statsTableGroup col.total-col { width: 76px; }
+#statsTable .stat-driver-wrap {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    overflow: hidden;
+}
+#statsTable .stat-driver-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+#statsTable .stat-total-cell {
+    min-width: 0;
+    overflow: hidden;
+}
+#statsTable .stat-time {
+    font-size: 11px;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+#statsTable .stat-pct {
+    font-size: 11px;
+    color: #6b7280;
+    line-height: 1.1;
+}
+#statsTable .stat-log-grid {
+    display: grid;
+    grid-template-columns: 1.5rem 1fr 1fr;
+    gap: 4px;
+    align-items: center;
 }
 
 /* #pitActionGroup must win over raceControlDock's own Tailwind `space-y-1.5` sibling-margin
@@ -2190,6 +2451,26 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     max-height: 180px;
 }
 
+/* Original Apex view: fixed height on narrow screens; on wide screens it fills the
+   widget's user-resizable height (drag handle) instead of staying a 240px strip. */
+#apexIframe {
+    height: 240px;
+    border: none;
+    background: #0a1120;
+}
+@media (min-width: 1024px) {
+    #raceInfoPanel #apexIframeContainer:not(.hidden) {
+        flex: 1 1 0;
+        min-height: 0;
+        display: flex;
+    }
+    #raceInfoPanel #apexIframe {
+        flex: 1 1 auto;
+        height: 100%;
+        min-height: 0;
+    }
+}
+
 /* ---- Live-timing widget height-resize handle (≥1024px only) ---- */
 .lt-height-handle {
     display: none;
@@ -2220,6 +2501,54 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     }
 }
 
+/* ---- Same drag-to-resize on landscape tablets (768–1023px) ---- */
+/* raceInfoPanel is a bounded, internally-scrolling column here too (see the 2-column
+   tablet-landscape block above), so the same --lt-widget-h binding used at ≥1024px
+   works — it just wasn't wired up below 1024px, leaving the table stuck at a fixed
+   180px with no way to see more of it. */
+@media (min-width: 768px) and (max-width: 1023px) and (orientation: landscape) {
+    .lt-height-handle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 14px;
+        margin-top: 2px;
+        cursor: row-resize;
+        user-select: none;
+        -webkit-user-select: none;
+        touch-action: none;
+        flex-shrink: 0;
+    }
+    .lt-height-handle span {
+        width: 40px;
+        height: 4px;
+        border-radius: 2px;
+        background: rgba(255,255,255,0.15);
+        transition: background 0.2s;
+    }
+    .lt-height-handle:hover span,
+    .lt-height-handle.active span {
+        background: rgba(239,68,68,0.6);
+    }
+    #raceInfoPanel #liveTimingWidgetWrapper {
+        height: var(--lt-widget-h, 360px);
+        min-height: 180px;
+        max-height: calc(100% - 16px);
+        display: flex;
+        flex-direction: column;
+    }
+    #raceInfoPanel #liveTimingPanel {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+    }
+    #raceInfoPanel #liveTimingPanel .lt-table-scroll {
+        flex: 1 1 0;
+        max-height: none;
+    }
+}
+
 /* ==================== TEAM LOGO (PRO) ==================== */
 
 .team-logo-cell {
@@ -2241,7 +2570,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    font-size: 0.6rem;
+    font-size: 0.6875rem;
     padding: 2px 6px;
     border-radius: 4px;
     background: rgba(34,211,238,0.12);
@@ -2277,20 +2606,22 @@ input[type="date"]::-webkit-calendar-picker-indicator {
         align-items: stretch !important;
     }
     #raceInfoPanel {
-        flex: 0 0 50% !important;
-        width: 50% !important;
-        max-width: 50% !important;
+        flex: 0 0 var(--dash-info-pct, 50%) !important;
+        width: var(--dash-info-pct, 50%) !important;
+        max-width: none !important;
         min-width: 0 !important;
-        border-right: 1px solid rgba(55,65,81,0.5) !important;
+        order: 0;
+        border-right: none !important;
         border-bottom: none !important;
         overflow-y: auto !important;
         padding: 10px 12px !important;
     }
     #raceControlDock {
-        flex: 0 0 50% !important;
-        width: 50% !important;
-        max-width: 50% !important;
+        flex: 1 1 0 !important;
+        width: auto !important;
+        max-width: none !important;
         min-width: 0 !important;
+        order: 2;
         border-top: none !important;
         border-left: none !important;
         display: flex !important;
@@ -2319,11 +2650,18 @@ input[type="date"]::-webkit-calendar-picker-indicator {
         flex: 1 1 0;
         max-height: none;
     }
-    /* The generic panel-split resizer has no job at the fixed 50/50 width — the
-       live-timing widget's own height handle is the relevant control here instead. */
+    /* Draggable vertical divider between the two columns (width split, double-click = 50/50) */
     #dashPanelResizer {
-        display: none !important;
+        display: flex !important;
+        order: 1;
+        width: 12px;
+        height: auto;
+        cursor: col-resize;
+        flex-direction: column;
+        flex-shrink: 0;
+        background: rgba(55,65,81,0.25);
     }
+    #dashPanelResizer:hover, #dashPanelResizer.active { background: rgba(34,211,238,0.12); }
 }
 
 /* ---- Competitor row — richer layout ---- */
@@ -2344,12 +2682,6 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     border-color: rgba(34,211,238,0.4) !important;
     box-shadow: inset 2px 0 0 var(--ice);
 }
-.competitor-row.danger-zone {
-    background: rgba(239,68,68,0.10) !important;
-    border-color: rgba(239,68,68,0.3) !important;
-    box-shadow: inset 2px 0 0 var(--danger);
-}
-
 /* ---- Position badge ---- */
 .cr-pos {
     width: 22px;
@@ -2389,7 +2721,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     flex-shrink: 0;
 }
 .cr-s1, .cr-s2, .cr-s3 {
-    font-size: 8.5px;
+    font-size: 11px;
     font-family: monospace;
     font-weight: 700;
     padding: 1px 3px;
@@ -2419,7 +2751,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 /* ---- Avg lap cell (per-stint) ---- */
 .cr-avg {
-    font-size: 10px;
+    font-size: 11px;
     width: 52px;
     text-align: right;
     font-family: monospace;
@@ -2435,14 +2767,14 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     color: var(--fuel);
     padding: 0 4px;
     border-radius: 3px;
-    font-size: 9px;
+    font-size: 11px;
     font-weight: 800;
     letter-spacing: 0.3px;
 }
 
 /* ---- Tire compound badge ---- */
 .cr-tire {
-    font-size: 8px;
+    font-size: 11px;
     font-weight: 900;
     width: 14px;
     height: 14px;
@@ -2465,7 +2797,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     gap: 6px;
     padding: 3px 8px;
     border-radius: 4px;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 800;
     letter-spacing: 0.05em;
     text-transform: uppercase;
@@ -2484,7 +2816,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     gap: 6px;
     padding: 4px 8px;
     border-radius: 6px;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -2511,7 +2843,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 /* ---- Kart ranking table ---- */
 #kartRankingPanel {
-    font-size: 10px;
+    font-size: 11px;
 }
 #kartRankingPanel .kart-row {
     display: flex;
@@ -2524,14 +2856,14 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 #kartRankingPanel .kart-rank { width: 16px; color: #6b7280; font-weight: 700; }
 #kartRankingPanel .kart-num  { width: 26px; font-weight: 800; color: var(--neon); }
 #kartRankingPanel .kart-best { flex: 1; font-family: monospace; color: #e5e7eb; }
-#kartRankingPanel .kart-delta { font-family: monospace; color: var(--s3); font-size: 9px; }
+#kartRankingPanel .kart-delta { font-family: monospace; color: var(--s3); font-size: 11px; }
 
 /* ---- Weather indicator ---- */
 .weather-badge {
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    font-size: 9px;
+    font-size: 11px;
     font-weight: 700;
     padding: 1px 6px;
     border-radius: 3px;
@@ -2562,7 +2894,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 }
 .right-zone-widget .widget-header:active { cursor: grabbing; }
 .widget-title {
-    font-size: 9px;
+    font-size: 11px;
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 0.1em;
@@ -2577,7 +2909,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     border-radius: 3px;
     background: transparent;
     color: #4b5563;
-    font-size: 9px;
+    font-size: 11px;
     cursor: pointer;
     transition: color 0.15s, background 0.15s;
     border: none;
@@ -2647,7 +2979,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     min-width: 0;
     padding: 4px 6px;
     border-radius: 6px;
-    font-size: 9px;
+    font-size: 11px;
     font-weight: 800;
     text-align: center;
     cursor: pointer;
@@ -2676,7 +3008,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     padding: 1px 5px;
     border-radius: 3px;
     font-family: monospace;
-    font-size: 9.5px;
+    font-size: 11px;
     font-weight: 700;
     background: rgba(56,189,248,0.10);
     color: var(--s1);
@@ -2708,8 +3040,8 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 }
 
 /* Adaptive font scaling for very long names */
-.cr-name.name-long   { font-size: 10px; }
-.cr-name.name-xlong  { font-size: 9px; letter-spacing: -0.3px; }
+.cr-name.name-long   { font-size: 11px; }
+.cr-name.name-xlong  { font-size: 11px; letter-spacing: -0.3px; }
 
 /* ---- Sector column header chips ---- */
 .lt-col-s1 { color: var(--s1); }
@@ -2803,16 +3135,15 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 /* ── Global touch-target floor for all action buttons on mobile ── */
 @media (max-width: 767px) {
-    /* Any tappable button in the race dashboard gets min 44 px height */
-    #raceControlDock button,
-    #pitModal button,
-    #pitInlineDock button,
-    header button {
-        min-height: 44px;
-        min-width: 44px;
+    /* Header buttons: compact icon targets on mobile (not full 44px bar) */
+    header button,
+    #headerOverflowMenu button {
+        min-height: 34px;
+        min-width: 34px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
     }
-
-    /* Pit entry / exit CTAs: larger touch area, clear visual hierarchy */
     #pitEntryBtn {
         min-height: 56px !important;
         font-size: 1.1rem !important;
@@ -2846,14 +3177,19 @@ input[type="date"]::-webkit-calendar-picker-indicator {
         font-size: 2rem !important;
     }
 
-    /* Header buttons: ensure consistent size */
-    header button,
+    #raceControlDock button,
+    #pitModal button,
+    #pitInlineDock button {
+        min-height: 44px;
+        min-width: 44px;
+    }
+
+    /* Header buttons: ensure consistent size in overflow menu */
     #headerOverflowMenu button {
         min-height: 40px;
-        min-width: 40px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
+        min-width: auto;
+        width: 100%;
+        justify-content: flex-start;
     }
 
     /* Bottom-dock control row: give each action button breathing room */
@@ -2944,3 +3280,364 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     border-radius: 12px;
     background: rgba(2,6,23,0.85);
 }
+
+/* ==================== ADMIN / TABLET ERGONOMICS ====================
+   Admin runs on tablets + laptops, often with gloves/outdoors. Rules: comfortable touch
+   targets (>=44px on touch devices), no sub-11px text, steady digits for timers,
+   visible keyboard focus, and reduced motion when the OS asks for it. */
+html { touch-action: manipulation; }   /* no double-tap-zoom delay; pinch-zoom stays allowed */
+
+.font-mono,
+#raceTimerDisplay,
+#liveRaceClock,
+#pitTimerDisplay,
+.competitor-row {
+    font-variant-numeric: tabular-nums;
+}
+
+:where(button, [role="button"], select, input, a):focus-visible {
+    outline: 2px solid #22d3ee;
+    outline-offset: 2px;
+}
+
+/* Font floor for the race screen on every screen size (was 8-9px in many labels) */
+@media all {
+    #racePanelsWrapper .text-\[8px\]  { font-size: 11px !important; }
+    #racePanelsWrapper .text-\[9px\]  { font-size: 11px !important; }
+    #racePanelsWrapper .text-\[10px\] { font-size: 11.5px !important; }
+}
+
+/* Touch targets: 44px minimum for the controls the admin taps mid-race */
+@media (pointer: coarse) and (min-width: 768px) {
+    .penalty-btn,
+    #apexViewToggle,
+    #forcePitOutBtn,
+    #teamLogoUploadBtn,
+    #liveTimingPanel button[onclick*="stopLiveTiming"],
+    #btnPush, #btnBad, #btnResetMode,
+    .header-menu-btn {
+        min-height: 44px;
+        min-width: 44px;
+        padding-inline: 12px;
+        font-size: 14px;
+    }
+    #raceControlDock .flex.items-center.gap-1 > .penalty-btn,
+    #raceControlDock .penalty-btn + .penalty-btn { margin-inline-start: 8px; }   /* >=8px between targets */
+    #liveTimingPanel .flex.items-center.gap-1 { gap: 8px; }
+    #pitEntryBtn { min-height: 60px; }
+    .competitor-row { min-height: 44px; height: 44px; }
+    .driver-drag-handle { min-width: 44px; min-height: 44px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* Driver mode is a full-screen takeover: nothing from the admin dashboard may show through */
+body.driver-mode-on #racePanelsWrapper,
+body.driver-mode-on #setupScreen { visibility: hidden !important; }
+
+/* Driver screen: readable minimums on small phones (were 3vw / 2.5vw = 9-11px at 375px) */
+.driver-race-timer { font-size: max(3vw, 17px); }
+.driver-label { font-size: max(2.5vw, 11px); letter-spacing: 0.08em; }
+#driverTapHint { font-size: 12px; color: rgba(255,255,255,0.6); }
+
+/* ==================== WATCHER (READ-ONLY SPECTATOR) MODE ====================
+   Joined clients that are not drivers. Everything that acts on the race is hidden; what is
+   left is what a person standing outside wants: position, gap, laps, clock, who is driving. */
+body.watcher-mode #pitActionGroup,
+body.watcher-mode #btnPush,
+body.watcher-mode #btnBad,
+body.watcher-mode #btnResetMode,
+body.watcher-mode #forcePitOutBtn,
+body.watcher-mode #teamLogoUploadBtn,
+body.watcher-mode #liveTimingPanel button[onclick*="stopLiveTiming"],
+body.watcher-mode #headerTeamLogoBtn,
+body.watcher-mode #driverLinkBtn,
+body.watcher-mode #shareRaceBtn,
+body.watcher-mode #viewerManageBtn,
+body.watcher-mode .driver-drag-handle,
+body.watcher-mode #liveTimingHeightHandle,
+body.watcher-mode #dashPanelResizer { display: none !important; }
+
+/* Phones: the standings are the point — give them the room the admin layout spends on controls */
+@media (max-width: 767px) {
+    body.watcher-mode #raceInfoPanel #liveTimingWidgetWrapper {
+        max-height: none !important;
+        height: auto !important;
+    }
+    body.watcher-mode #liveTimingWidgetWrapper .lt-table-scroll {
+        max-height: 46vh !important;
+        flex: none !important;
+    }
+    body.watcher-mode .competitor-row { min-height: 44px; }
+}
+
+body.watcher-mode #liveTeamHint { display: none !important; }
+#liveTeamHint { cursor: pointer; }
+
+/* Per-driver advance-warning lead-time input (driver-row) */
+.driver-notify-wrap {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    margin-right: 6px;
+    flex-shrink: 0;
+}
+.driver-notify-input {
+    width: 40px;
+    background: rgba(56,189,248,0.08);
+    border: 1px solid rgba(56,189,248,0.35);
+    border-radius: 5px;
+    color: #38bdf8;
+    font-size: 11px;
+    font-weight: 700;
+    text-align: center;
+    padding: 3px 2px;
+    min-height: 28px;
+}
+.driver-notify-input::placeholder { color: #0e7490; font-weight: 400; }
+.driver-notify-label { font-size: 11px; color: #6b7280; white-space: nowrap; }
+[dir="rtl"] .driver-notify-wrap { order: 10; }
+
+/* Second-team (laptop) watch: enabling control + card only shown at laptop width */
+.lt-laptop-only { display: none; }
+@media (min-width: 1280px) {
+    .lt-laptop-only { display: inline-flex; }
+    #secondaryTeamCard.lt-laptop-only:not(.hidden) { display: block; }
+}
+.competitor-row.second-team {
+    border-color: rgba(56,189,248,0.5);
+    background: rgba(56,189,248,0.07);
+}
+
+/* Strategy-outlook collapse (tablet default) */
+#remainingStintsPanel.outlook-collapsed #remStintsText { display: none; }
+
+/* Category filter: hide non-matching rows without touching row order/indices */
+.competitor-row.cr-filtered-out { display: none; }
+
+/* RTL: mr-1.5 on the driver color dot puts the margin on the wrong side of the box in RTL
+   flow (the name sits to the dot's LEFT, not right), so the dot and name touched with no
+   gap. Give it a real gap on both sides. */
+[dir="rtl"] #statsTable .stat-driver-wrap > .rounded-full {
+    margin-right: 0 !important;
+    margin-left: 6px !important;
+}
+
+/* Small gap between competitor rows so a row never visually touches a
+   blue (our-team) row's border. */
+.competitor-row { margin-bottom: 2px; }
+
+/* Tablet/phone (<1024px): the row's fixed-width right-hand columns (S1/S2/gap/interval/
+   avg) were being clipped by overflow:hidden with no way to reach them. Give the table real
+   horizontal scroll instead of silently cutting content off. */
+@media (max-width: 1023px) {
+    #competitorsTable {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    #competitorsTable .competitor-row {
+        min-width: 420px;
+    }
+    #competitorsTable .cr-name {
+        flex: 0 0 auto;
+        min-width: 90px;
+        max-width: 140px;
+    }
+    #competitorsTableHeader {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
+/* Consistent + fast kart: highlighted green so a pit-entry from one of them stands out as a
+   possible strategic opportunity (see window._checkConsistentFastPitEntries). */
+.competitor-row.consistent-fast:not(.our-team):not(.second-team) {
+    background: rgba(163,230,53,0.10) !important;
+    border-color: rgba(163,230,53,0.45) !important;
+    box-shadow: inset 2px 0 0 var(--neon);
+}
+
+
+/* Next action slot: show only the first (highest-priority) visible banner */
+#nextActionSlot > :not(.hidden) ~ :not(.hidden) { display: none !important; }
+
+/* Adjust drawer: pit-time penalties stay one tap away */
+.adjust-drawer { position: relative; }
+.adjust-summary {
+    list-style: none; cursor: pointer; user-select: none;
+    padding: 6px 12px; min-height: 32px; border-radius: 6px;
+    font-size: 12px; font-weight: 600; color: #94a3b8;
+    border: 1px solid #1e293b;
+}
+.adjust-summary::-webkit-details-marker { display: none; }
+.adjust-drawer[open] .adjust-summary { color: #fff; background: #0f1c33; }
+.adjust-drawer > div {
+    display: flex; align-items: center; gap: 6px; margin-top: 6px;
+}
+
+/* Phase steps: where you are in Plan -> Qualify -> Race (desktop header) */
+.phase-steps { display: none; list-style: none; margin: 0 0 0 12px; padding: 0; gap: 4px; align-items: center; }
+@media (min-width: 768px) { .phase-steps { display: flex; } }
+.phase-steps li { font-size: 13px; font-weight: 600; color: #64748b; padding: 4px 10px; border-radius: 6px; }
+.phase-steps li.hidden { display: none; }
+.phase-steps li + li::before { content: '›'; margin-right: 14px; margin-left: -4px; color: #475569; }
+.phase-steps li[aria-current="step"] { color: #fff; background: #0f1c33; }
+
+
+/* Quieter: no gradient text, readable minimum size for labels */
+.gradient-text { animation: none !important; background: none !important; -webkit-text-fill-color: currentColor !important; color: #22d3ee; }
+.text-\[8px\], .text-\[9px\], .text-\[10px\] { font-size: 11px !important; }
+@media (prefers-reduced-motion: reduce) {
+    .animate-pulse, .sync-dot, .live-dot { animation: none !important; }
+}
+
+.rules-group-title { font-size: 13px; font-weight: 700; color: #e2e8f0; margin: 14px 0 8px; padding-top: 10px; border-top: 1px solid #1e293b; }
+.collapse-body > .rules-group-title:first-of-type { border-top: 0; padding-top: 0; margin-top: 0; }
+
+/* Setup: one filled action, the rest are quiet links */
+.setup-links { display: flex; flex-wrap: wrap; gap: 4px 16px; justify-content: center; }
+.setup-links button { display: inline-flex; align-items: center; gap: 6px; padding: 8px 4px; min-height: 36px; font-size: 13px; color: #94a3b8; background: none; border: 0; cursor: pointer; }
+.setup-links button:hover { color: #22d3ee; }
+.setup-links button:focus-visible { outline: 2px solid #22d3ee; outline-offset: 2px; border-radius: 4px; }
+.setup-links-tag { font-size: 11px; font-weight: 700; color: #fbbf24; border: 1px solid rgba(251,191,36,.35); border-radius: 999px; padding: 0 6px; }
+.setup-links-ok { color: #4ade80; border-color: rgba(74,222,128,.35); }
+
+/* Race screen: explain the empty area when live timing is not connected */
+.no-live-hint { display: none; margin: 8px; padding: 12px; font-size: 14px; line-height: 1.4; color: #94a3b8; border: 1px dashed #334155; border-radius: 8px; }
+#raceInfoPanel:has(#liveTimingWidgetWrapper.hidden) > .no-live-hint { display: block; }
+
+.adjust-summary::after { content: " \00b1"; }
+
+/* Timers and lap times: equal-width digits so they don't jitter */
+.font-mono, [class*="font-mono"] { font-variant-numeric: tabular-nums; }
+
+/* Menu: hide a group when none of its items apply */
+.hdr-menu-group:not(:has(> .hdr-menu-item:not(.hidden))) { display: none; }
+
+.no-live-hint p { margin: 0 0 10px; }
+.no-live-form { display: flex; flex-direction: column; gap: 8px; max-width: 420px; }
+.no-live-btn { align-self: flex-start; min-height: 40px; padding: 8px 20px; border-radius: 8px; background: #22d3ee; color: #020617; font-weight: 700; font-size: 14px; }
+.no-live-btn:hover { background: #67e8f9; }
+.no-live-btn:disabled { opacity: .6; cursor: default; }
+.no-live-status { margin-top: 8px; font-size: 13px; min-height: 18px; }
+.no-live-status.is-error { color: #f87171; }
+.no-live-status.is-ok { color: #4ade80; font-weight: 700; }
+body.watcher-mode .no-live-form, body.watcher-mode .no-live-status { display: none; }
+
+/* ==================== SETUP: NUMBER STEPPERS + TABLET/LAPTOP LAYOUT ==================== */
+.num-stepper { display: flex; align-items: stretch; width: 100%; }
+.num-stepper > .input-field {
+    flex: 1 1 auto; min-width: 0; text-align: center;
+    border-radius: 0; margin: 0;
+    -moz-appearance: textfield; appearance: textfield;
+}
+.num-stepper > .input-field::-webkit-outer-spin-button,
+.num-stepper > .input-field::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.num-stepper > button {
+    flex: 0 0 38px; min-height: 38px;
+    background: var(--navy-800, #1e293b); color: #cbd5e1;
+    border: 1px solid #475569; font-size: 18px; line-height: 1; font-weight: 700;
+    cursor: pointer; user-select: none; touch-action: manipulation;
+    transition: background .12s, color .12s;
+}
+.num-stepper > button:first-child { border-radius: 8px 0 0 8px; border-inline-end: 0; }
+.num-stepper > button:last-child { border-radius: 0 8px 8px 0; border-inline-start: 0; }
+[dir="rtl"] .num-stepper > button:first-child { border-radius: 0 8px 8px 0; }
+[dir="rtl"] .num-stepper > button:last-child { border-radius: 8px 0 0 8px; }
+.num-stepper > button:hover { background: #334155; color: #22d3ee; }
+.num-stepper > button:active { background: #22d3ee; color: #0f172a; }
+.num-stepper > button:focus-visible { outline: 2px solid #22d3ee; outline-offset: -2px; }
+.num-stepper .num-unit {
+    position: absolute; pointer-events: none; font-size: 11px; color: #64748b;
+}
+.num-stepper-hint-off > .input-field:placeholder-shown { color: #64748b; }
+
+@media (pointer: coarse), (min-width: 768px) {
+    .num-stepper > button { flex-basis: 44px; min-height: 44px; font-size: 20px; }
+    #setupScreen .num-stepper > .input-field { min-height: 44px; font-size: 18px; font-weight: 700; }
+}
+/* Wide screens: General Info / Advanced Constraints use their full width instead of two cramped columns */
+@media (min-width: 900px) {
+    #setupScreen .collapse-body > .grid.grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+    #setupScreen .collapse-body label { font-size: 13px; }
+    #setupScreen .collapse-body p.text-\[11px\] { font-size: 12px; line-height: 1.35; }
+}
+@media (min-width: 768px) {
+    #setupScreen .collapse-body select { min-height: 40px; font-size: 14px; }
+    #setupScreen .collapse-body input[type="checkbox"] { width: 20px; height: 20px; }
+    #setupScreen .collapse-body input[type="time"], #setupScreen .collapse-body input[type="date"] { min-height: 44px; }
+}
+
+/* Full-screen preview must cover the header and the docked live-timing widget (z 100) */
+#previewScreen { z-index: 150 !important; }
+
+/* ==================== PREVIEW STRATEGY: tablet / laptop ==================== */
+.preview-btn-label { display: none; }
+@media (min-width: 900px) and (orientation: landscape) {
+    #previewInner { padding: 16px 20px !important; gap: 16px !important; max-width: 1400px !important; margin: 0 auto; width: 100%; }
+    /* Side column: labelled buttons stacked, Start pinned at the bottom */
+    #previewActionBar { width: 240px !important; gap: 10px !important; }
+    #previewActionBar button { min-height: 48px; font-size: 14px; padding: 10px 14px; justify-content: center; gap: 8px; }
+    #previewActionBar .preview-btn-label { display: inline; }
+    #previewActionBar #previewStartRaceBtn {
+        flex: 0 0 auto !important; margin-top: auto; min-height: 64px; font-size: 16px;
+        border-radius: 14px; box-shadow: 0 8px 24px rgba(74,222,128,.25);
+    }
+    #previewMainCol { gap: 12px !important; }
+    #previewMainCol > .flex.items-center.gap-2 { padding-bottom: 4px; }
+    #previewMainCol [data-i18n="previewTitle"] { font-size: 14px; color: #94a3b8; letter-spacing: .12em; }
+    #previewMainCol #miniStintChart { height: 22px !important; border-radius: 6px; overflow: hidden; }
+    #previewMainCol button[onclick*="_closePreview"] { width: 40px; height: 40px; font-size: 22px; }
+    #previewMainCol button[onclick*="openLiveAdjustModal"] { min-height: 40px; padding: 6px 12px; font-size: 13px; }
+    #previewDriverStrip { padding: 10px 14px; }
+    #strategySummary { font-size: 13px; gap: 8px; }
+    #driverScheduleList { padding: 8px 12px !important; gap: 4px !important; }
+    #driverScheduleList .stint-row { min-height: 44px; font-size: 14px; }
+    #driverScheduleList .stint-row * { font-size: inherit; }
+}
+@media (pointer: coarse) and (max-width: 899px) {
+    #previewMainCol button[onclick*="_closePreview"] { width: 44px; height: 44px; font-size: 22px; }
+}
+
+
+/* ==================== LIVE TIMING VISIBILITY (full / compact / hidden) ==================== */
+body.lt-hidden #liveTimingWidgetWrapper,
+body.lt-hidden #noLiveHint,
+body.lt-hidden #qualifyResultsCard { display: none !important; }
+
+body.lt-compact #liveTimingPanel > :not(#liveTimingDragHandle):not(#ltCompactSummary) { display: none !important; }
+body.lt-compact #ltCompactSummary { display: flex !important; }
+body.lt-compact #raceInfoPanel #liveTimingWidgetWrapper { height: auto !important; min-height: 0 !important; }
+body.lt-compact #liveTimingHeightHandle { display: none !important; }
+body.lt-compact #qualifyResultsCard { flex: 0 0 auto !important; max-height: 170px; }
+
+/* Wide screens: the freed width goes to the strategy controls */
+@media (min-width: 1024px) {
+    body.lt-hidden #raceInfoPanel {
+        flex: 0 0 0 !important; width: 0 !important; min-width: 0 !important;
+        padding: 0 !important; border: 0 !important; overflow: visible !important;
+    }
+    body.lt-hidden #dashPanelResizer { display: none !important; }
+    body.lt-hidden #strategyToastContainer {
+        position: fixed; top: 56px; right: 12px; width: min(360px, 92vw); z-index: 130;
+    }
+    body.lt-compact #raceInfoPanel { flex: 0 0 min(var(--dash-info-pct, 50%), 380px) !important; width: min(var(--dash-info-pct, 50%), 380px) !important; }
+}
+
+.lt-restore-chip {
+    position: fixed; top: 56px; inset-inline-start: 10px; z-index: 130;
+    min-height: 36px; padding: 6px 14px; border-radius: 999px;
+    background: #0f172a; color: #22d3ee; border: 1px solid #22d3ee66;
+    font-size: 13px; font-weight: 700; box-shadow: 0 6px 18px rgba(0,0,0,.5); cursor: pointer;
+}
+.lt-restore-chip:hover { background: #164e63; color: #fff; }
+.lt-restore-chip.hidden { display: none; }
+body.lt-compact #liveTimingDragHandle { flex-wrap: wrap; gap: 4px; }
+body.lt-compact #apexViewToggle, body.lt-compact #addSecondaryTeamBtn, body.lt-compact #teamLogoUploadBtn, body.lt-compact #forcePitOutBtn { display: none !important; }

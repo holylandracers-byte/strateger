@@ -170,7 +170,7 @@ window.renderDriverGroupUI = function() {
 
         const removeBtn = document.createElement('span');
         removeBtn.innerHTML = '&times;';
-        removeBtn.className = 'ml-0.5 opacity-60 hover:opacity-100 cursor-pointer text-[10px]';
+        removeBtn.className = 'ml-0.5 opacity-60 hover:opacity-100 cursor-pointer text-[11px]';
         removeBtn.title = t('removeFromGroup');
         removeBtn.onclick = (e) => { e.stopPropagation(); window.removeDriverFromPool(d.name); };
 
@@ -206,7 +206,7 @@ window.renderDriverGroupUI = function() {
 
     if (pool.length > 0) {
         const hint = document.createElement('p');
-        hint.className = 'text-[10px] text-gray-500 mt-1.5';
+        hint.className = 'text-[11px] text-gray-500 mt-1.5';
         hint.textContent = t('driverGroupHint') || 'Tap a driver to include/exclude from this race';
         container.appendChild(hint);
     }
@@ -452,6 +452,33 @@ window.createDriverInput = function(val, checked, squad) {
     staminaWrap.appendChild(staminaInput);
     staminaWrap.appendChild(staminaLabel);
 
+    // Per-driver advance-warning lead time (min): some drivers need to be told earlier than
+    // others that their stint is ending soon (slower to react, further from the pit lane, etc).
+    // Falls back to the race-wide Notify Lead Time (#pitNotifyLeadMin) when left blank. The
+    // Pit Exit Buffer stays a single race-wide setting -- it isn't a per-driver need.
+    const notifyWrap = document.createElement('div');
+    notifyWrap.className = 'driver-notify-wrap';
+    notifyWrap.title = "This driver's own advance-warning lead time (min) — overrides the race-wide Notify Lead Time. Leave blank to use the race default.";
+
+    const notifyInput = document.createElement('input');
+    notifyInput.type = 'number';
+    notifyInput.className = 'driver-notify-input';
+    notifyInput.placeholder = window.t ? window.t('bufferDefault') : 'def.';
+    notifyInput.min = '0';
+    notifyInput.step = '0.5';
+    notifyInput.addEventListener('click', (e) => e.stopPropagation());
+    notifyInput.oninput = () => {
+        if (typeof window.scheduleRunSim === 'function') window.scheduleRunSim(400);
+        if (typeof window.updateDriversFromUI === 'function') window.updateDriversFromUI();
+    };
+
+    const notifyLabel = document.createElement('span');
+    notifyLabel.className = 'driver-notify-label';
+    notifyLabel.textContent = 'm lead';
+
+    notifyWrap.appendChild(notifyInput);
+    notifyWrap.appendChild(notifyLabel);
+
     div.appendChild(dragHandle);
     div.appendChild(accentBar);
     div.appendChild(colorSwatch);
@@ -460,6 +487,7 @@ window.createDriverInput = function(val, checked, squad) {
     div.appendChild(starterBtn);
     div.appendChild(nameWrap);
     div.appendChild(staminaWrap);
+    div.appendChild(notifyWrap);
     div.appendChild(squadLabel);
 
     document.getElementById('driversList').appendChild(div);
@@ -964,7 +992,7 @@ window.renderPreview = function() {
         let pitIndicator = '';
         if (pit && !isLast) {
             const pitSec = Math.round(pit.duration / 1000);
-            pitIndicator = `<span class="text-gold text-[10px] ml-1">🔧+${pitSec}s</span>`;
+            pitIndicator = `<span class="text-gold text-[11px] ml-1">🔧+${pitSec}s</span>`;
             currentTimeMs += pit.duration;
         }
 
@@ -973,11 +1001,11 @@ window.renderPreview = function() {
         let stintForecastTag = '';
         if (showWeatherChecked && window._venueWeather && typeof window.getVenueForecastAt === 'function') {
             if (dateIsFarOut) {
-                stintForecastTag = `<span class="text-[9px] text-gray-600 ml-1">${t('weatherTooFarOut') || '—'}</span>`;
+                stintForecastTag = `<span class="text-[11px] text-gray-600 ml-1">${t('weatherTooFarOut') || '—'}</span>`;
             } else {
                 const fc = window.getVenueForecastAt(stintStartMs);
                 if (fc && typeof window.formatVenueForecastShort === 'function') {
-                    stintForecastTag = `<span class="text-[9px] text-blue-400 ml-1">${window.formatVenueForecastShort(fc)}</span>`;
+                    stintForecastTag = `<span class="text-[11px] text-blue-400 ml-1">${window.formatVenueForecastShort(fc)}</span>`;
                 }
             }
         }
@@ -986,21 +1014,50 @@ window.renderPreview = function() {
         const borderWarning = outOfBounds ? 'ring-1 ring-red-500' : '';
 
         const checkeredFlag = isLast ? `<svg width="11" height="8" viewBox="0 0 14 10" aria-hidden="true" style="flex-shrink:0;vertical-align:middle"><rect x="0.5" y="0.5" width="13" height="9" rx="1" fill="#111" stroke="#666"/><rect x="1" y="1" width="3" height="4" fill="#fff"/><rect x="4" y="1" width="3" height="4" fill="#111"/><rect x="7" y="1" width="3" height="4" fill="#fff"/><rect x="10" y="1" width="3" height="4" fill="#111"/><rect x="1" y="5" width="3" height="4" fill="#111"/><rect x="4" y="5" width="3" height="4" fill="#fff"/><rect x="7" y="5" width="3" height="4" fill="#111"/><rect x="10" y="5" width="3" height="4" fill="#fff"/></svg>` : '';
+
+        // Stints that already happened (real driver + real duration recorded by
+        // _syncPreviewWithActuals, or flagged _done by openLivePreview) are history —
+        // render them read-only instead of via the disable-everything blanket that used
+        // to freeze the whole preview screen mid-race.
+        const isLocked = !!(stint._actual || stint._done);
+        if (isLocked) {
+            return `
+                <div class="flex items-center gap-1 bg-navy-950/50 rounded border-l-4 stint-row stint-row-locked" style="border-left-color:${stint.color};height:24px;padding:0 4px;overflow:hidden;opacity:0.6" data-index="${index}">
+                    <div class="flex items-center justify-center shrink-0" style="width:24px">
+                        <span class="text-neon" style="font-size:9px" title="${window.t ? window.t('stintActualDone') : 'Actual — done'}">✓</span>
+                    </div>
+                    <div class="flex-1 min-w-0 flex items-center gap-1" style="overflow:hidden;white-space:nowrap">
+                        <span class="font-bold text-gray-300" style="font-size:11px;max-width:4.5rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0">${stint.driverName}</span>
+                        <span class="text-gray-500" style="font-size:9px;flex-shrink:0">${startTimeStr}${arrow}${endTimeStr}</span>
+                        ${checkeredFlag}${pitIndicator}${stintForecastTag}
+                    </div>
+                    <span class="text-gray-400 font-mono shrink-0" style="font-size:10px;padding:1px 2px" title="${window.t ? window.t('actualDuration') : 'Actual duration'}">${durationMin}m</span>
+                </div>
+            `;
+        }
+
+        const touchDev = window._isTouchDevice;
+        const dragAttrs = touchDev ? '' : ` draggable="true" ondragstart="window.handleDragStart(event)" ondragover="window.handleDragOver(event)" ondragleave="window.handleDragLeave(event)" ondrop="window.handleDrop(event)"`;
+        const driverTap = touchDev ? '' : ` onclick="event.stopPropagation();window.openStintDriverPicker(${index}, this)"`;
+        const driverTitle = touchDev
+            ? (window.t ? window.t('holdToSwapDriver') : 'Hold 3 sec to swap driver')
+            : 'Tap to swap driver';
+        // A stint can't be reordered past a locked (already-run) stint — only among
+        // the current/future ones — so Up is disabled right after the lock boundary.
+        const prevLocked = index > 0 && !!(stints[index - 1]._actual || stints[index - 1]._done);
+        const canMoveUp = !isFirst && !prevLocked;
         // Reorder arrows inline so row stays single-line height (~24px)
         return `
-            <div class="flex items-center gap-1 bg-navy-950 rounded border-l-4 cursor-grab active:cursor-grabbing ${borderWarning}" style="border-left-color:${stint.color};height:24px;padding:0 4px 0 0;overflow:hidden"
-                 draggable="true" data-index="${index}"
-                 ondragstart="window.handleDragStart(event)"
-                 ondragover="window.handleDragOver(event)"
-                 ondragleave="window.handleDragLeave(event)"
-                 ondrop="window.handleDrop(event)">
+            <div class="flex items-center gap-1 bg-navy-950 rounded border-l-4 cursor-grab active:cursor-grabbing stint-row ${borderWarning}" style="border-left-color:${stint.color};height:24px;padding:0 4px 0 0;overflow:hidden"
+                 data-index="${index}"${dragAttrs}>
                 <div class="flex items-center shrink-0" style="gap:0;width:28px">
-                    <button onclick="window.moveStint(${index}, -1)" class="text-gray-600 hover:text-white ${isFirst ? 'invisible' : ''}" style="font-size:7px;padding:0 2px;line-height:1;background:none;border:none;cursor:pointer" title="Up">▲</button>
+                    <button onclick="window.moveStint(${index}, -1)" class="text-gray-600 hover:text-white ${canMoveUp ? '' : 'invisible'}" style="font-size:7px;padding:0 2px;line-height:1;background:none;border:none;cursor:pointer" title="Up">▲</button>
                     <span class="text-gray-600 font-mono" style="font-size:8px;min-width:10px;text-align:center">${index+1}</span>
                     <button onclick="window.moveStint(${index}, 1)" class="text-gray-600 hover:text-white ${isLast ? 'invisible' : ''}" style="font-size:7px;padding:0 2px;line-height:1;background:none;border:none;cursor:pointer" title="Down">▼</button>
                 </div>
                 <div class="flex-1 min-w-0 flex items-center gap-1" style="overflow:hidden;white-space:nowrap">
-                    <span class="font-bold text-white hover:text-neon cursor-pointer underline decoration-dotted" style="font-size:11px;max-width:4.5rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0" title="Tap to swap driver" onclick="event.stopPropagation();window.openStintDriverPicker(${index}, this)">${stint.driverName}</span>
+                    ${stint._current ? `<span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse shrink-0" title="${window.t ? window.t('stintInProgress') : 'In progress'}"></span>` : ''}
+                    <span class="stint-driver-swap font-bold text-white hover:text-neon cursor-pointer underline decoration-dotted" style="font-size:11px;max-width:4.5rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0" title="${driverTitle}" data-stint-index="${index}"${driverTap}>${stint.driverName}</span>
                     <span class="text-gray-500" style="font-size:9px;flex-shrink:0">${startTimeStr}${arrow}${endTimeStr}</span>
                     ${checkeredFlag}${pitIndicator}${stintForecastTag}
                 </div>
@@ -1021,15 +1078,25 @@ window.renderPreview = function() {
     const diffMs = (totalDrive + totalPit) - raceTimeMs;
     const diffClass = Math.abs(diffMs) <= 60000 ? 'text-neon' : 'text-red-400';
     const totalBar = `
-        <div class="bg-navy-800 p-2 rounded border border-gray-700 text-[10px] text-gray-400 flex justify-between items-center" style="margin-top:2px">
+        <div class="bg-navy-800 p-2 rounded border border-gray-700 text-[11px] text-gray-400 flex justify-between items-center" style="margin-top:2px">
             <span>${window.t ? window.t('driveNoun') : 'Drive'}: <b class="text-white">${(totalDrive/60000).toFixed(0)}m</b> + ${window.t ? window.t('pitNoun') : 'Pit'}: <b class="text-gold">${(totalPit/60000).toFixed(0)}m</b></span>
             <span class="${diffClass} font-bold">= ${((totalDrive+totalPit)/60000).toFixed(0)}m ${diffMs !== 0 ? '(' + (diffMs > 0 ? '+' : '') + (diffMs/60000).toFixed(0) + 'm)' : '✅'}</span>
         </div>
     `;
     
+    const violationCount = typeof window.countStintViolations === 'function'
+        ? window.countStintViolations(timeline, window.config)
+        : 0;
+    const violationBanner = violationCount > 0 ? `
+        <div class="bg-red-950/80 border border-red-500/60 rounded px-2 py-1.5 mb-1 flex items-center justify-between gap-2">
+            <span class="text-[11px] text-red-300 font-bold leading-tight">${(window.t ? window.t('stintViolationsBanner') : 'Stints outside min/max rules').replace('{{count}}', violationCount)}</span>
+            <button type="button" onclick="window.fixPreviewStintViolations()" class="shrink-0 text-[11px] font-bold bg-red-600 hover:bg-red-500 text-white px-2 py-0.5 rounded transition">${window.t ? window.t('stintFixBtn') : 'Auto-fix'}</button>
+        </div>
+    ` : '';
+
     const scheduleEl = document.getElementById('driverScheduleList');
     if (scheduleEl) {
-        scheduleEl.innerHTML = listHtml + totalBar;
+        scheduleEl.innerHTML = violationBanner + listHtml + totalBar;
         // Re-init touch drag for mobile reorder
         window.initTouchDrag(scheduleEl);
     }
@@ -1045,7 +1112,7 @@ window.renderPreview = function() {
     // Compact inline chip: color dot + name + time + stints count
     const summaryHtml = Object.entries(summary).map(([name, data]) => {
         const timeStr = window.formatTimeHMS(data.time);
-        return `<span class="inline-flex items-center gap-1 bg-navy-950 border rounded-full px-2 py-0.5 text-[9px] min-w-0" style="border-color:${data.color}40">
+        return `<span class="inline-flex items-center gap-1 bg-navy-950 border rounded-full px-2 py-0.5 text-[11px] min-w-0" style="border-color:${data.color}40">
             <span class="w-1.5 h-1.5 rounded-full shrink-0" style="background:${data.color}"></span>
             <span class="font-bold text-gray-200 truncate" style="max-width:4rem">${name}</span>
             <span class="font-mono text-white shrink-0">${timeStr}</span>
@@ -1189,7 +1256,7 @@ window.updateStats = function(currentStintMs) {
             squadBadge = `<span class="text-xs font-bold px-2 py-0.5 rounded ml-1" style="background:${isActive ? 'rgba(34,197,94,0.2)' : 'rgba(107,114,128,0.3)'}; color:${isActive ? '#86efac' : '#9ca3af'}">${driverSquad} ${squadStatus}</span>`;
         } else if (window.config.useSquads) {
             const driverSquad = d.squad || 'A';
-            squadBadge = `<span class="text-[9px] font-bold px-1.5 py-0.5 rounded ml-1" style="background:${SQUAD_COLOR_MAP[driverSquad] || '#3b82f6'}; color:#fff">${driverSquad}</span>`;
+            squadBadge = `<span class="text-[11px] font-bold px-1.5 py-0.5 rounded ml-1" style="background:${SQUAD_COLOR_MAP[driverSquad] || '#3b82f6'}; color:#fff">${driverSquad}</span>`;
         }
         
         // Driver colour dot
@@ -1197,7 +1264,6 @@ window.updateStats = function(currentStintMs) {
         
         // Driver % share
         const pct = grandTotal > 0 ? Math.round((displayTotalTime / grandTotal) * 100) : 0;
-        const pctBar = `<div class="w-full bg-gray-800 rounded-full h-1.5 mt-0.5"><div class="h-1.5 rounded-full" style="width:${pct}%;background:${d.color || '#3b82f6'}"></div></div>`;
         
         // Driver max-time indicator
         const maxDriverMin = parseFloat(document.getElementById('maxDriverTime')?.value || '0');
@@ -1206,16 +1272,17 @@ window.updateStats = function(currentStintMs) {
             const maxMs = maxDriverMin * 60000;
             const warnMs = maxMs * 0.9;
             if (displayTotalTime > maxMs) {
-                maxTimeIndicator = `<span class="text-[9px] text-red-400 font-bold ml-1 animate-pulse" title="Over max drive time!">🚨</span>`;
+                maxTimeIndicator = `<span class="text-[11px] text-red-400 font-bold ml-1 animate-pulse" title="Over max drive time!">🚨</span>`;
             } else if (displayTotalTime >= warnMs) {
-                maxTimeIndicator = `<span class="text-[9px] text-orange-400 font-bold ml-1" title="Approaching max drive time">⚠️</span>`;
+                maxTimeIndicator = `<span class="text-[11px] text-orange-400 font-bold ml-1" title="Approaching max drive time">⚠️</span>`;
             }
         }
 
         mainRow.innerHTML = `
-            <td class="text-center cursor-pointer p-2 hover:text-ice" onclick="window.toggleLog(${i})">${d.isExpanded ? '▲' : '▼'}</td>
-            <td class="py-2 pr-2"><div class="flex items-center">${colorDot}${d.name} ${isCurrent ? '🏎️' : ''}${squadBadge}${maxTimeIndicator}</div></td>
-            <td class="py-2 text-center">${d.stints || 0}</td> <td class="py-2 text-right font-mono"><div data-stat-time>${window.formatTimeHMS(displayTotalTime)}${maxDriverMin > 0 ? `<span class="text-[8px] text-gray-600 ml-1">/${window.formatTimeHMS(maxDriverMin*60000)}</span>` : ''}</div><div class="flex items-center gap-1 justify-end"><span class="text-[9px] text-gray-500">${pct}%</span><div class="w-10">${pctBar}</div></div></td>
+            <td class="text-center cursor-pointer p-1.5 hover:text-ice" onclick="window.toggleLog(${i})">${d.isExpanded ? '▲' : '▼'}</td>
+            <td class="py-1.5 pr-1"><div class="stat-driver-wrap">${colorDot}<span class="stat-driver-name">${d.name}${isCurrent ? ' 🏎️' : ''}</span>${squadBadge}${maxTimeIndicator}</div></td>
+            <td class="py-1.5 text-center">${d.stints || 0}</td>
+            <td class="py-1.5 text-right font-mono stat-total-cell"><div class="stat-time" data-stat-time>${window.formatTimeHMS(displayTotalTime)}</div><div class="stat-pct">${pct}%</div></td>
         `;
         tb.appendChild(mainRow);
 
@@ -1223,18 +1290,18 @@ window.updateStats = function(currentStintMs) {
             const logRow = document.createElement('tr');
             const logCell = document.createElement('td');
             logCell.colSpan = 4;
-            logCell.className = "bg-navy-950 p-2 text-[10px]";
+            logCell.className = "bg-navy-950 p-2 text-[11px]";
             
-            let logsHtml = '<div class="flex justify-between text-gray-500 border-b border-gray-700 pb-1 mb-1"><span>#</span><span>Drive</span><span>Pit</span></div>';
+            let logsHtml = '<div class="stat-log-grid text-gray-500 border-b border-gray-700 pb-1 mb-1"><span>#</span><span>Drive</span><span>Pit</span></div>';
             
             // לוגים היסטוריים (מה שנשמר ב-main.js)
             if (d.logs && d.logs.length > 0) {
                 d.logs.forEach((log, idx) => {
                     logsHtml += `
-                        <div class="flex justify-between items-center py-1 border-b border-gray-800">
+                        <div class="stat-log-grid py-1 border-b border-gray-800">
                             <span class="text-gray-500">${idx + 1}</span>
-                            <span class="text-ice font-mono">${window.formatTimeHMS(log.drive)}</span>
-                            <span class="text-fuel font-mono">${log.pit ? window.formatTimeHMS(log.pit) : '--'}</span>
+                            <span class="text-ice font-mono truncate">${window.formatTimeHMS(log.drive)}</span>
+                            <span class="text-fuel font-mono truncate">${log.pit ? window.formatTimeHMS(log.pit) : '--'}</span>
                         </div>
                     `;
                 });
@@ -1243,9 +1310,9 @@ window.updateStats = function(currentStintMs) {
             // סטינט נוכחי (רץ) - לא נכנס ללוג הקבוע, רק מוצג כ"חי"
             if (isCurrent && !window.state.isInPit) {
                 logsHtml += `
-                    <div class="flex justify-between items-center py-1 bg-ice/10 text-white font-bold animate-pulse">
+                    <div class="stat-log-grid py-1 bg-ice/10 text-white font-bold animate-pulse">
                         <span class="text-ice">LIVE</span>
-                        <span class="text-ice font-mono">${window.formatTimeHMS(currentStintMs)}</span>
+                        <span class="text-ice font-mono truncate">${window.formatTimeHMS(currentStintMs)}</span>
                         <span class="text-gray-500">...</span>
                     </div>
                 `;
@@ -1293,88 +1360,148 @@ window.handleDrop = function(e) {
     window.draggedStintIndex = null;
 };
 
+// === Touch: scroll-safe long-press actions (3 sec hold) ===
+window._bindLongPressAction = function(el, opts) {
+    if (!el) return;
+    const ms = opts.ms || window.LONG_PRESS_MS || 3000;
+    const threshold = window.SCROLL_MOVE_THRESHOLD || 12;
+    let timer = null;
+    let startX = 0, startY = 0;
+    let activated = false;
+
+    const cancel = () => { clearTimeout(timer); timer = null; };
+
+    el.addEventListener('touchstart', (e) => {
+        if (opts.skipIf && opts.skipIf(e)) return;
+        activated = false;
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+        timer = setTimeout(() => {
+            activated = true;
+            window.haptic && window.haptic('medium');
+            if (opts.activeKey && window.showToast) {
+                window.showToast(window.t(opts.activeKey), 'success', 2000);
+            }
+            if (opts.onActivate) opts.onActivate(e);
+        }, ms);
+    }, { passive: true });
+
+    el.addEventListener('touchmove', (e) => {
+        if (!timer && !activated) return;
+        const dx = e.touches[0].clientX - startX;
+        const dy = e.touches[0].clientY - startY;
+        if (!activated && (Math.abs(dx) > threshold || Math.abs(dy) > threshold)) {
+            cancel();
+        }
+    }, { passive: true });
+
+    el.addEventListener('touchend', () => { cancel(); activated = false; }, { passive: true });
+    el.addEventListener('touchcancel', () => { cancel(); activated = false; }, { passive: true });
+};
+
 // === Touch-based reorder (long-press on mobile) ===
 window._touchDragState = null;
 
 window.initTouchDrag = function(container) {
-    if (!container) return;
-    
+    if (!container || !window._isTouchDevice) return;
+    if (container.dataset.touchDragInit === '1') return;
+    container.dataset.touchDragInit = '1';
+
+    const holdMs = window.LONG_PRESS_MS || 3000;
+    const threshold = window.SCROLL_MOVE_THRESHOLD || 12;
     let longPressTimer = null;
     let touchItem = null;
-    
+    let pressMode = null; // 'reorder' | 'swap'
+    let startX = 0, startY = 0;
+
+    const cancelPress = () => {
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
+        touchItem = null;
+        pressMode = null;
+    };
+
     container.addEventListener('touchstart', function(e) {
-        const item = e.target.closest('[data-index]');
-        if (!item) return;
-        // Don't start drag on input elements or buttons
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') return;
 
+        const swapEl = e.target.closest('.stint-driver-swap');
+        const item = swapEl || e.target.closest('[data-index]');
+        if (!item) return;
+
         touchItem = item;
+        pressMode = swapEl ? 'swap' : 'reorder';
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+
         longPressTimer = setTimeout(() => {
-            // Long press activated — start drag
+            if (pressMode === 'swap') {
+                window.haptic && window.haptic('medium');
+                const idx = parseInt(swapEl.getAttribute('data-stint-index'), 10);
+                window.openStintDriverPicker(idx, swapEl);
+                cancelPress();
+                return;
+            }
             window.haptic && window.haptic('medium');
-            const idx = parseInt(item.getAttribute('data-index'));
+            const idx = parseInt(item.getAttribute('data-index'), 10);
             window._touchDragState = { fromIdx: idx, el: item };
             item.style.opacity = '0.5';
             item.style.outline = '2px solid #22d3ee';
-            window.showToast('🔀 Drag to reorder, or use ▲▼', 'info', 2000);
-        }, 500); // 500ms long press
-    }, { passive: false });
+            if (window.showToast) window.showToast(window.t('dragToPosition'), 'info', 3000);
+        }, holdMs);
+    }, { passive: true });
 
     container.addEventListener('touchmove', function(e) {
-        // Cancel long-press if finger moves before drag is activated (user is scrolling)
+        const dx = e.touches[0].clientX - startX;
+        const dy = e.touches[0].clientY - startY;
+
         if (longPressTimer && !window._touchDragState) {
-            clearTimeout(longPressTimer);
-            longPressTimer = null;
-            return; // Let the scroll happen normally
+            if (Math.abs(dx) > threshold || Math.abs(dy) > threshold) {
+                cancelPress();
+            }
+            return;
         }
 
         if (!window._touchDragState) return;
-        e.preventDefault(); // Safe: only called after drag is confirmed active
-        
-        // Find which item we're over
+        e.preventDefault();
+
         const touch = e.touches[0];
         const el = document.elementFromPoint(touch.clientX, touch.clientY);
         const targetItem = el?.closest('[data-index]');
-        
-        // Highlight drop target
+
         container.querySelectorAll('[data-index]').forEach(i => i.classList.remove('drag-over'));
         if (targetItem && targetItem !== window._touchDragState.el) {
             targetItem.classList.add('drag-over');
         }
     }, { passive: false });
-    
+
     container.addEventListener('touchend', function(e) {
-        clearTimeout(longPressTimer);
-        longPressTimer = null;
-        
+        cancelPress();
+
         if (!window._touchDragState) return;
-        
-        // Find drop target
+
         const touch = e.changedTouches[0];
         const el = document.elementFromPoint(touch.clientX, touch.clientY);
         const targetItem = el?.closest('[data-index]');
-        
-        // Clean up highlights
+
         container.querySelectorAll('[data-index]').forEach(i => {
             i.classList.remove('drag-over');
             i.style.opacity = '';
             i.style.outline = '';
         });
-        
+
         if (targetItem) {
-            const toIdx = parseInt(targetItem.getAttribute('data-index'));
+            const toIdx = parseInt(targetItem.getAttribute('data-index'), 10);
             if (toIdx !== window._touchDragState.fromIdx) {
                 window.haptic && window.haptic('light');
                 window.swapStints(window._touchDragState.fromIdx, toIdx);
             }
         }
-        
+
         window._touchDragState = null;
     }, { passive: true });
-    
+
     container.addEventListener('touchcancel', function() {
-        clearTimeout(longPressTimer);
-        longPressTimer = null;
+        cancelPress();
         if (window._touchDragState) {
             window._touchDragState.el.style.opacity = '';
             window._touchDragState.el.style.outline = '';
@@ -1389,10 +1516,22 @@ window.swapStints = function(fromIdx, toIdx) {
     const stints = window.previewData.timeline.filter(t => t.type === 'stint');
     const source = stints[fromIdx];
     const target = stints[toIdx];
+    if (!source || !target) return;
+    // Stints that already happened are locked — never overwrite recorded history.
+    if (source._actual || source._done || target._actual || target._done) return;
     const temp = { name: source.driverName, idx: source.driverIdx, col: source.color, sq: source.squad };
     source.driverName = target.driverName; source.driverIdx = target.driverIdx; source.color = target.color; source.squad = target.squad;
     target.driverName = temp.name; target.driverIdx = temp.idx; target.color = temp.col; target.squad = temp.sq;
+    // Mid-race, the live dashboard reads window.state.stintSchedule for who's up next
+    // — mirror the swap there too, or a reorder here won't show up on the real race.
+    const schedule = window.state && window.state.stintSchedule;
+    if (Array.isArray(schedule) && schedule[fromIdx] && schedule[toIdx]) {
+        [schedule[fromIdx].driverName, schedule[toIdx].driverName] = [schedule[toIdx].driverName, schedule[fromIdx].driverName];
+        [schedule[fromIdx].driverIdx, schedule[toIdx].driverIdx] = [schedule[toIdx].driverIdx, schedule[fromIdx].driverIdx];
+        [schedule[fromIdx].squad, schedule[toIdx].squad] = [schedule[toIdx].squad, schedule[fromIdx].squad];
+    }
     window.renderPreview();
+    if (window.state?.isRunning && typeof window.broadcast === 'function') window.broadcast();
 };
 window.updateStintDuration = function(idx, val) {
     const newMs = parseFloat(val) * 60000;
@@ -1400,45 +1539,45 @@ window.updateStintDuration = function(idx, val) {
 
     const stints = window.previewData.timeline.filter(t => t.type === 'stint');
     if (!stints[idx]) return;
+    if (stints[idx]._actual || stints[idx]._done) return; // locked — already ran
+
+    // Mid-race, the live clock/box-time logic reads window.state.stintTargets /
+    // targetStintMs — never this preview's timeline — so an edit here has to go
+    // through the same redistribution the outlook pills' tap-to-edit uses, or the
+    // target stint on the actual race dashboard won't move. Mirror the result back
+    // into the preview afterwards so the two views agree.
+    if (window.state?.isRunning) {
+        if (!window._setLiveStintTargetMs(idx, newMs, { silent: true })) return;
+        const targets = window.state.stintTargets;
+        if (Array.isArray(targets)) {
+            stints.forEach((s, i) => { if (targets[i] != null) s.duration = targets[i]; });
+        }
+        window.recalculateTimelineTimes();
+        window.renderPreview();
+        if (typeof window.showToast === 'function') {
+            window.showToast(`✏️ Stint target set to ${Math.round(newMs / 60000)}m`, 'info', 1800);
+        }
+        return;
+    }
 
     const pits = window.previewData.timeline.filter(t => t.type === 'pit');
     const totalPitMs = pits.reduce((a, p) => a + p.duration, 0);
     const raceMs = window.config ? (window.config.raceMs || 0) : 0;
     const targetDriveMs = raceMs - totalPitMs;
+    const bounds = typeof window.getStintBoundsMs === 'function'
+        ? window.getStintBoundsMs(window.config)
+        : { minStintMs: (window.config?.minStint || 1) * 60000, effectiveMaxStint: (window.config?.maxStint || 999) * 60000 };
 
-    const minMs = (window.config?.minStint || 1) * 60000;
-    const maxMs = (window.config?.maxStint || 999) * 60000;
+    const minMs = bounds.minStintMs > 0 ? bounds.minStintMs : 0;
+    const maxMs = bounds.effectiveMaxStint === Infinity ? newMs : bounds.effectiveMaxStint;
+    stints[idx].duration = Math.max(minMs, Math.min(maxMs, newMs));
 
-    // Clamp to bounds
-    const clampedMs = Math.max(minMs, Math.min(maxMs, newMs));
-    const oldMs = stints[idx].duration;
-    const delta = clampedMs - oldMs;
-
-    stints[idx].duration = clampedMs;
-
-    // Rebalance: distribute the delta across the other stints proportionally
-    if (delta !== 0 && stints.length > 1) {
-        const others = stints.filter((_, i) => i !== idx);
-        const othersTotal = others.reduce((a, s) => a + s.duration, 0);
-        const newOthersTarget = targetDriveMs - clampedMs;
-
-        if (othersTotal > 0 && newOthersTarget > 0) {
-            const scale = newOthersTarget / othersTotal;
-            let distributed = 0;
-            others.forEach((s, i) => {
-                if (i < others.length - 1) {
-                    let adjusted = Math.round((s.duration * scale) / 1000) * 1000;
-                    adjusted = Math.max(minMs, Math.min(maxMs, adjusted));
-                    distributed += adjusted;
-                    s.duration = adjusted;
-                } else {
-                    // Last stint absorbs remainder
-                    let remainder = newOthersTarget - distributed;
-                    remainder = Math.max(minMs, Math.min(maxMs, Math.round(remainder / 1000) * 1000));
-                    s.duration = remainder;
-                }
-            });
-        }
+    if (typeof window.normalizeStintDurationsMs === 'function') {
+        const result = window.normalizeStintDurationsMs(
+            stints.map(s => s.duration),
+            { totalTargetMs: targetDriveMs, bounds }
+        );
+        stints.forEach((s, i) => { s.duration = result.durations[i]; });
     }
 
     window.recalculateTimelineTimes();
@@ -1536,7 +1675,7 @@ window.performStrategySave = async function() {
         timeline: window.cachedStrategy.timeline,
         driverSchedule: window.previewData.driverSchedule, // חשוב לתצוגה
         userId: window.myId || 'anonymous', // מזהה משתמש אם קיים
-        deviceId: localStorage.getItem('strateger_host_id') // מזהה מכשיר
+        deviceId: sessionStorage.getItem('strateger_host_id') // מזהה מכשיר
     };
 
     const btn = document.querySelector('#saveStrategyModal button.bg-ice');
@@ -1588,7 +1727,7 @@ window.loadStrategyLibrary = async function() {
 
     // 1. נסה לטעון מהשרת (DB)
     try {
-        const deviceId = localStorage.getItem('strateger_host_id') || '';
+        const deviceId = sessionStorage.getItem('strateger_host_id') || '';
         const response = await fetch(`/.netlify/functions/get-strategies?deviceId=${deviceId}`); 
         const result = await response.json();
 
@@ -1660,9 +1799,9 @@ window.renderStrategyList = function(strategies) {
             <div class="flex-1 cursor-pointer" onclick="window.applyStrategy(${index})">
                 <div class="font-bold text-white text-sm flex items-center gap-2">
                     ${s.name}
-                    ${s.type === 'public' ? '<span class="text-[9px] bg-green-900 text-green-300 px-1 rounded">PUB</span>' : ''}
+                    ${s.type === 'public' ? '<span class="text-[11px] bg-green-900 text-green-300 px-1 rounded">PUB</span>' : ''}
                 </div>
-                <div class="text-[10px] text-gray-400 mt-1">
+                <div class="text-[11px] text-gray-400 mt-1">
                     📅 ${new Date(s.timestamp).toLocaleString()} | 
                     ⏱️ ${(s.config.duration || 0)}h | 
                     🛑 ${s.config.reqStops || 0} Stops
@@ -1720,6 +1859,8 @@ window.applyStrategy = function(index) {
             setVal('maxStint', strategy.config.maxStint);
             setVal('minPitTime', strategy.config.pitTime);
             setVal('releaseBuffer', strategy.config.buffer);
+            setVal('pitNotifyLeadMin', strategy.config.pitNotifyLeadMin ?? 3);
+            setVal('inLapSec', strategy.config.inLapSec ?? strategy.config.outlap ?? 0);
             setVal('closedStart', strategy.config.closedStart);
             setVal('closedEnd', strategy.config.closedEnd);
             setVal('minDriverTotal', strategy.config.minDriverTotal);
@@ -1898,7 +2039,7 @@ window.toggleChat = function() {
     // 1. Load history if empty (First open)
     if (panel.classList.contains('hidden') && feed.children.length === 0) {
         try {
-            const history = JSON.parse(localStorage.getItem('strateger_chat_history') || '[]');
+            const history = JSON.parse(sessionStorage.getItem('strateger_chat_history') || '[]');
             history.forEach(msg => window.renderChatMessage(msg));
         } catch(e) { console.error("Error loading chat history:", e); }
     }
@@ -1939,7 +2080,7 @@ window.toggleChat = function() {
             // 🟢 Load chat history for continuing races
             if (feed.children.length === 0) {
                 try {
-                    const history = JSON.parse(localStorage.getItem('strateger_chat_history') || '[]');
+                    const history = JSON.parse(sessionStorage.getItem('strateger_chat_history') || '[]');
                     history.forEach(msg => window.renderChatMessage(msg));
                 } catch(e) { console.error("Error loading chat history:", e); }
             }
@@ -1983,7 +2124,7 @@ window.joinChat = function() {
             const feed = document.getElementById('chatFeed');
             if (feed.children.length === 0) {
                 try {
-                    const history = JSON.parse(localStorage.getItem('strateger_chat_history') || '[]');
+                    const history = JSON.parse(sessionStorage.getItem('strateger_chat_history') || '[]');
                     history.forEach(msg => window.renderChatMessage(msg));
                 } catch(e) { console.error("Error loading chat history:", e); }
             }
@@ -2011,7 +2152,7 @@ window.joinChat = function() {
         const feed = document.getElementById('chatFeed');
         if (feed && feed.children.length === 0) {
             try {
-                const history = JSON.parse(localStorage.getItem('strateger_chat_history') || '[]');
+                const history = JSON.parse(sessionStorage.getItem('strateger_chat_history') || '[]');
                 history.forEach(msg => window.renderChatMessage(msg));
             } catch(e) {}
         }
@@ -2056,7 +2197,7 @@ window.onNameAccepted = function(name) {
     const feed = document.getElementById('chatFeed');
     if (feed.children.length === 0) {
         try {
-            const history = JSON.parse(localStorage.getItem('strateger_chat_history') || '[]');
+            const history = JSON.parse(sessionStorage.getItem('strateger_chat_history') || '[]');
             history.forEach(msg => window.renderChatMessage(msg));
         } catch(e) { console.error('Error loading chat history:', e); }
     }
@@ -2125,7 +2266,7 @@ window.skipChat = function() {
     // Show a watcher indicator
     const feed = document.getElementById('chatFeed');
     const indicator = document.createElement('div');
-    indicator.className = 'text-center text-gray-500 text-[10px] py-4';
+    indicator.className = 'text-center text-gray-500 text-[11px] py-4';
     indicator.innerHTML = '👁️ You are watching (Chat disabled)';
     feed.appendChild(indicator);
 };
@@ -2264,18 +2405,18 @@ window.renderChatMessage = function(msg) {
 
     // Role badge
     const roleBadge = isAdmin 
-        ? '<span class="bg-red-600 text-white text-[8px] px-1.5 py-0.5 rounded font-bold ml-1">ADMIN</span>' 
+        ? '<span class="bg-red-600 text-white text-[11px] px-1.5 py-0.5 rounded font-bold ml-1">ADMIN</span>' 
         : '';
     // Private indicator
-    const privateIndicator = isPrivate ? '<span class="text-yellow-400 font-bold text-[10px]">🔒 DM</span>' : '';
+    const privateIndicator = isPrivate ? '<span class="text-yellow-400 font-bold text-[11px]">🔒 DM</span>' : '';
 
     // Build reply context
     let replyHTML = '';
     if (msg.replyTo) {
-        const history = JSON.parse(localStorage.getItem('strateger_chat_history') || '[]');
+        const history = JSON.parse(sessionStorage.getItem('strateger_chat_history') || '[]');
         const original = history.find(m => m.timestamp === msg.replyTo);
         if (original) {
-            replyHTML = `<div class="bg-navy-900/60 border-l-2 border-blue-400 pl-2 mb-2 text-[9px] text-gray-300">
+            replyHTML = `<div class="bg-navy-900/60 border-l-2 border-blue-400 pl-2 mb-2 text-[11px] text-gray-300">
                 <div class="font-bold text-blue-400">${original.sender}${original.role === 'host' ? ' 👑' : ''}</div>
                 <div>${original.text.substring(0, 60)}${original.text.length > 60 ? '...' : ''}</div>
             </div>`;
@@ -2291,14 +2432,14 @@ window.renderChatMessage = function(msg) {
         <div class="${bgClass} p-2 rounded-lg max-w-[90%]">
             ${replyHTML}
             <div class="flex justify-between items-baseline gap-2 mb-1">
-                <span class="font-bold ${isAdmin ? (isPrivate ? 'text-yellow-400' : 'text-red-400') : 'text-ice'} text-[10px]">
+                <span class="font-bold ${isAdmin ? (isPrivate ? 'text-yellow-400' : 'text-red-400') : 'text-ice'} text-[11px]">
                     ${isAdmin ? '👑 ' : ''}${msg.sender}${roleBadge}
                 </span>
                 ${privateIndicator}
-                <span class="text-[9px] text-gray-500">${new Date(msg.timestamp).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span>
+                <span class="text-[11px] text-gray-500">${new Date(msg.timestamp).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span>
             </div>
             <div class="text-white break-words">${msg.text}</div>
-            <button onclick="window.setReplyContext(${msg.timestamp}, '${safeSender}', '${safeText}')" class="text-[9px] text-blue-400 hover:text-blue-300 mt-1 text-left">↳ Reply</button>
+            <button onclick="window.setReplyContext(${msg.timestamp}, '${safeSender}', '${safeText}')" class="text-[11px] text-blue-400 hover:text-blue-300 mt-1 text-left">↳ Reply</button>
         </div>
     `;
     
@@ -2307,12 +2448,12 @@ window.renderChatMessage = function(msg) {
 
     // --- Save to LocalStorage ---
     try {
-        let history = JSON.parse(localStorage.getItem('strateger_chat_history') || '[]');
+        let history = JSON.parse(sessionStorage.getItem('strateger_chat_history') || '[]');
         const exists = history.some(m => m.timestamp === msg.timestamp && m.text === msg.text);
         if (!exists) {
             history.push(msg);
             if (history.length > 100) history.shift(); 
-            localStorage.setItem('strateger_chat_history', JSON.stringify(history));
+            sessionStorage.setItem('strateger_chat_history', JSON.stringify(history));
         }
     } catch(e) { console.error("Chat save error", e); }
 
@@ -2544,7 +2685,7 @@ window.onLocationInput = function(value) {
             window._locationAutocompleteResults = results;
             dropdown.innerHTML = results.map((place, i) => {
                 const icon = place._isTrack ? '🏁' : '📍';
-                const sub = place._isTrack ? `<span class="text-blue-400 text-[10px] ml-1">Racing circuit</span>` : (place.country ? `<span class="text-gray-400 text-xs ml-1">${place.country}</span>` : '');
+                const sub = place._isTrack ? `<span class="text-blue-400 text-[11px] ml-1">Racing circuit</span>` : (place.country ? `<span class="text-gray-400 text-xs ml-1">${place.country}</span>` : '');
                 return `<div class="px-3 py-2.5 cursor-pointer hover:bg-navy-800 border-b border-gray-700/40 last:border-0 flex items-center gap-2" onmousedown="window.selectLocationSuggestion(${i})"><span class="text-sm shrink-0">${icon}</span><span class="min-w-0"><span class="font-bold text-white text-sm break-words whitespace-normal">${place.name}</span>${sub}</span></div>`;
             }).join('');
             dropdown.classList.remove('hidden');
@@ -2627,13 +2768,15 @@ window.initDashPanelResizer = function() {
     // Side-by-side (width-drag) in the 768-1023px landscape tablet range. Portrait stacks
     // top/bottom (height-drag). ≥1024px is also side-by-side, but at a fixed 50/50 split —
     // this resizer is inert there (see _isFixedSplitWidth below).
-    const isSideBySide = () => window.matchMedia('(min-width:768px) and (orientation:landscape)').matches;
-    const isFixedSplitWidth = () => window.matchMedia('(min-width:1024px)').matches;
-    const minPct = () => 15;
+    const isSideBySide = () => window.matchMedia('(min-width:768px) and (orientation:landscape)').matches
+        || window.matchMedia('(min-width:1024px)').matches;
+    const isFixedSplitWidth = () => false;   // wide screens can now drag the width split too
+    const minPct = () => 20;
+    const isRtl = () => getComputedStyle(wrapper).direction === 'rtl';
 
     // Restore saved split
     const saved = parseFloat(localStorage.getItem(STORAGE_KEY));
-    const initialPct = (saved >= 15 && saved <= 85) ? saved : 60;
+    const initialPct = (saved >= 15 && saved <= 85) ? saved : (window.matchMedia('(min-width:1024px)').matches ? 50 : 60);
     document.documentElement.style.setProperty('--dash-info-pct', Math.max(initialPct, minPct()) + '%');
 
     let dragging = false;
@@ -2645,7 +2788,9 @@ window.initDashPanelResizer = function() {
         const lo = minPct();
         if (isSideBySide()) {
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-            return Math.min(85, Math.max(lo, ((clientX - rect.left) / rect.width) * 100));
+            // RTL: the info panel sits at the right edge, so measure from there
+            const from = isRtl() ? (rect.right - clientX) : (clientX - rect.left);
+            return Math.min(80, Math.max(lo, (from / rect.width) * 100));
         } else {
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
             return Math.min(85, Math.max(lo, ((clientY - rect.top) / rect.height) * 100));
@@ -2735,23 +2880,42 @@ window._initDashboardDragArea = function(area, skipIds) {
         Array.from(area.children).forEach(child => {
             if (skip.has(child.id)) return; // skip toasts / pinned groups
             if (child.tagName === 'DIV' && !child.classList.contains('drag-handle-added')) {
-                child.setAttribute('draggable', 'true');
                 child.classList.add('drag-handle-added');
                 child.style.cursor = 'grab';
-                child.addEventListener('dragstart', _onDashPanelDragStart);
-                child.addEventListener('dragover', _onDashPanelDragOver);
-                child.addEventListener('drop', _onDashPanelDrop);
-                child.addEventListener('dragend', _onDashPanelDragEnd);
+                if (!window._isTouchDevice) {
+                    child.setAttribute('draggable', 'true');
+                    child.addEventListener('dragstart', _onDashPanelDragStart);
+                    child.addEventListener('dragover', _onDashPanelDragOver);
+                    child.addEventListener('drop', _onDashPanelDrop);
+                    child.addEventListener('dragend', _onDashPanelDragEnd);
+                }
 
-                // Touch support via long-press
-                let touchTimer;
+                // Touch: 3 sec hold to reorder panels (scroll always wins on movement)
+                let touchTimer = null;
+                let dashStartX = 0, dashStartY = 0;
+                const dashHoldMs = window.LONG_PRESS_MS || 3000;
+                const dashThreshold = window.SCROLL_MOVE_THRESHOLD || 12;
+
                 child.addEventListener('touchstart', (e) => {
+                    dashStartX = e.touches[0].clientX;
+                    dashStartY = e.touches[0].clientY;
                     touchTimer = setTimeout(() => {
                         window._dashDragging = child;
                         child.style.opacity = '0.5';
-                    }, 400);
+                        window.haptic && window.haptic('medium');
+                        if (window.showToast) window.showToast(window.t('dragToPosition'), 'info', 3000);
+                    }, dashHoldMs);
                 }, { passive: true });
                 child.addEventListener('touchmove', (e) => {
+                    const dx = e.touches[0].clientX - dashStartX;
+                    const dy = e.touches[0].clientY - dashStartY;
+                    if (touchTimer && !window._dashDragging) {
+                        if (Math.abs(dx) > dashThreshold || Math.abs(dy) > dashThreshold) {
+                            clearTimeout(touchTimer);
+                            touchTimer = null;
+                        }
+                        return;
+                    }
                     if (!window._dashDragging || !area.contains(window._dashDragging)) return;
                     const t = e.touches[0];
                     const target = document
@@ -2765,6 +2929,7 @@ window._initDashboardDragArea = function(area, skipIds) {
                 }, { passive: true });
                 child.addEventListener('touchend', () => {
                     clearTimeout(touchTimer);
+                    touchTimer = null;
                     if (window._dashDragging) {
                         window._dashDragging.style.opacity = '';
                         window._dashDragging = null;
@@ -3187,7 +3352,7 @@ window.setAdjustScenario = function(scenario) {
     container.innerHTML = def.controls.map(ctrl => `
         <div class="space-y-1">
             <div class="flex justify-between items-center">
-                <label class="text-[10px] text-gray-400 font-bold uppercase tracking-wide">${ctrl.label}</label>
+                <label class="text-[11px] text-gray-400 font-bold uppercase tracking-wide">${ctrl.label}</label>
                 <span id="${ctrl.id}_val" class="text-xs font-mono text-ice font-bold">${ctrl.default}${ctrl.id.includes('elapsed') || ctrl.id.includes('At') ? '%' : ctrl.id.includes('Duration') || ctrl.id.includes('duration') ? 'm' : ''}</span>
             </div>
             <input type="range" id="${ctrl.id}" min="${ctrl.min}" max="${ctrl.max}" step="${ctrl.step}" value="${ctrl.default}"
@@ -3397,7 +3562,7 @@ window._togglePreviewAdjustPanel = function() {
 // ⚡ QUICK MODE PRESETS (hero pill strip)
 // ==========================================
 
-window._heroCollapsed = localStorage.getItem('strateger_hero_collapsed') === 'true';
+window._heroCollapsed = localStorage.getItem('strateger_hero_collapsed') !== 'false';
 
 window.toggleHero = function() {
     window._heroCollapsed = !window._heroCollapsed;
@@ -3421,6 +3586,9 @@ window._applyHeroState = function() {
         sub && sub.classList.remove('hidden');
         icon && icon.classList.replace('fa-chevron-down', 'fa-chevron-up');
         if (label) label.setAttribute('data-i18n', 'heroCollapse'), label.textContent = t('heroCollapse') || 'Hide';
+    }
+    if (typeof window._refreshWalkthroughStep === 'function') {
+        window._refreshWalkthroughStep();
     }
 };
 
@@ -3809,3 +3977,49 @@ if (_origRunSimForHero) {
         if (typeof window.runSim === 'function') window.runSim();
     }
 })();
+
+// Header menu: close on outside click or Esc (it opens over everything else now)
+document.addEventListener('click', function(e) {
+    const menu = document.getElementById('headerOverflowMenu');
+    if (!menu || menu.classList.contains('hidden')) return;
+    if (e.target.closest('#headerOverflowMenu') || e.target.closest('#headerMenuBtn')) return;
+    menu.classList.add('hidden');
+});
+document.addEventListener('keydown', function(e) {
+    if (e.key !== 'Escape') return;
+    document.getElementById('headerOverflowMenu')?.classList.add('hidden');
+});
+
+// Setup number fields: − / + steppers so values can be tapped in on a tablet or laptop
+window.initNumberSteppers = function() {
+    const root = document.getElementById('setupScreen');
+    if (!root) return;
+    root.querySelectorAll('input[type="number"].input-field').forEach(inp => {
+        if (inp.closest('.num-stepper')) return;
+        const step = parseFloat(inp.getAttribute('step')) || (/^(minStint|maxStint|minDriverTime|maxDriverTime|kartChangeInterval|pitClosed)/.test(inp.id) ? 5 : 1);
+        const wrap = document.createElement('div');
+        wrap.className = 'num-stepper';
+        const mk = (sign, label) => {
+            const b = document.createElement('button');
+            b.type = 'button'; b.textContent = sign; b.tabIndex = -1;
+            b.setAttribute('aria-label', label);
+            b.addEventListener('click', () => {
+                const min = inp.min !== '' ? parseFloat(inp.min) : (inp.id === 'raceDuration' || inp.id === 'reqPitStops' ? 0 : 0);
+                const max = inp.max !== '' ? parseFloat(inp.max) : Infinity;
+                const cur = parseFloat(inp.value) || 0;
+                const dec = String(step).includes('.') ? 1 : 0;
+                const next = Math.min(max, Math.max(min, +(cur + (sign === '+' ? step : -step)).toFixed(dec)));
+                inp.value = next;
+                inp.dispatchEvent(new Event('input', { bubbles: true }));
+                inp.dispatchEvent(new Event('change', { bubbles: true }));
+            });
+            return b;
+        };
+        inp.parentNode.insertBefore(wrap, inp);
+        wrap.appendChild(mk('−', 'Decrease'));
+        wrap.appendChild(inp);
+        wrap.appendChild(mk('+', 'Increase'));
+    });
+};
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', window.initNumberSteppers);
+else window.initNumberSteppers();

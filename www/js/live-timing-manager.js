@@ -509,6 +509,7 @@ class LiveTimingManager {
             return {
                 race: {
                     timeLeftSeconds: data.race?.timeLeftSeconds ?? null,
+                    receivedAt: data.race?.receivedAt ?? null,
                     status: data.race?.status || null
                 },
                 ourTeam: data.ourTeam ? {
