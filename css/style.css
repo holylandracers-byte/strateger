@@ -3510,3 +3510,13 @@ body.watcher-mode #liveTeamHint { display: none !important; }
 
 /* Menu: hide a group when none of its items apply */
 .hdr-menu-group:not(:has(> .hdr-menu-item:not(.hidden))) { display: none; }
+
+.no-live-hint p { margin: 0 0 10px; }
+.no-live-form { display: flex; flex-direction: column; gap: 8px; max-width: 420px; }
+.no-live-btn { align-self: flex-start; min-height: 40px; padding: 8px 20px; border-radius: 8px; background: #22d3ee; color: #020617; font-weight: 700; font-size: 14px; }
+.no-live-btn:hover { background: #67e8f9; }
+.no-live-btn:disabled { opacity: .6; cursor: default; }
+.no-live-status { margin-top: 8px; font-size: 13px; min-height: 18px; }
+.no-live-status.is-error { color: #f87171; }
+.no-live-status.is-ok { color: #4ade80; font-weight: 700; }
+body.watcher-mode .no-live-form, body.watcher-mode .no-live-status { display: none; }

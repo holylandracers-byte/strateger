@@ -44,9 +44,9 @@
     <script src="js/hakafast-scraper.js?v=7"></script>
     <script src="js/alpha-scraper.js?v=7"></script>
     <script src="js/live-timing-manager.js?v=8"></script>
-    <script src="js/qualifying.js?v=7"></script>
+    <script src="js/qualifying.js?v=8"></script>
 
-    <link rel="stylesheet" href="css/style.css?v=24">
+    <link rel="stylesheet" href="css/style.css?v=25">
 
     <script>
         tailwind.config = {
@@ -1004,7 +1004,15 @@
 
             <div id="raceInfoPanel" class="flex-1 min-h-0 overflow-y-auto p-2 space-y-2">
 
-                <p id="noLiveHint" class="no-live-hint" data-i18n="noLiveHint">Live timing is not connected. Positions and lap times appear here once a timing URL is set for this race.</p>
+                <div id="noLiveHint" class="no-live-hint">
+                    <p data-i18n="noLiveHint">Live timing is not connected. Positions and lap times appear here once a timing URL is set for this race.</p>
+                    <form id="raceLtForm" class="no-live-form" onsubmit="window.connectLiveTimingMidRace(); return false;">
+                        <input type="url" id="raceLtUrl" class="input-field text-xs" data-i18n="liveTimingUrl" placeholder="Live Timing URL..." autocomplete="off" required>
+                        <input type="text" id="raceLtValue" class="input-field text-xs" data-i18n="ltPlaceholder" placeholder="Search value..." autocomplete="off" required>
+                        <button type="submit" class="no-live-btn" data-i18n="connectLive">Connect</button>
+                    </form>
+                    <div id="raceLtStatus" class="no-live-status" role="status" aria-live="polite"></div>
+                </div>
 
                 <!-- Live-timing widget wrapper: always docked inside raceInfoPanel -->
                 <div id="liveTimingWidgetWrapper" class="lt-widget-wrapper hidden">
@@ -2446,13 +2454,13 @@
         </div>
     </div>
 
-    <script src="js/state.js?v=23"></script>
-    <script src="js/auth.js?v=7"></script>
-    <script src="js/network.js?v=9"></script>
+    <script src="js/state.js?v=25"></script>
+    <script src="js/auth.js?v=8"></script>
+    <script src="js/network.js?v=10"></script>
     <script src="js/strategy.js?v=12"></script>
-    <script src="js/live-timing.js?v=15"></script>
-    <script src="js/ui.js?v=12"></script>
+    <script src="js/live-timing.js?v=16"></script>
+    <script src="js/ui.js?v=13"></script>
     <script src="js/walkthrough.js?v=13"></script>
-    <script src="js/main.js?v=16"></script>
+    <script src="js/main.js?v=17"></script>
 </body>
 </html>

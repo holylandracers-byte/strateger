@@ -2527,3 +2527,54 @@ window.toggleOutlookCollapse = function() {
     }
 })();
 
+
+
+// Connect live timing during a race (the setup inputs stay in the DOM, so they hold the same values)
+window.connectLiveTimingMidRace = function() {
+    if (window.role !== 'host') return;
+    if (typeof window.checkProFeature === 'function' && !window.checkProFeature('liveTiming')) {
+        window.showProGate('Live Timing');
+        return;
+    }
+    const t = window.t || (k => k);
+    const status = document.getElementById('raceLtStatus');
+    const btn = document.querySelector('#raceLtForm .no-live-btn');
+    const url = document.getElementById('raceLtUrl').value.trim();
+    const value = document.getElementById('raceLtValue').value.trim();
+    const setStatus = (text, cls) => { if (status) { status.textContent = text; status.className = 'no-live-status' + (cls ? ' ' + cls : ''); } };
+    if (!url) { setStatus(t('enterUrl'), 'is-error'); return; }
+    if (!value) { setStatus(t('enterValue'), 'is-error'); return; }
+
+    // Keep the setup form in sync so saved state and updateSearchConfig() read the same values
+    const setupUrl = document.getElementById('liveTimingUrl');
+    const setupValue = document.getElementById('searchValue');
+    if (setupUrl) setupUrl.value = url;
+    if (setupValue) setupValue.value = value;
+
+    window.liveTimingConfig.url = url;
+    window.liveTimingConfig.demoMode = false;
+    window.liveTimingConfig.enabled = true;
+    window.updateSearchConfig();
+
+    if (window.liveTimingManager) { window.liveTimingManager.stop(); window.liveTimingManager = null; }
+    window.__liveTimingStarted = false;
+    window.liveData.position = null;
+    window.startLiveTimingUpdates();
+    if (typeof window.updateLiveTimingUI === 'function') window.updateLiveTimingUI();
+
+    if (btn) btn.disabled = true;
+    setStatus(t('testing') + '…');
+    let elapsed = 0;
+    const timer = setInterval(() => {
+        elapsed += 500;
+        if (window.liveData.position) {
+            clearInterval(timer);
+            setStatus(t('found') + ' P' + window.liveData.position, 'is-ok');
+            if (btn) btn.disabled = false;
+        } else if (elapsed >= 15000) {
+            clearInterval(timer);
+            setStatus(t('notFound'), 'is-error');
+            if (btn) btn.disabled = false;
+        }
+    }, 500);
+};

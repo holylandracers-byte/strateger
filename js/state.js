@@ -2702,6 +2702,129 @@ window.translations = {
     }
 };
     Object.keys(extra3).forEach(l => { if (window.translations[l]) Object.assign(window.translations[l], extra3[l]); });
+    const extra4 = {
+    "en": {
+        "enterUrl": "Enter the live timing URL",
+        "enterValue": "Enter a value for",
+        "testing": "Connecting",
+        "found": "Found",
+        "notFound": "Not found. Check the URL and the search value.",
+        "team": "team",
+        "kart": "kart",
+        "driver": "driver"
+    },
+    "he": {
+        "enterUrl": "הזינו כתובת תזמון חי",
+        "enterValue": "הזינו ערך עבור",
+        "testing": "מתחבר",
+        "found": "נמצא",
+        "notFound": "לא נמצא. בדקו את הכתובת ואת ערך החיפוש.",
+        "team": "קבוצה",
+        "kart": "קארט",
+        "driver": "נהג"
+    },
+    "fr": {
+        "enterUrl": "Saisissez l'URL du chronométrage",
+        "enterValue": "Saisissez une valeur pour",
+        "testing": "Connexion",
+        "found": "Trouvé",
+        "notFound": "Introuvable. Vérifiez l'URL et la valeur de recherche.",
+        "team": "équipe",
+        "kart": "kart",
+        "driver": "pilote"
+    },
+    "pt": {
+        "enterUrl": "Insira a URL da cronometragem",
+        "enterValue": "Insira um valor para",
+        "testing": "Conectando",
+        "found": "Encontrado",
+        "notFound": "Não encontrado. Verifique a URL e o valor da busca.",
+        "team": "equipe",
+        "kart": "kart",
+        "driver": "piloto"
+    },
+    "ru": {
+        "enterUrl": "Введите ссылку на тайминг",
+        "enterValue": "Введите значение для",
+        "testing": "Подключение",
+        "found": "Найдено",
+        "notFound": "Не найдено. Проверьте ссылку и значение поиска.",
+        "team": "команда",
+        "kart": "карт",
+        "driver": "пилот"
+    },
+    "ar": {
+        "enterUrl": "أدخل رابط التوقيت المباشر",
+        "enterValue": "أدخل قيمة لـ",
+        "testing": "جارٍ الاتصال",
+        "found": "تم العثور",
+        "notFound": "غير موجود. تحقق من الرابط وقيمة البحث.",
+        "team": "الفريق",
+        "kart": "الكارت",
+        "driver": "السائق"
+    },
+    "es": {
+        "enterUrl": "Introduce la URL del cronometraje",
+        "enterValue": "Introduce un valor para",
+        "testing": "Conectando",
+        "found": "Encontrado",
+        "notFound": "No encontrado. Revisa la URL y el valor de búsqueda.",
+        "team": "equipo",
+        "kart": "kart",
+        "driver": "piloto"
+    },
+    "it": {
+        "enterUrl": "Inserisci l'URL del cronometraggio",
+        "enterValue": "Inserisci un valore per",
+        "testing": "Connessione",
+        "found": "Trovato",
+        "notFound": "Non trovato. Controlla l'URL e il valore di ricerca.",
+        "team": "squadra",
+        "kart": "kart",
+        "driver": "pilota"
+    },
+    "ka": {
+        "enterUrl": "შეიყვანეთ ტაიმინგის URL",
+        "enterValue": "შეიყვანეთ მნიშვნელობა:",
+        "testing": "უკავშირდება",
+        "found": "ნაპოვნია",
+        "notFound": "ვერ მოიძებნა. შეამოწმეთ URL და საძიებო მნიშვნელობა.",
+        "team": "გუნდი",
+        "kart": "კარტი",
+        "driver": "მძღოლი"
+    },
+    "de": {
+        "enterUrl": "Live-Timing-URL eingeben",
+        "enterValue": "Wert eingeben für",
+        "testing": "Verbinde",
+        "found": "Gefunden",
+        "notFound": "Nicht gefunden. URL und Suchwert prüfen.",
+        "team": "Team",
+        "kart": "Kart",
+        "driver": "Fahrer"
+    },
+    "ja": {
+        "enterUrl": "ライブタイミングのURLを入力",
+        "enterValue": "値を入力：",
+        "testing": "接続中",
+        "found": "見つかりました",
+        "notFound": "見つかりません。URLと検索値を確認してください。",
+        "team": "チーム",
+        "kart": "カート",
+        "driver": "ドライバー"
+    },
+    "el": {
+        "enterUrl": "Εισάγετε το URL χρονομέτρησης",
+        "enterValue": "Εισάγετε τιμή για",
+        "testing": "Σύνδεση",
+        "found": "Βρέθηκε",
+        "notFound": "Δεν βρέθηκε. Ελέγξτε το URL και την τιμή αναζήτησης.",
+        "team": "ομάδα",
+        "kart": "kart",
+        "driver": "οδηγός"
+    }
+};
+    Object.keys(extra4).forEach(l => { if (window.translations[l]) window.translations[l] = Object.assign({}, extra4[l], window.translations[l]); });
 
 })();
 
