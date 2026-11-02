@@ -311,6 +311,14 @@ window.createDriverInput = function(val, checked, squad) {
     colorPicker.onchange = () => {
         accentBar.style.background = colorPicker.value;
         colorSwatch.style.background = colorPicker.value;
+        // Persist to the driver pool so the group chip (and reloads) keep the new colour
+        const pool = window.getDriverPool();
+        const entry = pool.find(d => d.name === driverInput.value.trim());
+        if (entry) {
+            entry.color = colorPicker.value;
+            window.saveDriverPool(pool);
+            window.renderDriverGroupUI();
+        }
         window.runSim();
     };
 
