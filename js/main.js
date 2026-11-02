@@ -4669,17 +4669,11 @@ window.openLivePreview = function() {
     raceDashboard.classList.add('hidden');
     previewScreen.classList.remove('hidden');
 
-    // Inject back-to-race button if not already present
-    if (!document.getElementById('livePreviewBackBtn')) {
-        const backBtn = document.createElement('button');
-        backBtn.id = 'livePreviewBackBtn';
-        backBtn.className = 'fixed top-4 right-4 z-50 bg-navy-800 hover:bg-navy-700 border border-gray-600 text-white text-sm font-bold py-2 px-4 rounded-xl shadow-lg transition';
-        backBtn.innerHTML = (window.t ? window.t('backToRace') || '← Back to Race' : '← Back to Race');
-        backBtn.onclick = window.closeLivePreview;
-        document.body.appendChild(backBtn);
-    } else {
-        document.getElementById('livePreviewBackBtn').classList.remove('hidden');
-    }
+    // Mid-race the header's close button becomes "Back to race" (labelled via CSS) so it
+    // no longer competes with a floating button for the same corner.
+    previewScreen.classList.add('live-mode');
+    const closeBtn = document.getElementById('previewCloseBtn');
+    if (closeBtn) closeBtn.setAttribute('data-live-label', (window.t && window.t('backToRace') !== 'backToRace' ? window.t('backToRace') : null) || 'Back to race');
 
     if (typeof window.renderPreview === 'function') window.renderPreview();
     // Mid-race the plan can still be adjusted — but only for stints that haven't
@@ -4709,8 +4703,7 @@ window.closeLivePreview = function() {
     }
     previewScreen.classList.add('hidden');
     raceDashboard.classList.remove('hidden');
-    const backBtn = document.getElementById('livePreviewBackBtn');
-    if (backBtn) backBtn.classList.add('hidden');
+    previewScreen.classList.remove('live-mode');
     if (window.previewData && window.previewData.timeline) {
         window.previewData.timeline.forEach(s => { delete s._done; delete s._current; });
     }

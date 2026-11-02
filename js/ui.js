@@ -992,7 +992,7 @@ window.renderPreview = function() {
         let pitIndicator = '';
         if (pit && !isLast) {
             const pitSec = Math.round(pit.duration / 1000);
-            pitIndicator = `<span class="text-gold text-[11px] ml-1">🔧+${pitSec}s</span>`;
+            pitIndicator = `<span class="sr-pit"><i class="fas fa-wrench"></i> +${pitSec}s</span>`;
             currentTimeMs += pit.duration;
         }
 
@@ -1010,63 +1010,60 @@ window.renderPreview = function() {
             }
         }
 
-        const outOfBounds = durationMin < minStintMin || durationMin > maxStintMin;
-        const borderWarning = outOfBounds ? 'ring-1 ring-red-500' : '';
+        const tr = (k, fb) => { const v = window.t ? window.t(k) : null; return (v && v !== k) ? v : fb; };
+        const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const tooShort = durationMin < minStintMin;
+        const tooLong = durationMin > maxStintMin;
+        const outOfBounds = tooShort || tooLong;
+        const ruleNote = tooLong
+            ? `<span class="sr-rule">${tr('stintOverMax', 'Over max')} ${maxStintMin}m</span>`
+            : (tooShort ? `<span class="sr-rule">${tr('stintUnderMin', 'Under min')} ${minStintMin}m</span>` : '');
 
         const checkeredFlag = isLast ? `<svg width="11" height="8" viewBox="0 0 14 10" aria-hidden="true" style="flex-shrink:0;vertical-align:middle"><rect x="0.5" y="0.5" width="13" height="9" rx="1" fill="#111" stroke="#666"/><rect x="1" y="1" width="3" height="4" fill="#fff"/><rect x="4" y="1" width="3" height="4" fill="#111"/><rect x="7" y="1" width="3" height="4" fill="#fff"/><rect x="10" y="1" width="3" height="4" fill="#111"/><rect x="1" y="5" width="3" height="4" fill="#111"/><rect x="4" y="5" width="3" height="4" fill="#fff"/><rect x="7" y="5" width="3" height="4" fill="#111"/><rect x="10" y="5" width="3" height="4" fill="#fff"/></svg>` : '';
 
         // Stints that already happened (real driver + real duration recorded by
         // _syncPreviewWithActuals, or flagged _done by openLivePreview) are history —
-        // render them read-only instead of via the disable-everything blanket that used
-        // to freeze the whole preview screen mid-race.
+        // render them read-only; only upcoming stints are editable.
         const isLocked = !!(stint._actual || stint._done);
         if (isLocked) {
             return `
-                <div class="flex items-center gap-1 bg-navy-950/50 rounded border-l-4 stint-row stint-row-locked" style="border-left-color:${stint.color};height:24px;padding:0 4px;overflow:hidden;opacity:0.6" data-index="${index}">
-                    <div class="flex items-center justify-center shrink-0" style="width:24px">
-                        <span class="text-neon" style="font-size:9px" title="${window.t ? window.t('stintActualDone') : 'Actual — done'}">✓</span>
+                <div class="stint-row stint-row-locked" style="--sc:${stint.color}" data-index="${index}">
+                    <div class="sr-main">
+                        <span class="sr-num sr-num-done" title="${tr('stintActualDone', 'Done')}"><i class="fas fa-check"></i></span>
+                        <span class="sr-driver sr-driver-static"><span class="sr-dot"></span><span class="sr-name">${esc(stint.driverName)}</span></span>
+                        <span class="sr-dur-static" title="${tr('actualDuration', 'Actual duration')}">${durationMin}m</span>
                     </div>
-                    <div class="flex-1 min-w-0 flex items-center gap-1" style="overflow:hidden;white-space:nowrap">
-                        <span class="font-bold text-gray-300" style="font-size:11px;max-width:4.5rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0">${stint.driverName}</span>
-                        <span class="text-gray-500" style="font-size:9px;flex-shrink:0">${startTimeStr}${arrow}${endTimeStr}</span>
-                        ${checkeredFlag}${pitIndicator}${stintForecastTag}
-                    </div>
-                    <span class="text-gray-400 font-mono shrink-0" style="font-size:10px;padding:1px 2px" title="${window.t ? window.t('actualDuration') : 'Actual duration'}">${durationMin}m</span>
+                    <div class="sr-sub"><span>${startTimeStr}${arrow}${endTimeStr}</span>${checkeredFlag}${pitIndicator}<span class="sr-done-tag">${tr('stintDoneTag', 'Done')}</span></div>
                 </div>
             `;
         }
 
-        const touchDev = window._isTouchDevice;
-        const dragAttrs = touchDev ? '' : ` draggable="true" ondragstart="window.handleDragStart(event)" ondragover="window.handleDragOver(event)" ondragleave="window.handleDragLeave(event)" ondrop="window.handleDrop(event)"`;
-        const driverTap = touchDev ? '' : ` onclick="event.stopPropagation();window.openStintDriverPicker(${index}, this)"`;
-        const driverTitle = touchDev
-            ? (window.t ? window.t('holdToSwapDriver') : 'Hold 3 sec to swap driver')
-            : 'Tap to swap driver';
         // A stint can't be reordered past a locked (already-run) stint — only among
         // the current/future ones — so Up is disabled right after the lock boundary.
         const prevLocked = index > 0 && !!(stints[index - 1]._actual || stints[index - 1]._done);
         const canMoveUp = !isFirst && !prevLocked;
-        // Reorder arrows inline so row stays single-line height (~24px)
+        const canMoveDown = !isLast;
         return `
-            <div class="flex items-center gap-1 bg-navy-950 rounded border-l-4 cursor-grab active:cursor-grabbing stint-row ${borderWarning}" style="border-left-color:${stint.color};height:24px;padding:0 4px 0 0;overflow:hidden"
-                 data-index="${index}"${dragAttrs}>
-                <div class="flex items-center shrink-0" style="gap:0;width:28px">
-                    <button onclick="window.moveStint(${index}, -1)" class="text-gray-600 hover:text-white ${canMoveUp ? '' : 'invisible'}" style="font-size:7px;padding:0 2px;line-height:1;background:none;border:none;cursor:pointer" title="Up">▲</button>
-                    <span class="text-gray-600 font-mono" style="font-size:8px;min-width:10px;text-align:center">${index+1}</span>
-                    <button onclick="window.moveStint(${index}, 1)" class="text-gray-600 hover:text-white ${isLast ? 'invisible' : ''}" style="font-size:7px;padding:0 2px;line-height:1;background:none;border:none;cursor:pointer" title="Down">▼</button>
+            <div class="stint-row${stint._current ? ' is-current' : ''}${outOfBounds ? ' is-bad' : ''}" style="--sc:${stint.color}"
+                 data-index="${index}" draggable="true" ondragstart="window.handleDragStart(event)" ondragover="window.handleDragOver(event)" ondragleave="window.handleDragLeave(event)" ondrop="window.handleDrop(event)">
+                <div class="sr-main">
+                    <span class="sr-handle" title="${tr('dragToReorder', 'Drag to reorder')}"><i class="fas fa-grip-vertical"></i></span>
+                    <span class="sr-num">${index + 1}</span>
+                    <button type="button" class="sr-driver stint-driver-swap" data-stint-index="${index}" onclick="event.stopPropagation();window.openStintDriverPicker(${index})" aria-label="${tr('swapDriver', 'Swap driver')}: ${esc(stint.driverName)}">
+                        <span class="sr-dot"></span><span class="sr-name">${esc(stint.driverName)}</span><i class="fas fa-chevron-down sr-caret"></i>
+                    </button>
+                    <div class="sr-step">
+                        <button type="button" class="sr-step-btn" onclick="window.nudgeStint(${index}, -1)" aria-label="-1 min"><i class="fas fa-minus"></i></button>
+                        <input type="number" inputmode="numeric" value="${durationMin}" min="${minStintMin}" max="${maxStintMin}" aria-label="${tr('lblStintMinutes', 'Stint minutes')}"
+                               onchange="window.updateStintDuration(${index}, this.value)" class="sr-dur-input${outOfBounds ? ' is-bad' : ''}">
+                        <button type="button" class="sr-step-btn" onclick="window.nudgeStint(${index}, 1)" aria-label="+1 min"><i class="fas fa-plus"></i></button>
+                    </div>
+                    <div class="sr-move">
+                        <button type="button" class="sr-move-btn" onclick="window.moveStint(${index}, -1)" ${canMoveUp ? '' : 'disabled'} aria-label="${tr('moveUp', 'Move up')}"><i class="fas fa-chevron-up"></i></button>
+                        <button type="button" class="sr-move-btn" onclick="window.moveStint(${index}, 1)" ${canMoveDown ? '' : 'disabled'} aria-label="${tr('moveDown', 'Move down')}"><i class="fas fa-chevron-down"></i></button>
+                    </div>
                 </div>
-                <div class="flex-1 min-w-0 flex items-center gap-1" style="overflow:hidden;white-space:nowrap">
-                    ${stint._current ? `<span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse shrink-0" title="${window.t ? window.t('stintInProgress') : 'In progress'}"></span>` : ''}
-                    <span class="stint-driver-swap font-bold text-white hover:text-neon cursor-pointer underline decoration-dotted" style="font-size:11px;max-width:4.5rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0" title="${driverTitle}" data-stint-index="${index}"${driverTap}>${stint.driverName}</span>
-                    <span class="text-gray-500" style="font-size:9px;flex-shrink:0">${startTimeStr}${arrow}${endTimeStr}</span>
-                    ${checkeredFlag}${pitIndicator}${stintForecastTag}
-                </div>
-                <input type="number" value="${durationMin}" min="${minStintMin}" max="${maxStintMin}"
-                       onchange="window.updateStintDuration(${index}, this.value)"
-                       class="bg-navy-800 border border-gray-700 text-white text-center rounded font-mono focus:border-ice focus:outline-none shrink-0 ${outOfBounds ? 'border-red-500 text-red-300' : ''}"
-                       style="width:36px;font-size:10px;padding:1px 2px;height:18px"
-                       title="min">
-                <span class="text-gray-600 shrink-0" style="font-size:8px">m</span>
+                <div class="sr-sub">${stint._current ? `<span class="sr-now"><span class="sr-now-dot"></span>${tr('stintInProgress', 'In progress')}</span>` : ''}<span>${startTimeStr}${arrow}${endTimeStr}</span>${checkeredFlag}${pitIndicator}${stintForecastTag}${ruleNote}</div>
             </div>
         `;
     }).join('');
@@ -1090,7 +1087,7 @@ window.renderPreview = function() {
     const violationBanner = violationCount > 0 ? `
         <div class="bg-red-950/80 border border-red-500/60 rounded px-2 py-1.5 mb-1 flex items-center justify-between gap-2">
             <span class="text-[11px] text-red-300 font-bold leading-tight">${(window.t ? window.t('stintViolationsBanner') : 'Stints outside min/max rules').replace('{{count}}', violationCount)}</span>
-            <button type="button" onclick="window.fixPreviewStintViolations()" class="shrink-0 text-[11px] font-bold bg-red-600 hover:bg-red-500 text-white px-2 py-0.5 rounded transition">${window.t ? window.t('stintFixBtn') : 'Auto-fix'}</button>
+            <button type="button" onclick="window.fixPreviewStintViolations()" class="sr-fixbtn">${window.t ? window.t('stintFixBtn') : 'Auto-fix'}</button>
         </div>
     ` : '';
 
@@ -1128,76 +1125,112 @@ window.renderPreview = function() {
 };
 
 // ── Stint driver picker ──────────────────────────────────────────────────────
-// Tap a driver name in the timeline to swap it with any other driver in the pool.
-window.openStintDriverPicker = function(stintIndex, anchorEl) {
-    // Remove any existing picker
-    const existing = document.getElementById('stintDriverPicker');
-    if (existing) { existing.remove(); if (existing._stintIdx === stintIndex) return; }
+// One tap on a driver chip opens a sheet listing every driver with what the swap
+// would do to their total drive time. Optionally applies to all upcoming stints
+// of the same driver. Only upcoming stints can be changed (renderPreview never
+// offers the picker for stints that already ran).
+window._sdpApplyAll = false;
+window.closeStintDriverPicker = function() {
+    const el = document.getElementById('stintDriverPicker');
+    if (el) {
+        el.remove();
+        document.removeEventListener('keydown', window._sdpKey, true);
+    }
+};
+window._sdpKey = function(e) { if (e.key === 'Escape') { e.stopPropagation(); window.closeStintDriverPicker(); } };
 
-    const pool = window.getDriverPool ? window.getDriverPool() : [];
-    const slots = window._effectiveDriverSlots ? window._effectiveDriverSlots() : pool;
+window.openStintDriverPicker = function(stintIndex) {
+    window.closeStintDriverPicker();
     const timeline = window.previewData && window.previewData.timeline;
     if (!timeline) return;
     const stints = timeline.filter(s => s.type === 'stint');
     const current = stints[stintIndex];
-    if (!current) return;
+    if (!current || current._actual || current._done) return;
 
-    // Build picker dropdown
-    const picker = document.createElement('div');
-    picker.id = 'stintDriverPicker';
-    picker._stintIdx = stintIndex;
-    picker.style.cssText = 'position:fixed;z-index:9999;background:#0f1923;border:1px solid #374151;border-radius:8px;padding:4px;box-shadow:0 8px 24px rgba(0,0,0,0.6);min-width:130px;';
+    const tr = (k, fb) => { const v = window.t ? window.t(k) : null; return (v && v !== k) ? v : fb; };
+    const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const pool = window.getDriverPool ? window.getDriverPool() : [];
+    const slots = window._effectiveDriverSlots ? window._effectiveDriverSlots() : pool;
+    const drivers = slots.length > 0 ? slots : pool;
+    const maxDriverMs = (parseFloat(document.getElementById('maxDriverTime')?.value) || 0) * 60000;
+    const noDoubles = document.getElementById('allowDouble') ? !document.getElementById('allowDouble').checked : false;
+    const fmt = (ms) => window.formatTimeHMS ? window.formatTimeHMS(ms) : Math.round(ms / 60000) + 'm';
 
-    // Position near anchor
-    const rect = anchorEl.getBoundingClientRect();
-    picker.style.left = Math.min(rect.left, window.innerWidth - 150) + 'px';
-    picker.style.top = (rect.bottom + 4) + 'px';
+    const totals = {};
+    stints.forEach(s => { totals[s.driverName] = (totals[s.driverName] || 0) + s.duration; });
+    const prevName = stints[stintIndex - 1]?.driverName;
+    const nextName = stints[stintIndex + 1]?.driverName;
+    const sameCount = stints.filter((s, i) => i >= stintIndex && s.driverName === current.driverName && !(s._actual || s._done)).length;
 
-    const header = document.createElement('div');
-    header.style.cssText = 'font-size:9px;color:#6b7280;padding:2px 6px 4px;text-transform:uppercase;letter-spacing:.06em;font-weight:700;border-bottom:1px solid #1f2937;margin-bottom:3px;';
-    header.textContent = (window.t ? window.t('swapDriver') : null) || 'Swap driver';
-    picker.appendChild(header);
+    const overlay = document.createElement('div');
+    overlay.id = 'stintDriverPicker';
+    overlay.className = 'sdp-overlay';
+    const rows = drivers.map((d, di) => {
+        const isCur = d.name === current.driverName;
+        const base = totals[d.name] || 0;
+        const after = isCur ? base : base + current.duration;
+        const over = maxDriverMs > 0 && after > maxDriverMs;
+        const backToBack = noDoubles && !isCur && (d.name === prevName || d.name === nextName);
+        const note = over ? `<span class="sdp-warn">${tr('sdpOverLimit', 'Over driver limit')}</span>`
+            : backToBack ? `<span class="sdp-warn">${tr('sdpBackToBack', 'Back-to-back stints')}</span>` : '';
+        return `<button type="button" class="sdp-row${isCur ? ' is-current' : ''}" data-di="${di}" ${isCur ? 'aria-current="true"' : ''}>
+            <span class="sdp-dot" style="background:${d.color}"></span>
+            <span class="sdp-name">${esc(d.name)}</span>
+            ${note}
+            <span class="sdp-total">${isCur ? fmt(base) : `${fmt(base)} <i class="fas fa-arrow-right"></i> ${fmt(after)}`}</span>
+            ${isCur ? '<i class="fas fa-check sdp-check"></i>' : ''}
+        </button>`;
+    }).join('');
 
-    const allDrivers = slots.length > 0 ? slots : pool;
-    allDrivers.forEach(driver => {
-        const isCurrent = driver.name === current.driverName;
-        const row = document.createElement('button');
-        row.style.cssText = `display:flex;align-items:center;gap:6px;width:100%;padding:4px 8px;border:none;background:${isCurrent ? 'rgba(34,211,238,0.12)' : 'transparent'};border-radius:5px;cursor:pointer;font-size:11px;color:${isCurrent ? '#22d3ee' : '#e5e7eb'};text-align:left;`;
-        row.innerHTML = `<span style="width:8px;height:8px;border-radius:50%;background:${driver.color};flex-shrink:0"></span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${driver.name}</span>${isCurrent ? '<span style="font-size:9px;color:#22d3ee">✓</span>' : ''}`;
-        if (!isCurrent) {
-            row.onmouseenter = () => row.style.background = 'rgba(255,255,255,0.07)';
-            row.onmouseleave = () => row.style.background = 'transparent';
-            row.onclick = (e) => {
-                e.stopPropagation();
-                picker.remove();
-                // Assign the new driver to this stint
-                const allStints = window.previewData.timeline.filter(s => s.type === 'stint');
-                const driverPool = window.getDriverPool ? window.getDriverPool() : [];
-                const driverData = driverPool.find(d => d.name === driver.name) || driver;
-                const idx = driverPool.indexOf(driverData);
-                allStints[stintIndex].driverName = driver.name;
-                allStints[stintIndex].color = driver.color;
-                allStints[stintIndex].driverIdx = idx >= 0 ? idx : stintIndex;
-                // Also update stintSchedule if it exists
-                if (window.state && window.state.stintSchedule && window.state.stintSchedule[stintIndex]) {
-                    window.state.stintSchedule[stintIndex].driverName = driver.name;
-                    window.state.stintSchedule[stintIndex].color = driver.color;
-                    window.state.stintSchedule[stintIndex].driverIdx = idx >= 0 ? idx : stintIndex;
-                }
-                window.renderPreview();
-                if (typeof window.broadcast === 'function') window.broadcast();
-            };
-        }
-        picker.appendChild(row);
+    overlay.innerHTML = `
+        <div class="sdp-sheet" role="dialog" aria-modal="true" aria-label="${tr('swapDriver', 'Swap driver')}">
+            <div class="sdp-head">
+                <div>
+                    <div class="sdp-title">${tr('swapDriver', 'Swap driver')} · ${tr('stintNoun', 'Stint')} ${stintIndex + 1}</div>
+                    <div class="sdp-sub">${Math.round(current.duration / 60000)}m · ${esc(current.driverName)}</div>
+                </div>
+                <button type="button" class="sdp-close" aria-label="Close"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="sdp-list">${rows}</div>
+            ${sameCount > 1 ? `<label class="sdp-all"><input type="checkbox" id="sdpApplyAll" ${window._sdpApplyAll ? 'checked' : ''}><span>${tr('sdpApplyAll', 'Replace in all upcoming stints of')} ${esc(current.driverName)} (${sameCount})</span></label>` : ''}
+        </div>`;
+    document.body.appendChild(overlay);
+
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) window.closeStintDriverPicker(); });
+    overlay.querySelector('.sdp-close').addEventListener('click', window.closeStintDriverPicker);
+    const allBox = overlay.querySelector('#sdpApplyAll');
+    if (allBox) allBox.addEventListener('change', () => { window._sdpApplyAll = allBox.checked; });
+    overlay.querySelectorAll('.sdp-row').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const driver = drivers[parseInt(btn.dataset.di, 10)];
+            if (!driver || driver.name === current.driverName) { window.closeStintDriverPicker(); return; }
+            const targets = (window._sdpApplyAll && sameCount > 1)
+                ? stints.map((s, i) => i).filter(i => i >= stintIndex && stints[i].driverName === current.driverName && !(stints[i]._actual || stints[i]._done))
+                : [stintIndex];
+            const driverPool = window.getDriverPool ? window.getDriverPool() : [];
+            const poolIdx = driverPool.findIndex(d => d.name === driver.name);
+            targets.forEach(i => {
+                const idx = poolIdx >= 0 ? poolIdx : i;
+                stints[i].driverName = driver.name;
+                stints[i].color = driver.color;
+                stints[i].driverIdx = idx;
+                const sched = window.state && window.state.stintSchedule && window.state.stintSchedule[i];
+                if (sched) { sched.driverName = driver.name; sched.color = driver.color; sched.driverIdx = idx; }
+            });
+            window.closeStintDriverPicker();
+            if (typeof window.recalculateDriverStatsFromTimeline === 'function') window.recalculateDriverStatsFromTimeline();
+            window.renderPreview();
+            if (typeof window.broadcast === 'function') window.broadcast();
+            if (typeof window.saveHostState === 'function') { try { window.saveHostState(); } catch (e) {} }
+            if (window.state?.isRunning && typeof window.saveRaceState === 'function') { try { window.saveRaceState(); } catch (e) {} }
+            if (typeof window.showToast === 'function') {
+                window.showToast(targets.length > 1 ? `${driver.name} · ${targets.length}×` : `${tr('stintNoun', 'Stint')} ${stintIndex + 1} → ${driver.name}`, 'success', 1600);
+            }
+        });
     });
-
-    document.body.appendChild(picker);
-
-    // Close on outside click
-    const close = (e) => {
-        if (!picker.contains(e.target)) { picker.remove(); document.removeEventListener('click', close); }
-    };
-    setTimeout(() => document.addEventListener('click', close), 0);
+    document.addEventListener('keydown', window._sdpKey, true);
+    const first = overlay.querySelector('.sdp-row:not(.is-current)') || overlay.querySelector('.sdp-row');
+    if (first) first.focus();
 };
 
 // פונקציית עדכון לוגים בזמן אמת
@@ -1399,7 +1432,7 @@ window._bindLongPressAction = function(el, opts) {
     el.addEventListener('touchcancel', () => { cancel(); activated = false; }, { passive: true });
 };
 
-// === Touch-based reorder (long-press on mobile) ===
+// === Touch reorder: grab the handle and drag — no hold needed ===
 window._touchDragState = null;
 
 window.initTouchDrag = function(container) {
@@ -1407,107 +1440,50 @@ window.initTouchDrag = function(container) {
     if (container.dataset.touchDragInit === '1') return;
     container.dataset.touchDragInit = '1';
 
-    const holdMs = window.LONG_PRESS_MS || 3000;
-    const threshold = window.SCROLL_MOVE_THRESHOLD || 12;
-    let longPressTimer = null;
-    let touchItem = null;
-    let pressMode = null; // 'reorder' | 'swap'
-    let startX = 0, startY = 0;
-
-    const cancelPress = () => {
-        clearTimeout(longPressTimer);
-        longPressTimer = null;
-        touchItem = null;
-        pressMode = null;
-    };
+    const rowAt = (x, y) => document.elementFromPoint(x, y)?.closest('.stint-row[data-index]:not(.stint-row-locked)');
+    const clear = () => container.querySelectorAll('.drag-over, .is-dragging').forEach(i => i.classList.remove('drag-over', 'is-dragging'));
 
     container.addEventListener('touchstart', function(e) {
-        if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') return;
-
-        const swapEl = e.target.closest('.stint-driver-swap');
-        const item = swapEl || e.target.closest('[data-index]');
-        if (!item) return;
-
-        touchItem = item;
-        pressMode = swapEl ? 'swap' : 'reorder';
-        startX = e.touches[0].clientX;
-        startY = e.touches[0].clientY;
-
-        longPressTimer = setTimeout(() => {
-            if (pressMode === 'swap') {
-                window.haptic && window.haptic('medium');
-                const idx = parseInt(swapEl.getAttribute('data-stint-index'), 10);
-                window.openStintDriverPicker(idx, swapEl);
-                cancelPress();
-                return;
-            }
-            window.haptic && window.haptic('medium');
-            const idx = parseInt(item.getAttribute('data-index'), 10);
-            window._touchDragState = { fromIdx: idx, el: item };
-            item.style.opacity = '0.5';
-            item.style.outline = '2px solid #22d3ee';
-            if (window.showToast) window.showToast(window.t('dragToPosition'), 'info', 3000);
-        }, holdMs);
+        const handle = e.target.closest('.sr-handle');
+        if (!handle) return;
+        const row = handle.closest('[data-index]');
+        if (!row) return;
+        window._touchDragState = { fromIdx: parseInt(row.getAttribute('data-index'), 10), el: row };
+        row.classList.add('is-dragging');
+        window.haptic && window.haptic('light');
     }, { passive: true });
 
     container.addEventListener('touchmove', function(e) {
-        const dx = e.touches[0].clientX - startX;
-        const dy = e.touches[0].clientY - startY;
-
-        if (longPressTimer && !window._touchDragState) {
-            if (Math.abs(dx) > threshold || Math.abs(dy) > threshold) {
-                cancelPress();
-            }
-            return;
-        }
-
         if (!window._touchDragState) return;
         e.preventDefault();
-
         const touch = e.touches[0];
-        const el = document.elementFromPoint(touch.clientX, touch.clientY);
-        const targetItem = el?.closest('[data-index]');
-
-        container.querySelectorAll('[data-index]').forEach(i => i.classList.remove('drag-over'));
-        if (targetItem && targetItem !== window._touchDragState.el) {
-            targetItem.classList.add('drag-over');
-        }
+        container.querySelectorAll('.drag-over').forEach(i => i.classList.remove('drag-over'));
+        const target = rowAt(touch.clientX, touch.clientY);
+        if (target && target !== window._touchDragState.el) target.classList.add('drag-over');
+        const rect = container.getBoundingClientRect();
+        if (touch.clientY < rect.top + 56) container.scrollTop -= 14;
+        else if (touch.clientY > rect.bottom - 56) container.scrollTop += 14;
     }, { passive: false });
 
     container.addEventListener('touchend', function(e) {
-        cancelPress();
-
-        if (!window._touchDragState) return;
-
+        const drag = window._touchDragState;
+        window._touchDragState = null;
+        if (!drag) return;
         const touch = e.changedTouches[0];
-        const el = document.elementFromPoint(touch.clientX, touch.clientY);
-        const targetItem = el?.closest('[data-index]');
-
-        container.querySelectorAll('[data-index]').forEach(i => {
-            i.classList.remove('drag-over');
-            i.style.opacity = '';
-            i.style.outline = '';
-        });
-
-        if (targetItem) {
-            const toIdx = parseInt(targetItem.getAttribute('data-index'), 10);
-            if (toIdx !== window._touchDragState.fromIdx) {
+        const target = rowAt(touch.clientX, touch.clientY);
+        clear();
+        if (target) {
+            const toIdx = parseInt(target.getAttribute('data-index'), 10);
+            if (toIdx !== drag.fromIdx) {
                 window.haptic && window.haptic('light');
-                window.swapStints(window._touchDragState.fromIdx, toIdx);
+                window.swapStints(drag.fromIdx, toIdx);
             }
         }
-
-        window._touchDragState = null;
     }, { passive: true });
 
     container.addEventListener('touchcancel', function() {
-        cancelPress();
-        if (window._touchDragState) {
-            window._touchDragState.el.style.opacity = '';
-            window._touchDragState.el.style.outline = '';
-            window._touchDragState = null;
-        }
-        container.querySelectorAll('[data-index]').forEach(i => i.classList.remove('drag-over'));
+        window._touchDragState = null;
+        clear();
     });
 };
 
@@ -1584,6 +1560,11 @@ window.updateStintDuration = function(idx, val) {
     window.renderPreview();
 };
 
+window.nudgeStint = function(idx, deltaMin) {
+    const stints = window.previewData?.timeline?.filter(t => t.type === 'stint') || [];
+    if (!stints[idx]) return;
+    window.updateStintDuration(idx, Math.round(stints[idx].duration / 60000) + deltaMin);
+};
 window.moveStint = function(fromIdx, direction) {
     if (!window.previewData?.timeline) return;
     const stints = window.previewData.timeline.filter(t => t.type === 'stint');
@@ -3139,6 +3120,8 @@ window.addEventListener('resize', () => {
 // ==========================================
 
 window._closePreview = function() {
+    // Mid-race the preview opened over the live dashboard — go back there, not to setup.
+    if (window.state?.isRunning && typeof window.closeLivePreview === 'function') { window.closeLivePreview(); return; }
     document.getElementById('previewScreen').classList.add('hidden');
     document.getElementById('setupScreen').classList.remove('hidden');
 };

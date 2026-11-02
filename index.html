@@ -46,7 +46,7 @@
     <script src="js/live-timing-manager.js?v=8"></script>
     <script src="js/qualifying.js?v=9"></script>
 
-    <link rel="stylesheet" href="css/style.css?v=33">
+    <link rel="stylesheet" href="css/style.css?v=36">
 
     <script>
         tailwind.config = {
@@ -231,70 +231,78 @@
             </div>
 
             <!-- Qualifying settings panel (shown only in qualifying mode) -->
-            <div id="qualifyingPanel" class="hidden collapsible-section bg-blue-950/30 border border-blue-500/30 p-3 rounded-xl">
-                <h2 class="text-blue-300 text-sm font-bold flex items-center gap-2 cursor-pointer select-none" onclick="this.parentElement.classList.toggle('collapsed')">
-                    <i class="fas fa-stopwatch text-blue-400/70"></i>
+            <div id="qualifyingPanel" class="hidden collapsible-section set-card set-card-qual">
+                <h2 class="set-card-head" onclick="this.parentElement.classList.toggle('collapsed')">
+                    <i class="fas fa-stopwatch set-card-icon"></i>
                     <span data-i18n="qualifyTitle">Qualifying Session</span>
-                    <i class="fas fa-chevron-down ml-auto text-[11px] text-blue-500/60 collapse-icon transition-transform"></i>
+                    <i class="fas fa-chevron-down collapse-icon set-chevron"></i>
                 </h2>
-                <div class="collapse-body space-y-3 mt-3">
-                <div>
-                    <label class="text-[11px] text-gray-400 font-bold uppercase tracking-wide block mb-1" data-i18n="qualifyFormat">Format</label>
-                    <div class="flex rounded-lg overflow-hidden border border-gray-600">
-                        <button id="qfmtSimpleBtn" onclick="window.setQualifyFormat('simple')"
-                            class="flex-1 text-xs py-1.5 font-bold bg-transparent text-gray-400 transition" data-i18n="qualifyFmtSimple">Simple</button>
-                        <button id="qfmtSegmentsBtn" onclick="window.setQualifyFormat('segments')"
-                            class="flex-1 text-xs py-1.5 font-bold bg-blue-600 text-white transition" data-i18n="qualifyFmtSegments">Q1/Q2/Q3</button>
+                <div class="collapse-body">
+
+                <div class="set-block" style="margin-top:0">
+                    <div class="set-label" data-i18n="qualifyFormat">Format</div>
+                    <div class="seg" role="group">
+                        <button type="button" id="qfmtSimpleBtn" onclick="window.setQualifyFormat('simple')"
+                            class="bg-transparent text-gray-400" data-i18n="qualifyFmtSimple">Simple</button>
+                        <button type="button" id="qfmtSegmentsBtn" onclick="window.setQualifyFormat('segments')"
+                            class="bg-blue-600 text-white" data-i18n="qualifyFmtSegments">Q1/Q2/Q3</button>
                     </div>
                 </div>
-                <div id="qSegmentCountRow">
-                    <label class="text-[11px] text-gray-400 font-bold uppercase tracking-wide block mb-1" data-i18n="qualifySegments">Segments</label>
-                    <div class="flex gap-1.5">
-                        <button onclick="window.setQSegments(1)" id="qSeg1Btn" class="flex-1 py-1.5 text-xs font-bold rounded-lg bg-transparent text-gray-400 border border-gray-600 transition">Q1</button>
-                        <button onclick="window.setQSegments(2)" id="qSeg2Btn" class="flex-1 py-1.5 text-xs font-bold rounded-lg bg-transparent text-gray-400 border border-gray-600 transition">Q1+Q2</button>
-                        <button onclick="window.setQSegments(3)" id="qSeg3Btn" class="flex-1 py-1.5 text-xs font-bold rounded-lg bg-blue-600 text-white border border-blue-500 transition">Q1+Q2+Q3</button>
+
+                <div id="qSegmentCountRow" class="set-block">
+                    <div class="set-label" data-i18n="qualifySegments">Segments</div>
+                    <div class="seg" role="group">
+                        <button type="button" onclick="window.setQSegments(1)" id="qSeg1Btn" class="bg-transparent text-gray-400">Q1</button>
+                        <button type="button" onclick="window.setQSegments(2)" id="qSeg2Btn" class="bg-transparent text-gray-400">Q1+Q2</button>
+                        <button type="button" onclick="window.setQSegments(3)" id="qSeg3Btn" class="bg-blue-600 text-white">Q1+Q2+Q3</button>
                     </div>
                 </div>
-                <div>
-                    <label class="text-[11px] text-gray-400 font-bold uppercase tracking-wide" data-i18n="qualifyDuration">Duration (min)</label>
-                    <input type="number" id="qualifyDuration" value="15" min="1" max="120"
-                        class="input-field text-blue-300 font-bold" oninput="window.updateQualifyPreview && window.updateQualifyPreview()">
-                </div>
-                <div>
-                    <label class="text-[11px] text-gray-400 font-bold uppercase tracking-wide block mb-1" data-i18n="qualifyParticipation">Driver Participation</label>
-                    <div class="flex rounded-lg overflow-hidden border border-gray-600">
-                        <button id="qpartOneBtn" onclick="window.setQParticipation('one')" class="flex-1 text-[11px] py-1.5 font-bold bg-transparent text-gray-400 transition" data-i18n="qualifyPartOne">One</button>
-                        <button id="qpartMultiBtn" onclick="window.setQParticipation('multi')" class="flex-1 text-[11px] py-1.5 font-bold bg-transparent text-gray-400 transition" data-i18n="qualifyPartMulti">Multiple</button>
-                        <button id="qpartAllBtn" onclick="window.setQParticipation('all')" class="flex-1 text-[11px] py-1.5 font-bold bg-blue-600 text-white transition" data-i18n="qualifyPartAll">All</button>
+
+                <div class="set-grid-2 set-block">
+                    <div>
+                        <label class="set-label" for="qualifyDuration" data-i18n="qualifyDuration">Duration (min)</label>
+                        <input type="number" id="qualifyDuration" value="15" min="1" max="120"
+                            class="input-field set-big" oninput="window.updateQualifyPreview && window.updateQualifyPreview()">
                     </div>
-                    <div id="qMultiCountRow" class="hidden mt-1.5">
-                        <label class="text-[11px] text-gray-500 block mb-1" data-i18n="qualifyPartMultiCount">Select drivers</label>
+                    <div>
+                        <label class="set-label" for="qualifyRuns" data-i18n="qualifyRuns">Runs per driver</label>
+                        <input type="number" id="qualifyRuns" value="1" min="1" max="10"
+                            class="input-field set-big" oninput="window.updateQualifyPreview && window.updateQualifyPreview()">
+                    </div>
+                </div>
+
+                <div class="set-block">
+                    <div class="set-label" data-i18n="qualifyParticipation">Driver Participation</div>
+                    <div class="seg" role="group">
+                        <button type="button" id="qpartOneBtn" onclick="window.setQParticipation('one')" class="bg-transparent text-gray-400" data-i18n="qualifyPartOne">One</button>
+                        <button type="button" id="qpartMultiBtn" onclick="window.setQParticipation('multi')" class="bg-transparent text-gray-400" data-i18n="qualifyPartMulti">Multiple</button>
+                        <button type="button" id="qpartAllBtn" onclick="window.setQParticipation('all')" class="bg-blue-600 text-white" data-i18n="qualifyPartAll">All</button>
+                    </div>
+                    <div id="qMultiCountRow" class="hidden" style="margin-top:10px">
+                        <div class="set-sublabel" data-i18n="qualifyPartMultiCount">Select drivers</div>
                         <div id="qDriverPickerList" class="flex flex-wrap gap-1.5"></div>
                     </div>
-                    <div id="qOneDriverRow" class="hidden mt-1.5">
-                        <label class="text-[11px] text-gray-500 block mb-1" data-i18n="qualifyPartOneDriver">Driver</label>
-                        <select id="qOneDriverSelect" class="input-field text-blue-300 font-bold text-[11px]" onchange="window.setQOneDriver && window.setQOneDriver(this.value)"></select>
-                    </div>
-                    <div class="mt-1.5">
-                        <label class="text-[11px] text-gray-500" data-i18n="qualifyRuns">Runs per driver</label>
-                        <input type="number" id="qualifyRuns" value="1" min="1" max="10"
-                            class="input-field text-blue-300 font-bold" oninput="window.updateQualifyPreview && window.updateQualifyPreview()">
+                    <div id="qOneDriverRow" class="hidden" style="margin-top:10px">
+                        <label class="set-sublabel" for="qOneDriverSelect" data-i18n="qualifyPartOneDriver">Driver</label>
+                        <select id="qOneDriverSelect" class="input-field" onchange="window.setQOneDriver && window.setQOneDriver(this.value)"></select>
                     </div>
                 </div>
-                <div>
-                    <label class="text-[11px] text-gray-400 font-bold uppercase tracking-wide block mb-1" data-i18n="qualifyPitRule">Pit Stop Rule</label>
-                    <div class="flex rounded-lg overflow-hidden border border-gray-600">
-                        <button id="qpitNoneBtn" onclick="window.setQPitRule('none')" class="flex-1 text-[11px] py-1.5 font-bold bg-blue-600 text-white transition" data-i18n="qualifyPitNone">None</button>
-                        <button id="qpitAnyBtn" onclick="window.setQPitRule('any')" class="flex-1 text-[11px] py-1.5 font-bold bg-transparent text-gray-400 transition" data-i18n="qualifyPitAny">Any stop</button>
-                        <button id="qpitMinBtn" onclick="window.setQPitRule('min')" class="flex-1 text-[11px] py-1.5 font-bold bg-transparent text-gray-400 transition" data-i18n="qualifyPitMin">Min time</button>
+
+                <div class="set-block">
+                    <div class="set-label" data-i18n="qualifyPitRule">Pit Stop Rule</div>
+                    <div class="seg" role="group">
+                        <button type="button" id="qpitNoneBtn" onclick="window.setQPitRule('none')" class="bg-blue-600 text-white" data-i18n="qualifyPitNone">None</button>
+                        <button type="button" id="qpitAnyBtn" onclick="window.setQPitRule('any')" class="bg-transparent text-gray-400" data-i18n="qualifyPitAny">Any stop</button>
+                        <button type="button" id="qpitMinBtn" onclick="window.setQPitRule('min')" class="bg-transparent text-gray-400" data-i18n="qualifyPitMin">Min time</button>
                     </div>
-                    <div id="qPitMinTimeRow" class="hidden mt-1.5">
-                        <label class="text-[11px] text-gray-500" data-i18n="qualifyPitMinSec">Minimum seconds in pit</label>
+                    <div id="qPitMinTimeRow" class="hidden" style="margin-top:10px">
+                        <label class="set-sublabel" for="qPitMinTime" data-i18n="qualifyPitMinSec">Minimum seconds in pit</label>
                         <input type="number" id="qPitMinTime" value="30" min="5" max="300"
-                            class="input-field text-blue-300 font-bold" oninput="window.updateQualifyPreview && window.updateQualifyPreview()">
+                            class="input-field" oninput="window.updateQualifyPreview && window.updateQualifyPreview()">
                     </div>
                 </div>
-                <div id="qualifyStrategyPreview" class="text-[11px] text-gray-400 space-y-1 bg-navy-950/50 rounded p-2"></div>
+
+                <div id="qualifyStrategyPreview" class="set-preview"></div>
                 </div><!-- end collapse-body -->
             </div>
 
@@ -367,59 +375,66 @@
             </div>
 
             <!-- GENERAL INFO (collapsible) -->
-            <div class="collapsible-section bg-navy-900/80 p-3 rounded-xl border border-gray-700/50 shadow-sm">
-                <h2 class="text-ice text-sm font-bold flex items-center gap-2 cursor-pointer select-none" onclick="event.target.closest('button') || this.parentElement.classList.toggle('collapsed')">
-                    <i class="fas fa-cog text-ice/60 text-xs"></i> <span data-i18n="generalInfo">General Info</span>
-                    <button id="saveSettingsBtn" onclick="event.stopPropagation(); window.saveSettingsToDevice()" title="Save settings to this device" class="ml-auto mr-1 flex items-center gap-1 bg-navy-800 hover:bg-navy-700 border border-gray-600 hover:border-ice/50 text-gray-300 hover:text-ice text-[11px] font-bold px-2 py-0.5 rounded-lg transition shrink-0 cursor-pointer">
-                        <i class="fas fa-save"></i><span class="hidden sm:inline" data-i18n="saveSettings">Save</span>
-                    </button>
-                    <i class="fas fa-chevron-down text-xs text-gray-500 collapse-icon transition-transform"></i>
+            <div class="collapsible-section set-card">
+                <h2 class="set-card-head" onclick="this.parentElement.classList.toggle('collapsed')">
+                    <i class="fas fa-flag-checkered set-card-icon"></i> <span data-i18n="generalInfo">General Info</span>
+                    <span id="autoSaveState" class="set-saved" aria-live="polite"><i class="fas fa-check"></i> <span data-i18n="autoSaved">Saved</span></span>
+                    <i class="fas fa-chevron-down collapse-icon set-chevron"></i>
                 </h2>
                 <div class="collapse-body">
-                <div class="grid grid-cols-2 gap-4">
+
+                <div class="set-grid-2">
                     <div>
-                        <label class="text-xs text-gray-400 font-bold" data-i18n="lblDuration">Duration (Hours)</label>
-                        <input type="number" id="raceDuration" value="12" onchange="window.runSim()" class="input-field text-lg font-bold">
-                        <div class="flex gap-1 mt-1">
-                            <button onclick="document.getElementById('raceDuration').value=1;window.runSim()" class="flex-1 text-[11px] py-0.5 rounded bg-navy-800 border border-gray-700 text-gray-400 hover:text-ice hover:border-ice/40 transition">1h</button>
-                            <button onclick="document.getElementById('raceDuration').value=3;window.runSim()" class="flex-1 text-[11px] py-0.5 rounded bg-navy-800 border border-gray-700 text-gray-400 hover:text-ice hover:border-ice/40 transition">3h</button>
-                            <button onclick="document.getElementById('raceDuration').value=6;window.runSim()" class="flex-1 text-[11px] py-0.5 rounded bg-navy-800 border border-gray-700 text-gray-400 hover:text-ice hover:border-ice/40 transition">6h</button>
-                            <button onclick="document.getElementById('raceDuration').value=12;window.runSim()" class="flex-1 text-[11px] py-0.5 rounded bg-navy-800 border border-gray-700 text-gray-400 hover:text-ice hover:border-ice/40 transition">12h</button>
-                            <button onclick="document.getElementById('raceDuration').value=24;window.runSim()" class="flex-1 text-[11px] py-0.5 rounded bg-navy-800 border border-gray-700 text-gray-400 hover:text-ice hover:border-ice/40 transition">24h</button>
+                        <label class="set-label" for="raceDuration" data-i18n="lblDuration">Duration (Hours)</label>
+                        <input type="number" id="raceDuration" value="12" onchange="window.runSim()" class="input-field set-big">
+                        <div class="set-chips" role="group" aria-label="Duration presets">
+                            <button type="button" onclick="document.getElementById('raceDuration').value=1;window.runSim()">1h</button>
+                            <button type="button" onclick="document.getElementById('raceDuration').value=3;window.runSim()">3h</button>
+                            <button type="button" onclick="document.getElementById('raceDuration').value=6;window.runSim()">6h</button>
+                            <button type="button" onclick="document.getElementById('raceDuration').value=12;window.runSim()">12h</button>
+                            <button type="button" onclick="document.getElementById('raceDuration').value=24;window.runSim()">24h</button>
                         </div>
                     </div>
                     <div>
-                        <label class="text-xs text-gray-400 font-bold" data-i18n="lblStops">Req. Stops</label>
-                        <input type="number" id="reqPitStops" value="15" onchange="window.runSim()" class="input-field text-neon text-lg font-bold">
+                        <label class="set-label" for="reqPitStops" data-i18n="lblStops">Req. Stops</label>
+                        <input type="number" id="reqPitStops" value="15" onchange="window.runSim()" class="input-field set-big text-neon">
                     </div>
                 </div>
-                <div class="grid grid-cols-3 gap-3 mt-3">
+
+                <!-- When: date + start time read as one decision -->
+                <div class="set-when">
+                    <div class="set-label"><i class="far fa-calendar-alt"></i> <span data-i18n="lblRaceStart">Race start</span></div>
+                    <div class="set-grid-2">
+                        <div>
+                            <label class="set-sublabel" for="raceStartDate" data-i18n="lblStartDate">Race Date</label>
+                            <input type="date" id="raceStartDate" onchange="window._updateRaceWhen && window._updateRaceWhen(); window.runSim()" class="input-field">
+                        </div>
+                        <div>
+                            <label class="set-sublabel" for="raceStartTime" data-i18n="lblStartTime">Race Start Time</label>
+                            <input type="time" id="raceStartTime" onchange="window._updateRaceWhen && window._updateRaceWhen(); window.runSim()" class="input-field">
+                        </div>
+                    </div>
+                    <div id="raceWhenSummary" class="set-when-sum hidden"></div>
+                </div>
+
+                <div class="set-grid-3">
                     <div>
-                        <label class="text-xs text-gray-400" data-i18n="lblMinStint">Min Stint (min)</label>
+                        <label class="set-sublabel" for="minStint" data-i18n="lblMinStint">Min Stint (min)</label>
                         <input type="number" id="minStint" value="30" onchange="window.runSim()" class="input-field">
                     </div>
                     <div>
-                        <label class="text-xs text-gray-400" data-i18n="lblMaxStint">Max Stint (min)</label>
+                        <label class="set-sublabel" for="maxStint" data-i18n="lblMaxStint">Max Stint (min)</label>
                         <input type="number" id="maxStint" value="65" onchange="window.runSim()" class="input-field">
                     </div>
                     <div>
-                        <label class="text-xs text-gray-400" data-i18n="lblPitTime">Pit Time (sec)</label>
+                        <label class="set-sublabel" for="minPitTime" data-i18n="lblPitTime">Pit Time (sec)</label>
                         <input type="number" id="minPitTime" value="120" onchange="window.runSim()" class="input-field">
                     </div>
                 </div>
-                <div class="grid grid-cols-2 gap-4 mt-3">
-                    <div>
-                        <label class="text-xs text-gray-400 font-bold" data-i18n="lblStartTime">🕐 Race Start Time</label>
-                        <input type="time" id="raceStartTime" onchange="window.runSim()" class="input-field">
-                    </div>
-                    <div>
-                        <label class="text-xs text-gray-400 font-bold" data-i18n="lblStartDate">📅 Race Date</label>
-                        <input type="date" id="raceStartDate" onchange="window.runSim()" class="input-field">
-                    </div>
-                </div>
+
                 <!-- Location / Weather -->
-                <div class="mt-3">
-                    <label class="text-xs text-gray-400 font-bold"><i class="fas fa-map-marker-alt text-blue-400 mr-1"></i><span data-i18n="lblTrackLocation">Track / Location</span></label>
+                <div class="set-block">
+                    <label class="set-label" for="raceLocation"><i class="fas fa-map-marker-alt"></i> <span data-i18n="lblTrackLocation">Track / Location</span></label>
                     <div class="relative overflow-visible">
                         <div class="relative">
                             <input type="text" id="raceLocation"
@@ -431,7 +446,7 @@
                                    onchange="window.runSim()"
                                    autocomplete="off"
                                    class="input-field pr-8">
-                            <span id="locationSearchSpinner" class="hidden absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 text-xs pointer-events-none">⏳</span>
+                            <span id="locationSearchSpinner" class="hidden absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 text-xs pointer-events-none"><i class="fas fa-circle-notch fa-spin"></i></span>
                         </div>
                         <div id="locationSuggestions" class="hidden absolute z-[120] w-full mt-1 bg-navy-900 border border-gray-600 rounded-lg shadow-2xl max-h-72 overflow-y-auto text-left"></div>
                     </div>
@@ -439,168 +454,168 @@
                         <span class="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0"></span>
                         <span id="selectedLocationName" class="text-[11px] text-gray-300 font-bold"></span>
                     </div>
-                    <p class="text-[11px] text-gray-500 mt-1" data-i18n="lblLocationHint">Type a city or track name — weather auto-loads for the preview.</p>
-                    <label class="mt-1 inline-flex items-center gap-2 text-[11px] text-gray-300 cursor-pointer select-none">
-                        <input type="checkbox" id="showWeatherInStints" checked onchange="window._showWeatherInStints=this.checked; if(!document.getElementById('previewScreen')?.classList.contains('hidden') && window.renderPreview) window.renderPreview()" class="accent-cyan-400 w-3.5 h-3.5">
+                    <p class="set-hint" data-i18n="lblLocationHint">Type a city or track name — weather auto-loads for the preview.</p>
+                    <label class="set-check">
+                        <input type="checkbox" id="showWeatherInStints" checked onchange="window._showWeatherInStints=this.checked; if(!document.getElementById('previewScreen')?.classList.contains('hidden') && window.renderPreview) window.renderPreview()">
                         <span data-i18n="lblShowWeather">Show weather in stints</span>
                     </label>
                 </div>
                 </div>
             </div>
 
-            <!-- ADVANCED CONSTRAINTS (collapsible, merged with toggles) -->
-            <div class="collapsible-section collapsed bg-navy-900/80 p-3 rounded-xl border border-gray-700/50 shadow-sm">
-                <h2 class="text-gray-300 text-sm font-bold flex items-center gap-2 cursor-pointer select-none" onclick="this.parentElement.classList.toggle('collapsed')">
-                    <i class="fas fa-sliders-h text-gray-500/70 text-xs"></i> <span data-i18n="advancedConstraints">Advanced Constraints</span>
-                    <i class="fas fa-chevron-down ml-auto text-[11px] text-gray-600 collapse-icon transition-transform"></i>
+            <!-- RULES: every rule below feeds the strategy calculation. Active rules light up. -->
+            <div class="collapsible-section collapsed set-card" id="rulesCard">
+                <h2 class="set-card-head" onclick="this.parentElement.classList.toggle('collapsed')">
+                    <i class="fas fa-sliders-h set-card-icon"></i> <span data-i18n="advancedConstraints">Advanced Constraints</span>
+                    <span id="rulesActiveCount" class="set-count hidden"></span>
+                    <i class="fas fa-chevron-down collapse-icon set-chevron"></i>
                 </h2>
-                <div class="collapse-body mt-3">
-                <p class="text-xs text-gray-400 mb-3" data-i18n="rulesIntro">Optional rules from the organizer. Leave a number at 0 to switch that rule off.</p>
-                <!-- Toggles -->
+                <div class="collapse-body">
+                <p class="set-hint" style="margin-top:0" data-i18n="rulesIntro">Optional rules from the organizer. Leave a number at 0 to switch that rule off.</p>
+
                 <h3 class="rules-group-title" data-i18n="grpRotation">Driver rotation</h3>
-                <div class="flex flex-col gap-3 mb-3">
-                    <div class="border-b border-gray-600 pb-2">
-                        <label class="flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" id="allowDouble" onchange="window.toggleMaxConsecutive(); window.runSim()" class="accent-ice w-4 h-4">
-                            <span class="text-sm text-gray-300" data-i18n="lblDoubles">Allow consecutive stints</span>
-                        </label>
-                        <span class="text-xs text-gray-500 ml-6 block mt-1" data-i18n="lblDoublesHint">Same driver back-to-back</span>
-                        <div id="maxConsecutiveRow" class="hidden flex items-center gap-2 mt-2 ml-6">
-                            <span class="text-xs text-gray-400" data-i18n="lblMaxConsecutive">Max consecutive stints per driver</span>
-                            <select id="maxConsecutive" onchange="window.runSim()" class="bg-navy-900 text-white text-xs border border-gray-600 rounded px-2 py-1 cursor-pointer">
-                                <option value="2" data-i18n-opt="consec2">2</option>
-                                <option value="3" data-i18n-opt="consec3">3</option>
-                                <option value="0" data-i18n-opt="consecUnlimited">Unlimited</option>
-                            </select>
-                        </div>
+
+                <div class="rule" data-rule>
+                    <label class="rule-head">
+                        <input type="checkbox" id="allowDouble" onchange="window.toggleMaxConsecutive(); window.runSim()" class="set-switch">
+                        <span class="rule-title" data-i18n="lblDoubles">Allow consecutive stints</span>
+                    </label>
+                    <p class="rule-effect" data-i18n="lblDoublesHint">Same driver back-to-back</p>
+                    <div id="maxConsecutiveRow" class="hidden rule-body">
+                        <label class="set-sublabel" for="maxConsecutive" data-i18n="lblMaxConsecutive">Max consecutive stints per driver</label>
+                        <select id="maxConsecutive" onchange="window.runSim()" class="input-field">
+                            <option value="2" data-i18n-opt="consec2">2</option>
+                            <option value="3" data-i18n-opt="consec3">3</option>
+                            <option value="0" data-i18n-opt="consecUnlimited">Unlimited</option>
+                        </select>
                     </div>
-                    <div class="border-b border-gray-600 pb-2">
-                        <div class="flex items-center gap-2">
-                            <span class="text-sm text-gray-300" data-i18n="lblSquads">Squads</span>
-                            <span class="text-[11px] bg-gold/20 text-gold px-1 py-0.5 rounded font-bold border border-gold/30"><i class="fas fa-star text-[11px]"></i></span>
-                            <select id="numSquads" onchange="window.toggleSquadsInput(); window.runSim()" class="bg-navy-900 text-white text-sm border border-gray-600 rounded px-2 py-1 cursor-pointer">
-                                <option value="0" data-i18n-opt="squadOff">Off</option>
-                                <option value="2" data-i18n-opt="squad2">2 Squads</option>
-                                <option value="3" data-i18n-opt="squad3">3 Squads</option>
-                                <option value="4" data-i18n-opt="squad4">4 Squads</option>
-                            </select>
-                        </div>
-                        <span class="text-xs text-gray-500 block mt-1" data-i18n="lblSquadsHint">Rotate driver groups for long races</span>
-                        <div id="squadScheduleContainer" class="hidden mt-2 space-y-2 bg-navy-950 p-2 rounded border border-gray-700">
-                            <label class="text-[11px] text-gray-400 font-bold block" data-i18n="lblSquadSchedule">🔄 Squad Window</label>
-                            <div class="grid grid-cols-2 gap-2">
-                                <div>
-                                    <label class="text-[11px] text-gray-500 block" data-i18n="lblSquadWindowStart">Start</label>
-                                    <input type="time" id="squadWindowStart" class="squad-start-time bg-navy-800 border border-gray-600 text-white rounded px-2 py-0.5 text-xs w-full" onchange="window.runSim()">
-                                </div>
-                                <div>
-                                    <label class="text-[11px] text-gray-500 block" data-i18n="lblSquadWindowEnd">End</label>
-                                    <input type="time" id="squadWindowEnd" class="bg-navy-800 border border-gray-600 text-white rounded px-2 py-0.5 text-xs w-full" onchange="window.runSim()">
-                                </div>
+                </div>
+
+                <div class="rule" data-rule>
+                    <div class="rule-head">
+                        <span class="rule-title" data-i18n="lblSquads">Squads</span>
+                        <span class="rule-pro"><i class="fas fa-star"></i> PRO</span>
+                        <select id="numSquads" onchange="window.toggleSquadsInput(); window.runSim()" class="input-field rule-select" aria-label="Squads">
+                            <option value="0" data-i18n-opt="squadOff">Off</option>
+                            <option value="2" data-i18n-opt="squad2">2 Squads</option>
+                            <option value="3" data-i18n-opt="squad3">3 Squads</option>
+                            <option value="4" data-i18n-opt="squad4">4 Squads</option>
+                        </select>
+                    </div>
+                    <p class="rule-effect" data-i18n="lblSquadsHint">Rotate driver groups for long races</p>
+                    <div id="squadScheduleContainer" class="hidden rule-body">
+                        <div class="set-label" data-i18n="lblSquadSchedule">Squad Window</div>
+                        <div class="set-grid-2">
+                            <div>
+                                <label class="set-sublabel" for="squadWindowStart" data-i18n="lblSquadWindowStart">Start</label>
+                                <input type="time" id="squadWindowStart" class="input-field squad-start-time" onchange="window.runSim()">
                             </div>
-                            <span class="text-[11px] text-gray-600 block" data-i18n="lblSquadScheduleHint">Outside this window all drivers share equally. Inside, squads rotate evenly.</span>
+                            <div>
+                                <label class="set-sublabel" for="squadWindowEnd" data-i18n="lblSquadWindowEnd">End</label>
+                                <input type="time" id="squadWindowEnd" class="input-field" onchange="window.runSim()">
+                            </div>
                         </div>
-                    </div>
-                    <div>
-                        <label class="flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" id="trackFuel" onchange="window.toggleFuelInput(); window.runSim()" class="accent-fuel w-4 h-4">
-                            <span class="text-sm text-gray-300" data-i18n="lblFuel">Fuel Constraints</span>
-                            <span class="text-[11px] bg-gold/20 text-gold px-1 py-0.5 rounded font-bold border border-gold/30"><i class="fas fa-star text-[11px]"></i></span>
-                        </label>
-                        <span class="text-xs text-gray-500 ml-6 block mt-1" data-i18n="lblFuelHint">Track fuel tank capacity</span>
+                        <p class="set-hint" data-i18n="lblSquadScheduleHint">Outside this window all drivers share equally. Inside, squads rotate evenly.</p>
                     </div>
                 </div>
-                <!-- Constraint fields -->
-                <h3 class="rules-group-title" data-i18n="grpPitRules">Pit rules</h3>
-                <div class="grid grid-cols-2 gap-4 mb-3">
-                    <div>
-                        <label class="text-xs text-red-400 font-bold" data-i18n="lblPitClosedStart">🚫 Closed Start (min)</label>
-                        <input type="number" id="pitClosedStart" value="0" onchange="window.runSim()" class="input-field border-red-900/50">
-                    </div>
-                    <div>
-                        <label class="text-xs text-red-400 font-bold" data-i18n="lblPitClosedEnd">🚫 Closed End (min)</label>
-                        <input type="number" id="pitClosedEnd" value="0" onchange="window.runSim()" class="input-field border-red-900/50">
-                    </div>
-                </div>
-                <!-- No Limit Endurance section — shown automatically when any key param is 0 -->
-                <div id="extraPitSection" class="hidden mb-3 bg-navy-950/60 border border-orange-800/40 rounded-lg p-2">
-                    <div class="flex items-center justify-between mb-2">
-                        <div class="flex items-center gap-1.5">
-                            <span class="text-orange-400 text-xs">∞</span>
-                            <span class="text-xs font-bold text-orange-300" data-i18n="kartChanges">Kart changes</span>
-                        </div>
-                        <span class="text-[11px] text-orange-300" data-i18n="kartChangesShown">Shown because a key value is 0</span>
-                    </div>
 
-                    <!-- Kart-change interval: organizer tells you the frequency -->
-                    <div class="mb-2">
-                        <label class="text-[11px] text-gray-300 font-bold" data-i18n="kartChangeEvery">Kart change every (min)</label>
-                        <input type="number" id="kartChangeInterval" value="0" min="0" placeholder="Off"
-                            onchange="window._updateKartChangeInfo(); window.runSim()" class="input-field border-orange-800/50">
-                        <div id="kartChangeInfo" class="text-[11px] text-orange-400 mt-0.5 hidden"></div>
-                        <p class="text-[11px] text-gray-600 mt-0.5" data-i18n="kartChangeHint">How often the organizer makes you change karts, e.g. 90 for every 90 min. 0 = off.</p>
-                    </div>
-
-                    <!-- Extra optional pits between mandatory kart-changes -->
-                    <div class="grid grid-cols-2 gap-2 mb-2">
-                        <div>
-                            <label class="text-[11px] text-gray-400" data-i18n="lblReqExtraPits">Extra Pits (optional)</label>
-                            <input type="number" id="reqExtraPits" value="0" min="0" onchange="window.runSim()" class="input-field border-orange-800/50">
-                            <p class="text-[11px] text-gray-600 mt-0.5">In-stint swaps: rain, tired driver, early switch request.</p>
-                        </div>
-                        <div>
-                            <label class="text-[11px] text-gray-400" data-i18n="lblMinPitLapSec">Min Pit Lap (sec)</label>
-                            <input type="number" id="minPitLapSec" value="0" min="0" onchange="window.runSim()" class="input-field border-orange-800/50">
-                            <p class="text-[11px] text-gray-600 mt-0.5" data-i18n="offHint">0 = off.</p>
-                        </div>
-                    </div>
-
-                    <!-- Kart rotation: number of competing teams -->
-                    <div class="mb-1">
-                        <label class="text-[11px] text-gray-400" data-i18n="lblNumTeams">Competing Teams (rotation count)</label>
-                        <input type="number" id="numTeams" value="0" min="0" placeholder="Off"
-                            onchange="window._updateKartRotationInfo(); window.runSim()" class="input-field border-orange-800/50">
-                        <div id="kartRotationInfo" class="text-[11px] text-orange-400 mt-0.5 hidden"></div>
-                        <p class="text-[11px] text-gray-600 mt-0.5" data-i18n="numTeamsHint">Required stops = teams − 1, so each team drives every kart once. 0 = off.</p>
-                    </div>
-                </div>
                 <h3 class="rules-group-title" data-i18n="grpDriverLimits">Driver limits</h3>
-                <div class="grid grid-cols-2 gap-4 mb-3">
-                    <div>
-                        <label class="text-xs text-gray-400" data-i18n="lblMinDrive">Min Driver Total (min)</label>
-                        <input type="number" id="minDriverTime" placeholder="0" onchange="window.runSim()" class="input-field">
-                    </div>
-                    <div>
-                        <label class="text-xs text-gray-400" data-i18n="lblMaxDrive">Max Driver Total (min)</label>
-                        <input type="number" id="maxDriverTime" placeholder="0" onchange="window.runSim(); window.updateDriverMaxTimeWarnings && window.updateDriverMaxTimeWarnings()" class="input-field">
+                <div class="rule" data-rule>
+                    <p class="rule-effect" style="margin-top:0">Keeps every driver's total drive time inside this range.</p>
+                    <div class="set-grid-2">
+                        <div>
+                            <label class="set-sublabel" for="minDriverTime" data-i18n="lblMinDrive">Min Driver Total (min)</label>
+                            <input type="number" id="minDriverTime" placeholder="Off" onchange="window.runSim()" class="input-field">
+                        </div>
+                        <div>
+                            <label class="set-sublabel" for="maxDriverTime" data-i18n="lblMaxDrive">Max Driver Total (min)</label>
+                            <input type="number" id="maxDriverTime" placeholder="Off" onchange="window.runSim(); window.updateDriverMaxTimeWarnings && window.updateDriverMaxTimeWarnings()" class="input-field">
+                        </div>
                     </div>
                 </div>
+
+                <h3 class="rules-group-title" data-i18n="grpPitRules">Pit rules</h3>
+                <div class="rule" data-rule>
+                    <p class="rule-effect" style="margin-top:0">No pit stops are planned inside the closed window. Minutes from race start; 0 = off.</p>
+                    <div class="set-grid-2">
+                        <div>
+                            <label class="set-sublabel" for="pitClosedStart" data-i18n="lblPitClosedStart">Closed Start (min)</label>
+                            <input type="number" id="pitClosedStart" value="0" onchange="window.runSim()" class="input-field">
+                        </div>
+                        <div>
+                            <label class="set-sublabel" for="pitClosedEnd" data-i18n="lblPitClosedEnd">Closed End (min)</label>
+                            <input type="number" id="pitClosedEnd" value="0" onchange="window.runSim()" class="input-field">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="rule" data-rule>
+                    <label class="rule-head">
+                        <input type="checkbox" id="trackFuel" onchange="window.toggleFuelInput(); window.runSim()" class="set-switch">
+                        <span class="rule-title" data-i18n="lblFuel">Fuel Constraints</span>
+                        <span class="rule-pro"><i class="fas fa-star"></i> PRO</span>
+                    </label>
+                    <p class="rule-effect" data-i18n="lblFuelHint">Track fuel tank capacity</p>
+                    <div id="fuelInputDiv" class="hidden rule-body">
+                        <label class="set-sublabel" for="fuelTime" data-i18n="lblFuelTank">Fuel Tank (min)</label>
+                        <input type="number" id="fuelTime" onchange="window.runSim()" class="input-field">
+                        <p class="set-hint">A stint can never be longer than one tank.</p>
+                    </div>
+                </div>
+
+                <!-- No Limit Endurance section — shown automatically when any key param is 0 -->
+                <div id="extraPitSection" class="hidden rule rule-kart" data-rule>
+                    <div class="rule-head">
+                        <span class="rule-title" data-i18n="kartChanges">Kart changes</span>
+                        <span class="rule-note" data-i18n="kartChangesShown">Shown because a key value is 0</span>
+                    </div>
+
+                    <label class="set-sublabel" for="kartChangeInterval" data-i18n="kartChangeEvery">Kart change every (min)</label>
+                    <input type="number" id="kartChangeInterval" value="0" min="0" placeholder="Off"
+                        onchange="window._updateKartChangeInfo(); window.runSim()" class="input-field">
+                    <div id="kartChangeInfo" class="rule-info hidden"></div>
+                    <p class="set-hint" data-i18n="kartChangeHint">How often the organizer makes you change karts, e.g. 90 for every 90 min. 0 = off.</p>
+
+                    <div class="set-grid-2">
+                        <div>
+                            <label class="set-sublabel" for="reqExtraPits" data-i18n="lblReqExtraPits">Extra Pits (optional)</label>
+                            <input type="number" id="reqExtraPits" value="0" min="0" onchange="window.runSim()" class="input-field">
+                            <p class="set-hint">In-stint swaps: rain, tired driver, early switch request.</p>
+                        </div>
+                        <div>
+                            <label class="set-sublabel" for="minPitLapSec" data-i18n="lblMinPitLapSec">Min Pit Lap (sec)</label>
+                            <input type="number" id="minPitLapSec" value="0" min="0" onchange="window.runSim()" class="input-field">
+                            <p class="set-hint" data-i18n="offHint">0 = off.</p>
+                        </div>
+                    </div>
+
+                    <label class="set-sublabel" for="numTeams" data-i18n="lblNumTeams">Competing Teams (rotation count)</label>
+                    <input type="number" id="numTeams" value="0" min="0" placeholder="Off"
+                        onchange="window._updateKartRotationInfo(); window.runSim()" class="input-field">
+                    <div id="kartRotationInfo" class="rule-info hidden"></div>
+                    <p class="set-hint" data-i18n="numTeamsHint">Required stops = teams − 1, so each team drives every kart once. 0 = off.</p>
+                </div>
+
                 <h3 class="rules-group-title" data-i18n="grpAlerts">Alerts and timing</h3>
-                <div class="grid grid-cols-2 gap-4 mb-3">
-                    <div>
-                        <label class="text-xs text-yellow-400 font-bold" data-i18n="lblBuffer">Pit Exit Buffer (s)</label>
-                        <input type="number" id="releaseBuffer" value="5" min="0" onchange="window.runSim()" class="input-field border-yellow-600/50">
-                        <p class="text-[11px] text-gray-600 mt-0.5" data-i18n="lblBufferHint">Seconds before min pit time ends — driver walks to exit</p>
+                <div class="rule" data-rule="always">
+                    <p class="rule-effect" style="margin-top:0">These shape pit calls and driver alerts during the race.</p>
+                    <div class="set-grid-2">
+                        <div>
+                            <label class="set-sublabel" for="releaseBuffer" data-i18n="lblBuffer">Pit Exit Buffer (s)</label>
+                            <input type="number" id="releaseBuffer" value="5" min="0" onchange="window.runSim()" class="input-field">
+                            <p class="set-hint" data-i18n="lblBufferHint">Seconds before min pit time ends — driver walks to exit</p>
+                        </div>
+                        <div>
+                            <label class="set-sublabel" for="pitNotifyLeadMin" data-i18n="lblPitNotifyLead">Notify Lead Time (min)</label>
+                            <input type="number" id="pitNotifyLeadMin" value="3" min="0" step="0.5" onchange="window.runSim(); window._updatePitNotifyPreview && window._updatePitNotifyPreview()" class="input-field">
+                            <p class="set-hint" data-i18n="lblPitNotifyLeadHint">Minutes before max stint (minus in-lap) to warn driver</p>
+                        </div>
                     </div>
-                    <div>
-                        <label class="text-xs text-orange-400 font-bold" data-i18n="lblPitNotifyLead">Notify Lead Time (min)</label>
-                        <input type="number" id="pitNotifyLeadMin" value="3" min="0" step="0.5" onchange="window.runSim(); window._updatePitNotifyPreview && window._updatePitNotifyPreview()" class="input-field border-orange-600/50">
-                        <p class="text-[11px] text-gray-600 mt-0.5" data-i18n="lblPitNotifyLeadHint">Minutes before max stint (minus in-lap) to warn driver</p>
-                    </div>
+                    <label class="set-sublabel" for="inLapSec" data-i18n="lblInLapSec">In-Lap to Pits (sec, dry)</label>
+                    <input type="number" id="inLapSec" value="0" min="0" step="5" placeholder="0 = auto" onchange="window.runSim(); window._updatePitNotifyPreview && window._updatePitNotifyPreview()" class="input-field">
+                    <p class="set-hint" data-i18n="lblInLapHint">Track time to reach pit entry. 0 = auto from circuit name.</p>
+                    <div id="pitNotifyPreview" class="hidden rule-info"></div>
                 </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="text-xs text-orange-400 font-bold" data-i18n="lblInLapSec">In-Lap to Pits (sec, dry)</label>
-                        <input type="number" id="inLapSec" value="0" min="0" step="5" placeholder="0 = auto" onchange="window.runSim(); window._updatePitNotifyPreview && window._updatePitNotifyPreview()" class="input-field border-orange-600/50">
-                        <p class="text-[11px] text-gray-600 mt-0.5" data-i18n="lblInLapHint">Track time to reach pit entry. 0 = auto from circuit name.</p>
-                    </div>
-                    <div id="fuelInputDiv" class="hidden">
-                        <label class="text-xs text-fuel font-bold" data-i18n="lblFuelTank">Fuel Tank (min)</label>
-                        <input type="number" id="fuelTime" onchange="window.runSim()" class="input-field border-fuel/50">
-                    </div>
-                </div>
-                <div id="pitNotifyPreview" class="hidden text-[11px] text-orange-400/80 mt-2 px-1 font-mono"></div>
-                <hr class="border-gray-700/50 my-3">
                 </div>
             </div>
 
@@ -699,11 +714,11 @@
                         </button>
                     </div>
                     <div class="flex items-center gap-1 shrink-0">
-                        <button onclick="window.openLiveAdjustModal()" class="flex items-center gap-1 bg-neon/10 border border-neon/40 text-neon text-[11px] font-bold px-2 py-1 rounded-lg hover:bg-neon/20 transition">
-                            <i class="fas fa-sliders-h text-[11px]"></i>
+                        <button onclick="window.openLiveAdjustModal()" aria-label="Scenario planner" class="preview-icon-btn">
+                            <i class="fas fa-sliders-h"></i>
                         </button>
-                        <button onclick="window._closePreview()" class="w-7 h-7 flex items-center justify-center bg-navy-800 hover:bg-navy-700 text-gray-400 hover:text-white rounded-lg border border-gray-700 transition text-base">
-                            &times;
+                        <button id="previewCloseBtn" onclick="window._closePreview()" aria-label="Close preview" class="preview-close-btn">
+                            <i class="fas fa-times"></i>
                         </button>
                     </div>
                 </div>
@@ -757,7 +772,6 @@
                     <div class="px-2 py-1.5 bg-navy-800/80 border-b border-gray-700/50 font-black text-[11px] text-gray-400 uppercase tracking-wider shrink-0 flex justify-between items-center">
                         <span data-i18n="timeline">Timeline</span>
                         <div class="flex items-center gap-2">
-                            <span class="text-[11px] text-gray-600 font-normal normal-case sm:hidden" data-i18n="holdToReorder">Hold 3 sec to reorder</span>
                             <button onclick="window.openLiveAdjustModal()" class="flex items-center gap-1 text-[11px] text-gray-500 hover:text-neon transition font-bold">
                                 <i class="fas fa-random text-[11px]"></i> Scenario
                             </button>
@@ -2485,15 +2499,15 @@
         </div>
     </div>
 
-    <script src="js/state.js?v=27"></script>
+    <script src="js/state.js?v=29"></script>
     <script src="js/auth.js?v=8"></script>
     <script src="js/network.js?v=10"></script>
-    <script src="js/strategy.js?v=13"></script>
-    <script src="js/race-rules.js?v=3"></script>
+    <script src="js/strategy.js?v=14"></script>
+    <script src="js/race-rules.js?v=4"></script>
     <script src="js/live-timing.js?v=19"></script>
     <script src="js/track-finder.js?v=1"></script>
-    <script src="js/ui.js?v=15"></script>
+    <script src="js/ui.js?v=17"></script>
     <script src="js/walkthrough.js?v=13"></script>
-    <script src="js/main.js?v=21"></script>
+    <script src="js/main.js?v=22"></script>
 </body>
 </html>

@@ -1108,7 +1108,8 @@ window.countStintViolations = function(timeline, config) {
     if (!timeline) return 0;
     const bounds = window.getStintBoundsMs(config || window.config);
     if (bounds.effectiveMaxStint === Infinity && bounds.minStintMs <= 0) return 0;
-    return timeline.filter(t => t.type === 'stint').filter(s => {
+    // Stints that already ran can't be changed, so they never count as fixable violations.
+    return timeline.filter(t => t.type === 'stint' && !(t._actual || t._done)).filter(s => {
         if (bounds.effectiveMaxStint !== Infinity && s.duration > bounds.effectiveMaxStint) return true;
         if (bounds.minStintMs > 0 && s.duration < bounds.minStintMs) return true;
         return false;
@@ -1122,18 +1123,25 @@ window.fixPreviewStintViolations = function(silent) {
     if (stints.length === 0) return false;
     if (window.countStintViolations(window.previewData.timeline, window.config) === 0) return false;
 
+    // Only upcoming stints are redistributed — stints that already ran keep their real
+    // duration, and the remaining drive time is whatever the race still has to fill.
+    const isLocked = (s) => !!(s._actual || s._done);
+    const free = stints.filter(s => !isLocked(s));
+    if (free.length === 0) return false;
+    const lockedMs = stints.filter(isLocked).reduce((a, s) => a + s.duration, 0);
+
     const pits = window.previewData.timeline.filter(t => t.type === 'pit');
     const totalPitMs = pits.reduce((a, p) => a + p.duration, 0);
     const raceMs = window.config.raceMs || 0;
-    const targetDriveMs = raceMs - totalPitMs;
+    const targetDriveMs = raceMs - totalPitMs - lockedMs;
     const result = window.normalizeStintDurationsMs(
-        stints.map(s => s.duration),
+        free.map(s => s.duration),
         { totalTargetMs: targetDriveMs, bounds: window.getStintBoundsMs(window.config) }
     );
-    stints.forEach((s, i) => { s.duration = result.durations[i]; });
+    free.forEach((s, i) => { s.duration = result.durations[i]; });
 
     if (Array.isArray(window.state?.stintTargets) && window.state.stintTargets.length === stints.length) {
-        window.state.stintTargets = [...result.durations];
+        stints.forEach((s, i) => { if (!isLocked(s)) window.state.stintTargets[i] = s.duration; });
     }
 
     if (typeof window.recalculateTimelineTimes === 'function') window.recalculateTimelineTimes();

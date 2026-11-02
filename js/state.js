@@ -324,7 +324,7 @@ window.translations = {
         googleLogin: "Login with Google", eventCreated: "Event created successfully!", eventError: "Failed to create event", raceEventTitle: "Endurance Race (Strateger)",
         errImpossible: "Impossible Strategy!", errAvgHigh: "Avg stint > Max Stint. Increase Stops or Max Stint.", errAvgLow: "Avg stint < Min Stint. Decrease Stops or Min Stint.",
         appTitle: "STRATEGER", appSubtitle: "Endurance Race Strategy Manager", generalInfo: "General Info", advancedConstraints: "Advanced Constraints", driverConfig: "Drivers", aiTitle: "AI Strategy",
-        lblDuration: "Duration (Hours)", lblStops: "Req. Stops", lblMinStint: "Min Stint (min)", lblMaxStint: "Max Stint (min)", lblPitTime: "Pit Time (sec)", lblPitClosedStart: "🚫 Closed Start (min)", lblPitClosedEnd: "🚫 Closed End (min)",
+        lblDuration: "Duration (Hours)", lblStops: "Req. Stops", lblMinStint: "Min Stint (min)", lblMaxStint: "Max Stint (min)", lblPitTime: "Pit Time (sec)", lblPitClosedStart: "Closed Start (min)", lblPitClosedEnd: "Closed End (min)",
         lblMinDrive: "Min Driver Total (min)", lblMaxDrive: "Max Driver Total (min)", lblBuffer: "Pit Exit Buffer (s)", lblBufferHint: "Seconds before min pit time ends — driver walks to exit", lblPitNotifyLead: "Notify Lead Time (min)", lblPitNotifyLeadHint: "Minutes before max stint (minus in-lap) to warn driver on track", lblInLapSec: "In-Lap to Pits (sec, dry)", lblInLapHint: "Track time to reach pit entry. 0 = auto from circuit name.", lblDoubles: "Allow Doubles", lblSquads: "Use Squads", lblFuel: "Fuel", lblFuelTank: "Fuel Tank (min)",
         lblExtraPits: "Extra Pit Stops", lblReqExtraPits: "Required Extra Pits", lblMinPitLapSec: "Min Pit Lap (sec)", lblExtraPitsHint: "Mandatory extra pits in left lane. Pit lane closed first & last 10 min.",
         markExtraPit: "Mark as Extra Pit", extraPitDone: "Extra Pit", driverMaxTimeWarning: "⚠️ Near max drive time!", driverOverMaxTime: "🚨 OVER max drive time!",
@@ -452,8 +452,8 @@ window.translations = {
         contactUs: "Contact Us",
         runDemo: "Demo",
         goodPace: "Good Pace",
-        lblStartTime: "🕐 Race Start Time", lblStartDate: "📅 Race Date",
-        lblSquadSchedule: "🔄 Squad Window", lblSquadScheduleHint: "Outside this window all drivers share equally. Inside, squads rotate evenly.",
+        lblStartTime: "Race Start Time", lblStartDate: "Race Date",
+        lblSquadSchedule: "Squad Window", lblSquadScheduleHint: "Outside this window all drivers share equally. Inside, squads rotate evenly.",
         lblSquadWindowStart: "Window Start", lblSquadWindowEnd: "Window End",
         squadOff: "Off", squad2: "2 Squads", squad3: "3 Squads", squad4: "4 Squads",
         lblAppearance: "🎨 Appearance", lblPageBg: "Page Background", lblColorThemes: "Color Themes",
@@ -528,7 +528,7 @@ window.translations = {
         rulesPdfDrop: "Click to select PDF", rulesPdfDropHint: "Max ~50 pages recommended",
         rulesPdfReading: "Reading PDF…", rulesPdfError: "Could not read PDF.", rulesPdfAiError: "AI returned no result.",
         rulesPdfClear: "Remove", rulesPdfAnalyze: "Analyze & Suggest Strategy", pages: "pages",
-        saveSettings: "Save", backToRace: "← Back to Race",
+        saveSettings: "Save", backToRace: "← Back to Race", autoSaved: "Saved", lblRaceStart: "Race start",
         livePreviewBtn: "▶ PLAN",
         appearance: "Appearance",
         // Live-timing widget strings
@@ -550,7 +550,7 @@ window.translations = {
         googleLogin: "התחבר עם Google", eventCreated: "האירוע נוצר בהצלחה!", eventError: "שגיאה ביצירת האירוע", raceEventTitle: "מירוץ סיבולת (Strateger)",
         errImpossible: "אסטרטגיה לא אפשרית!", errAvgHigh: "ממוצע סטינט גבוה מהמקסימום. הוסף עצירות או הגדל מקסימום.", errAvgLow: "ממוצע סטינט נמוך מהמינימום. הפחת עצירות או הקטן מינימום.",
         appTitle: "STRATEGER", appSubtitle: "ניהול אסטרטגיה למירוצי סיבולת", generalInfo: "הגדרות כלליות", advancedConstraints: "אילוצים מתקדמים", driverConfig: "נהגים", aiTitle: "אסטרטגיה חכמה (AI)",
-        lblDuration: "משך (שעות)", lblStops: "עצירות חובה", lblMinStint: "מינימום סטינט (דק')", lblMaxStint: "מקסימום סטינט (דק')", lblPitTime: "זמן פיטס (שניות)", lblPitClosedStart: "🚫 סגור בהתחלה (דק')", lblPitClosedEnd: "🚫 סגור בסוף (דק')",
+        lblDuration: "משך (שעות)", lblStops: "עצירות חובה", lblMinStint: "מינימום סטינט (דק')", lblMaxStint: "מקסימום סטינט (דק')", lblPitTime: "זמן פיטס (שניות)", lblPitClosedStart: "סגור בהתחלה (דק')", lblPitClosedEnd: "סגור בסוף (דק')",
         lblMinDrive: "מינימום לנהג (דק')", lblMaxDrive: "מקסימום לנהג (דק')", lblBuffer: "באפר יציאה מפיט (שניות)", lblBufferHint: "שניות לפני סיום זמן מינימום בפיט — הנהג הולך ליציאה", lblPitNotifyLead: "התראה מראש (דק')", lblPitNotifyLeadHint: "דקות לפני מקס סטינט (פחות in-lap) להודיע לנהג", lblInLapSec: "סיבוב כניסה לפיט (שניות, יבש)", lblInLapHint: "זמן במסלול עד כניסה לפיט. 0 = זיהוי אוטומטי לפי שם המסלול.", lblDoubles: "אפשר דאבל סטינט", lblSquads: "שימוש בחוליות", lblFuel: "דלק", lblFuelTank: "מיכל דלק (דק')",
         addDriver: "+ הוסף", generateStrategy: "צור אסטרטגיה (AI)", previewStrategy: "תצוגה מקדימה", startRace: "התחל מירוץ", loadSaved: "טען מירוץ",
         stepRaceSettings: "הגדרות מירוץ", stepDrivers: "נהגים", stepGo: "יאללה נתחיל", optional: "אופציונלי", joinAsDriverHint: "התחבר למירוץ שרץ במכשיר אחר",
@@ -672,8 +672,8 @@ window.translations = {
         contactUs: "צור קשר",
         runDemo: "דמו",
         goodPace: "קצב טוב",
-        lblStartTime: "🕐 שעת התחלה", lblStartDate: "📅 תאריך מירוץ",
-        lblSquadSchedule: "🔄 חלון חוליות", lblSquadScheduleHint: "מחוץ לחלון כל הנהגים מתחלקים שווה. בתוך החלון, חוליות מתחלפות בחלוקה שווה.",
+        lblStartTime: "שעת התחלה", lblStartDate: "תאריך מירוץ",
+        lblSquadSchedule: "חלון חוליות", lblSquadScheduleHint: "מחוץ לחלון כל הנהגים מתחלקים שווה. בתוך החלון, חוליות מתחלפות בחלוקה שווה.",
         lblSquadWindowStart: "תחילת חלון", lblSquadWindowEnd: "סוף חלון",
         squadOff: "כבוי", squad2: "2 חוליות", squad3: "3 חוליות", squad4: "4 חוליות",
         lblAppearance: "🎨 מראה", lblPageBg: "רקע עמוד", lblColorThemes: "ערכות נושא צבע",
@@ -762,7 +762,7 @@ window.translations = {
         googleLogin: "Connexion Google", eventCreated: "Événement créé !", eventError: "Erreur création", raceEventTitle: "Course d'Endurance",
         errImpossible: "Stratégie Impossible!", errAvgHigh: "Moyenne > Max. Ajoutez des arrêts.", errAvgLow: "Moyenne < Min. Réduisez les arrêts.",
         appSubtitle: "Gestionnaire de Stratégie", generalInfo: "Info Générale", advancedConstraints: "Contraintes Avancées", driverConfig: "Pilotes", aiTitle: "Stratégie IA",
-        lblDuration: "Durée (H)", lblStops: "Arrêts Req.", lblMinStint: "Min Relais", lblMaxStint: "Max Relais", lblPitTime: "Temps Stand", lblPitClosedStart: "🚫 Fermé Début", lblPitClosedEnd: "🚫 Fermé Fin",
+        lblDuration: "Durée (H)", lblStops: "Arrêts Req.", lblMinStint: "Min Relais", lblMaxStint: "Max Relais", lblPitTime: "Temps Stand", lblPitClosedStart: "Fermé Début", lblPitClosedEnd: "Fermé Fin",
         lblMinDrive: "Min Total (min)", lblMaxDrive: "Max Total (min)", lblBuffer: "Buffer sortie stand (s)", lblBufferHint: "Secondes avant la fin du temps minimum au stand — le pilote se dirige vers la sortie", lblPitNotifyLead: "Délai d'alerte (min)", lblPitNotifyLeadHint: "Minutes avant le max relais (moins in-lap) pour avertir le pilote sur piste", lblInLapSec: "In-lap vers stands (sec, sec)", lblInLapHint: "Temps piste jusqu'à l'entrée stand. 0 = auto selon le circuit.", lblDoubles: "Doubles OK", lblSquads: "Équipes", lblFuel: "Carburant", lblFuelTank: "Réservoir (min)",
         addDriver: "+ Ajouter", generateStrategy: "Générer (IA)", previewStrategy: "Aperçu", startRace: "Démarrer", loadSaved: "Charger",
         raceTime: "TEMPS COURSE", stops: "ARRÊTS", live: "LIVE", stop: "Stop", pos: "POS", last: "DERN", best: "MEILL", targetStint: "CIBLE RELAIS", buildTime: "GÉRER TEMPS",
@@ -869,8 +869,8 @@ window.translations = {
         contactUs: "Nous Contacter",
         runDemo: "Démo",
         goodPace: "Bon Rythme",
-        lblStartTime: "🕐 Heure de Départ", lblStartDate: "📅 Date de Course",
-        lblSquadSchedule: "🔄 Fenêtre Équipes", lblSquadScheduleHint: "Hors fenêtre, tous les pilotes partagent. Dedans, les équipes tournent à parts égales.",
+        lblStartTime: "Heure de Départ", lblStartDate: "Date de Course",
+        lblSquadSchedule: "Fenêtre Équipes", lblSquadScheduleHint: "Hors fenêtre, tous les pilotes partagent. Dedans, les équipes tournent à parts égales.",
         lblSquadWindowStart: "Début fenêtre", lblSquadWindowEnd: "Fin fenêtre",
         squadOff: "Désactivé", squad2: "2 Équipes", squad3: "3 Équipes", squad4: "4 Équipes",
         lblAppearance: "🎨 Apparence", lblPageBg: "Fond de page", lblColorThemes: "Thèmes de couleur",
@@ -918,7 +918,7 @@ window.translations = {
         googleLogin: "Login Google", eventCreated: "Evento criado!", eventError: "Erro ao criar", raceEventTitle: "Corrida de Resistência",
         errImpossible: "Estratégia Impossível!", errAvgHigh: "Média > Máx. Aumente paradas.", errAvgLow: "Média < Mín. Reduza paradas.",
         appSubtitle: "Gestor de Estratégia", generalInfo: "Info Geral", advancedConstraints: "Restrições Avançadas", driverConfig: "Pilotos", aiTitle: "Estratégia IA",
-        lblDuration: "Duração (H)", lblStops: "Paradas Req.", lblMinStint: "Mín Stint", lblMaxStint: "Máx Stint", lblPitTime: "Tempo Box", lblPitClosedStart: "🚫 Fechado Início", lblPitClosedEnd: "🚫 Fechado Fim",
+        lblDuration: "Duração (H)", lblStops: "Paradas Req.", lblMinStint: "Mín Stint", lblMaxStint: "Máx Stint", lblPitTime: "Tempo Box", lblPitClosedStart: "Fechado Início", lblPitClosedEnd: "Fechado Fim",
         lblMinDrive: "Mín Total (min)", lblMaxDrive: "Máx Total (min)", lblBuffer: "Buffer saída box (s)", lblBufferHint: "Segundos antes do fim do tempo mínimo no box — piloto vai para a saída", lblPitNotifyLead: "Antecedência de alerta (min)", lblPitNotifyLeadHint: "Minutos antes do máx stint (menos in-lap) para avisar o piloto", lblInLapSec: "In-lap até box (seg, seco)", lblInLapHint: "Tempo na pista até entrada box. 0 = auto pelo circuito.", lblDoubles: "Duplos OK", lblSquads: "Esquadrões", lblFuel: "Combustível", lblFuelTank: "Tanque (min)",
         addDriver: "+ Adicionar", generateStrategy: "Gerar (IA)", previewStrategy: "Visualizar", startRace: "Iniciar", loadSaved: "Carregar",
         raceTime: "TEMPO PROVA", stops: "PARADAS", live: "AO VIVO", stop: "Parar", pos: "POS", last: "ÚLT", best: "MELH", targetStint: "ALVO STINT", buildTime: "CRIAR TEMPO",
@@ -1018,8 +1018,8 @@ window.translations = {
         contactUs: "Contacte-nos",
         runDemo: "Demo",
         goodPace: "Bom Ritmo",
-        lblStartTime: "🕐 Hora de Início", lblStartDate: "📅 Data da Corrida",
-        lblSquadSchedule: "🔄 Janela de Esquadrões", lblSquadScheduleHint: "Fora da janela, todos pilotos compartilham. Dentro, esquadrões revezam igualmente.",
+        lblStartTime: "Hora de Início", lblStartDate: "Data da Corrida",
+        lblSquadSchedule: "Janela de Esquadrões", lblSquadScheduleHint: "Fora da janela, todos pilotos compartilham. Dentro, esquadrões revezam igualmente.",
         lblSquadWindowStart: "Início janela", lblSquadWindowEnd: "Fim janela",
         squadOff: "Desligado", squad2: "2 Esquadrões", squad3: "3 Esquadrões", squad4: "4 Esquadrões",
         lblAppearance: "🎨 Aparência", lblPageBg: "Fundo da página", lblColorThemes: "Temas de cor",
@@ -1075,7 +1075,7 @@ window.translations = {
         googleLogin: "Вход через Google", eventCreated: "Событие создано!", eventError: "Ошибка создания", raceEventTitle: "Гонка на выносливость",
         errImpossible: "Невозможная стратегия!", errAvgHigh: "Средн. > Макс. Добавьте остановок.", errAvgLow: "Средн. < Мин. Уменьшите остановок.",
         appSubtitle: "Менеджер стратегии", generalInfo: "Основная информация", advancedConstraints: "Продвинутые ограничения", driverConfig: "Пилоты", aiTitle: "ИИ стратегия",
-        lblDuration: "Длительность (ч)", lblStops: "Требуемые остановки", lblMinStint: "Мин заезд", lblMaxStint: "Макс заезд", lblPitTime: "Время боксов", lblPitClosedStart: "🚫 Закрыто в начале", lblPitClosedEnd: "🚫 Закрыто в конце",
+        lblDuration: "Длительность (ч)", lblStops: "Требуемые остановки", lblMinStint: "Мин заезд", lblMaxStint: "Макс заезд", lblPitTime: "Время боксов", lblPitClosedStart: "Закрыто в начале", lblPitClosedEnd: "Закрыто в конце",
         lblMinDrive: "Мин всего (мин)", lblMaxDrive: "Макс всего (мин)", lblBuffer: "Буфер выезда (с)", lblBufferHint: "Секунды до конца мин. времени в боксах — пилот идёт к выезду", lblPitNotifyLead: "Заблаговременность (мин)", lblPitNotifyLeadHint: "Минуты до макс. стинта (минус in-lap) для предупреждения пилота", lblInLapSec: "In-lap до боксов (сек, сухо)", lblInLapHint: "Время на трассе до входа в боксы. 0 = авто по названию трассы.", lblDoubles: "Разрешить дубли", lblSquads: "Использовать группы", lblFuel: "Топливо", lblFuelTank: "Бак (мин)",
         addDriver: "+ Добавить", generateStrategy: "Создать (ИИ)", previewStrategy: "Просмотр", startRace: "Начать", loadSaved: "Загрузить",
         raceTime: "ВРЕМЯ ГОНКИ", stops: "ОСТАНОВКИ", live: "LIVE", stop: "Стоп", pos: "ПОЗ", last: "ПОС", best: "ЛУЧ", targetStint: "ЦЕЛЕВОЙ ЗАЕЗД", buildTime: "СТРОИТЬ ВРЕМЯ",
@@ -1179,8 +1179,8 @@ window.translations = {
         contactUs: "Связаться с Нами",
         runDemo: "Демо",
         goodPace: "Хороший Темп",
-        lblStartTime: "🕐 Время старта", lblStartDate: "📅 Дата гонки",
-        lblSquadSchedule: "🔄 Окно групп", lblSquadScheduleHint: "Вне окна все водители делят поровну. В окне группы чередуются равномерно.",
+        lblStartTime: "Время старта", lblStartDate: "Дата гонки",
+        lblSquadSchedule: "Окно групп", lblSquadScheduleHint: "Вне окна все водители делят поровну. В окне группы чередуются равномерно.",
         lblSquadWindowStart: "Начало окна", lblSquadWindowEnd: "Конец окна",
         squadOff: "Выкл", squad2: "2 Группы", squad3: "3 Группы", squad4: "4 Группы",
         lblAppearance: "🎨 Внешний вид", lblPageBg: "Фон страницы", lblColorThemes: "Цветовые темы",
@@ -1233,7 +1233,7 @@ window.translations = {
         googleLogin: "تسجيل الدخول عبر Google", eventCreated: "تم إنشاء الحدث!", eventError: "خطأ في الإنشاء", raceEventTitle: "سباق التحمل",
         errImpossible: "إستراتيجية غير ممكنة!", errAvgHigh: "المتوسط > الحد الأقصى. أضف محطات.", errAvgLow: "المتوسط < الحد الأدنى. اقلل المحطات.",
         appSubtitle: "مدير الإستراتيجية", generalInfo: "معلومات عامة", advancedConstraints: "القيود المتقدمة", driverConfig: "السائقون", aiTitle: "إستراتيجية AI",
-        lblDuration: "المدة (ساعات)", lblStops: "المحطات المطلوبة", lblMinStint: "الحد الأدنى للمقطع", lblMaxStint: "الحد الأقصى للمقطع", lblPitTime: "وقت الحفرة", lblPitClosedStart: "🚫 مغلق في البداية", lblPitClosedEnd: "🚫 مغلق في النهاية",
+        lblDuration: "المدة (ساعات)", lblStops: "المحطات المطلوبة", lblMinStint: "الحد الأدنى للمقطع", lblMaxStint: "الحد الأقصى للمقطع", lblPitTime: "وقت الحفرة", lblPitClosedStart: "", lblPitClosedEnd: "",
         lblMinDrive: "الحد الأدنى الكلي (دقيقة)", lblMaxDrive: "الحد الأقصى الكلي (دقيقة)", lblBuffer: "مخزن الخروج (ث)", lblBufferHint: "ثوانٍ قبل انتهاء الحد الأدنى في الحفرة — السائق يتجه للخروج", lblPitNotifyLead: "وقت التنبيه المسبق (د)", lblPitNotifyLeadHint: "دقائق قبل أقصى مقطع (ناقص in-lap) لتنبيه السائق", lblInLapSec: "In-lap للحفرة (ث، جاف)", lblInLapHint: "وقت على المسار للوصول للحفرة. 0 = تلقائي من اسم الحلبة.", lblDoubles: "السماح بالمضاعفات", lblSquads: "استخدام الفرق", lblFuel: "الوقود", lblFuelTank: "خزان الوقود (دقيقة)",
         addDriver: "+ إضافة", generateStrategy: "إنشاء (AI)", previewStrategy: "معاينة", startRace: "ابدأ", loadSaved: "تحميل",
         raceTime: "وقت السباق", stops: "المحطات", live: "مباشر", stop: "توقف", pos: "موضع", last: "الأخير", best: "الأفضل", targetStint: "مقطع الهدف", buildTime: "وقت البناء",
@@ -1337,8 +1337,8 @@ window.translations = {
         contactUs: "اتصل بنا",
         runDemo: "تجريبي",
         goodPace: "وتيرة جيدة",
-        lblStartTime: "🕐 وقت البدء", lblStartDate: "📅 تاريخ السباق",
-        lblSquadSchedule: "🔄 نافذة الفرق", lblSquadScheduleHint: "خارج النافذة يتشارك جميع السائقين بالتساوي. داخلها، تتناوب الفرق بالتساوي.",
+        lblStartTime: "", lblStartDate: "",
+        lblSquadSchedule: "", lblSquadScheduleHint: "خارج النافذة يتشارك جميع السائقين بالتساوي. داخلها، تتناوب الفرق بالتساوي.",
         lblSquadWindowStart: "بداية النافذة", lblSquadWindowEnd: "نهاية النافذة",
         squadOff: "إيقاف", squad2: "فريقان", squad3: "3 فرق", squad4: "4 فرق",
         lblAppearance: "🎨 المظهر", lblPageBg: "خلفية الصفحة", lblColorThemes: "سمات الألوان",
@@ -1393,7 +1393,7 @@ window.translations = {
         googleLogin: "Iniciar sesión con Google", eventCreated: "¡Evento creado!", eventError: "Error al crear", raceEventTitle: "Carrera de resistencia",
         errImpossible: "¡Estrategia imposible!", errAvgHigh: "Promedio > Máx. Añada paradas.", errAvgLow: "Promedio < Mín. Reduzca paradas.",
         appSubtitle: "Gestor de estrategia", generalInfo: "Información general", advancedConstraints: "Restricciones avanzadas", driverConfig: "Pilotos", aiTitle: "Estrategia IA",
-        lblDuration: "Duración (H)", lblStops: "Paradas req.", lblMinStint: "Mín tramo", lblMaxStint: "Máx tramo", lblPitTime: "Tiempo box", lblPitClosedStart: "🚫 Cerrado inicio", lblPitClosedEnd: "🚫 Cerrado final",
+        lblDuration: "Duración (H)", lblStops: "Paradas req.", lblMinStint: "Mín tramo", lblMaxStint: "Máx tramo", lblPitTime: "Tiempo box", lblPitClosedStart: "Cerrado inicio", lblPitClosedEnd: "Cerrado final",
         lblMinDrive: "Mín total (min)", lblMaxDrive: "Máx total (min)", lblBuffer: "Buffer salida box (s)", lblBufferHint: "Segundos antes del fin del mínimo en box — piloto camina a la salida", lblPitNotifyLead: "Antelación de aviso (min)", lblPitNotifyLeadHint: "Minutos antes del máx stint (menos in-lap) para avisar al piloto", lblInLapSec: "In-lap a boxes (seg, seco)", lblInLapHint: "Tiempo en pista hasta entrada box. 0 = auto por circuito.", lblDoubles: "Permitir dobles", lblSquads: "Usar escuadrones", lblFuel: "Combustible", lblFuelTank: "Depósito (min)",
         addDriver: "+ Añadir", generateStrategy: "Generar (IA)", previewStrategy: "Vista previa", startRace: "Iniciar", loadSaved: "Cargar",
         raceTime: "TIEMPO CARRERA", stops: "PARADAS", live: "EN DIRECTO", stop: "Parar", pos: "POS", last: "ÚLT", best: "MEJOR", targetStint: "TRAMO OBJETIVO", buildTime: "CONSTRUIR TIEMPO",
@@ -1497,8 +1497,8 @@ window.translations = {
         contactUs: "Contáctenos",
         runDemo: "Demo",
         goodPace: "Buen Ritmo",
-        lblStartTime: "🕐 Hora de Inicio", lblStartDate: "📅 Fecha de Carrera",
-        lblSquadSchedule: "🔄 Ventana de Escuadrones", lblSquadScheduleHint: "Fuera de la ventana, todos comparten por igual. Dentro, los escuadrones rotan equitativamente.",
+        lblStartTime: "Hora de Inicio", lblStartDate: "Fecha de Carrera",
+        lblSquadSchedule: "Ventana de Escuadrones", lblSquadScheduleHint: "Fuera de la ventana, todos comparten por igual. Dentro, los escuadrones rotan equitativamente.",
         lblSquadWindowStart: "Inicio ventana", lblSquadWindowEnd: "Fin ventana",
         squadOff: "Desactivado", squad2: "2 Escuadrones", squad3: "3 Escuadrones", squad4: "4 Escuadrones",
         lblAppearance: "🎨 Apariencia", lblPageBg: "Fondo de página", lblColorThemes: "Temas de color",
@@ -1550,7 +1550,7 @@ window.translations = {
     it: {
         ltSearchType: "Filtra per:", ltTeam: "Squadra", ltDriver: "Pilota", ltKart: "Kart n°", ltPlaceholder: "Ricerca...", previewTitle: "Anteprima strategia", addToCalendar: "Aggiungi al calendario", timeline: "Cronologia", driverSchedule: "Riepilogo Stint", totalTime: "Tempo totale", close: "Chiudi",
         googleLogin: "Accedi con Google", eventCreated: "Evento creato!", eventError: "Errore creazione", raceEventTitle: "Gara di resistenza", errImpossible: "Strategia impossibile!", errAvgHigh: "Media > Max. Aggiungi soste.", errAvgLow: "Media < Min. Riduci soste.",
-        appSubtitle: "Gestore strategia", generalInfo: "Info generale", advancedConstraints: "Vincoli avanzati", driverConfig: "Piloti", aiTitle: "Strategia IA", lblDuration: "Durata (H)", lblStops: "Soste richieste", lblMinStint: "Min stint", lblMaxStint: "Max stint", lblPitTime: "Tempo pit", lblPitClosedStart: "🚫 Chiuso inizio", lblPitClosedEnd: "🚫 Chiuso fine",
+        appSubtitle: "Gestore strategia", generalInfo: "Info generale", advancedConstraints: "Vincoli avanzati", driverConfig: "Piloti", aiTitle: "Strategia IA", lblDuration: "Durata (H)", lblStops: "Soste richieste", lblMinStint: "Min stint", lblMaxStint: "Max stint", lblPitTime: "Tempo pit", lblPitClosedStart: "Chiuso inizio", lblPitClosedEnd: "Chiuso fine",
         lblMinDrive: "Min totale (min)", lblMaxDrive: "Max totale (min)", lblBuffer: "Buffer uscita pit (s)", lblBufferHint: "Secondi prima del minimo in pit — il pilota va verso l'uscita", lblPitNotifyLead: "Anticipo avviso (min)", lblPitNotifyLeadHint: "Minuti prima del max stint (meno in-lap) per avvisare il pilota", lblInLapSec: "In-lap ai box (sec, asciutto)", lblInLapHint: "Tempo in pista fino all'ingresso box. 0 = auto dal circuito.", lblDoubles: "Consenti doppi", lblSquads: "Usa squadre", lblFuel: "Carburante", lblFuelTank: "Serbatoio (min)", addDriver: "+ Aggiungi", generateStrategy: "Genera (IA)", previewStrategy: "Anteprima", startRace: "Inizia", loadSaved: "Carica",
         raceTime: "TEMPO GARA", stops: "SOSTE", live: "DIRETTA", stop: "Ferma", pos: "POS", last: "ULT", best: "MIGLIORE", targetStint: "STINT OBIETTIVO", buildTime: "TEMPO COSTRUITO", current: "ATTUALE", stintTime: "TEMPO STINT", nextDriver: "Prossimo", penalty: "Penalità", enterPit: "ENTRA IN PIT", push: "SPINGI", problem: "PROBLEMA",
         resetMode: "Ripristina", nightMode: "MODALITÀ NOTTE", dry: "Secco", wet: "Pioggia", drying: "Asciugando", boxNow: "BOX ADESSO!", stayOnTrackUntilFurther: "Rimani in pista fino a nuovo avviso", pushMode: "MODALITÀ PUSH", squadSleeping: "SQUADRA DORME", squadWakeUp: "SVEGLIA SQUADRA", finalLap: "Ultimo giro", calculating: "Calcolando...", manualInput: "Manuale",
@@ -1601,8 +1601,8 @@ window.translations = {
         contactUs: "Contattaci",
         runDemo: "Demo",
         goodPace: "Buon Ritmo",
-        lblStartTime: "🕐 Ora di Partenza", lblStartDate: "📅 Data della Gara",
-        lblSquadSchedule: "🔄 Finestra Squadre", lblSquadScheduleHint: "Fuori dalla finestra tutti i piloti condividono. Dentro, le squadre ruotano equamente.",
+        lblStartTime: "Ora di Partenza", lblStartDate: "Data della Gara",
+        lblSquadSchedule: "Finestra Squadre", lblSquadScheduleHint: "Fuori dalla finestra tutti i piloti condividono. Dentro, le squadre ruotano equamente.",
         lblSquadWindowStart: "Inizio finestra", lblSquadWindowEnd: "Fine finestra",
         squadOff: "Disattivato", squad2: "2 Squadre", squad3: "3 Squadre", squad4: "4 Squadre",
         lblAppearance: "🎨 Aspetto", lblPageBg: "Sfondo pagina", lblColorThemes: "Temi colore",
@@ -1657,7 +1657,7 @@ window.translations = {
         googleLogin: "შეიყვანე Google-ით", eventCreated: "ღვაბი შეიქმნა!", eventError: "შეცდომა", raceEventTitle: "გამძლეობის რბოლა",
         errImpossible: "შეუძლებელი სტრატეგია!", errAvgHigh: "საშუალო > მაქსიმუმი. დაამატე გაჩერება.", errAvgLow: "საშუალო < მინიმუმი. კლებითი გაჩერება.",
         appSubtitle: "სტრატეგიის მენეჯერი", generalInfo: "ზოგადი ინფორმაცია", advancedConstraints: "დამატებითი შეზღუდვები", driverConfig: "მძღოლები", aiTitle: "AI სტრატეგია",
-        lblDuration: "ხანგრძლივობა (საათი)", lblStops: "საჭირო გაჩერება", lblMinStint: "მინიმ ტაძე", lblMaxStint: "მაქსიმ ტაძე", lblPitTime: "ბოქსის დრო", lblPitClosedStart: "🚫 დახურული დაწყება", lblPitClosedEnd: "🚫 დახურული დასრულება",
+        lblDuration: "ხანგრძლივობა (საათი)", lblStops: "საჭირო გაჩერება", lblMinStint: "მინიმ ტაძე", lblMaxStint: "მაქსიმ ტაძე", lblPitTime: "ბოქსის დრო", lblPitClosedStart: "", lblPitClosedEnd: "",
         lblMinDrive: "მინიმ სულ (წთ)", lblMaxDrive: "მაქსიმ სულ (წთ)", lblBuffer: "გამოსვლის ბუფერი (წმ)", lblBufferHint: "წამები მინ. pit დროის დასრულებამდე — მძღოლი მიდის გამოსასვლელთან", lblPitNotifyLead: "გაფრთხოვების დრო (წთ)", lblPitNotifyLeadHint: "წუთები მაქს stint-მდე (მინუს in-lap) მძღოლის გაფრთხოვებისთვის", lblInLapSec: "In-lap pit-ში (წმ, მშრალი)", lblInLapHint: "დრო ტრასაზე pit შესასვლელამდე. 0 = ავტო ტრასის სახელით.", lblDoubles: "დაშვებული გაორმაგება", lblSquads: "გამოიყენე ჯგუფები", lblFuel: "საწვავი", lblFuelTank: "ავზი (წთ)",
         addDriver: "+ დამატება", generateStrategy: "შექმნა (AI)", previewStrategy: "წინასწარი ნახვა", startRace: "დაწყება", loadSaved: "ატვირთვა",
         raceTime: "რბოლის დრო", stops: "გაჩერება", live: "ცოცხალი", stop: "გაჩერება", pos: "პოზ", last: "ბოლო", best: "საუკეთესო", targetStint: "სამიზნე ტაძე", buildTime: "დროის აგება",
@@ -1759,8 +1759,8 @@ window.translations = {
         contactUs: "დაგვიკავშირდით",
         runDemo: "დემო",
         goodPace: "კარგი ტემპი",
-        lblStartTime: "🕐 დაწყების დრო", lblStartDate: "📅 რბოლის თარიღი",
-        lblSquadSchedule: "🔄 ჯგუფების ფანჯარა", lblSquadScheduleHint: "ფანჯრის გარეთ ყველა მძღოლი თანაბრად ინაწილებს. შიგნით ჯგუფები თანაბრად მონაცვლეობენ.",
+        lblStartTime: "", lblStartDate: "",
+        lblSquadSchedule: "", lblSquadScheduleHint: "ფანჯრის გარეთ ყველა მძღოლი თანაბრად ინაწილებს. შიგნით ჯგუფები თანაბრად მონაცვლეობენ.",
         lblSquadWindowStart: "ფანჯრის დასაწყისი", lblSquadWindowEnd: "ფანჯრის დასასრული",
         squadOff: "გამორთული", squad2: "2 ჯგუფი", squad3: "3 ჯგუფი", squad4: "4 ჯგუფი",
         lblAppearance: "🎨 გარეგნობა", lblPageBg: "გვერდის ფონი", lblColorThemes: "ფერის თემები",
@@ -1813,7 +1813,7 @@ window.translations = {
     de: {
         ltSearchType: "Filter nach:", ltTeam: "Team", ltDriver: "Fahrer", ltKart: "Kart Nr.", ltPlaceholder: "Suchen...", previewTitle: "Strategievorschau", addToCalendar: "Zum Kalender hinzufügen", timeline: "Zeitleiste", driverSchedule: "Stint-Übersicht", totalTime: "Gesamtzeit", close: "Schließen",
         googleLogin: "Mit Google anmelden", eventCreated: "Ereignis erstellt!", eventError: "Erstellungsfehler", raceEventTitle: "Ausdauerrennen", errImpossible: "Unmögliche Strategie!", errAvgHigh: "Durchschn. > Max. Stopps hinzufügen.", errAvgLow: "Durchschn. < Min. Stopps reduzieren.",
-        appSubtitle: "Strategie-Manager", generalInfo: "Allgemeine Informationen", advancedConstraints: "Erweiterte Einschränkungen", driverConfig: "Fahrer", aiTitle: "KI-Strategie", lblDuration: "Dauer (Std.)", lblStops: "Erforderliche Stops", lblMinStint: "Min. Stint", lblMaxStint: "Max. Stint", lblPitTime: "Boxenzeit", lblPitClosedStart: "🚫 Start geschlossen", lblPitClosedEnd: "🚫 Ende geschlossen",
+        appSubtitle: "Strategie-Manager", generalInfo: "Allgemeine Informationen", advancedConstraints: "Erweiterte Einschränkungen", driverConfig: "Fahrer", aiTitle: "KI-Strategie", lblDuration: "Dauer (Std.)", lblStops: "Erforderliche Stops", lblMinStint: "Min. Stint", lblMaxStint: "Max. Stint", lblPitTime: "Boxenzeit", lblPitClosedStart: "Start geschlossen", lblPitClosedEnd: "Ende geschlossen",
         lblMinDrive: "Min. Gesamt (min)", lblMaxDrive: "Max. Gesamt (min)", lblBuffer: "Boxenausfahrt-Puffer (s)", lblBufferHint: "Sekunden vor Ende der Mindest-Boxenzeit — Fahrer geht zur Ausfahrt", lblPitNotifyLead: "Vorlaufzeit Warnung (min)", lblPitNotifyLeadHint: "Minuten vor Max-Stint (minus In-lap) um Fahrer zu warnen", lblInLapSec: "In-lap zu Boxen (Sek, trocken)", lblInLapHint: "Streckenzeit bis Boxeneinfahrt. 0 = auto nach Streckenname.", lblDoubles: "Doppel erlauben", lblSquads: "Staffeln verwenden", lblFuel: "Kraftstoff", lblFuelTank: "Tank (min)", addDriver: "+ Hinzufügen", generateStrategy: "Generieren (KI)", previewStrategy: "Vorschau", startRace: "Starten", loadSaved: "Laden",
         raceTime: "RENNZEIT", stops: "STOPS", live: "LIVE", stop: "Stop", pos: "POS", last: "LETZTE", best: "BESTE", targetStint: "ZIEL-STINT", buildTime: "AUFBAUZEIT", current: "AKTUELL", stintTime: "STINT-ZEIT", nextDriver: "Nächster", penalty: "Strafe", enterPit: "BOXEN FAHREN", push: "PUSH", problem: "PROBLEM",
         resetMode: "Zurücksetzen", nightMode: "NACHTMODUS", dry: "Trocken", wet: "Regen", drying: "Trocknet", boxNow: "JETZT BOXEN!", stayOnTrackUntilFurther: "Bleiben Sie auf der Strecke bis auf Weiteres", pushMode: "PUSH-MODUS", squadSleeping: "STAFFEL SCHLÄFT", squadWakeUp: "STAFFEL WECKEN", finalLap: "Letzte Runde", calculating: "Berechnung...", manualInput: "Manuell",
@@ -1864,8 +1864,8 @@ window.translations = {
         contactUs: "Kontakt",
         runDemo: "Demo",
         goodPace: "Gutes Tempo",
-        lblStartTime: "🕐 Startzeit", lblStartDate: "📅 Renndatum",
-        lblSquadSchedule: "🔄 Staffelfenster", lblSquadScheduleHint: "Außerhalb des Fensters teilen alle Fahrer gleich. Innerhalb rotieren Staffeln gleichmäßig.",
+        lblStartTime: "Startzeit", lblStartDate: "Renndatum",
+        lblSquadSchedule: "Staffelfenster", lblSquadScheduleHint: "Außerhalb des Fensters teilen alle Fahrer gleich. Innerhalb rotieren Staffeln gleichmäßig.",
         lblSquadWindowStart: "Fenster Beginn", lblSquadWindowEnd: "Fenster Ende",
         squadOff: "Aus", squad2: "2 Staffeln", squad3: "3 Staffeln", squad4: "4 Staffeln",
         lblAppearance: "🎨 Darstellung", lblPageBg: "Seitenhintergrund", lblColorThemes: "Farbthemen",
@@ -1918,7 +1918,7 @@ window.translations = {
     ja: {
         ltSearchType: "フィルタリング:", ltTeam: "チーム", ltDriver: "ドライバー", ltKart: "カート番号", ltPlaceholder: "検索...", previewTitle: "戦略プレビュー", addToCalendar: "カレンダーに追加", timeline: "タイムライン", driverSchedule: "スティント概要", totalTime: "総時間", close: "閉じる",
         googleLogin: "Googleでログイン", eventCreated: "イベントが作成されました!", eventError: "作成エラー", raceEventTitle: "耐久レース", errImpossible: "不可能な戦略!", errAvgHigh: "平均 > 最大。ピットストップを追加してください。", errAvgLow: "平均 < 最小。ピットストップを減らしてください。",
-        appSubtitle: "戦略マネージャー", generalInfo: "一般情報", advancedConstraints: "高度な制約", driverConfig: "ドライバー", aiTitle: "AI戦略", lblDuration: "期間 (時間)", lblStops: "必要なピットストップ", lblMinStint: "最小スティント", lblMaxStint: "最大スティント", lblPitTime: "ピットタイム", lblPitClosedStart: "🚫 開始時に閉鎖", lblPitClosedEnd: "🚫 終了時に閉鎖",
+        appSubtitle: "戦略マネージャー", generalInfo: "一般情報", advancedConstraints: "高度な制約", driverConfig: "ドライバー", aiTitle: "AI戦略", lblDuration: "期間 (時間)", lblStops: "必要なピットストップ", lblMinStint: "最小スティント", lblMaxStint: "最大スティント", lblPitTime: "ピットタイム", lblPitClosedStart: "", lblPitClosedEnd: "",
         lblMinDrive: "最小合計 (分)", lblMaxDrive: "最大合計 (分)", lblBuffer: "ピット出口バッファ (秒)", lblBufferHint: "最小ピット時間終了前の秒数 — ドライバーが出口へ向かう", lblPitNotifyLead: "通知リードタイム (分)", lblPitNotifyLeadHint: "最大スティント前 (in-lap差引) にドライバーへ警告する分数", lblInLapSec: "In-lap至ピット (秒, ドライ)", lblInLapHint: "ピット入口までの走行時間。0 = サーキット名から自動。", lblDoubles: "ダブルを許可", lblSquads: "スクワッドを使用", lblFuel: "燃料", lblFuelTank: "燃料タンク (分)", addDriver: "+ 追加", generateStrategy: "生成 (AI)", previewStrategy: "プレビュー", startRace: "スタート", loadSaved: "読み込み",
         raceTime: "レース時間", stops: "ピット", live: "ライブ", stop: "停止", pos: "POS", last: "ラスト", best: "ベスト", targetStint: "ターゲットスティント", buildTime: "タイム構築", current: "現在", stintTime: "スティントタイム", nextDriver: "次のドライバー", penalty: "ペナルティ", enterPit: "ピット進入", push: "プッシュ", problem: "問題",
         resetMode: "リセット", nightMode: "ナイトモード", dry: "ドライ", wet: "ウェット", drying: "乾燥中", boxNow: "今ピット!", stayOnTrackUntilFurther: "さらに指示があるまでトラックに留まってください", pushMode: "プッシュモード", squadSleeping: "スクワッド休止中", squadWakeUp: "スクワッド起動", finalLap: "ファイナルラップ", calculating: "計算中...", manualInput: "手動入力",
@@ -1969,8 +1969,8 @@ window.translations = {
         contactUs: "お問い合わせ",
         runDemo: "デモ",
         goodPace: "良いペース",
-        lblStartTime: "🕐 レース開始時刻", lblStartDate: "📅 レース日",
-        lblSquadSchedule: "🔄 スクワッドウィンドウ", lblSquadScheduleHint: "ウィンドウ外は全ドライバーが均等に分担。ウィンドウ内はスクワッドが均等にローテーション。",
+        lblStartTime: "", lblStartDate: "",
+        lblSquadSchedule: "", lblSquadScheduleHint: "ウィンドウ外は全ドライバーが均等に分担。ウィンドウ内はスクワッドが均等にローテーション。",
         lblSquadWindowStart: "開始時刻", lblSquadWindowEnd: "終了時刻",
         squadOff: "オフ", squad2: "2スクワッド", squad3: "3スクワッド", squad4: "4スクワッド",
         lblAppearance: "🎨 外観", lblPageBg: "ページ背景", lblColorThemes: "カラーテーマ",
@@ -2026,7 +2026,7 @@ window.translations = {
         googleLogin: "Σύνδεση με Google", eventCreated: "Το γεγονός δημιουργήθηκε!", eventError: "Σφάλμα δημιουργίας", raceEventTitle: "Αγώνας αντοχής",
         errImpossible: "Αδύνατη στρατηγική!", errAvgHigh: "Μέσος > Μέγιστος. Προσθέστε στάσεις.", errAvgLow: "Μέσος < Ελάχιστος. Μειώστε στάσεις.",
         appSubtitle: "Διαχειριστής Στρατηγικής", generalInfo: "Γενικές Πληροφορίες", advancedConstraints: "Προχωρημένοι Περιορισμοί", driverConfig: "Οδηγοί", aiTitle: "Στρατηγική AI",
-        lblDuration: "Διάρκεια (Ω)", lblStops: "Απαιτ. στάσεις", lblMinStint: "Ελάχ. stint", lblMaxStint: "Μέγ. stint", lblPitTime: "Χρόνος pit", lblPitClosedStart: "🚫 Κλειστό στην αρχή", lblPitClosedEnd: "🚫 Κλειστό στο τέλος",
+        lblDuration: "Διάρκεια (Ω)", lblStops: "Απαιτ. στάσεις", lblMinStint: "Ελάχ. stint", lblMaxStint: "Μέγ. stint", lblPitTime: "Χρόνος pit", lblPitClosedStart: "Κλειστό στην αρχή", lblPitClosedEnd: "Κλειστό στο τέλος",
         lblMinDrive: "Ελάχ. σύνολο (λεπ)", lblMaxDrive: "Μέγ. σύνολο (λεπ)", lblBuffer: "Buffer εξόδου pit (δευτ)", lblBufferHint: "Δευτερόλεπτα πριν το τέλος του ελάχ. pit — ο οδηγός πάει στην έξοδο", lblPitNotifyLead: "Χρόνος προειδοποίησης (λεπ)", lblPitNotifyLeadHint: "Λεπτά πριν το μέγ. stint (μείον in-lap) για ειδοποίηση οδηγού", lblInLapSec: "In-lap προς pit (δευτ, στεγνό)", lblInLapHint: "Χρόνος πίστας μέχρι είσοδο pit. 0 = αυτόματα από όνομα πίστας.", lblDoubles: "Επιτρεπτά διπλά", lblSquads: "Χρήση ομάδων", lblFuel: "Καύσιμο", lblFuelTank: "Ντεπόζιτο (λεπ)",
         addDriver: "+ Προσθήκη", generateStrategy: "Δημιουργία (AI)", previewStrategy: "Προεπισκόπηση", startRace: "Εκκίνηση", loadSaved: "Φόρτωση",
         raceTime: "ΧΡΟΝΟΣ ΑΓΩΝΑ", stops: "ΣΤΑΣΕΙΣ", live: "LIVE", stop: "Στοπ", pos: "ΘΕΣ", last: "ΤΕΛ", best: "ΚΑΛ", targetStint: "ΣΤΟΧΟΣ STINT", buildTime: "ΧΡΟΝΟΣ ΚΑΤΑΣΚ",
@@ -2123,8 +2123,8 @@ window.translations = {
         contactUs: "Επικοινωνία",
         runDemo: "Ντέμο",
         goodPace: "Καλός Ρυθμός",
-        lblStartTime: "🕐 Ώρα Εκκίνησης", lblStartDate: "📅 Ημερομηνία Αγώνα",
-        lblSquadSchedule: "🔄 Παράθυρο Ομάδων", lblSquadScheduleHint: "Εκτός παραθύρου, όλοι οι οδηγοί μοιράζονται ισομερώς. Εντός, οι ομάδες εναλλάσσονται.",
+        lblStartTime: "Ώρα Εκκίνησης", lblStartDate: "Ημερομηνία Αγώνα",
+        lblSquadSchedule: "Παράθυρο Ομάδων", lblSquadScheduleHint: "Εκτός παραθύρου, όλοι οι οδηγοί μοιράζονται ισομερώς. Εντός, οι ομάδες εναλλάσσονται.",
         lblSquadWindowStart: "Αρχή παραθύρου", lblSquadWindowEnd: "Τέλος παραθύρου",
         squadOff: "Ανενεργό", squad2: "2 Ομάδες", squad3: "3 Ομάδες", squad4: "4 Ομάδες",
         lblAppearance: "🎨 Εμφάνιση", lblPageBg: "Φόντο σελίδας", lblColorThemes: "Θέματα χρωμάτων",
@@ -3083,67 +3083,114 @@ function attachConfigListeners() {
 
 window.SAVED_SETTINGS_KEY = 'strateger_saved_settings';
 
-window.saveSettingsToDevice = function() {
+// [storage key, element id]. Legacy keys keep their old names so settings saved by
+// older versions still load; everything new is keyed by element id.
+window._SETTING_FIELDS = [
+    ['duration', 'raceDuration'], ['stops', 'reqPitStops'], ['minStint', 'minStint'], ['maxStint', 'maxStint'],
+    ['minPitTime', 'minPitTime'], ['raceStartTime', 'raceStartTime'], ['raceStartDate', 'raceStartDate'],
+    ['raceLocation', 'raceLocation'], ['liveTimingUrl', 'liveTimingUrl'], ['searchValue', 'searchValue'],
+    ['maxConsecutive', 'maxConsecutive'], ['numSquads', 'numSquads'],
+    ['squadWindowStart', 'squadWindowStart'], ['squadWindowEnd', 'squadWindowEnd'],
+    ['pitClosedStart', 'pitClosedStart'], ['pitClosedEnd', 'pitClosedEnd'],
+    ['kartChangeInterval', 'kartChangeInterval'], ['reqExtraPits', 'reqExtraPits'], ['minPitLapSec', 'minPitLapSec'],
+    ['numTeams', 'numTeams'], ['minDriverTime', 'minDriverTime'], ['maxDriverTime', 'maxDriverTime'],
+    ['releaseBuffer', 'releaseBuffer'], ['pitNotifyLeadMin', 'pitNotifyLeadMin'], ['inLapSec', 'inLapSec'],
+    ['fuelTime', 'fuelTime']
+];
+window._SETTING_CHECKS = [['allowDouble', 'allowDouble'], ['trackFuel', 'trackFuel'], ['showWeatherInStints', 'showWeatherInStints']];
+
+// Settings save themselves after every change — silent=true skips the toast.
+window.saveSettingsToDevice = function(silent) {
     const deviceId = window.getDeviceId ? window.getDeviceId() : 'default';
-    const all = JSON.parse(localStorage.getItem(window.SAVED_SETTINGS_KEY) || '{}');
+    let all = {};
+    try { all = JSON.parse(localStorage.getItem(window.SAVED_SETTINGS_KEY) || '{}'); } catch (e) {}
 
     const settings = {
         savedAt: Date.now(),
-        duration: document.getElementById('raceDuration')?.value,
-        stops: document.getElementById('reqPitStops')?.value,
-        minStint: document.getElementById('minStint')?.value,
-        maxStint: document.getElementById('maxStint')?.value,
-        minPitTime: document.getElementById('minPitTime')?.value,
-        raceStartTime: document.getElementById('raceStartTime')?.value,
-        raceStartDate: document.getElementById('raceStartDate')?.value,
-        raceLocation: document.getElementById('raceLocation')?.value,
-        liveTimingUrl: document.getElementById('liveTimingUrl')?.value,
-        searchValue: document.getElementById('searchValue')?.value,
         searchType: document.querySelector('input[name="searchType"]:checked')?.value,
-        allowDouble: document.getElementById('allowDouble')?.checked,
-        maxConsecutive: document.getElementById('maxConsecutive')?.value,
-        numSquads: document.getElementById('numSquads')?.value,
         lang: window.currentLang || 'en',
     };
+    window._SETTING_FIELDS.forEach(([key, id]) => { settings[key] = document.getElementById(id)?.value; });
+    window._SETTING_CHECKS.forEach(([key, id]) => { settings[key] = document.getElementById(id)?.checked; });
 
     all[deviceId] = settings;
-    localStorage.setItem(window.SAVED_SETTINGS_KEY, JSON.stringify(all));
+    try { localStorage.setItem(window.SAVED_SETTINGS_KEY, JSON.stringify(all)); } catch (e) { return; }
 
-    // Brief visual feedback
-    const btn = document.getElementById('saveSettingsBtn');
-    if (btn) {
-        const orig = btn.innerHTML;
-        btn.innerHTML = '<i class="fas fa-check text-neon"></i>';
-        btn.classList.add('border-neon/60', 'text-neon');
-        setTimeout(() => { btn.innerHTML = orig; btn.classList.remove('border-neon/60', 'text-neon'); }, 1500);
+    const badge = document.getElementById('autoSaveState');
+    if (badge) {
+        badge.classList.add('is-shown');
+        clearTimeout(window._autoSaveBadgeTimer);
+        window._autoSaveBadgeTimer = setTimeout(() => badge.classList.remove('is-shown'), 1600);
     }
-    if (typeof window.showToast === 'function') {
+    if (silent !== true && typeof window.showToast === 'function') {
         window.showToast(window.t('settingsSaved'), 'success', 1500);
     }
 };
 
+window._autoSaveSettings = function() {
+    clearTimeout(window._autoSaveTimer);
+    window._autoSaveTimer = setTimeout(() => {
+        if (window._initRunSimSuppressed) return;
+        window.saveSettingsToDevice(true);
+        if (typeof window._refreshRuleStates === 'function') window._refreshRuleStates();
+    }, 350);
+};
+
+// Rules light up when they are doing something, so the strategist can see at a glance
+// which constraints are shaping the plan.
+window._refreshRuleStates = function() {
+    const rules = document.querySelectorAll('#rulesCard [data-rule]');
+    let active = 0;
+    rules.forEach(rule => {
+        if (rule.getAttribute('data-rule') === 'always') return;
+        let on = false;
+        rule.querySelectorAll('input, select').forEach(el => {
+            if (el.type === 'checkbox') { if (el.checked) on = true; }
+            else if (el.tagName === 'SELECT') { if (el.value && el.value !== '0') on = true; }
+            else if (el.type === 'time') { if (el.value) on = on || !el.closest('.hidden'); }
+            else if (parseFloat(el.value) > 0) on = true;
+        });
+        rule.classList.toggle('is-on', on);
+        if (on && !rule.classList.contains('hidden')) active++;
+    });
+    const count = document.getElementById('rulesActiveCount');
+    if (count) {
+        count.textContent = active > 0 ? active + ' on' : '';
+        count.classList.toggle('hidden', active === 0);
+    }
+};
+
+window._updateRaceWhen = function() {
+    const el = document.getElementById('raceWhenSummary');
+    if (!el) return;
+    const date = document.getElementById('raceStartDate')?.value;
+    const time = document.getElementById('raceStartTime')?.value;
+    const hours = parseFloat(document.getElementById('raceDuration')?.value) || 0;
+    if (!time) { el.classList.add('hidden'); return; }
+    const start = new Date((date || new Date().toISOString().slice(0, 10)) + 'T' + time + ':00');
+    if (isNaN(start.getTime())) { el.classList.add('hidden'); return; }
+    const end = new Date(start.getTime() + hours * 3600000);
+    const d = (x) => x.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' });
+    const tm = (x) => x.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const days = Math.round((start.getTime() - Date.now()) / 86400000);
+    const when = days > 0 ? 'in ' + days + (days === 1 ? ' day' : ' days') : (days === 0 ? 'today' : '');
+    el.innerHTML = '<b>' + d(start) + ' ' + tm(start) + '</b> <i class="fas fa-long-arrow-alt-right"></i> <b>' + d(end) + ' ' + tm(end) + '</b>' + (when ? ' <span>· ' + when + '</span>' : '');
+    el.classList.remove('hidden');
+};
+
 window.loadSavedSettings = function() {
     const deviceId = window.getDeviceId ? window.getDeviceId() : 'default';
-    const all = JSON.parse(localStorage.getItem(window.SAVED_SETTINGS_KEY) || '{}');
+    let all = {};
+    try { all = JSON.parse(localStorage.getItem(window.SAVED_SETTINGS_KEY) || '{}'); } catch (e) {}
     const s = all[deviceId];
     if (!s) return;
 
     const set = (id, val) => { const el = document.getElementById(id); if (el && val !== undefined && val !== null && val !== '') el.value = val; };
     const setChecked = (id, val) => { const el = document.getElementById(id); if (el && val !== undefined) el.checked = !!val; };
 
-    set('raceDuration', s.duration);
-    set('reqPitStops', s.stops);
-    set('minStint', s.minStint);
-    set('maxStint', s.maxStint);
-    set('minPitTime', s.minPitTime);
-    set('raceStartTime', s.raceStartTime);
-    set('raceStartDate', s.raceStartDate);
-    set('raceLocation', s.raceLocation);
-    set('liveTimingUrl', s.liveTimingUrl);
-    set('searchValue', s.searchValue);
-    setChecked('allowDouble', s.allowDouble);
-    set('maxConsecutive', s.maxConsecutive);
-    set('numSquads', s.numSquads);
+    window._SETTING_FIELDS.forEach(([key, id]) => set(id, s[key]));
+    window._SETTING_CHECKS.forEach(([key, id]) => setChecked(id, s[key]));
+    if (typeof window.toggleMaxConsecutive === 'function') window.toggleMaxConsecutive();
 
     if (s.searchType) {
         const radio = document.querySelector(`input[name="searchType"][value="${s.searchType}"]`);
@@ -3151,8 +3198,14 @@ window.loadSavedSettings = function() {
     }
     if (s.lang && typeof window.setLanguage === 'function') window.setLanguage(s.lang);
 
+    if (typeof window._updateRaceWhen === 'function') window._updateRaceWhen();
+    if (typeof window._refreshRuleStates === 'function') window._refreshRuleStates();
     if (!window._initRunSimSuppressed && typeof window.runSim === 'function') window.runSim();
 };
+
+// Any edit on the setup screen saves itself shortly after (typing, toggles, preset chips).
+document.addEventListener('change', (e) => { if (e.target.closest && e.target.closest('#setupScreen')) window._autoSaveSettings(); });
+document.addEventListener('click', (e) => { if (e.target.closest && e.target.closest('#setupScreen .set-chips button')) window._autoSaveSettings(); });
 
 // ==========================================
 // 💾 SAVED RACE LOGIC (Persistence)
@@ -3416,7 +3469,7 @@ window.finalDiscardRace = function() {
         demoIncidentsLabel: 'On-track Incidents',
         demoIncidentsDesc: 'Random incidents that affect specific teams',
         raceFinishedClose: 'Close',
-        lblTrackLocation: '📍 Race Location',
+        lblTrackLocation: 'Race Location',
         lblLocationPlaceholder: 'Search circuit or city...',
         lblLocationHint: 'Used for weather forecast',
         lblShowWeather: 'Show weather in stint preview',
@@ -3434,7 +3487,7 @@ window.finalDiscardRace = function() {
             demoGridSize: 'גודל גריד', demoChaosLevel: 'רמת אתגר', demoChaosLow: 'נמוכה', demoChaosNormal: 'רגילה', demoChaosHigh: 'גבוהה',
             demoSafetyCarLabel: 'אירועי Safety Car', demoSafetyCarDesc: 'ניטרול זמני עם קצב איטי יותר', demoIncidentsLabel: 'תקריות מסלול', demoIncidentsDesc: 'אירועים אקראיים שמשפיעים על קבוצות ספציפיות',
             raceFinishedClose: 'סגור',
-            lblTrackLocation: '📍 מיקום המסלול', lblLocationPlaceholder: 'חפש מעגל או עיר...', lblLocationHint: 'משמש לתחזית מזג אוויר', lblShowWeather: 'הצג מזג אוויר בתצוגת סטינטים',
+            lblTrackLocation: 'מיקום המסלול', lblLocationPlaceholder: 'חפש מעגל או עיר...', lblLocationHint: 'משמש לתחזית מזג אוויר', lblShowWeather: 'הצג מזג אוויר בתצוגת סטינטים',
             locationWeather: 'מיקום ומזג אוויר', weatherTooFarOut: 'תאריך רחוק מדי — תחזית לא זמינה', minUnit: 'דק\'',
             confirmFinish: 'אישור סיום מירוץ',
             minTwoDrivers: 'נדרשים לפחות 2 נהגים',
@@ -3445,7 +3498,7 @@ window.finalDiscardRace = function() {
             demoGridSize: 'Taille de grille', demoChaosLevel: 'Niveau de challenge', demoChaosLow: 'Faible', demoChaosNormal: 'Normal', demoChaosHigh: 'Eleve',
             demoSafetyCarLabel: 'Evenements Safety Car', demoSafetyCarDesc: 'Neutralisation temporaire avec rythme reduit', demoIncidentsLabel: 'Incidents piste', demoIncidentsDesc: 'Incidents aleatoires impactant certaines equipes',
             raceFinishedClose: 'Fermer',
-            lblTrackLocation: '📍 Lieu de course', lblLocationPlaceholder: 'Rechercher circuit ou ville...', lblLocationHint: 'Utilise pour la meteo', lblShowWeather: 'Afficher la meteo par relais',
+            lblTrackLocation: 'Lieu de course', lblLocationPlaceholder: 'Rechercher circuit ou ville...', lblLocationHint: 'Utilise pour la meteo', lblShowWeather: 'Afficher la meteo par relais',
             locationWeather: 'Lieu & Meteo', weatherTooFarOut: 'Date trop eloignee — prevision indisponible', minUnit: 'min',
         },
         pt: {
@@ -3454,7 +3507,7 @@ window.finalDiscardRace = function() {
             demoGridSize: 'Tamanho do grid', demoChaosLevel: 'Nivel de desafio', demoChaosLow: 'Baixo', demoChaosNormal: 'Normal', demoChaosHigh: 'Alto',
             demoSafetyCarLabel: 'Eventos de Safety Car', demoSafetyCarDesc: 'Neutralizacao temporaria com ritmo mais lento', demoIncidentsLabel: 'Incidentes na pista', demoIncidentsDesc: 'Incidentes aleatorios que afetam equipes especificas',
             raceFinishedClose: 'Fechar',
-            lblTrackLocation: '📍 Local da corrida', lblLocationPlaceholder: 'Buscar circuito ou cidade...', lblLocationHint: 'Usado para previsao do tempo', lblShowWeather: 'Mostrar clima por stint',
+            lblTrackLocation: 'Local da corrida', lblLocationPlaceholder: 'Buscar circuito ou cidade...', lblLocationHint: 'Usado para previsao do tempo', lblShowWeather: 'Mostrar clima por stint',
             locationWeather: 'Local & Clima', weatherTooFarOut: 'Data muito distante — previsao indisponivel', minUnit: 'min',
         },
         ru: {
@@ -3463,7 +3516,7 @@ window.finalDiscardRace = function() {
             demoGridSize: 'Размер решетки', demoChaosLevel: 'Сложность', demoChaosLow: 'Низкая', demoChaosNormal: 'Нормальная', demoChaosHigh: 'Высокая',
             demoSafetyCarLabel: 'События Safety Car', demoSafetyCarDesc: 'Временная нейтрализация с более медленным темпом', demoIncidentsLabel: 'Инциденты на трассе', demoIncidentsDesc: 'Случайные инциденты, влияющие на отдельные команды',
             raceFinishedClose: 'Закрыть',
-            lblTrackLocation: '📍 Место гонки', lblLocationPlaceholder: 'Найти трассу или город...', lblLocationHint: 'Для прогноза погоды', lblShowWeather: 'Показывать погоду по стинтам',
+            lblTrackLocation: 'Место гонки', lblLocationPlaceholder: 'Найти трассу или город...', lblLocationHint: 'Для прогноза погоды', lblShowWeather: 'Показывать погоду по стинтам',
             locationWeather: 'Локация и погода', weatherTooFarOut: 'Дата слишком далеко — прогноз недоступен', minUnit: 'мин',
         },
         ar: {
@@ -3472,7 +3525,7 @@ window.finalDiscardRace = function() {
             demoGridSize: 'حجم الشبكة', demoChaosLevel: 'مستوى التحدي', demoChaosLow: 'منخفض', demoChaosNormal: 'عادي', demoChaosHigh: 'مرتفع',
             demoSafetyCarLabel: 'احداث سيارة الامان', demoSafetyCarDesc: 'تحييد مؤقت بوتيرة ابطأ', demoIncidentsLabel: 'حوادث المضمار', demoIncidentsDesc: 'حوادث عشوائية تؤثر على فرق محددة',
             raceFinishedClose: 'اغلاق',
-            lblTrackLocation: '📍 موقع السباق', lblLocationPlaceholder: 'ابحث عن حلبة او مدينة...', lblLocationHint: 'يستخدم لتوقعات الطقس', lblShowWeather: 'اظهار الطقس في كل stint',
+            lblTrackLocation: '', lblLocationPlaceholder: 'ابحث عن حلبة او مدينة...', lblLocationHint: 'يستخدم لتوقعات الطقس', lblShowWeather: 'اظهار الطقس في كل stint',
             locationWeather: 'الموقع والطقس', weatherTooFarOut: 'التاريخ بعيد جدا — التوقعات غير متوفرة', minUnit: 'د',
         },
         es: {
@@ -3481,7 +3534,7 @@ window.finalDiscardRace = function() {
             demoGridSize: 'Tamano de parrilla', demoChaosLevel: 'Nivel de desafio', demoChaosLow: 'Bajo', demoChaosNormal: 'Normal', demoChaosHigh: 'Alto',
             demoSafetyCarLabel: 'Eventos de Safety Car', demoSafetyCarDesc: 'Neutralizacion temporal con ritmo mas lento', demoIncidentsLabel: 'Incidentes en pista', demoIncidentsDesc: 'Incidentes aleatorios que afectan equipos especificos',
             raceFinishedClose: 'Cerrar',
-            lblTrackLocation: '📍 Ubicacion de la carrera', lblLocationPlaceholder: 'Buscar circuito o ciudad...', lblLocationHint: 'Para el pronostico del tiempo', lblShowWeather: 'Mostrar clima por stint',
+            lblTrackLocation: 'Ubicacion de la carrera', lblLocationPlaceholder: 'Buscar circuito o ciudad...', lblLocationHint: 'Para el pronostico del tiempo', lblShowWeather: 'Mostrar clima por stint',
             locationWeather: 'Lugar y Clima', weatherTooFarOut: 'Fecha muy lejana — prevision no disponible', minUnit: 'min',
         },
         it: {
@@ -3490,7 +3543,7 @@ window.finalDiscardRace = function() {
             demoGridSize: 'Dimensione griglia', demoChaosLevel: 'Livello sfida', demoChaosLow: 'Basso', demoChaosNormal: 'Normale', demoChaosHigh: 'Alto',
             demoSafetyCarLabel: 'Eventi Safety Car', demoSafetyCarDesc: 'Neutralizzazione temporanea con ritmo ridotto', demoIncidentsLabel: 'Incidenti in pista', demoIncidentsDesc: 'Incidenti casuali che influenzano team specifici',
             raceFinishedClose: 'Chiudi',
-            lblTrackLocation: '📍 Luogo gara', lblLocationPlaceholder: 'Cerca circuito o citta...', lblLocationHint: 'Per le previsioni meteo', lblShowWeather: 'Mostra meteo per stint',
+            lblTrackLocation: 'Luogo gara', lblLocationPlaceholder: 'Cerca circuito o citta...', lblLocationHint: 'Per le previsioni meteo', lblShowWeather: 'Mostra meteo per stint',
             locationWeather: 'Luogo e Meteo', weatherTooFarOut: 'Data troppo lontana — previsione non disponibile', minUnit: 'min',
         },
         ka: {
@@ -3499,7 +3552,7 @@ window.finalDiscardRace = function() {
             demoGridSize: 'გრიდის ზომა', demoChaosLevel: 'სირთულის დონე', demoChaosLow: 'დაბალი', demoChaosNormal: 'ნორმალური', demoChaosHigh: 'მაღალი',
             demoSafetyCarLabel: 'Safety Car მოვლენები', demoSafetyCarDesc: 'დროებითი ნეიტრალიზაცია დაბალი ტემპით', demoIncidentsLabel: 'ტრეკის ინციდენტები', demoIncidentsDesc: 'შემთხვევითი ინციდენტები, რომლებიც კონკრეტულ გუნდებზე მოქმედებს',
             raceFinishedClose: 'დახურვა',
-            lblTrackLocation: '📍 რბოლის მდებარეობა', lblLocationPlaceholder: 'მოძებნე ტრეკი ან ქალაქი...', lblLocationHint: 'ამინდის პროგნოზისთვის', lblShowWeather: 'ამინდის ჩვენება stint-ებში',
+            lblTrackLocation: '', lblLocationPlaceholder: 'მოძებნე ტრეკი ან ქალაქი...', lblLocationHint: 'ამინდის პროგნოზისთვის', lblShowWeather: 'ამინდის ჩვენება stint-ებში',
             locationWeather: 'მდებარეობა და ამინდი', weatherTooFarOut: 'თარიღი ძალიან შორია — პროგნოზი მიუწვდომელია', minUnit: 'წთ',
         },
         de: {
@@ -3508,7 +3561,7 @@ window.finalDiscardRace = function() {
             demoGridSize: 'Grid-Grosse', demoChaosLevel: 'Schwierigkeitsgrad', demoChaosLow: 'Niedrig', demoChaosNormal: 'Normal', demoChaosHigh: 'Hoch',
             demoSafetyCarLabel: 'Safety-Car-Ereignisse', demoSafetyCarDesc: 'Zeitweise Neutralisierung mit langsamerem Tempo', demoIncidentsLabel: 'Streckenereignisse', demoIncidentsDesc: 'Zufallige Vorfalle mit Einfluss auf einzelne Teams',
             raceFinishedClose: 'Schliessen',
-            lblTrackLocation: '📍 Rennort', lblLocationPlaceholder: 'Strecke oder Stadt suchen...', lblLocationHint: 'Fur Wettervorhersage', lblShowWeather: 'Wetter pro Stint anzeigen',
+            lblTrackLocation: 'Rennort', lblLocationPlaceholder: 'Strecke oder Stadt suchen...', lblLocationHint: 'Fur Wettervorhersage', lblShowWeather: 'Wetter pro Stint anzeigen',
             locationWeather: 'Ort & Wetter', weatherTooFarOut: 'Datum zu weit entfernt — Vorhersage nicht verfugbar', minUnit: 'Min',
         },
         ja: {
@@ -3517,7 +3570,7 @@ window.finalDiscardRace = function() {
             demoGridSize: 'グリッド数', demoChaosLevel: '難易度', demoChaosLow: '低', demoChaosNormal: '標準', demoChaosHigh: '高',
             demoSafetyCarLabel: 'セーフティカーイベント', demoSafetyCarDesc: '一時的にペースを落とす中立化', demoIncidentsLabel: 'コース上のインシデント', demoIncidentsDesc: '特定チームに影響するランダムインシデント',
             raceFinishedClose: '閉じる',
-            lblTrackLocation: '📍 レース場所', lblLocationPlaceholder: 'サーキットや都市を検索...', lblLocationHint: '天気予報に使用', lblShowWeather: 'スティントごとの天気を表示',
+            lblTrackLocation: '', lblLocationPlaceholder: 'サーキットや都市を検索...', lblLocationHint: '天気予報に使用', lblShowWeather: 'スティントごとの天気を表示',
             locationWeather: '場所と天気', weatherTooFarOut: '日付が遠すぎます — 予報は利用できません', minUnit: '分',
         },
         el: {
@@ -3526,7 +3579,7 @@ window.finalDiscardRace = function() {
             demoGridSize: 'Μεγεθος grid', demoChaosLevel: 'Επιπεδο προκλησης', demoChaosLow: 'Χαμηλο', demoChaosNormal: 'Κανονικο', demoChaosHigh: 'Υψηλο',
             demoSafetyCarLabel: 'Γεγονοτα Safety Car', demoSafetyCarDesc: 'Προσωρινη ουδετεροποιηση με χαμηλοτερο ρυθμο', demoIncidentsLabel: 'Περιστατικα πιστας', demoIncidentsDesc: 'Τυχαια περιστατικα που επηρεαζουν συγκεκριμενες ομαδες',
             raceFinishedClose: 'Κλεισιμο',
-            lblTrackLocation: '📍 Τοποθεσια αγωνα', lblLocationPlaceholder: 'Αναζητηση πιστας ή πολης...', lblLocationHint: 'Για προγνωση καιρου', lblShowWeather: 'Εμφανιση καιρου ανα stint',
+            lblTrackLocation: 'Τοποθεσια αγωνα', lblLocationPlaceholder: 'Αναζητηση πιστας ή πολης...', lblLocationHint: 'Για προγνωση καιρου', lblShowWeather: 'Εμφανιση καιρου ανα stint',
             locationWeather: 'Τοποθεσια και Καιρος', weatherTooFarOut: 'Ημερομηνια πολυ μακρια — προγνωση μη διαθεσιμη', minUnit: 'λ',
         },
     };

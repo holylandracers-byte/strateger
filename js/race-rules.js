@@ -170,7 +170,7 @@ window.applyRaceRules = function(timeline, config) {
 window._ruleMessagesHtml = function() {
     const msgs = window._ruleMessages || [];
     if (!msgs.length) return '';
-    return msgs.map(function(m) { return (m.ok ? '✅ ' : '❌ ') + window._escHtml(m.text); }).join('<br>');
+    return msgs.map(function(m) { return '<span class="rule-status-' + (m.ok ? 'ok' : 'bad') + '"><i class="fas fa-' + (m.ok ? 'check' : 'times') + '"></i> ' + window._escHtml(m.text) + '</span>'; }).join('');
 };
 
 // ---------- setup UI: "Custom rules" card inside Advanced Constraints ----------
@@ -183,31 +183,33 @@ window.renderRuleNotes = function() {
     if (!card) {
         card = document.createElement('div');
         card.id = 'raceRuleNotesCard';
-        card.className = 'mb-3 bg-navy-950/60 border border-purple-500/30 rounded-lg p-3 space-y-3';
+        card.className = 'rule rule-custom';
+        card.setAttribute('data-rule', '');
         const intro = body.querySelector('p');
         body.insertBefore(card, intro ? intro.nextSibling : body.firstChild);
     }
     const r = window.raceRules;
     const esc = window._escHtml;
     card.innerHTML =
-        '<div class="text-xs font-bold text-purple-300">📋 Custom race rules <span class="text-gray-500 font-normal">— applied to the strategy</span></div>'
-        + '<div><div class="text-[11px] text-gray-400 font-bold mb-1">Pit lane closed windows (minutes from race start)</div><div class="space-y-1">'
+        '<div class="rule-head" style="cursor:default"><span class="rule-title">Custom race rules</span><span class="rule-note" style="color:#c4b5fd">applied to the strategy</span></div>'
+        + '<div class="set-sublabel" style="margin-top:4px">Pit lane closed windows (minutes from race start)</div>'
+        + '<div class="rule-windows">'
         + r.closedWindows.map(function(w, i) {
-            return '<div class="flex items-center gap-2"><input type="number" min="0" value="' + Number(w[0]) + '" class="input-field w-24" data-win="' + i + '" data-pos="0" aria-label="From">'
-                + '<span class="text-gray-500">→</span><input type="number" min="0" value="' + Number(w[1]) + '" class="input-field w-24" data-win="' + i + '" data-pos="1" aria-label="To">'
-                + '<span class="text-[11px] text-gray-500">min</span><button type="button" class="ml-auto text-gray-500 hover:text-red-400 px-2" data-win-del="' + i + '" aria-label="Remove window">✕</button></div>';
+            return '<div class="rule-window"><input type="number" min="0" value="' + Number(w[0]) + '" class="input-field" data-win="' + i + '" data-pos="0" aria-label="From">'
+                + '<i class="fas fa-long-arrow-alt-right" aria-hidden="true"></i><input type="number" min="0" value="' + Number(w[1]) + '" class="input-field" data-win="' + i + '" data-pos="1" aria-label="To">'
+                + '<button type="button" class="rule-window-del" data-win-del="' + i + '" aria-label="Remove window"><i class="fas fa-trash-alt"></i></button></div>';
         }).join('')
-        + '</div><button type="button" id="ruleAddWindow" class="mt-1 text-[11px] text-purple-300 hover:text-white font-bold">+ Add closed window</button></div>'
-        + '<div class="flex items-center gap-3"><label class="text-[11px] text-gray-400 font-bold flex-1">Min stints per driver</label>'
-        + '<input type="number" min="0" id="ruleMinStints" class="input-field w-24" value="' + r.minStintsPerDriver + '"></div>'
+        + '</div><button type="button" id="ruleAddWindow" class="rule-add"><i class="fas fa-plus"></i> Add closed window</button>'
+        + '<div class="set-grid-2">'
+        + '<div><label class="set-sublabel" for="ruleMinStints">Min stints per driver</label><input type="number" min="0" id="ruleMinStints" class="input-field" value="' + r.minStintsPerDriver + '"></div>'
+        + '<div><label class="set-sublabel" for="ruleMaxStints">Max stints per driver</label><input type="number" min="0" id="ruleMaxStints" class="input-field" value="' + r.maxStintsPerDriver + '"></div>'
+        + '</div>'
         + (r.notes.length
-            ? '<div><div class="flex items-center justify-between mb-1"><span class="text-[11px] text-gray-400 font-bold">Other rules (checklist, not calculated)</span>'
-                + '<button type="button" id="ruleClearNotes" class="text-[11px] text-gray-500 hover:text-red-400">Clear</button></div><ul class="space-y-1">'
-                + r.notes.map(function(n) { return '<li class="text-xs text-gray-300 flex gap-2"><span class="text-purple-400">•</span><span>' + esc(n) + '</span></li>'; }).join('') + '</ul></div>'
+            ? '<div class="rule-body"><div class="rule-head" style="min-height:0;cursor:default"><span class="rule-title" style="font-size:13px">Other rules <span class="rule-note" style="color:#94a3b8">checklist, not calculated</span></span>'
+                + '<button type="button" id="ruleClearNotes" class="rule-add" style="margin:0">Clear</button></div><ul class="rule-notes">'
+                + r.notes.map(function(n) { return '<li>' + esc(n) + '</li>'; }).join('') + '</ul></div>'
             : '')
-        + '<div class="flex items-center gap-3"><label class="text-[11px] text-gray-400 font-bold flex-1">Max stints per driver</label>'
-        + '<input type="number" min="0" id="ruleMaxStints" class="input-field w-24" value="' + r.maxStintsPerDriver + '"></div>'
-        + '<div id="ruleStatus" class="text-[11px] space-y-0.5"></div>';
+        + '<div id="ruleStatus" class="rule-status"></div>';
 
     const changed = function() { window.saveRaceRules(); if (typeof window.runSim === 'function') window.runSim(); };
     card.querySelectorAll('input[data-win]').forEach(function(inp) {
