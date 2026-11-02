@@ -1258,7 +1258,7 @@ window.openStintDriverPicker = function(stintIndex) {
             if (typeof window.saveHostState === 'function') { try { window.saveHostState(); } catch (e) {} }
             if (window.state?.isRunning && typeof window.saveRaceState === 'function') { try { window.saveRaceState(); } catch (e) {} }
             if (typeof window.showToast === 'function') {
-                window.showToast(targets.length > 1 ? `${driver.name} · ${targets.length}×` : `${tr('stintNoun', 'Stint')} ${stintIndex + 1} → ${driver.name}`, 'success', 1600);
+                window.showToast(targets.length > 1 ? `${driver.name} · ${targets.length}×` : `${tr('stintNoun', 'Stint')} ${stintIndex + 1} → ${driver.name}`, 'success', 1600, 'stintDriver');
             }
         });
     });
@@ -1595,7 +1595,7 @@ window.updateStintDuration = function(idx, val) {
         window.recalculateTimelineTimes();
         window.renderPreview();
         if (typeof window.showToast === 'function') {
-            window.showToast(`✏️ Stint target set to ${Math.round(newMs / 60000)}m`, 'info', 1800);
+            window.showToast(`✏️ Stint target set to ${Math.round(newMs / 60000)}m`, 'info', 1800, 'stintTarget');
         }
         return;
     }

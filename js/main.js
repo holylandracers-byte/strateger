@@ -38,15 +38,16 @@ window._suppressClickUntil = 0;
 })();
 
 window._initTouchLongPressActions = function() {
-    if (!window._isTouchDevice) return;
+    // Next-driver chip: a plain tap cycles on touch too. The old 3 s hold was cancelled by the
+    // OS long-press menu (touchcancel) on tablets, so the switch never fired there.
     const nextEl = document.getElementById('nextDriverName');
-    if (nextEl && !nextEl.dataset.longPressBound) {
-        nextEl.dataset.longPressBound = '1';
-        nextEl.removeAttribute('onclick');
-        window._bindLongPressAction(nextEl, {
-            onActivate: () => { if (typeof window.cycleNextDriver === 'function') window.cycleNextDriver(false, true); },
-            activeKey: 'nextDriverChanged'
-        });
+    if (nextEl && !nextEl.dataset.tapBound) {
+        nextEl.dataset.tapBound = '1';
+        nextEl.style.touchAction = 'manipulation';
+        nextEl.style.webkitUserSelect = 'none';
+        nextEl.style.userSelect = 'none';
+        nextEl.style.webkitTouchCallout = 'none';
+        nextEl.addEventListener('contextmenu', (e) => e.preventDefault());
     }
 };
 
@@ -1557,7 +1558,7 @@ window._setLiveStintTargetMs = function(stintIdx, newMs, opts) {
 
     window.state.stintTargets = newTargets;
     if (!opts.silent && typeof window.showToast === 'function') {
-        window.showToast(`✏️ Stint target set to ${Math.round(newMs / 60000)}m`, 'info', 1800);
+        window.showToast(`✏️ Stint target set to ${Math.round(newMs / 60000)}m`, 'info', 1800, 'stintTarget');
     }
     if (typeof window.broadcast === 'function') window.broadcast();
     updateRemainingStrategyLogic(raceRemainingMs);
@@ -3887,17 +3888,38 @@ window.executeUndoPit = function() {
 
 window._toastQueue = [];
 window._toastCount = 0;
+window._toastTimers = {};
 
 /**
  * Show a non-blocking toast notification.
+ * Identical messages (or ones sharing `key`) refresh the existing toast instead of stacking,
+ * so repeated actions can't pile up DOM nodes/timers on slow tablets.
  * @param {string} message - The message to display
  * @param {'success'|'error'|'warning'|'info'} type - Toast style
  * @param {number} duration - Auto-dismiss in ms (default 4000, 0 = manual dismiss)
+ * @param {string} [key] - Optional slot: a new toast with the same key replaces the old one
  */
-window.showToast = function(message, type = 'info', duration = 4000) {
+window.showToast = function(message, type = 'info', duration = 4000, key) {
     const container = document.getElementById('toastContainer');
     if (!container) { console.log(`[Toast] ${type}: ${message}`); return; }
-    
+
+    const slim = !!(window.LITE || window._isTouchDevice);
+    const maxToasts = slim ? 2 : 4;
+    // Tablets: skip low-value confirmations entirely, keep warnings/errors.
+    if (slim && type === 'success' && duration <= 2500) return;
+    if (slim && duration > 5000 && type !== 'error') duration = 5000;
+
+    const slot = key || (type + '|' + message);
+    const existing = Array.from(container.children).find(el => el.dataset.slot === slot);
+    if (existing) {
+        clearTimeout(window._toastTimers[existing.id]);
+        if (duration > 0) window._toastTimers[existing.id] = setTimeout(() => window.dismissToast(existing.id), duration);
+        return;
+    }
+    if (key) {
+        Array.from(container.children).forEach(el => { if (el.dataset.key === key) window.dismissToast(el.id, true); });
+    }
+
     const id = `toast-${++window._toastCount}`;
     const icons = { success: 'fas fa-check-circle', error: 'fas fa-exclamation-triangle', warning: 'fas fa-exclamation-circle', info: 'fas fa-info-circle' };
     const colors = {
@@ -3906,45 +3928,49 @@ window.showToast = function(message, type = 'info', duration = 4000) {
         warning: 'border-amber-500/60 bg-amber-950/90 text-amber-300',
         info:    'border-ice/60 bg-navy-900/95 text-ice'
     };
-    
+
     const toast = document.createElement('div');
     toast.id = id;
-    toast.className = `pointer-events-auto flex items-start gap-2 px-4 py-3 rounded-xl border shadow-2xl backdrop-blur-sm text-sm transition-all duration-300 ${colors[type] || colors.info}`;
-    toast.style.cssText = 'opacity:0; transform:translateX(30px); max-width:380px;';
+    toast.dataset.slot = slot;
+    if (key) toast.dataset.key = key;
+    // No backdrop-blur / transitions on slim devices: they force a costly compositing layer.
+    toast.className = `pointer-events-auto flex items-start gap-2 px-4 py-3 rounded-xl border shadow-2xl text-sm ${slim ? '' : 'backdrop-blur-sm transition-all duration-300'} ${colors[type] || colors.info}`;
+    toast.style.cssText = (slim ? '' : 'opacity:0; transform:translateX(30px);') + ' max-width:min(380px,92vw); overflow-wrap:anywhere; word-break:break-word;';
     toast.innerHTML = `
         <i class="${icons[type] || icons.info} mt-0.5 text-sm flex-shrink-0"></i>
-        <span class="flex-1 leading-snug">${message}</span>
+        <span class="flex-1 min-w-0 leading-snug">${message}</span>
         <button onclick="window.dismissToast('${id}')" class="text-gray-500 hover:text-white text-base leading-none ml-1 flex-shrink-0">&times;</button>
     `;
-    
+
     container.appendChild(toast);
-    
-    // Animate in
-    requestAnimationFrame(() => {
-        toast.style.opacity = '1';
-        toast.style.transform = 'translateX(0)';
-    });
-    
-    // Auto-dismiss
+
+    if (!slim) {
+        requestAnimationFrame(() => {
+            toast.style.opacity = '1';
+            toast.style.transform = 'translateX(0)';
+        });
+    }
+
     if (duration > 0) {
-        setTimeout(() => window.dismissToast(id), duration);
+        window._toastTimers[id] = setTimeout(() => window.dismissToast(id), duration);
     }
-    
-    // Limit visible toasts to 5 — remove oldest
-    const toasts = container.children;
-    while (toasts.length > 5) {
-        window.dismissToast(toasts[0].id);
+
+    // Keep only the newest few — drop the oldest immediately
+    while (container.children.length > maxToasts) {
+        window.dismissToast(container.children[0].id, true);
     }
-    
-    // Haptic feedback for warnings/errors on mobile
-    if (type === 'warning' || type === 'error') {
+
+    if ((type === 'warning' || type === 'error') && window.haptic) {
         window.haptic('light');
     }
 };
 
-window.dismissToast = function(id) {
+window.dismissToast = function(id, immediate) {
+    clearTimeout(window._toastTimers[id]);
+    delete window._toastTimers[id];
     const toast = document.getElementById(id);
     if (!toast) return;
+    if (immediate || window.LITE || window._isTouchDevice) { toast.remove(); return; }
     toast.style.opacity = '0';
     toast.style.transform = 'translateX(30px)';
     setTimeout(() => toast.remove(), 300);

@@ -1271,7 +1271,8 @@ window.fixPreviewStintViolations = function(silent) {
         window.showToast(
             result.ok ? t('stintFixApplied') : t('stintFixPartial'),
             result.ok ? 'success' : 'warning',
-            3500
+            3500,
+            'stintFix'
         );
     }
     return result.ok;
@@ -1313,7 +1314,7 @@ window.fixRemainingStintTargets = function(silent) {
     }
 
     if (!silent && typeof window.showToast === 'function') {
-        window.showToast(window.t('stintFixApplied'), 'info', 3000);
+        window.showToast(window.t('stintFixApplied'), 'info', 3000, 'stintFix');
     }
     return true;
 };

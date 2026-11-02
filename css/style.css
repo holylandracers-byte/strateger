@@ -4066,3 +4066,23 @@ body.lt-original #secondaryTeamCard { display: none !important; }
 body.lt-original #liveTimingPanel { padding: 4px !important; }
 body.lt-original #apexIframeContainer:not(.hidden) { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; margin-top: 2px; }
 body.lt-original #apexIframe { flex: 1 1 auto; width: 100%; height: auto !important; min-height: 0; border-radius: 4px; }
+
+/* ==========================================
+   RACE DASHBOARD: keep text inside its boxes (tablets / narrow widths)
+   ========================================== */
+#dashboardInfoBar > * { min-width: 0; }
+#dashboardInfoBar .text-\[11px\] { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#raceTimerDisplay { font-size: clamp(16px, 3.2vw, 22px); white-space: nowrap; }
+#pitStatusIndicator, #pitCountDisplay, #extraPitCountDisplay { overflow-wrap: anywhere; line-height: 1.15; }
+#pitStatusIndicator { font-size: clamp(11px, 2.2vw, 14px); }
+#stintNotifyBanner, #nextDriverBanner, #pitWindowBanner { gap: 8px; }
+#nextDriverBanner > *, #pitWindowBanner > * { min-width: 0; }
+#nextDriverBannerText, #pitWindowText, #nextDriverBannerName { overflow-wrap: anywhere; }
+#raceDashboard #currentDriverName, #raceDashboard #nextDriverName, #raceDashboard #modalNextDriverName {
+    display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom;
+}
+#nextDriverName { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: manipulation; min-height: 32px; }
+#raceInfoPanel, #raceInfoPanel > * { min-width: 0; }
+#raceInfoPanel table td, #raceInfoPanel table th { overflow-wrap: anywhere; }
+#statsTable td:first-child { max-width: 40vw; overflow: hidden; text-overflow: ellipsis; }
+#toastContainer { max-width: min(380px, 92vw); }

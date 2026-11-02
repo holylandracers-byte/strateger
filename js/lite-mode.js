@@ -11,7 +11,10 @@
         const mem = navigator.deviceMemory;
         const cores = navigator.hardwareConcurrency;
         const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-        return reduce || (mem && mem <= 4) || (cores && cores <= 4);
+        // Touch tablets/phones (coarse primary pointer) get the light renderer too: they are
+        // the devices that stall under constant re-rendering during a race.
+        const touch = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+        return reduce || touch || (mem && mem <= 4) || (cores && cores <= 4);
     }
     function apply() {
         const p = pref();
