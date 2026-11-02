@@ -56,11 +56,11 @@ function tfCandidates(name) {
     return [...out].filter(Boolean).slice(0, 6);
 }
 
-// The page's own proxy path only exists on the web build; the native app has to go through the Render server.
+// Try the page's own proxy first, then the Render server.
 function tfProxies() {
     const cfg = window.APP_CONFIG || {};
     const remote = (cfg.API_BASE || '') + '/cors-proxy?url=';
-    return cfg.IS_NATIVE ? [remote] : ['/.netlify/functions/cors-proxy?url=', remote];
+    return ['/.netlify/functions/cors-proxy?url=', remote];
 }
 
 // True when the venue page exists. A proxy that cannot be reached is skipped; the first one that answers decides.

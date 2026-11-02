@@ -4137,13 +4137,12 @@ window.addEventListener('beforeinstallprompt', (e) => {
 // Fallback for browsers that don't fire beforeinstallprompt (Samsung Internet, some WebViews)
 // Show a manual "Add to Home Screen" guide after 60s if no prompt was captured
 window.addEventListener('load', () => {
-    // Skip if already installed as PWA, native app, or already dismissed
+    // Skip if already installed as PWA or already dismissed
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-    const isNative = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
     const dismissed = localStorage.getItem('strateger_install_dismissed');
     const recentlyDismissed = dismissed && (Date.now() - parseInt(dismissed)) < 7 * 86400000;
     
-    if (isStandalone || isNative || recentlyDismissed) return;
+    if (isStandalone || recentlyDismissed) return;
     
     setTimeout(() => {
         if (!window._deferredInstallPrompt) {

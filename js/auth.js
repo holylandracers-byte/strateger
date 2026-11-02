@@ -56,27 +56,6 @@ window.checkProByEmail = async function(email) {
 
 // --- Initialization & Persistence ---
 window.initGoogleAuth = function() {
-    // Native app: restore session from localStorage only (no Google JS API needed)
-    if (window.APP_CONFIG && window.APP_CONFIG.IS_NATIVE) {
-        const savedUser = localStorage.getItem('strateger_google_user');
-        if (savedUser) {
-            try {
-                googleUser = JSON.parse(savedUser);
-                window.updateGoogleUI(true);
-                console.log('✅ Native session restored');
-                // Check Pro by email on session restore
-                if (googleUser.email && typeof window.checkProByEmail === 'function') {
-                    window.checkProByEmail(googleUser.email);
-                }
-            } catch (e) {
-                console.error('Session restore failed:', e);
-                window.googleSignOut();
-            }
-        }
-        return;
-    }
-
-    // Browser: original flow
     if (typeof google === 'undefined') {
         // If offline, don't keep retrying — Google API won't load
         if (!navigator.onLine) {
@@ -118,41 +97,6 @@ window.initGoogleAuth = function() {
 
 // --- Sign In ---
 window.googleSignIn = async function() {
-    // Native Android app: use Capacitor Google Auth plugin
-    if (window.APP_CONFIG && window.APP_CONFIG.IS_NATIVE) {
-        try {
-            const { GoogleAuth } = window.CapacitorGoogleAuth;
-            const result = await GoogleAuth.signIn();
-
-            // Normalize the profile — plugin returns slightly different shapes
-            const profile = result.basicProfile || result;
-            googleUser = {
-                name: profile.name || profile.displayName || '',
-                email: profile.email || '',
-                picture: profile.imageUrl || profile.photoUrl || '',
-                id: profile.id || profile.sub || ''
-            };
-
-            localStorage.setItem('strateger_google_user', JSON.stringify(googleUser));
-            window.updateGoogleUI(true);
-
-            // Check if this Google email has a Pro license
-            if (typeof window.checkProByEmail === 'function') {
-                window.checkProByEmail(googleUser.email);
-            }
-
-            if (typeof window.requestNotificationPermission === 'function') {
-                window.requestNotificationPermission();
-            }
-
-        } catch (e) {
-            console.error('Native Google Sign-In failed', e);
-            window.showToast('Google Sign-In failed.', 'error');
-        }
-        return;
-    }
-
-    // Browser: original flow unchanged
     if (typeof google === 'undefined') return window.showToast('Google API not loaded.', 'error');
     
     const client = google.accounts.oauth2.initTokenClient({
@@ -211,17 +155,9 @@ window.fetchGoogleUserInfo = async function(accessToken) {
 };
 
 window.googleSignOut = function() {
-    // Native: no token to revoke via Google JS API
-    if (window.APP_CONFIG && window.APP_CONFIG.IS_NATIVE) {
-        try {
-            const { GoogleAuth } = window.CapacitorGoogleAuth;
-            GoogleAuth.signOut().catch(() => {});
-        } catch (e) {}
-    } else {
-        // Browser: revoke token the normal way
-        if (googleAccessToken) {
-            google.accounts.oauth2.revoke(googleAccessToken, () => console.log('Token revoked'));
-        }
+    // Revoke the token the normal way
+    if (googleAccessToken) {
+        google.accounts.oauth2.revoke(googleAccessToken, () => console.log('Token revoked'));
     }
 
     googleUser = null;
