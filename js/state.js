@@ -2567,6 +2567,141 @@ window.translations = {
     }
 };
     Object.keys(extra2).forEach(l => { if (window.translations[l]) Object.assign(window.translations[l], extra2[l]); });
+    const extra3 = {
+    "en": {
+        "btnEmail": "Email",
+        "btnCalendar": "Calendar",
+        "btnCheck": "Check",
+        "scenarioActive": "Scenario active",
+        "scenarioTitle": "Scenario planner",
+        "scenarioSub": "Try decisions and see the outcome right away",
+        "ariaLiveView": "Toggle original timing view",
+        "ariaSecondTeam": "Watch a second team",
+        "ariaTeamLogo": "Upload team logo"
+    },
+    "he": {
+        "btnEmail": "אימייל",
+        "btnCalendar": "יומן",
+        "btnCheck": "בדיקה",
+        "scenarioActive": "תרחיש פעיל",
+        "scenarioTitle": "מתכנן תרחישים",
+        "scenarioSub": "נסו החלטות וראו את התוצאה מיד",
+        "ariaLiveView": "הצג/הסתר תצוגת תזמון מקורית",
+        "ariaSecondTeam": "צפייה בקבוצה שנייה",
+        "ariaTeamLogo": "העלאת לוגו קבוצה"
+    },
+    "fr": {
+        "btnEmail": "E-mail",
+        "btnCalendar": "Calendrier",
+        "btnCheck": "Vérifier",
+        "scenarioActive": "Scénario actif",
+        "scenarioTitle": "Planificateur de scénarios",
+        "scenarioSub": "Testez des décisions et voyez le résultat tout de suite",
+        "ariaLiveView": "Afficher la vue chrono d'origine",
+        "ariaSecondTeam": "Suivre une deuxième équipe",
+        "ariaTeamLogo": "Importer le logo de l'équipe"
+    },
+    "pt": {
+        "btnEmail": "E-mail",
+        "btnCalendar": "Calendário",
+        "btnCheck": "Verificar",
+        "scenarioActive": "Cenário ativo",
+        "scenarioTitle": "Planejador de cenários",
+        "scenarioSub": "Teste decisões e veja o resultado na hora",
+        "ariaLiveView": "Alternar a vista original do cronômetro",
+        "ariaSecondTeam": "Acompanhar uma segunda equipe",
+        "ariaTeamLogo": "Enviar logo da equipe"
+    },
+    "ru": {
+        "btnEmail": "Почта",
+        "btnCalendar": "Календарь",
+        "btnCheck": "Проверка",
+        "scenarioActive": "Сценарий активен",
+        "scenarioTitle": "Планировщик сценариев",
+        "scenarioSub": "Пробуйте решения и сразу видьте результат",
+        "ariaLiveView": "Переключить исходный вид тайминга",
+        "ariaSecondTeam": "Следить за второй командой",
+        "ariaTeamLogo": "Загрузить логотип команды"
+    },
+    "ar": {
+        "btnEmail": "البريد",
+        "btnCalendar": "التقويم",
+        "btnCheck": "تحقق",
+        "scenarioActive": "السيناريو نشط",
+        "scenarioTitle": "مخطط السيناريوهات",
+        "scenarioSub": "جرّب القرارات وشاهد النتيجة فورًا",
+        "ariaLiveView": "تبديل عرض التوقيت الأصلي",
+        "ariaSecondTeam": "متابعة فريق ثانٍ",
+        "ariaTeamLogo": "رفع شعار الفريق"
+    },
+    "es": {
+        "btnEmail": "Correo",
+        "btnCalendar": "Calendario",
+        "btnCheck": "Comprobar",
+        "scenarioActive": "Escenario activo",
+        "scenarioTitle": "Planificador de escenarios",
+        "scenarioSub": "Prueba decisiones y mira el resultado al instante",
+        "ariaLiveView": "Alternar la vista original del cronometraje",
+        "ariaSecondTeam": "Seguir a un segundo equipo",
+        "ariaTeamLogo": "Subir logo del equipo"
+    },
+    "it": {
+        "btnEmail": "Email",
+        "btnCalendar": "Calendario",
+        "btnCheck": "Verifica",
+        "scenarioActive": "Scenario attivo",
+        "scenarioTitle": "Pianificatore di scenari",
+        "scenarioSub": "Prova le decisioni e vedi subito il risultato",
+        "ariaLiveView": "Mostra/nascondi la vista cronometraggio originale",
+        "ariaSecondTeam": "Segui una seconda squadra",
+        "ariaTeamLogo": "Carica logo squadra"
+    },
+    "ka": {
+        "btnEmail": "ელფოსტა",
+        "btnCalendar": "კალენდარი",
+        "btnCheck": "შემოწმება",
+        "scenarioActive": "სცენარი აქტიურია",
+        "scenarioTitle": "სცენარების დამგეგმავი",
+        "scenarioSub": "სცადეთ გადაწყვეტილებები და ნახეთ შედეგი დაუყოვნებლივ",
+        "ariaLiveView": "ორიგინალი ტაიმინგის ხედის გადართვა",
+        "ariaSecondTeam": "მეორე გუნდის თვალყურის დევნება",
+        "ariaTeamLogo": "გუნდის ლოგოს ატვირთვა"
+    },
+    "de": {
+        "btnEmail": "E-Mail",
+        "btnCalendar": "Kalender",
+        "btnCheck": "Prüfen",
+        "scenarioActive": "Szenario aktiv",
+        "scenarioTitle": "Szenario-Planer",
+        "scenarioSub": "Entscheidungen testen und das Ergebnis sofort sehen",
+        "ariaLiveView": "Originale Timing-Ansicht umschalten",
+        "ariaSecondTeam": "Zweites Team beobachten",
+        "ariaTeamLogo": "Team-Logo hochladen"
+    },
+    "ja": {
+        "btnEmail": "メール",
+        "btnCalendar": "カレンダー",
+        "btnCheck": "確認",
+        "scenarioActive": "シナリオ有効",
+        "scenarioTitle": "シナリオプランナー",
+        "scenarioSub": "判断を試して結果をすぐ確認",
+        "ariaLiveView": "元のタイミング画面を切り替え",
+        "ariaSecondTeam": "2チーム目を追跡",
+        "ariaTeamLogo": "チームロゴをアップロード"
+    },
+    "el": {
+        "btnEmail": "Email",
+        "btnCalendar": "Ημερολόγιο",
+        "btnCheck": "Έλεγχος",
+        "scenarioActive": "Ενεργό σενάριο",
+        "scenarioTitle": "Σχεδιαστής σεναρίων",
+        "scenarioSub": "Δοκιμάστε αποφάσεις και δείτε αμέσως το αποτέλεσμα",
+        "ariaLiveView": "Εναλλαγή αρχικής προβολής χρονομέτρησης",
+        "ariaSecondTeam": "Παρακολούθηση δεύτερης ομάδας",
+        "ariaTeamLogo": "Ανέβασμα λογότυπου ομάδας"
+    }
+};
+    Object.keys(extra3).forEach(l => { if (window.translations[l]) Object.assign(window.translations[l], extra3[l]); });
 
 })();
 
@@ -2690,6 +2825,7 @@ window.setLanguage = function(lang) {
         }
     });
 
+    document.querySelectorAll('[data-i18n-aria]').forEach(el => { el.setAttribute('aria-label', window.t(el.getAttribute('data-i18n-aria'))); });
     // Tooltips: data-i18n-title
     document.querySelectorAll('[data-i18n-title]').forEach(el => { el.title = window.t(el.getAttribute('data-i18n-title')); });
 

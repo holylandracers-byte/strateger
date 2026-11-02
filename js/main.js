@@ -5448,3 +5448,14 @@ document.addEventListener('visibilitychange', () => {
         updatePhaseSteps();
     });
 })();
+
+
+// Escape closes the header menu
+document.addEventListener('keydown', function(e) {
+    if (e.key !== 'Escape') return;
+    const menu = document.getElementById('headerOverflowMenu');
+    if (menu && !menu.classList.contains('hidden')) {
+        menu.classList.add('hidden');
+        document.getElementById('headerMenuBtn')?.focus();
+    }
+});
