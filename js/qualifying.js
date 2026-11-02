@@ -115,7 +115,7 @@ window._rebuildQDriverPicker = function() {
         const selected = window._qualifyConfig.selectedDrivers.has(d.name);
         const chip = document.createElement('button');
         chip.type = 'button';
-        chip.className = `text-[10px] font-bold px-2 py-1 rounded-full border transition-all ${
+        chip.className = `text-[11px] font-bold px-2 py-1 rounded-full border transition-all ${
             selected ? 'border-blue-500 bg-blue-600/30 text-blue-300' : 'border-gray-600 bg-transparent text-gray-500'
         }`;
         chip.style.borderLeftColor = d.color || '';
@@ -385,12 +385,12 @@ window._qualifyRenderStageResults = function() {
         const best = d.times.length ? Math.min(...d.times) : null;
         const adv = d.advanced;
         return `<div class="flex items-center gap-2 px-3 py-2 ${adv ? 'bg-green-950/30' : ''}">
-            <span class="text-[10px] text-gray-600 font-mono w-4 shrink-0">${i + 1}</span>
+            <span class="text-[11px] text-gray-600 font-mono w-4 shrink-0">${i + 1}</span>
             <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background:${d.color||'#60a5fa'}"></span>
             <span class="flex-1 text-xs font-bold ${adv ? 'text-green-300' : 'text-white'} truncate">${name}</span>
             <span class="text-xs font-mono ${best ? 'text-neon' : 'text-gray-600'}">${best ? fmt(best) : '--:--'}</span>
             <button onclick="window.toggleQualifyAdvance('${name.replace(/'/g,"\\'")}')
-" class="ml-1 text-[10px] px-1.5 py-0.5 rounded font-bold transition ${adv ? 'bg-green-600/30 text-green-400 border border-green-600/50' : 'bg-navy-700 text-gray-500 border border-gray-600'}">${adv ? '✓' : '+'}</button>
+" class="ml-1 text-[11px] px-1.5 py-0.5 rounded font-bold transition ${adv ? 'bg-green-600/30 text-green-400 border border-green-600/50' : 'bg-navy-700 text-gray-500 border border-gray-600'}">${adv ? '✓' : '+'}</button>
         </div>`;
     }).join('');
 };
@@ -446,7 +446,7 @@ window._qualifyRenderTick = function() {
         if (nextList) {
             const upcoming = qs.schedule.slice(qs.currentIdx + 1, qs.currentIdx + 4);
             nextList.innerHTML = upcoming.length
-                ? upcoming.map(x => `<div class="flex items-center gap-2 text-gray-400"><span class="w-2 h-2 rounded-full shrink-0" style="background:${x.color||'#4ade80'}"></span>${x.driverName} <span class="text-[10px] text-gray-600 ml-auto">Run ${x.run}</span></div>`).join('')
+                ? upcoming.map(x => `<div class="flex items-center gap-2 text-gray-400"><span class="w-2 h-2 rounded-full shrink-0" style="background:${x.color||'#4ade80'}"></span>${x.driverName} <span class="text-[11px] text-gray-600 ml-auto">Run ${x.run}</span></div>`).join('')
                 : `<span class="text-gray-600 text-xs">Last run</span>`;
         }
     }
@@ -513,7 +513,7 @@ window._qualifyRenderRaceLikeWidgets = function(runLeftMs) {
         });
 
         if (rows.length === 0) {
-            statsEl.innerHTML = `<tr><td colspan="3" class="p-2 text-center text-gray-600 text-[10px]">No runs yet</td></tr>`;
+            statsEl.innerHTML = `<tr><td colspan="3" class="p-2 text-center text-gray-600 text-[11px]">No runs yet</td></tr>`;
         } else {
             statsEl.innerHTML = rows.map(r => `
                 <tr>

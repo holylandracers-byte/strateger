@@ -435,9 +435,9 @@ body.strateger-page-hidden * {
     /* Shrink hero so it doesn't eat half the screen height */
     .setup-hero { padding: 6px 12px !important; margin-bottom: 6px !important; }
     .setup-hero-title { font-size: 1.1rem !important; }
-    .setup-hero-sub { font-size: 0.6rem !important; }
+    .setup-hero-sub { font-size: 0.6875rem !important; }
     .quick-actions-strip { margin-top: 4px !important; gap: 3px !important; }
-    .quick-pill { padding: 3px 8px !important; font-size: 0.6rem !important; }
+    .quick-pill { padding: 3px 8px !important; font-size: 0.6875rem !important; }
 
     /* Ensure setup 2-col grid is active and well-spaced */
     #setupColumnsGrid {
@@ -569,7 +569,7 @@ body.strateger-page-hidden * {
 .theme-preview img { display: block; width: 100%; height: 100%; object-fit: cover; }
 
 .theme-label {
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 600;
     color: #9ca3af;
     text-align: center;
@@ -905,7 +905,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .stint-outlook-pill {
     display: inline-flex;
     align-items: center;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 700;
     padding: 2px 7px;
     border-radius: 999px;
@@ -1121,7 +1121,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .driver-input:focus { color: #fff; }
 
 .driver-starter-label {
-    font-size: 9px;
+    font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.08em;
     color: #22d3ee;
@@ -1154,7 +1154,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .driver-stamina-input::placeholder { color: #6b7280; font-weight: 400; }
 .driver-stamina-input:focus { border-color: #f97316; }
 .driver-stamina-label {
-    font-size: 9px;
+    font-size: 11px;
     color: #f97316;
     font-weight: 600;
     white-space: nowrap;
@@ -1166,7 +1166,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
     min-width: 22px;
     height: 20px;
     border-radius: 4px;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 700;
     color: #fff;
     display: flex;
@@ -1233,22 +1233,22 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
     display: flex; align-items: center; gap: 6px; flex-shrink: 0;
 }
 .cr-pos  { width: 20px; text-align: right; font-weight: 700; font-size: 11px; color: #9ca3af; flex-shrink: 0; }
-.cr-kart { font-size: 10px; color: #6b7280; flex-shrink: 0; min-width: 22px; }
+.cr-kart { font-size: 11px; color: #6b7280; flex-shrink: 0; min-width: 22px; }
 .cr-kart.fast-kart { color: var(--neon); font-weight: 700; text-shadow: 0 0 4px rgba(163,230,53,0.4); }
-.cr-cat  { font-size: 8px; font-weight: 700; flex-shrink: 0; min-width: 0; padding: 0 3px; border-radius: 2px; text-transform: uppercase; letter-spacing: 0.5px; }
+.cr-cat  { font-size: 11px; font-weight: 700; flex-shrink: 0; min-width: 0; padding: 0 3px; border-radius: 2px; text-transform: uppercase; letter-spacing: 0.5px; }
 .cr-cat:empty { display: none; }
 .cat-gold   { color: #fbbf24; background: rgba(251,191,36,0.15); }
 .cat-silver { color: #94a3b8; background: rgba(148,163,184,0.15); }
 .cat-bronze { color: #d97706; background: rgba(217,119,6,0.15); }
 .cat-other  { color: #a78bfa; background: rgba(167,139,250,0.12); }
 .cr-name { font-size: 12px; color: #e5e7eb; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
-.cr-badges { font-size: 10px; display: flex; gap: 2px; flex-shrink: 0; }
+.cr-badges { font-size: 11px; display: flex; gap: 2px; flex-shrink: 0; }
 .cr-gap  { font-size: 11px; text-align: right; width: 58px; font-family: monospace; flex-shrink: 0; }
-.cr-int  { font-size: 10px; text-align: right; width: 46px; font-family: monospace; color: #6b7280; flex-shrink: 0; }
+.cr-int  { font-size: 11px; text-align: right; width: 46px; font-family: monospace; color: #6b7280; flex-shrink: 0; }
 .cr-lap  { font-size: 11px; text-align: right; width: 58px; font-family: monospace; color: #9ca3af; flex-shrink: 0; }
-.cr-avg  { font-size: 10px; text-align: right; width: 52px; font-family: monospace; color: #6b7280; flex-shrink: 0; }
-.cr-laps { font-size: 9px; text-align: right; width: 24px; color: #6b7280; flex-shrink: 0; }
-.cr-pits { font-size: 9px; text-align: center; width: 22px; color: var(--fuel); font-weight: 600; flex-shrink: 0; }
+.cr-avg  { font-size: 11px; text-align: right; width: 52px; font-family: monospace; color: #6b7280; flex-shrink: 0; }
+.cr-laps { font-size: 11px; text-align: right; width: 24px; color: #6b7280; flex-shrink: 0; }
+.cr-pits { font-size: 11px; text-align: center; width: 22px; color: var(--fuel); font-weight: 600; flex-shrink: 0; }
 
 /* Hide extra columns on very small phones */
 @media (max-width: 380px) {
@@ -1291,7 +1291,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .kart-panel-header {
     display: flex; justify-content: space-between; align-items: center;
     cursor: pointer; user-select: none;
-    font-size: 9px; color: #6b7280; font-weight: 700; letter-spacing: 0.1em;
+    font-size: 11px; color: #6b7280; font-weight: 700; letter-spacing: 0.1em;
     padding: 2px 0; margin-bottom: 2px;
 }
 .kart-panel-header:hover { color: #9ca3af; }
@@ -1862,7 +1862,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 0.6rem;
+    font-size: 0.6875rem;
     font-weight: 800;
     color: #4b5563;
     letter-spacing: 0.1em;
@@ -1934,7 +1934,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     width: 22px; height: 22px;
     border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
-    font-size: 0.6rem; font-weight: 900;
+    font-size: 0.6875rem; font-weight: 900;
     flex-shrink: 0;
     transition: all 0.2s;
 }
@@ -2001,7 +2001,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 }
 .outcome-row:last-child { border-bottom: none; }
 .outcome-label {
-    font-size: 0.6rem;
+    font-size: 0.6875rem;
     font-weight: 700;
     color: #6b7280;
     text-transform: uppercase;
@@ -2094,7 +2094,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     background: rgba(0,0,0,0.9);
     border: 1px solid rgba(255,255,255,0.15);
     color: white;
-    font-size: 0.6rem;
+    font-size: 0.6875rem;
     font-weight: 600;
     padding: 4px 8px;
     border-radius: 6px;
@@ -2247,7 +2247,7 @@ body.wt-active {
 
     /* Qualifying quick-stats grid: 2-col is fine, just bump label size */
     #qualifyingDashboard .grid-cols-2 .text-\[9px\] {
-        font-size: 10px !important;
+        font-size: 11px !important;
     }
 
     /* Stint outlook pills: allow wrap on narrow screens */
@@ -2258,7 +2258,7 @@ body.wt-active {
 
     /* Strategy overview: prevent pill overflow */
     .stint-outlook-pill {
-        font-size: 10px !important;
+        font-size: 11px !important;
         padding: 2px 6px !important;
     }
 
@@ -2395,14 +2395,14 @@ body.wt-active {
     overflow: hidden;
 }
 #statsTable .stat-time {
-    font-size: 10px;
+    font-size: 11px;
     line-height: 1.2;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 #statsTable .stat-pct {
-    font-size: 8px;
+    font-size: 11px;
     color: #6b7280;
     line-height: 1.1;
 }
@@ -2569,7 +2569,7 @@ body.wt-active {
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    font-size: 0.6rem;
+    font-size: 0.6875rem;
     padding: 2px 6px;
     border-radius: 4px;
     background: rgba(34,211,238,0.12);
@@ -2711,7 +2711,7 @@ body.wt-active {
     flex-shrink: 0;
 }
 .cr-s1, .cr-s2, .cr-s3 {
-    font-size: 8.5px;
+    font-size: 11px;
     font-family: monospace;
     font-weight: 700;
     padding: 1px 3px;
@@ -2741,7 +2741,7 @@ body.wt-active {
 
 /* ---- Avg lap cell (per-stint) ---- */
 .cr-avg {
-    font-size: 10px;
+    font-size: 11px;
     width: 52px;
     text-align: right;
     font-family: monospace;
@@ -2757,14 +2757,14 @@ body.wt-active {
     color: var(--fuel);
     padding: 0 4px;
     border-radius: 3px;
-    font-size: 9px;
+    font-size: 11px;
     font-weight: 800;
     letter-spacing: 0.3px;
 }
 
 /* ---- Tire compound badge ---- */
 .cr-tire {
-    font-size: 8px;
+    font-size: 11px;
     font-weight: 900;
     width: 14px;
     height: 14px;
@@ -2787,7 +2787,7 @@ body.wt-active {
     gap: 6px;
     padding: 3px 8px;
     border-radius: 4px;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 800;
     letter-spacing: 0.05em;
     text-transform: uppercase;
@@ -2806,7 +2806,7 @@ body.wt-active {
     gap: 6px;
     padding: 4px 8px;
     border-radius: 6px;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -2833,7 +2833,7 @@ body.wt-active {
 
 /* ---- Kart ranking table ---- */
 #kartRankingPanel {
-    font-size: 10px;
+    font-size: 11px;
 }
 #kartRankingPanel .kart-row {
     display: flex;
@@ -2846,14 +2846,14 @@ body.wt-active {
 #kartRankingPanel .kart-rank { width: 16px; color: #6b7280; font-weight: 700; }
 #kartRankingPanel .kart-num  { width: 26px; font-weight: 800; color: var(--neon); }
 #kartRankingPanel .kart-best { flex: 1; font-family: monospace; color: #e5e7eb; }
-#kartRankingPanel .kart-delta { font-family: monospace; color: var(--s3); font-size: 9px; }
+#kartRankingPanel .kart-delta { font-family: monospace; color: var(--s3); font-size: 11px; }
 
 /* ---- Weather indicator ---- */
 .weather-badge {
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    font-size: 9px;
+    font-size: 11px;
     font-weight: 700;
     padding: 1px 6px;
     border-radius: 3px;
@@ -2884,7 +2884,7 @@ body.wt-active {
 }
 .right-zone-widget .widget-header:active { cursor: grabbing; }
 .widget-title {
-    font-size: 9px;
+    font-size: 11px;
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 0.1em;
@@ -2899,7 +2899,7 @@ body.wt-active {
     border-radius: 3px;
     background: transparent;
     color: #4b5563;
-    font-size: 9px;
+    font-size: 11px;
     cursor: pointer;
     transition: color 0.15s, background 0.15s;
     border: none;
@@ -2969,7 +2969,7 @@ body.wt-active {
     min-width: 0;
     padding: 4px 6px;
     border-radius: 6px;
-    font-size: 9px;
+    font-size: 11px;
     font-weight: 800;
     text-align: center;
     cursor: pointer;
@@ -2998,7 +2998,7 @@ body.wt-active {
     padding: 1px 5px;
     border-radius: 3px;
     font-family: monospace;
-    font-size: 9.5px;
+    font-size: 11px;
     font-weight: 700;
     background: rgba(56,189,248,0.10);
     color: var(--s1);
@@ -3030,8 +3030,8 @@ body.wt-active {
 }
 
 /* Adaptive font scaling for very long names */
-.cr-name.name-long   { font-size: 10px; }
-.cr-name.name-xlong  { font-size: 9px; letter-spacing: -0.3px; }
+.cr-name.name-long   { font-size: 11px; }
+.cr-name.name-xlong  { font-size: 11px; letter-spacing: -0.3px; }
 
 /* ---- Sector column header chips ---- */
 .lt-col-s1 { color: var(--s1); }
@@ -3292,7 +3292,7 @@ html { touch-action: manipulation; }   /* no double-tap-zoom delay; pinch-zoom s
 
 /* Font floor for the race screen on every screen size (was 8-9px in many labels) */
 @media all {
-    #racePanelsWrapper .text-\[8px\]  { font-size: 10px !important; }
+    #racePanelsWrapper .text-\[8px\]  { font-size: 11px !important; }
     #racePanelsWrapper .text-\[9px\]  { font-size: 11px !important; }
     #racePanelsWrapper .text-\[10px\] { font-size: 11.5px !important; }
 }
@@ -3392,7 +3392,7 @@ body.watcher-mode #liveTeamHint { display: none !important; }
     min-height: 28px;
 }
 .driver-notify-input::placeholder { color: #0e7490; font-weight: 400; }
-.driver-notify-label { font-size: 9px; color: #6b7280; white-space: nowrap; }
+.driver-notify-label { font-size: 11px; color: #6b7280; white-space: nowrap; }
 [dir="rtl"] .driver-notify-wrap { order: 10; }
 
 /* Second-team (laptop) watch: enabling control + card only shown at laptop width */
@@ -3504,3 +3504,6 @@ body.watcher-mode #liveTeamHint { display: none !important; }
 #raceInfoPanel:has(#liveTimingWidgetWrapper.hidden) > .no-live-hint { display: block; }
 
 .adjust-summary::after { content: " \00b1"; }
+
+/* Timers and lap times: equal-width digits so they don't jitter */
+.font-mono, [class*="font-mono"] { font-variant-numeric: tabular-nums; }

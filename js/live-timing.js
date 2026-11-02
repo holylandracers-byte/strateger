@@ -115,14 +115,14 @@ window.testLiveTiming = function() {
     
     if (!url) {
         statusEl.innerText = window.t('enterUrl');
-        statusEl.className = "text-[10px] text-red-500 text-center";
+        statusEl.className = "text-[11px] text-red-500 text-center";
         return;
     }
     
     if (!searchValue) {
         const typeNames = { team: window.t('team'), kart: window.t('kart'), driver: window.t('driver') };
         statusEl.innerText = `${window.t('enterValue')} ${typeNames[searchType]}`;
-        statusEl.className = "text-[10px] text-red-500 text-center";
+        statusEl.className = "text-[11px] text-red-500 text-center";
         return;
     }
     
@@ -131,7 +131,7 @@ window.testLiveTiming = function() {
     window.updateSearchConfig();
     
     statusEl.innerText = window.t('testing');
-    statusEl.className = "text-[10px] text-yellow-500 text-center animate-pulse";
+    statusEl.className = "text-[11px] text-yellow-500 text-center animate-pulse";
     
     // Stop existing scraper to force fresh test
     if (window.liveTimingManager) {
@@ -157,7 +157,7 @@ window.testLiveTiming = function() {
         if (window.liveData.position) {
             clearInterval(checkTimer);
             statusEl.innerText = `${window.t('found')} P${window.liveData.position}`;
-            statusEl.className = "text-[10px] text-green-500 text-center font-bold";
+            statusEl.className = "text-[11px] text-green-500 text-center font-bold";
             return;
         }
         
@@ -172,7 +172,7 @@ window.testLiveTiming = function() {
                 window.liveData.position = prevPosition;
             }
             statusEl.innerText = window.t('notFound');
-            statusEl.className = "text-[10px] text-red-500 text-center";
+            statusEl.className = "text-[11px] text-red-500 text-center";
         }
     }, pollInterval);
 };
@@ -550,7 +550,7 @@ window.stopProxyLiveTiming = function() {
             if (age > HB_STALE_MS) {
                 // Feed is stale
                 if (heartbeatEl) {
-                    heartbeatEl.className = 'text-[10px] text-red-500 font-bold animate-pulse';
+                    heartbeatEl.className = 'text-[11px] text-red-500 font-bold animate-pulse';
                 }
                 window.updateProxyStatus('⚠️ Feed stale — reconnecting…');
                 console.warn(`[HB Watchdog] Feed stale (${Math.round(age/1000)}s) — attempting restart`);
@@ -631,8 +631,8 @@ window.updateLiveTimingUI = function() {
         const ageSec = ageMs == null ? '--' : Math.floor(ageMs / 1000);
         heartbeatEl.innerText = `HB ${count} (${ageSec}s)`;
         heartbeatEl.className = ageMs != null && ageMs > 7000
-            ? 'text-[10px] text-red-400'
-            : 'text-[10px] text-gray-400';
+            ? 'text-[11px] text-red-400'
+            : 'text-[11px] text-gray-400';
     }
     
     // Feed is alive but none of its rows matched our team/kart/driver -> the top cells can
@@ -660,13 +660,13 @@ window.updateLiveTimingUI = function() {
         const diff = window.liveData.previousPosition - window.liveData.position;
         if (diff > 0) {
             changeEl.innerText = `▲ ${diff}`;
-            changeEl.className = 'text-[10px] position-up';
+            changeEl.className = 'text-[11px] position-up';
         } else if (diff < 0) {
             changeEl.innerText = `▼ ${Math.abs(diff)}`;
-            changeEl.className = 'text-[10px] position-down';
+            changeEl.className = 'text-[11px] position-down';
         } else {
             changeEl.innerText = '—';
-            changeEl.className = 'text-[10px] position-same';
+            changeEl.className = 'text-[11px] position-same';
         }
     }
     
@@ -1248,11 +1248,11 @@ window._renderPenaltyQueue = function() {
     const t = window.t || (k => k);
     const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
     list.innerHTML = pending.map(it => `
-        <div class="flex items-center justify-between gap-2 px-2 py-1.5 text-[10px]">
+        <div class="flex items-center justify-between gap-2 px-2 py-1.5 text-[11px]">
             <span class="flex-1 min-w-0 ${it.type === 'serve' ? 'text-amber-300 font-bold' : 'text-gray-300'}">
                 ${it.type === 'serve' ? '🔧 ' + (t('penaltyServe') || 'Serve') + ': ' : '📢 '}${esc(it.text)}
             </span>
-            <button type="button" onclick="window.acknowledgePenaltyItem('${it.id}')" class="shrink-0 text-[9px] font-bold px-2 py-1 rounded border border-gray-600 text-gray-400 hover:text-white hover:border-gray-400 min-h-[28px]">✓ ${t('acknowledge') || 'OK'}</button>
+            <button type="button" onclick="window.acknowledgePenaltyItem('${it.id}')" class="shrink-0 text-[11px] font-bold px-2 py-1 rounded border border-gray-600 text-gray-400 hover:text-white hover:border-gray-400 min-h-[28px]">✓ ${t('acknowledge') || 'OK'}</button>
         </div>`).join('');
 };
 
@@ -1323,10 +1323,10 @@ window._updateKartRankingPanel = function() {
             : null;
         const avgStr = avg ? window.formatLapTime(Math.round(avg)) : '-';
         const cls = isOurs ? 'text-ice font-bold' : isFast ? 'text-neon' : 'text-gray-400';
-        const pitInfo = s.pitCount > 0 ? `<span class="text-[8px] text-fuel"> P${s.pitCount}</span>` : '';
-        html += `<div class="flex justify-between items-center text-[10px] ${cls}">`;
-        html += `<span>#${kart} <span class="text-[9px] text-gray-500">${s.team.substring(0, 12)}</span>${pitInfo}</span>`;
-        html += `<span>${window.formatLapTime(s.bestLapMs)} <span class="text-[9px] text-gray-600">(avg ${avgStr})</span></span>`;
+        const pitInfo = s.pitCount > 0 ? `<span class="text-[11px] text-fuel"> P${s.pitCount}</span>` : '';
+        html += `<div class="flex justify-between items-center text-[11px] ${cls}">`;
+        html += `<span>#${kart} <span class="text-[11px] text-gray-500">${s.team.substring(0, 12)}</span>${pitInfo}</span>`;
+        html += `<span>${window.formatLapTime(s.bestLapMs)} <span class="text-[11px] text-gray-600">(avg ${avgStr})</span></span>`;
         html += `</div>`;
     });
     html += `</div>`;
@@ -1503,9 +1503,9 @@ window.stopLiveTiming = function() {
     const carsEl = document.getElementById('liveTotalCars');
     if (carsEl) carsEl.innerText = '-';
     const changeEl = document.getElementById('livePositionChange');
-    if (changeEl) { changeEl.innerText = ''; changeEl.className = 'text-[10px] position-same'; }
+    if (changeEl) { changeEl.innerText = ''; changeEl.className = 'text-[11px] position-same'; }
     const heartbeatEl = document.getElementById('liveHeartbeat');
-    if (heartbeatEl) { heartbeatEl.innerText = 'HB --'; heartbeatEl.className = 'text-[10px] text-gray-400'; }
+    if (heartbeatEl) { heartbeatEl.innerText = 'HB --'; heartbeatEl.className = 'text-[11px] text-gray-400'; }
     const tableEl = document.getElementById('competitorsTable');
     if (tableEl) tableEl.innerHTML = '';
     const kartPanel = document.getElementById('kartRankingPanel');
@@ -1563,7 +1563,7 @@ window.startDemoMode = function() {
     const statusEl = document.getElementById('liveTimingStatus');
     if (statusEl) {
         statusEl.innerText = "🎮 Demo Mode Active";
-        statusEl.className = "text-[10px] text-neon text-center font-bold";
+        statusEl.className = "text-[11px] text-neon text-center font-bold";
     }
 };
 
@@ -2175,7 +2175,7 @@ window._updateCategoryFilterChips = function() {
     if (window._categoryFilter && !cats.includes(window._categoryFilter)) window._categoryFilter = null;
     row.classList.remove('hidden');
     const chip = (label, active, onClick) =>
-        `<button type="button" data-cat="${label}" class="text-[9px] font-bold px-2 py-1 rounded-full border transition ${active ? 'bg-cyan-600 border-cyan-400 text-white' : 'bg-navy-900 border-gray-600 text-gray-400'}">${label}</button>`;
+        `<button type="button" data-cat="${label}" class="text-[11px] font-bold px-2 py-1 rounded-full border transition ${active ? 'bg-cyan-600 border-cyan-400 text-white' : 'bg-navy-900 border-gray-600 text-gray-400'}">${label}</button>`;
     row.innerHTML = chip('ALL', !window._categoryFilter) + cats.map(c => chip(c, window._categoryFilter === c)).join('');
     row.querySelectorAll('button').forEach(btn => {
         btn.onclick = () => {

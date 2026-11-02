@@ -170,7 +170,7 @@ window.renderDriverGroupUI = function() {
 
         const removeBtn = document.createElement('span');
         removeBtn.innerHTML = '&times;';
-        removeBtn.className = 'ml-0.5 opacity-60 hover:opacity-100 cursor-pointer text-[10px]';
+        removeBtn.className = 'ml-0.5 opacity-60 hover:opacity-100 cursor-pointer text-[11px]';
         removeBtn.title = t('removeFromGroup');
         removeBtn.onclick = (e) => { e.stopPropagation(); window.removeDriverFromPool(d.name); };
 
@@ -206,7 +206,7 @@ window.renderDriverGroupUI = function() {
 
     if (pool.length > 0) {
         const hint = document.createElement('p');
-        hint.className = 'text-[10px] text-gray-500 mt-1.5';
+        hint.className = 'text-[11px] text-gray-500 mt-1.5';
         hint.textContent = t('driverGroupHint') || 'Tap a driver to include/exclude from this race';
         container.appendChild(hint);
     }
@@ -992,7 +992,7 @@ window.renderPreview = function() {
         let pitIndicator = '';
         if (pit && !isLast) {
             const pitSec = Math.round(pit.duration / 1000);
-            pitIndicator = `<span class="text-gold text-[10px] ml-1">🔧+${pitSec}s</span>`;
+            pitIndicator = `<span class="text-gold text-[11px] ml-1">🔧+${pitSec}s</span>`;
             currentTimeMs += pit.duration;
         }
 
@@ -1001,11 +1001,11 @@ window.renderPreview = function() {
         let stintForecastTag = '';
         if (showWeatherChecked && window._venueWeather && typeof window.getVenueForecastAt === 'function') {
             if (dateIsFarOut) {
-                stintForecastTag = `<span class="text-[9px] text-gray-600 ml-1">${t('weatherTooFarOut') || '—'}</span>`;
+                stintForecastTag = `<span class="text-[11px] text-gray-600 ml-1">${t('weatherTooFarOut') || '—'}</span>`;
             } else {
                 const fc = window.getVenueForecastAt(stintStartMs);
                 if (fc && typeof window.formatVenueForecastShort === 'function') {
-                    stintForecastTag = `<span class="text-[9px] text-blue-400 ml-1">${window.formatVenueForecastShort(fc)}</span>`;
+                    stintForecastTag = `<span class="text-[11px] text-blue-400 ml-1">${window.formatVenueForecastShort(fc)}</span>`;
                 }
             }
         }
@@ -1078,7 +1078,7 @@ window.renderPreview = function() {
     const diffMs = (totalDrive + totalPit) - raceTimeMs;
     const diffClass = Math.abs(diffMs) <= 60000 ? 'text-neon' : 'text-red-400';
     const totalBar = `
-        <div class="bg-navy-800 p-2 rounded border border-gray-700 text-[10px] text-gray-400 flex justify-between items-center" style="margin-top:2px">
+        <div class="bg-navy-800 p-2 rounded border border-gray-700 text-[11px] text-gray-400 flex justify-between items-center" style="margin-top:2px">
             <span>${window.t ? window.t('driveNoun') : 'Drive'}: <b class="text-white">${(totalDrive/60000).toFixed(0)}m</b> + ${window.t ? window.t('pitNoun') : 'Pit'}: <b class="text-gold">${(totalPit/60000).toFixed(0)}m</b></span>
             <span class="${diffClass} font-bold">= ${((totalDrive+totalPit)/60000).toFixed(0)}m ${diffMs !== 0 ? '(' + (diffMs > 0 ? '+' : '') + (diffMs/60000).toFixed(0) + 'm)' : '✅'}</span>
         </div>
@@ -1089,8 +1089,8 @@ window.renderPreview = function() {
         : 0;
     const violationBanner = violationCount > 0 ? `
         <div class="bg-red-950/80 border border-red-500/60 rounded px-2 py-1.5 mb-1 flex items-center justify-between gap-2">
-            <span class="text-[9px] text-red-300 font-bold leading-tight">${(window.t ? window.t('stintViolationsBanner') : 'Stints outside min/max rules').replace('{{count}}', violationCount)}</span>
-            <button type="button" onclick="window.fixPreviewStintViolations()" class="shrink-0 text-[9px] font-bold bg-red-600 hover:bg-red-500 text-white px-2 py-0.5 rounded transition">${window.t ? window.t('stintFixBtn') : 'Auto-fix'}</button>
+            <span class="text-[11px] text-red-300 font-bold leading-tight">${(window.t ? window.t('stintViolationsBanner') : 'Stints outside min/max rules').replace('{{count}}', violationCount)}</span>
+            <button type="button" onclick="window.fixPreviewStintViolations()" class="shrink-0 text-[11px] font-bold bg-red-600 hover:bg-red-500 text-white px-2 py-0.5 rounded transition">${window.t ? window.t('stintFixBtn') : 'Auto-fix'}</button>
         </div>
     ` : '';
 
@@ -1112,7 +1112,7 @@ window.renderPreview = function() {
     // Compact inline chip: color dot + name + time + stints count
     const summaryHtml = Object.entries(summary).map(([name, data]) => {
         const timeStr = window.formatTimeHMS(data.time);
-        return `<span class="inline-flex items-center gap-1 bg-navy-950 border rounded-full px-2 py-0.5 text-[9px] min-w-0" style="border-color:${data.color}40">
+        return `<span class="inline-flex items-center gap-1 bg-navy-950 border rounded-full px-2 py-0.5 text-[11px] min-w-0" style="border-color:${data.color}40">
             <span class="w-1.5 h-1.5 rounded-full shrink-0" style="background:${data.color}"></span>
             <span class="font-bold text-gray-200 truncate" style="max-width:4rem">${name}</span>
             <span class="font-mono text-white shrink-0">${timeStr}</span>
@@ -1256,7 +1256,7 @@ window.updateStats = function(currentStintMs) {
             squadBadge = `<span class="text-xs font-bold px-2 py-0.5 rounded ml-1" style="background:${isActive ? 'rgba(34,197,94,0.2)' : 'rgba(107,114,128,0.3)'}; color:${isActive ? '#86efac' : '#9ca3af'}">${driverSquad} ${squadStatus}</span>`;
         } else if (window.config.useSquads) {
             const driverSquad = d.squad || 'A';
-            squadBadge = `<span class="text-[9px] font-bold px-1.5 py-0.5 rounded ml-1" style="background:${SQUAD_COLOR_MAP[driverSquad] || '#3b82f6'}; color:#fff">${driverSquad}</span>`;
+            squadBadge = `<span class="text-[11px] font-bold px-1.5 py-0.5 rounded ml-1" style="background:${SQUAD_COLOR_MAP[driverSquad] || '#3b82f6'}; color:#fff">${driverSquad}</span>`;
         }
         
         // Driver colour dot
@@ -1272,9 +1272,9 @@ window.updateStats = function(currentStintMs) {
             const maxMs = maxDriverMin * 60000;
             const warnMs = maxMs * 0.9;
             if (displayTotalTime > maxMs) {
-                maxTimeIndicator = `<span class="text-[9px] text-red-400 font-bold ml-1 animate-pulse" title="Over max drive time!">🚨</span>`;
+                maxTimeIndicator = `<span class="text-[11px] text-red-400 font-bold ml-1 animate-pulse" title="Over max drive time!">🚨</span>`;
             } else if (displayTotalTime >= warnMs) {
-                maxTimeIndicator = `<span class="text-[9px] text-orange-400 font-bold ml-1" title="Approaching max drive time">⚠️</span>`;
+                maxTimeIndicator = `<span class="text-[11px] text-orange-400 font-bold ml-1" title="Approaching max drive time">⚠️</span>`;
             }
         }
 
@@ -1290,7 +1290,7 @@ window.updateStats = function(currentStintMs) {
             const logRow = document.createElement('tr');
             const logCell = document.createElement('td');
             logCell.colSpan = 4;
-            logCell.className = "bg-navy-950 p-2 text-[10px]";
+            logCell.className = "bg-navy-950 p-2 text-[11px]";
             
             let logsHtml = '<div class="stat-log-grid text-gray-500 border-b border-gray-700 pb-1 mb-1"><span>#</span><span>Drive</span><span>Pit</span></div>';
             
@@ -1799,9 +1799,9 @@ window.renderStrategyList = function(strategies) {
             <div class="flex-1 cursor-pointer" onclick="window.applyStrategy(${index})">
                 <div class="font-bold text-white text-sm flex items-center gap-2">
                     ${s.name}
-                    ${s.type === 'public' ? '<span class="text-[9px] bg-green-900 text-green-300 px-1 rounded">PUB</span>' : ''}
+                    ${s.type === 'public' ? '<span class="text-[11px] bg-green-900 text-green-300 px-1 rounded">PUB</span>' : ''}
                 </div>
-                <div class="text-[10px] text-gray-400 mt-1">
+                <div class="text-[11px] text-gray-400 mt-1">
                     📅 ${new Date(s.timestamp).toLocaleString()} | 
                     ⏱️ ${(s.config.duration || 0)}h | 
                     🛑 ${s.config.reqStops || 0} Stops
@@ -2266,7 +2266,7 @@ window.skipChat = function() {
     // Show a watcher indicator
     const feed = document.getElementById('chatFeed');
     const indicator = document.createElement('div');
-    indicator.className = 'text-center text-gray-500 text-[10px] py-4';
+    indicator.className = 'text-center text-gray-500 text-[11px] py-4';
     indicator.innerHTML = '👁️ You are watching (Chat disabled)';
     feed.appendChild(indicator);
 };
@@ -2405,10 +2405,10 @@ window.renderChatMessage = function(msg) {
 
     // Role badge
     const roleBadge = isAdmin 
-        ? '<span class="bg-red-600 text-white text-[8px] px-1.5 py-0.5 rounded font-bold ml-1">ADMIN</span>' 
+        ? '<span class="bg-red-600 text-white text-[11px] px-1.5 py-0.5 rounded font-bold ml-1">ADMIN</span>' 
         : '';
     // Private indicator
-    const privateIndicator = isPrivate ? '<span class="text-yellow-400 font-bold text-[10px]">🔒 DM</span>' : '';
+    const privateIndicator = isPrivate ? '<span class="text-yellow-400 font-bold text-[11px]">🔒 DM</span>' : '';
 
     // Build reply context
     let replyHTML = '';
@@ -2416,7 +2416,7 @@ window.renderChatMessage = function(msg) {
         const history = JSON.parse(sessionStorage.getItem('strateger_chat_history') || '[]');
         const original = history.find(m => m.timestamp === msg.replyTo);
         if (original) {
-            replyHTML = `<div class="bg-navy-900/60 border-l-2 border-blue-400 pl-2 mb-2 text-[9px] text-gray-300">
+            replyHTML = `<div class="bg-navy-900/60 border-l-2 border-blue-400 pl-2 mb-2 text-[11px] text-gray-300">
                 <div class="font-bold text-blue-400">${original.sender}${original.role === 'host' ? ' 👑' : ''}</div>
                 <div>${original.text.substring(0, 60)}${original.text.length > 60 ? '...' : ''}</div>
             </div>`;
@@ -2432,14 +2432,14 @@ window.renderChatMessage = function(msg) {
         <div class="${bgClass} p-2 rounded-lg max-w-[90%]">
             ${replyHTML}
             <div class="flex justify-between items-baseline gap-2 mb-1">
-                <span class="font-bold ${isAdmin ? (isPrivate ? 'text-yellow-400' : 'text-red-400') : 'text-ice'} text-[10px]">
+                <span class="font-bold ${isAdmin ? (isPrivate ? 'text-yellow-400' : 'text-red-400') : 'text-ice'} text-[11px]">
                     ${isAdmin ? '👑 ' : ''}${msg.sender}${roleBadge}
                 </span>
                 ${privateIndicator}
-                <span class="text-[9px] text-gray-500">${new Date(msg.timestamp).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span>
+                <span class="text-[11px] text-gray-500">${new Date(msg.timestamp).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span>
             </div>
             <div class="text-white break-words">${msg.text}</div>
-            <button onclick="window.setReplyContext(${msg.timestamp}, '${safeSender}', '${safeText}')" class="text-[9px] text-blue-400 hover:text-blue-300 mt-1 text-left">↳ Reply</button>
+            <button onclick="window.setReplyContext(${msg.timestamp}, '${safeSender}', '${safeText}')" class="text-[11px] text-blue-400 hover:text-blue-300 mt-1 text-left">↳ Reply</button>
         </div>
     `;
     
@@ -2685,7 +2685,7 @@ window.onLocationInput = function(value) {
             window._locationAutocompleteResults = results;
             dropdown.innerHTML = results.map((place, i) => {
                 const icon = place._isTrack ? '🏁' : '📍';
-                const sub = place._isTrack ? `<span class="text-blue-400 text-[10px] ml-1">Racing circuit</span>` : (place.country ? `<span class="text-gray-400 text-xs ml-1">${place.country}</span>` : '');
+                const sub = place._isTrack ? `<span class="text-blue-400 text-[11px] ml-1">Racing circuit</span>` : (place.country ? `<span class="text-gray-400 text-xs ml-1">${place.country}</span>` : '');
                 return `<div class="px-3 py-2.5 cursor-pointer hover:bg-navy-800 border-b border-gray-700/40 last:border-0 flex items-center gap-2" onmousedown="window.selectLocationSuggestion(${i})"><span class="text-sm shrink-0">${icon}</span><span class="min-w-0"><span class="font-bold text-white text-sm break-words whitespace-normal">${place.name}</span>${sub}</span></div>`;
             }).join('');
             dropdown.classList.remove('hidden');
@@ -3348,7 +3348,7 @@ window.setAdjustScenario = function(scenario) {
     container.innerHTML = def.controls.map(ctrl => `
         <div class="space-y-1">
             <div class="flex justify-between items-center">
-                <label class="text-[10px] text-gray-400 font-bold uppercase tracking-wide">${ctrl.label}</label>
+                <label class="text-[11px] text-gray-400 font-bold uppercase tracking-wide">${ctrl.label}</label>
                 <span id="${ctrl.id}_val" class="text-xs font-mono text-ice font-bold">${ctrl.default}${ctrl.id.includes('elapsed') || ctrl.id.includes('At') ? '%' : ctrl.id.includes('Duration') || ctrl.id.includes('duration') ? 'm' : ''}</span>
             </div>
             <input type="range" id="${ctrl.id}" min="${ctrl.min}" max="${ctrl.max}" step="${ctrl.step}" value="${ctrl.default}"

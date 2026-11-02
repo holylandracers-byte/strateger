@@ -638,14 +638,14 @@ function updateModeUI() {
             }
         } else if (window.state.mode === 'push') {
             adviceText.innerText = "🔥 " + t('pushMode');
-            adviceText.className = "text-[10px] font-bold text-green-400 uppercase tracking-widest";
+            adviceText.className = "text-[11px] font-bold text-green-400 uppercase tracking-widest";
             if (window.alertState.lastMode !== 'push') {
                 window.alertState.lastMode = 'push';
                 window.playAlertBeep('info');
             }
         } else {
             adviceText.innerText = t('buildTime');
-            adviceText.className = "text-[10px] text-gray-500 font-bold uppercase tracking-widest";
+            adviceText.className = "text-[11px] text-gray-500 font-bold uppercase tracking-widest";
             window.alertState.lastMode = 'normal';
         }
     }
@@ -1456,7 +1456,7 @@ function updateRemainingStrategyLogic(raceRemainingMs) {
     if (hasMinStint) {
         const bufferMin = Math.floor(bufferMs / 60000);
         if (bufferMin > 0) {
-            phtml += `<span class="text-[9px] text-gray-600 self-center ml-1">+${bufferMin}m</span>`;
+            phtml += `<span class="text-[11px] text-gray-600 self-center ml-1">+${bufferMin}m</span>`;
         }
     }
 
@@ -3211,17 +3211,17 @@ window.updateStrategyNotifications = function() {
         const nextDriverDisplay = nextDriverName;
         const stintsLeft = schedule.length - nextStintIdx;
         
-        let bannerHtml = `<span class="text-gray-400 text-[10px]">${t('nextLabel') || 'Next:'}</span> `;
+        let bannerHtml = `<span class="text-gray-400 text-[11px]">${t('nextLabel') || 'Next:'}</span> `;
         bannerHtml += `<span class="text-ice font-bold text-xs">${nextDriverDisplay}</span>`;
         
         if (nextPlanned.squadModeActive && nextSquad) {
-            bannerHtml += ` <span class="text-[9px] px-1 rounded bg-purple-600/30 text-purple-300">Squad ${nextSquad}</span>`;
+            bannerHtml += ` <span class="text-[11px] px-1 rounded bg-purple-600/30 text-purple-300">Squad ${nextSquad}</span>`;
         }
         
         // Show time to pit
         if (timeToTarget > 0) {
             const minLeft = Math.ceil(timeToTarget / 60000);
-            bannerHtml += ` <span class="text-gray-500 text-[10px]">(${minLeft}m)</span>`;
+            bannerHtml += ` <span class="text-gray-500 text-[11px]">(${minLeft}m)</span>`;
         }
         
         banner.innerHTML = bannerHtml;
@@ -3266,7 +3266,7 @@ window.updateStrategyNotifications = function() {
         // Show upcoming squad change if different
         if (nextSquad && nextSquad !== active && nextPlanned.squadModeActive) {
             const minLeft = Math.max(0, Math.ceil(timeToTarget / 60000));
-            html += ` <span class="text-purple-400 text-[10px] ml-1">→ Squad ${nextSquad} in ${minLeft}m</span>`;
+            html += ` <span class="text-purple-400 text-[11px] ml-1">→ Squad ${nextSquad} in ${minLeft}m</span>`;
         }
         
         squadInfoEl.innerHTML = html;
@@ -3760,7 +3760,7 @@ window.updateProUI = function() {
 
     if (isPro) {
         if (banner) banner.classList.add('hidden');
-        if (proBtn) { proBtn.classList.remove('hidden'); proBtn.innerHTML = '<i class="fas fa-star text-[10px]"></i> <span>PRO</span>'; }
+        if (proBtn) { proBtn.classList.remove('hidden'); proBtn.innerHTML = '<i class="fas fa-star text-[11px]"></i> <span>PRO</span>'; }
         if (lockLT) lockLT.classList.add('hidden');
         if (modal) modal.classList.add('hidden');
     } else if (isTrial) {
@@ -3768,7 +3768,7 @@ window.updateProUI = function() {
         const hoursLeft = typeof window.trialHoursLeft === 'function' ? window.trialHoursLeft() : 0;
         if (proBtn) {
             proBtn.classList.remove('hidden');
-            proBtn.innerHTML = `<i class="fas fa-clock text-[10px]"></i> <span>TRIAL ${hoursLeft}h</span>`;
+            proBtn.innerHTML = `<i class="fas fa-clock text-[11px]"></i> <span>TRIAL ${hoursLeft}h</span>`;
             proBtn.className = proBtn.className.replace(/from-gold[^\s]*/g, '').replace(/to-amber[^\s]*/g, '').trim();
             proBtn.style.cssText = 'background:linear-gradient(to right,rgba(34,211,238,0.2),rgba(16,185,129,0.2));border-color:rgba(34,211,238,0.4);color:#22d3ee';
         }
@@ -5029,7 +5029,7 @@ window.showRaceHistory = function() {
         const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         
         const driverBadges = (race.drivers || []).map(d => 
-            `<span class="inline-flex items-center gap-1 text-[10px] bg-navy-800 px-1.5 py-0.5 rounded" style="border-left:3px solid ${d.color || '#3b82f6'}">
+            `<span class="inline-flex items-center gap-1 text-[11px] bg-navy-800 px-1.5 py-0.5 rounded" style="border-left:3px solid ${d.color || '#3b82f6'}">
                 ${d.name} <span class="text-gray-500">${window.formatTimeHMS(d.totalTime)}</span>
             </span>`
         ).join(' ');
@@ -5041,16 +5041,16 @@ window.showRaceHistory = function() {
                         <span class="text-lg">🏁</span>
                         <div>
                             <div class="text-sm font-bold text-white">${race.durationFormatted || race.duration + 'h'} Race</div>
-                            <div class="text-[10px] text-gray-500">${dateStr} · ${timeStr}</div>
+                            <div class="text-[11px] text-gray-500">${dateStr} · ${timeStr}</div>
                         </div>
                     </div>
                     <div class="text-right">
                         <div class="text-xs text-gray-400">🛑 ${race.pitStops} stops</div>
-                        <div class="text-[10px] text-gray-500">${race.totalDrivers} drivers</div>
+                        <div class="text-[11px] text-gray-500">${race.totalDrivers} drivers</div>
                     </div>
                 </div>
                 <div class="flex flex-wrap gap-1">${driverBadges}</div>
-                <button onclick="window.deleteRaceHistory(${idx})" class="mt-2 text-[10px] text-gray-600 hover:text-red-400 transition">
+                <button onclick="window.deleteRaceHistory(${idx})" class="mt-2 text-[11px] text-gray-600 hover:text-red-400 transition">
                     <i class="fas fa-trash-alt"></i> Delete
                 </button>
             </div>

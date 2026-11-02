@@ -247,7 +247,7 @@ window.updateGoogleUI = function(signedIn) {
         if (actionsBar) actionsBar.classList.remove('hidden');
         if (statusEl) {
             statusEl.innerText = '✅ Connected';
-            statusEl.className = 'text-[10px] text-green-400';
+            statusEl.className = 'text-[11px] text-green-400';
         }
         
         const avatar = document.getElementById('googleAvatarSmall');
@@ -262,7 +262,7 @@ window.updateGoogleUI = function(signedIn) {
         if (actionsBar) actionsBar.classList.add('hidden');
         if (statusEl) {
             statusEl.innerText = 'Not connected';
-            statusEl.className = 'text-[10px] text-gray-500';
+            statusEl.className = 'text-[11px] text-gray-500';
         }
     }
 };
