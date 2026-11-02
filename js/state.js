@@ -2492,6 +2492,82 @@ window.translations = {
     }
 };
     Object.keys(extra).forEach(l => { if (window.translations[l]) Object.assign(window.translations[l], extra[l]); });
+    const extra2 = {
+    "en": {
+        "paceLabel": "Pace",
+        "paceHint": "Mark the team's pace as fast or slow. The target stint is recalculated.",
+        "noLiveHint": "Live timing is not connected. Positions and lap times appear here once a timing URL is set for this race.",
+        "targetHint": "Recommended time to pit, updated from the current pace."
+    },
+    "he": {
+        "paceLabel": "קצב",
+        "paceHint": "סמנו את קצב הצוות כמהיר או איטי. יעד הסטינט יחושב מחדש.",
+        "noLiveHint": "התזמון החי לא מחובר. מיקומים וזמני הקפות יופיעו כאן לאחר הגדרת כתובת תזמון למירוץ.",
+        "targetHint": "הזמן המומלץ להיכנס לפיט, מתעדכן לפי הקצב הנוכחי."
+    },
+    "fr": {
+        "paceLabel": "Rythme",
+        "paceHint": "Indiquez si l'équipe roule vite ou lentement. Le relais cible est recalculé.",
+        "noLiveHint": "Le chronométrage live n'est pas connecté. Positions et temps au tour apparaîtront ici dès qu'une URL de chrono est définie.",
+        "targetHint": "Moment recommandé pour rentrer au stand, mis à jour selon le rythme actuel."
+    },
+    "pt": {
+        "paceLabel": "Ritmo",
+        "paceHint": "Marque o ritmo da equipe como rápido ou lento. O stint alvo é recalculado.",
+        "noLiveHint": "O live timing não está conectado. Posições e tempos de volta aparecem aqui quando houver uma URL de cronometragem.",
+        "targetHint": "Momento recomendado para entrar no box, atualizado pelo ritmo atual."
+    },
+    "ru": {
+        "paceLabel": "Темп",
+        "paceHint": "Отметьте темп команды как быстрый или медленный. Целевой стинт пересчитается.",
+        "noLiveHint": "Live-тайминг не подключён. Позиции и время кругов появятся здесь после указания ссылки на тайминг.",
+        "targetHint": "Рекомендуемое время захода в боксы, обновляется по текущему темпу."
+    },
+    "ar": {
+        "paceLabel": "الإيقاع",
+        "paceHint": "حدّد إيقاع الفريق سريعًا أو بطيئًا. سيُعاد حساب مدة المقطع المستهدفة.",
+        "noLiveHint": "التوقيت المباشر غير متصل. ستظهر المراكز وأزمنة اللفات هنا بعد إدخال رابط التوقيت.",
+        "targetHint": "الوقت الموصى به لدخول الحفرة، يتحدث حسب الإيقاع الحالي."
+    },
+    "es": {
+        "paceLabel": "Ritmo",
+        "paceHint": "Marca el ritmo del equipo como rápido o lento. El stint objetivo se recalcula.",
+        "noLiveHint": "El cronometraje en vivo no está conectado. Posiciones y tiempos de vuelta aparecerán aquí al configurar una URL de cronometraje.",
+        "targetHint": "Momento recomendado para entrar a box, actualizado según el ritmo actual."
+    },
+    "it": {
+        "paceLabel": "Ritmo",
+        "paceHint": "Segna il ritmo della squadra come veloce o lento. Lo stint obiettivo viene ricalcolato.",
+        "noLiveHint": "Il live timing non è collegato. Posizioni e tempi sul giro appariranno qui dopo aver impostato un URL di cronometraggio.",
+        "targetHint": "Momento consigliato per rientrare ai box, aggiornato in base al ritmo attuale."
+    },
+    "ka": {
+        "paceLabel": "ტემპი",
+        "paceHint": "მონიშნეთ გუნდის ტემპი სწრაფად ან ნელად. სამიზნე სტინტი ხელახლა გამოითვლება.",
+        "noLiveHint": "ლაივ ტაიმინგი არ არის დაკავშირებული. პოზიციები და წრეების დრო აქ გამოჩნდება ტაიმინგის URL-ის მითითების შემდეგ.",
+        "targetHint": "პიტში შესვლის რეკომენდებული დრო, განახლდება მიმდინარე ტემპის მიხედვით."
+    },
+    "de": {
+        "paceLabel": "Tempo",
+        "paceHint": "Markiere das Teamtempo als schnell oder langsam. Der Ziel-Stint wird neu berechnet.",
+        "noLiveHint": "Live-Timing ist nicht verbunden. Positionen und Rundenzeiten erscheinen hier, sobald eine Timing-URL gesetzt ist.",
+        "targetHint": "Empfohlener Zeitpunkt für den Boxenstopp, aktualisiert nach dem aktuellen Tempo."
+    },
+    "ja": {
+        "paceLabel": "ペース",
+        "paceHint": "チームのペースを速い／遅いで指定します。目標スティントが再計算されます。",
+        "noLiveHint": "ライブタイミングが未接続です。タイミングURLを設定すると、順位とラップタイムがここに表示されます。",
+        "targetHint": "ピットインの推奨タイミング。現在のペースに合わせて更新されます。"
+    },
+    "el": {
+        "paceLabel": "Ρυθμός",
+        "paceHint": "Σημειώστε τον ρυθμό της ομάδας ως γρήγορο ή αργό. Το στόχος stint υπολογίζεται ξανά.",
+        "noLiveHint": "Το live timing δεν είναι συνδεδεμένο. Θέσεις και χρόνοι γύρων θα εμφανιστούν εδώ μόλις οριστεί URL χρονομέτρησης.",
+        "targetHint": "Προτεινόμενη στιγμή για pit, ενημερώνεται από τον τρέχοντα ρυθμό."
+    }
+};
+    Object.keys(extra2).forEach(l => { if (window.translations[l]) Object.assign(window.translations[l], extra2[l]); });
+
 })();
 
 
@@ -2613,6 +2689,9 @@ window.setLanguage = function(lang) {
              el.innerText = window.t(key);
         }
     });
+
+    // Tooltips: data-i18n-title
+    document.querySelectorAll('[data-i18n-title]').forEach(el => { el.title = window.t(el.getAttribute('data-i18n-title')); });
 
     // Translate <option> elements with data-i18n-opt attribute
     document.querySelectorAll('option[data-i18n-opt]').forEach(opt => {
