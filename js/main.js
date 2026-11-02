@@ -2133,7 +2133,7 @@ window.getBoxMessage = function() {
 // values). Called on every pit exit so the "▶ PLAN" preview always shows reality-so-far +
 // an adjusted forecast for what's left, even when a different driver ran a stint than
 // originally scheduled, or a stint ran much longer/shorter than planned.
-window._syncPreviewWithActuals = function(actualDriverIdx, actualDriveDuration) {
+window._syncPreviewWithActuals = function(actualDriverIdx, actualDriveDuration, actualPitDuration) {
     if (!window.previewData || !window.previewData.timeline) return;
     const stints = window.previewData.timeline.filter(s => s.type === 'stint');
     const completedIdx = (window.state.globalStintNumber || 1) - 1; // 0-based index of the stint that just ended
@@ -2146,6 +2146,14 @@ window._syncPreviewWithActuals = function(actualDriverIdx, actualDriveDuration) 
         completedStint.driverName = window.drivers[actualDriverIdx]?.name || completedStint.driverName;
         completedStint.color = window.drivers[actualDriverIdx]?.color || completedStint.color;
         completedStint._actual = true;
+        // The pit right after it already happened too: use how long it really took.
+        const tl = window.previewData.timeline;
+        const pitItem = tl[tl.indexOf(completedStint) + 1];
+        if (pitItem && pitItem.type === 'pit' && actualPitDuration > 0) {
+            pitItem._plannedDuration = pitItem._plannedDuration ?? pitItem.duration;
+            pitItem.duration = actualPitDuration;
+            pitItem._actual = true;
+        }
     }
     // Remaining stints: pull the redistributed durations already computed in stintTargets.
     const targets = window.state.stintTargets;
@@ -2222,35 +2230,31 @@ window.confirmPitExit = function(autoDetected) {
     const advEl = document.getElementById('pitAdviceStatus');
     if (advEl) advEl.classList.add('hidden');
 
-    // On-the-go strategy recalc: compare actual stint duration to plan, redistribute if drifted
+    // On-the-go strategy recalc: what already happened (past stint lengths AND how long
+    // the pits really took) is sunk time. The stints still to run (this new one included)
+    // are re-planned from the real time left on the clock, minus the pit time still to come.
     (function _recalcOnPitExit() {
         const completedIdx = Math.max(0, (window.state.globalStintNumber || 1) - 1);
         const targets = window.state.stintTargets;
-        if (!Array.isArray(targets) || targets.length === 0) return;
-        const planned = targets[completedIdx];
-        if (!planned || planned <= 0) return;
-        const drift = Math.abs(driveDuration - planned);
-        if (drift < 3 * 60000) return; // <3 min drift — no recalc needed
-        // Remaining stints after the completed one
+        if (!Array.isArray(targets) || targets.length === 0 || !window.state.startTime) return;
         const remaining = targets.slice(completedIdx + 1);
         if (remaining.length === 0) return;
-        const totalPlannedRemaining = remaining.reduce((a, b) => a + b, 0);
-        const timeSaved = planned - driveDuration; // positive = did shorter stint
-        const newTotal = totalPlannedRemaining + timeSaved;
-        if (newTotal <= 0) return;
-        const scale = newTotal / totalPlannedRemaining;
-        let newRemaining = remaining.map(t => Math.round(t * scale));
+        const raceMs = window.config?.raceMs || (parseFloat(window.config?.duration) || 0) * 3600000;
+        const raceRemainingMs = raceMs - (now - window.state.startTime);
+        const pitTimeMs = (parseFloat(window.config?.minPitTime) || parseFloat(window.config?.minPitSec) || parseFloat(window.config?.pitTime) || 0) * 1000;
+        const drivePoolMs = raceRemainingMs - (remaining.length - 1) * pitTimeMs;
+        if (!(drivePoolMs > 0)) return;
+        const plannedMs = remaining.reduce((a, b) => a + b, 0);
+        if (Math.abs(plannedMs - drivePoolMs) < 30000) return; // still on plan
+        let newRemaining = remaining.map(t => Math.round(t * drivePoolMs / plannedMs));
         if (typeof window.normalizeStintDurationsMs === 'function') {
-            const norm = window.normalizeStintDurationsMs(newRemaining, {
-                totalTargetMs: newTotal,
+            newRemaining = window.normalizeStintDurationsMs(newRemaining, {
+                totalTargetMs: drivePoolMs,
                 bounds: window.getStintBoundsMs(window.config)
-            });
-            newRemaining = norm.durations;
+            }).durations;
         }
-        for (let i = 0; i < newRemaining.length; i++) {
-            targets[completedIdx + 1 + i] = newRemaining[i];
-        }
-        console.log(`♻️ Pit exit recalc: actual ${(driveDuration/60000).toFixed(1)}m vs planned ${(planned/60000).toFixed(1)}m — redistributed ${newRemaining.length} remaining stints`);
+        for (let i = 0; i < newRemaining.length; i++) targets[completedIdx + 1 + i] = newRemaining[i];
+        console.log(`♻️ Pit exit recalc: ${(drivePoolMs / 60000).toFixed(1)}m of driving left across ${newRemaining.length} stints (was ${(plannedMs / 60000).toFixed(1)}m)`);
     })();
 
     // Sync the Preview/Plan screen with what actually happened: the just-completed stint
@@ -2259,7 +2263,7 @@ window.confirmPitExit = function(autoDetected) {
     // window.state.stintTargets, which _recalcOnPitExit just redistributed above. This
     // keeps "▶ PLAN" showing reality-so-far + an adjusted forecast, not a stale original plan.
     if (typeof window._syncPreviewWithActuals === 'function') {
-        window._syncPreviewWithActuals(prevDriverIdx, driveDuration);
+        window._syncPreviewWithActuals(prevDriverIdx, driveDuration, pitDuration);
     }
 
     window.state.globalStintNumber++;

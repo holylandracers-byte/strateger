@@ -3854,3 +3854,4 @@ body.lt-compact #apexViewToggle, body.lt-compact #addSecondaryTeamBtn, body.lt-c
     .sr-move-btn { width: 38px; }
     .sr-num-done { margin-left: 28px; }
 }
+body:has(#previewScreen:not(.hidden)) #installBanner { display: none !important; }

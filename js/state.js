@@ -528,7 +528,7 @@ window.translations = {
         rulesPdfDrop: "Click to select PDF", rulesPdfDropHint: "Max ~50 pages recommended",
         rulesPdfReading: "Reading PDF…", rulesPdfError: "Could not read PDF.", rulesPdfAiError: "AI returned no result.",
         rulesPdfClear: "Remove", rulesPdfAnalyze: "Analyze & Suggest Strategy", pages: "pages",
-        saveSettings: "Save", backToRace: "← Back to Race", autoSaved: "Saved", lblRaceStart: "Race start",
+        saveSettings: "Save", backToRace: "← Back to Race", autoSaved: "Saved", lblRaceStart: "Race start", installApp: "Install Strateger", installDesc: "Add to home screen for the best experience", install: "Install",
         livePreviewBtn: "▶ PLAN",
         appearance: "Appearance",
         // Live-timing widget strings

@@ -913,6 +913,8 @@ window.renderPreview = function() {
         startRef = new Date();
     }
 
+    if (window.state && window.state.isRunning && window.state.startTime) startRef = new Date(window.state.startTime);
+
     // === 1b. Weather banner (location weather) ===
     const weatherBanner = document.getElementById('previewLocationWeather');
     const raceDateMs = startRef.getTime();
