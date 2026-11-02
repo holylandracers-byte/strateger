@@ -191,7 +191,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize mute button icon
     const muteBtn = document.getElementById('muteToggleBtn');
     if (muteBtn && window._soundMuted) {
-        muteBtn.innerHTML = '<i class="fas fa-volume-mute"></i><span>Sound off</span>';
+        muteBtn.innerHTML = '<i class="fas fa-volume-mute"></i><span>' + (window.t ? window.t('menuSoundOff') : 'Sound off') + '</span>';
         muteBtn.title = 'Unmute';
     }
 
@@ -4517,7 +4517,7 @@ document.addEventListener('keydown', function(e) {
             const muteBtn = document.getElementById('muteBtn');
             if (muteBtn) {
                 muteBtn.innerHTML = window._soundMuted
-                    ? '<i class="fas fa-volume-mute"></i><span>Sound off</span>'
+                    ? '<i class="fas fa-volume-mute"></i><span>' + (window.t ? window.t('menuSoundOff') : 'Sound off') + '</span>'
                     : '<i class="fas fa-volume-up"></i>';
             }
             window.showToast(window._soundMuted ? '🔇 Sound muted' : '🔊 Sound on', 'info', 2000);

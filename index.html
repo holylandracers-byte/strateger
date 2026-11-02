@@ -89,9 +89,9 @@
             </a>
             <span class="font-black tracking-widest text-white text-sm leading-none hidden sm:block">STRAT<span style="color:#22d3ee">EGER</span></span>
             <ol id="phaseSteps" class="phase-steps" aria-label="Race phase">
-                <li data-phase="plan" aria-current="step">Plan</li>
-                <li data-phase="qualify" class="hidden">Qualify</li>
-                <li data-phase="race">Race</li>
+                <li data-phase="plan" aria-current="step" data-i18n="phasePlan">Plan</li>
+                <li data-phase="qualify" class="hidden" data-i18n="phaseQualify">Qualify</li>
+                <li data-phase="race" data-i18n="phaseRace">Race</li>
             </ol>
         </div>
 
@@ -119,30 +119,30 @@
                 </button>
                 <div id="headerOverflowMenu" class="header-menu hidden" role="menu">
                     <div class="hdr-menu-group">
-                        <div class="hdr-menu-label">Team</div>
+                        <div class="hdr-menu-label" data-i18n="menuTeam">Team</div>
                         <button id="shareRaceBtn" type="button" onclick="window.copyInviteLink()" class="hdr-menu-item hidden"><i class="fas fa-link"></i><span data-i18n="invite">Invite</span></button>
                         <button id="driverLinkBtn" type="button" onclick="window.copyDriverLink()" class="hdr-menu-item hidden"><i class="fas fa-car-side"></i><span data-i18n="driverLink">Driver Link</span></button>
-                        <button id="viewerManageBtn" type="button" onclick="window.openViewerApprovalModal()" class="hdr-menu-item hidden"><i class="fas fa-users-cog"></i><span>Manage Viewers</span><span id="viewerPendingBadge" class="hidden hdr-menu-badge">0</span></button>
+                        <button id="viewerManageBtn" type="button" onclick="window.openViewerApprovalModal()" class="hdr-menu-item hidden"><i class="fas fa-users-cog"></i><span data-i18n="manageViewers">Manage viewers</span><span id="viewerPendingBadge" class="hidden hdr-menu-badge">0</span></button>
                         <button id="proStatusBtn" type="button" onclick="window.showProStatus()" class="hdr-menu-item hidden"><i class="fas fa-star"></i><span data-i18n="proBadge">PRO</span></button>
                     </div>
                     <div class="hdr-menu-group">
-                        <div class="hdr-menu-label">Display</div>
+                        <div class="hdr-menu-label" data-i18n="menuDisplay">Display</div>
                         <div class="hdr-menu-item hdr-menu-lang">
                             <i class="fas fa-globe"></i>
                             <select id="langSelectMobile" onchange="window.setLanguage(this.value)" aria-label="Language"></select>
                         </div>
-                        <button id="muteToggleBtn" type="button" onclick="window.toggleMute()" class="hdr-menu-item"><i class="fas fa-volume-up"></i><span>Sound</span></button>
+                        <button id="muteToggleBtn" type="button" onclick="window.toggleMute()" class="hdr-menu-item"><i class="fas fa-volume-up"></i><span data-i18n="menuSound">Sound</span></button>
                         <button id="themeToggleBtn" type="button" onclick="window.toggleThemePanel(); document.getElementById('headerOverflowMenu').classList.add('hidden')" class="hdr-menu-item"><i class="fas fa-palette"></i><span data-i18n="appearance">Appearance</span></button>
                     </div>
                     <div class="hdr-menu-group">
-                        <div class="hdr-menu-label">Help</div>
+                        <div class="hdr-menu-label" data-i18n="menuHelp">Help</div>
                         <button id="guideBtn" type="button" onclick="window.restartWalkthrough(); document.getElementById('headerOverflowMenu').classList.add('hidden')" class="hdr-menu-item"><i class="fas fa-route"></i><span data-i18n="wtGuideBtn">Guide</span></button>
-                        <button type="button" onclick="window.showShortcutsHelp(); document.getElementById('headerOverflowMenu').classList.add('hidden')" class="hdr-menu-item"><i class="fas fa-keyboard"></i><span>Shortcuts</span></button>
+                        <button type="button" onclick="window.showShortcutsHelp(); document.getElementById('headerOverflowMenu').classList.add('hidden')" class="hdr-menu-item"><i class="fas fa-keyboard"></i><span data-i18n="menuShortcuts">Shortcuts</span></button>
                         <button type="button" onclick="window.showDemoConfig(); document.getElementById('headerOverflowMenu').classList.add('hidden')" class="hdr-menu-item"><i class="fas fa-play"></i><span data-i18n="runDemo">Demo</span></button>
                         <button type="button" onclick="window.openContactUsModal(); document.getElementById('headerOverflowMenu').classList.add('hidden')" class="hdr-menu-item"><i class="fas fa-envelope"></i><span data-i18n="contactUs">Contact Us</span></button>
                     </div>
                     <div class="hdr-menu-group" id="googleAuthCompact">
-                        <div class="hdr-menu-label">Account</div>
+                        <div class="hdr-menu-label" data-i18n="menuAccount">Account</div>
                         <button id="googleSignInBtn" type="button" onclick="window.googleSignIn()" class="hdr-menu-item"><i class="fab fa-google"></i><span data-i18n="googleLoginBtn">Login</span></button>
                         <div id="googleUserDisplay" class="hidden hdr-menu-item">
                             <img id="googleAvatarSmall" src="" class="w-5 h-5 rounded-full" alt="">
@@ -444,9 +444,9 @@
                     <i class="fas fa-chevron-down ml-auto text-[10px] text-gray-600 collapse-icon transition-transform"></i>
                 </h2>
                 <div class="collapse-body mt-3">
-                <p class="text-xs text-gray-400 mb-3">Optional rules from the organizer. Leave a number at 0 to switch that rule off.</p>
+                <p class="text-xs text-gray-400 mb-3" data-i18n="rulesIntro">Optional rules from the organizer. Leave a number at 0 to switch that rule off.</p>
                 <!-- Toggles -->
-                <h3 class="rules-group-title">Driver rotation</h3>
+                <h3 class="rules-group-title" data-i18n="grpRotation">Driver rotation</h3>
                 <div class="flex flex-col gap-3 mb-3">
                     <div class="border-b border-gray-600 pb-2">
                         <label class="flex items-center gap-2 cursor-pointer">
@@ -500,7 +500,7 @@
                     </div>
                 </div>
                 <!-- Constraint fields -->
-                <h3 class="rules-group-title">Pit rules</h3>
+                <h3 class="rules-group-title" data-i18n="grpPitRules">Pit rules</h3>
                 <div class="grid grid-cols-2 gap-4 mb-3">
                     <div>
                         <label class="text-xs text-red-400 font-bold" data-i18n="lblPitClosedStart">🚫 Closed Start (min)</label>
@@ -516,18 +516,18 @@
                     <div class="flex items-center justify-between mb-2">
                         <div class="flex items-center gap-1.5">
                             <span class="text-orange-400 text-xs">∞</span>
-                            <span class="text-xs font-bold text-orange-300">Kart changes</span>
+                            <span class="text-xs font-bold text-orange-300" data-i18n="kartChanges">Kart changes</span>
                         </div>
-                        <span class="text-[11px] text-orange-300">Shown because a key value is 0</span>
+                        <span class="text-[11px] text-orange-300" data-i18n="kartChangesShown">Shown because a key value is 0</span>
                     </div>
 
                     <!-- Kart-change interval: organizer tells you the frequency -->
                     <div class="mb-2">
-                        <label class="text-[9px] text-gray-300 font-bold">Kart change every (min)</label>
+                        <label class="text-[9px] text-gray-300 font-bold" data-i18n="kartChangeEvery">Kart change every (min)</label>
                         <input type="number" id="kartChangeInterval" value="0" min="0" placeholder="Off"
                             onchange="window._updateKartChangeInfo(); window.runSim()" class="input-field border-orange-800/50">
                         <div id="kartChangeInfo" class="text-[9px] text-orange-400 mt-0.5 hidden"></div>
-                        <p class="text-[9px] text-gray-600 mt-0.5">How often the organizer makes you change karts, e.g. 90 for every 90 min. 0 = off.</p>
+                        <p class="text-[9px] text-gray-600 mt-0.5" data-i18n="kartChangeHint">How often the organizer makes you change karts, e.g. 90 for every 90 min. 0 = off.</p>
                     </div>
 
                     <!-- Extra optional pits between mandatory kart-changes -->
@@ -540,7 +540,7 @@
                         <div>
                             <label class="text-[9px] text-gray-400" data-i18n="lblMinPitLapSec">Min Pit Lap (sec)</label>
                             <input type="number" id="minPitLapSec" value="0" min="0" onchange="window.runSim()" class="input-field border-orange-800/50">
-                            <p class="text-[9px] text-gray-600 mt-0.5">0 = off.</p>
+                            <p class="text-[9px] text-gray-600 mt-0.5" data-i18n="offHint">0 = off.</p>
                         </div>
                     </div>
 
@@ -550,10 +550,10 @@
                         <input type="number" id="numTeams" value="0" min="0" placeholder="Off"
                             onchange="window._updateKartRotationInfo(); window.runSim()" class="input-field border-orange-800/50">
                         <div id="kartRotationInfo" class="text-[9px] text-orange-400 mt-0.5 hidden"></div>
-                        <p class="text-[9px] text-gray-600 mt-0.5">Required stops = teams − 1, so each team drives every kart once. 0 = off.</p>
+                        <p class="text-[9px] text-gray-600 mt-0.5" data-i18n="numTeamsHint">Required stops = teams − 1, so each team drives every kart once. 0 = off.</p>
                     </div>
                 </div>
-                <h3 class="rules-group-title">Driver limits</h3>
+                <h3 class="rules-group-title" data-i18n="grpDriverLimits">Driver limits</h3>
                 <div class="grid grid-cols-2 gap-4 mb-3">
                     <div>
                         <label class="text-xs text-gray-400" data-i18n="lblMinDrive">Min Driver Total (min)</label>
@@ -564,7 +564,7 @@
                         <input type="number" id="maxDriverTime" placeholder="0" onchange="window.runSim(); window.updateDriverMaxTimeWarnings && window.updateDriverMaxTimeWarnings()" class="input-field">
                     </div>
                 </div>
-                <h3 class="rules-group-title">Alerts and timing</h3>
+                <h3 class="rules-group-title" data-i18n="grpAlerts">Alerts and timing</h3>
                 <div class="grid grid-cols-2 gap-4 mb-3">
                     <div>
                         <label class="text-xs text-yellow-400 font-bold" data-i18n="lblBuffer">Pit Exit Buffer (s)</label>
@@ -1294,9 +1294,9 @@
                                 <span id="nextDriverName" class="text-base font-bold text-neon cursor-pointer hover:text-white transition truncate" onclick="window.cycleNextDriver(false, true)">---</span>
                             </div>
                             <details class="adjust-drawer shrink-0">
-                                <summary class="adjust-summary">Adjust</summary>
+                                <summary class="adjust-summary" data-i18n="adjust">Adjust</summary>
                             <div class="flex items-center gap-0.5 bg-navy-950 px-1 py-1 rounded border border-gray-700 shrink-0">
-                                <span class="text-xs text-gray-400">Pit time</span>
+                                <span class="text-xs text-gray-400" data-i18n="pitTimeAdj">Pit time</span>
                                 <button id="penaltyBtnMinus5" onclick="window.adjustPitTime(-5)" class="penalty-btn bg-green-900/30 hover:bg-green-800 text-green-400 border border-green-600/30 px-1.5 py-0.5 rounded text-xs font-bold transition">-5</button>
                                 <button id="penaltyBtnPlus5" onclick="window.adjustPitTime(5)" class="penalty-btn bg-red-900/30 hover:bg-red-800 text-red-400 border border-red-600/30 px-1.5 py-0.5 rounded text-xs font-bold transition">+5</button>
                                 <button id="penaltyBtnPlus10" onclick="window.adjustPitTime(10)" class="penalty-btn bg-red-900/30 hover:bg-red-800 text-red-400 border border-red-600/30 px-1.5 py-0.5 rounded text-xs font-bold transition">+10</button>
