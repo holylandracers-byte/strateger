@@ -29,6 +29,13 @@ if (window.translations.he) {
     });
 }
 
+if (window.translations.el) {
+    Object.assign(window.translations.el, {
+        tfSystem: 'Σύστημα χρονομέτρησης', tfTrack: 'Όνομα πίστας...', tfFind: 'Αναζήτηση', tfSearching: 'Αναζήτηση...',
+        tfFound: 'Βρέθηκε ο σύνδεσμος', tfNotFound: 'Δεν βρέθηκε σύνδεσμος - επικολλήστε τη διεύθυνση παρακάτω', tfNeedName: 'Εισάγετε το όνομα της πίστας', tfNoProbe: 'Οι σύνδεσμοι Alpha δεν αναζητούνται - επικολλήστε τη διεύθυνση παρακάτω'
+    });
+}
+
 const tfNorm = s => String(s || '').toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
 
 function tfSavedTracks() {
