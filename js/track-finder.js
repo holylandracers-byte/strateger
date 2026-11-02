@@ -3,6 +3,7 @@
 
 const TF_STORE_KEY = 'strateger_tracks';
 const TF_SEED = [
+    { name: 'Kart Volan', system: 'racefacer', url: 'https://live.racefacer.com/kartvolan' },
     { name: 'Circuit Tokio Bay', system: 'racefacer', url: 'https://live.racefacer.com/circuittokiobay' },
     { name: 'Buckmore Park', system: 'alpha', url: 'https://results.alphatiming.co.uk/buckmore/live' },
     { name: 'Karting Genk', system: 'apex', url: 'https://www.apex-timing.com/live-timing/karting-genk/index.html' }
