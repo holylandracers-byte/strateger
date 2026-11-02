@@ -3825,3 +3825,32 @@ body.lt-compact #apexViewToggle, body.lt-compact #addSecondaryTeamBtn, body.lt-c
 .rule-status-ok { color: #86efac; }
 .rule-status-bad { color: #fca5a5; }
 .rule-head:has(.set-switch) .rule-title::before { display: none; }
+
+/* ==================== STINT ROWS: compact + colour-coded by driver ==================== */
+.stint-row {
+    border-left-width: 6px;
+    background: color-mix(in srgb, var(--sc, #22d3ee) 11%, var(--navy-950));
+    border-color: color-mix(in srgb, var(--sc, #22d3ee) 28%, #1e293b);
+    border-left-color: var(--sc, #22d3ee);
+}
+.stint-row-locked { background: color-mix(in srgb, var(--sc, #22d3ee) 5%, #0b1220); border-color: #172033; border-left-color: var(--sc, #22d3ee); }
+.sr-driver { background: color-mix(in srgb, var(--sc, #22d3ee) 24%, var(--navy-900)); border-color: color-mix(in srgb, var(--sc, #22d3ee) 60%, #334155); }
+.sr-driver:hover { background: color-mix(in srgb, var(--sc, #22d3ee) 34%, var(--navy-900)); border-color: var(--sc, #22d3ee); }
+.sr-driver-static { background: transparent; border-color: transparent; }
+.sr-dot { width: 12px; height: 12px; box-shadow: 0 0 0 2px rgba(255, 255, 255, .18); }
+.sr-dur-input { text-decoration: none; }
+.sr-sub { order: 5; flex: 1 0 100%; }
+#driverScheduleList { gap: 5px !important; }
+
+/* Wide enough: one line per stint so 25–30 stops fit without endless scrolling. */
+@media (min-width: 620px) {
+    .stint-row { flex-direction: row; align-items: center; padding: 3px 8px 3px 2px; gap: 0; }
+    .sr-main { flex: 1; min-width: 0; flex-wrap: nowrap; gap: 8px; }
+    .sr-sub { order: 0; flex: 0 1 auto; width: 210px; min-width: 0; padding-inline-start: 0; gap: 2px 8px; font-size: 12px; line-height: 1.25; }
+    .sr-handle, .sr-driver, .sr-step, .sr-move-btn { min-height: 40px; height: 40px; }
+    .sr-driver { flex: 1 1 130px; max-width: 220px; font-size: 14px; }
+    .sr-step-btn { width: 40px; }
+    .sr-dur-input { width: 48px; }
+    .sr-move-btn { width: 38px; }
+    .sr-num-done { margin-left: 28px; }
+}

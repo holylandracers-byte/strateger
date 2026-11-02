@@ -45,7 +45,7 @@ window._effectiveDriverSlots = function() {
     // Pad with placeholders until we have at least 2 slots
     let phIdx = 0;
     while (slots.length < 2) {
-        slots.push({ name: ph[phIdx], color: '#4b5563', _placeholder: true });
+        slots.push({ name: ph[phIdx], color: ['#22d3ee', '#a3e635', '#f97316', '#a78bfa', '#f472b6', '#facc15'][(slots.length) % 6], _placeholder: true });
         phIdx++;
     }
     return slots;
@@ -1031,9 +1031,9 @@ window.renderPreview = function() {
                     <div class="sr-main">
                         <span class="sr-num sr-num-done" title="${tr('stintActualDone', 'Done')}"><i class="fas fa-check"></i></span>
                         <span class="sr-driver sr-driver-static"><span class="sr-dot"></span><span class="sr-name">${esc(stint.driverName)}</span></span>
+                        <div class="sr-sub"><span>${startTimeStr}${arrow}${endTimeStr}</span>${checkeredFlag}${pitIndicator}<span class="sr-done-tag">${tr('stintDoneTag', 'Done')}</span></div>
                         <span class="sr-dur-static" title="${tr('actualDuration', 'Actual duration')}">${durationMin}m</span>
                     </div>
-                    <div class="sr-sub"><span>${startTimeStr}${arrow}${endTimeStr}</span>${checkeredFlag}${pitIndicator}<span class="sr-done-tag">${tr('stintDoneTag', 'Done')}</span></div>
                 </div>
             `;
         }
@@ -1052,6 +1052,7 @@ window.renderPreview = function() {
                     <button type="button" class="sr-driver stint-driver-swap" data-stint-index="${index}" onclick="event.stopPropagation();window.openStintDriverPicker(${index})" aria-label="${tr('swapDriver', 'Swap driver')}: ${esc(stint.driverName)}">
                         <span class="sr-dot"></span><span class="sr-name">${esc(stint.driverName)}</span><i class="fas fa-chevron-down sr-caret"></i>
                     </button>
+                    <div class="sr-sub">${stint._current ? `<span class="sr-now"><span class="sr-now-dot"></span>${tr('stintInProgress', 'In progress')}</span>` : ''}<span>${startTimeStr}${arrow}${endTimeStr}</span>${checkeredFlag}${pitIndicator}${stintForecastTag}${ruleNote}</div>
                     <div class="sr-step">
                         <button type="button" class="sr-step-btn" onclick="window.nudgeStint(${index}, -1)" aria-label="-1 min"><i class="fas fa-minus"></i></button>
                         <input type="number" inputmode="numeric" value="${durationMin}" min="${minStintMin}" max="${maxStintMin}" aria-label="${tr('lblStintMinutes', 'Stint minutes')}"
@@ -1063,7 +1064,6 @@ window.renderPreview = function() {
                         <button type="button" class="sr-move-btn" onclick="window.moveStint(${index}, 1)" ${canMoveDown ? '' : 'disabled'} aria-label="${tr('moveDown', 'Move down')}"><i class="fas fa-chevron-down"></i></button>
                     </div>
                 </div>
-                <div class="sr-sub">${stint._current ? `<span class="sr-now"><span class="sr-now-dot"></span>${tr('stintInProgress', 'In progress')}</span>` : ''}<span>${startTimeStr}${arrow}${endTimeStr}</span>${checkeredFlag}${pitIndicator}${stintForecastTag}${ruleNote}</div>
             </div>
         `;
     }).join('');
