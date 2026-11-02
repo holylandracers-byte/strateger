@@ -191,7 +191,7 @@ window.renderRuleNotes = function() {
     const r = window.raceRules;
     const esc = window._escHtml;
     card.innerHTML =
-        '<div class="rule-head" style="cursor:default"><span class="rule-title">Custom race rules</span><span class="rule-note" style="color:#c4b5fd">applied to the strategy</span></div>'
+        '<div class="rule-head" style="cursor:default"><span class="rule-title">' + window.tt('Custom race rules') + '</span><span class="rule-note" style="color:#c4b5fd">' + window.tt('applied to the strategy') + '</span></div>'
         + '<div class="set-sublabel" style="margin-top:4px">Pit lane closed windows (minutes from race start)</div>'
         + '<div class="rule-windows">'
         + r.closedWindows.map(function(w, i) {
@@ -201,12 +201,12 @@ window.renderRuleNotes = function() {
         }).join('')
         + '</div><button type="button" id="ruleAddWindow" class="rule-add"><i class="fas fa-plus"></i> Add closed window</button>'
         + '<div class="set-grid-2">'
-        + '<div><label class="set-sublabel" for="ruleMinStints">Min stints per driver</label><input type="number" min="0" id="ruleMinStints" class="input-field" value="' + r.minStintsPerDriver + '"></div>'
-        + '<div><label class="set-sublabel" for="ruleMaxStints">Max stints per driver</label><input type="number" min="0" id="ruleMaxStints" class="input-field" value="' + r.maxStintsPerDriver + '"></div>'
+        + '<div><label class="set-sublabel" for="ruleMinStints">' + window.tt('Min stints per driver') + '</label><input type="number" min="0" id="ruleMinStints" class="input-field" value="' + r.minStintsPerDriver + '"></div>'
+        + '<div><label class="set-sublabel" for="ruleMaxStints">' + window.tt('Max stints per driver') + '</label><input type="number" min="0" id="ruleMaxStints" class="input-field" value="' + r.maxStintsPerDriver + '"></div>'
         + '</div>'
         + (r.notes.length
             ? '<div class="rule-body"><div class="rule-head" style="min-height:0;cursor:default"><span class="rule-title" style="font-size:13px">Other rules <span class="rule-note" style="color:#94a3b8">checklist, not calculated</span></span>'
-                + '<button type="button" id="ruleClearNotes" class="rule-add" style="margin:0">Clear</button></div><ul class="rule-notes">'
+                + '<button type="button" id="ruleClearNotes" class="rule-add" style="margin:0">' + window.tt('Clear') + '</button></div><ul class="rule-notes">'
                 + r.notes.map(function(n) { return '<li>' + esc(n) + '</li>'; }).join('') + '</ul></div>'
             : '')
         + '<div id="ruleStatus" class="rule-status"></div>';
@@ -267,18 +267,18 @@ window._showRulesProposal = function(text) {
     ov.className = 'fixed inset-0 bg-black/85 flex items-center justify-center p-4';
     ov.style.zIndex = 210;
     ov.innerHTML = '<div class="bg-navy-900 border border-purple-500/40 rounded-2xl shadow-2xl max-w-lg w-full p-5 space-y-3 max-h-[90vh] overflow-y-auto">'
-        + '<div class="text-base font-black text-white">Rules found in the regulations</div>'
-        + '<div class="text-[11px] text-gray-500">Untick anything that is wrong. Applied rules change the strategy.</div>'
+        + '<div class="text-base font-black text-white">' + window.tt('Rules found in the regulations') + '</div>'
+        + '<div class="text-[11px] text-gray-500">' + window.tt('Untick anything that is wrong. Applied rules change the strategy.') + '</div>'
         + '<div class="space-y-1">'
         + settings.map(function(kv) { return row('data-rule-key="' + kv[0] + '" data-rule-val="' + Number(kv[1]) + '"', window._RULE_FIELDS[kv[0]], document.getElementById(kv[0]).value || '—', Number(kv[1])); }).join('')
-        + wins.map(function(w, i) { return row('data-rule-win="' + i + '"', 'Pit lane closed (min from start)', '—', w[0] + '–' + w[1]); }).join('')
-        + (minStints ? row('data-rule-minstints="' + minStints + '"', 'Min stints per driver', window.raceRules.minStintsPerDriver || '—', minStints) : '')
-        + (maxStints ? row('data-rule-maxstints="' + maxStints + '"', 'Max stints per driver', window.raceRules.maxStintsPerDriver || '—', maxStints) : '')
+        + wins.map(function(w, i) { return row('data-rule-win="' + i + '"', window.tt('Pit lane closed (min from start)'), '—', w[0] + '–' + w[1]); }).join('')
+        + (minStints ? row('data-rule-minstints="' + minStints + '"', window.tt('Min stints per driver'), window.raceRules.minStintsPerDriver || '—', minStints) : '')
+        + (maxStints ? row('data-rule-maxstints="' + maxStints + '"', window.tt('Max stints per driver'), window.raceRules.maxStintsPerDriver || '—', maxStints) : '')
         + '</div>'
-        + (notes.length ? '<div><div class="text-xs font-bold text-purple-300 mb-1">Also noted (kept as a checklist)</div><ul class="space-y-1">'
+        + (notes.length ? '<div><div class="text-xs font-bold text-purple-300 mb-1">' + window.tt('Also noted (kept as a checklist)') + '</div><ul class="space-y-1">'
             + notes.map(function(n) { return '<li class="text-xs text-gray-300">• ' + esc(n) + '</li>'; }).join('') + '</ul></div>' : '')
-        + '<div class="flex gap-2 pt-1"><button type="button" id="rulesProposalNo" class="flex-1 bg-navy-800 border border-gray-600 text-gray-300 font-bold py-2 rounded-lg text-sm">Dismiss</button>'
-        + '<button type="button" id="rulesProposalYes" class="flex-1 bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 rounded-lg text-sm">Apply to setup</button></div></div>';
+        + '<div class="flex gap-2 pt-1"><button type="button" id="rulesProposalNo" class="flex-1 bg-navy-800 border border-gray-600 text-gray-300 font-bold py-2 rounded-lg text-sm">' + window.tt('Dismiss') + '</button>'
+        + '<button type="button" id="rulesProposalYes" class="flex-1 bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 rounded-lg text-sm">' + window.tt('Apply to setup') + '</button></div></div>';
     document.body.appendChild(ov);
     ov.querySelector('#rulesProposalNo').onclick = function() { ov.remove(); };
     ov.querySelector('#rulesProposalYes').onclick = function() {

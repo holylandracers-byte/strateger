@@ -842,7 +842,7 @@ window.runSim = function() {
 window.generatePreview = function(silent, render) {
     if (!window.cachedStrategy) {
         window.runSim();
-        if (!window.cachedStrategy) return window.showToast('Please configure race settings first.', 'warning');
+        if (!window.cachedStrategy) return window.showToast(window.tt('Please configure race settings first.'), 'warning');
     }
 
     if (render && typeof window.renderPreview === 'function') {
@@ -856,7 +856,7 @@ window.generatePreview = function(silent, render) {
 window.initRace = function() {
     if (!window.cachedStrategy) {
         window.runSim();
-        if (!window.cachedStrategy) return window.showToast('Please generate a strategy first!', 'warning');
+        if (!window.cachedStrategy) return window.showToast(window.tt('Please generate a strategy first!'), 'warning');
     }
 
     const allowDouble = document.getElementById('allowDouble')?.checked;

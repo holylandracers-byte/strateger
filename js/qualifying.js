@@ -249,7 +249,7 @@ window.updateQualifyPreview = function() {
         window._rebuildQOneDriverSelect();
     }
 
-    if (!drivers.length) { preview.innerHTML = '<span class="text-gray-500">Add drivers to see qualifying strategy</span>'; return; }
+    if (!drivers.length) { preview.innerHTML = '<span class="text-gray-500">' + window.tt('Add drivers to see qualifying strategy') + '</span>'; return; }
 
     let activeDrivers;
     if (cfg.participation === 'one') {
@@ -290,7 +290,7 @@ window.updateQualifyPreview = function() {
 window.startQualifyingDirect = function() {
     if (typeof window.updateDriversFromUI === 'function') window.updateDriversFromUI();
     const drivers = window.drivers || [];
-    if (!drivers.length) { window.showToast && window.showToast('Add drivers first!', 'warning'); return; }
+    if (!drivers.length) { window.showToast && window.showToast(window.tt('Add drivers first!'), 'warning'); return; }
 
     const cfg = window._qualifyConfig;
     const durationMin = parseInt(document.getElementById('qualifyDuration')?.value) || 15;
@@ -370,7 +370,7 @@ window._qualifyRenderStageResults = function() {
     const fmt = ms => { const s = Math.floor(ms/1000); return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`; };
     const status = window._qualifyTeamStatus;
     const drivers = Object.keys(status);
-    if (!drivers.length) { el.innerHTML = '<div class="p-3 text-xs text-gray-600">No logged runs yet</div>'; return; }
+    if (!drivers.length) { el.innerHTML = '<div class="p-3 text-xs text-gray-600">' + window.tt('No logged runs yet') + '</div>'; return; }
     const sorted = drivers.slice().sort((a, b) => {
         const bestA = status[a].times.length ? Math.min(...status[a].times) : Infinity;
         const bestB = status[b].times.length ? Math.min(...status[b].times) : Infinity;
@@ -447,7 +447,7 @@ window._qualifyRenderTick = function() {
             const upcoming = qs.schedule.slice(qs.currentIdx + 1, qs.currentIdx + 4);
             nextList.innerHTML = upcoming.length
                 ? upcoming.map(x => `<div class="flex items-center gap-2 text-gray-400"><span class="w-2 h-2 rounded-full shrink-0" style="background:${x.color||'#4ade80'}"></span>${x.driverName} <span class="text-[11px] text-gray-600 ml-auto">Run ${x.run}</span></div>`).join('')
-                : `<span class="text-gray-600 text-xs">Last run</span>`;
+                : `<span class="text-gray-600 text-xs">${window.tt('Last run')}</span>`;
         }
     }
 
@@ -513,7 +513,7 @@ window._qualifyRenderRaceLikeWidgets = function(runLeftMs) {
         });
 
         if (rows.length === 0) {
-            statsEl.innerHTML = `<tr><td colspan="3" class="p-2 text-center text-gray-600 text-[11px]">No runs yet</td></tr>`;
+            statsEl.innerHTML = `<tr><td colspan="3" class="p-2 text-center text-gray-600 text-[11px]">${window.tt('No runs yet')}</td></tr>`;
         } else {
             statsEl.innerHTML = rows.map(r => `
                 <tr>
@@ -733,8 +733,8 @@ window._showQualifyHandoff = function() {
     ov.style.zIndex = 210;
     ov.setAttribute('role', 'dialog');
     ov.innerHTML = '<div class="bg-navy-900 border border-blue-500/40 rounded-2xl shadow-2xl max-w-md w-full p-5 space-y-4">'
-        + '<div><div class="text-[11px] font-black text-blue-300 uppercase tracking-widest">Qualifying complete</div>'
-        + '<div class="text-xl font-black text-white mt-1">Ready for the race</div></div>'
+        + '<div><div class="text-[11px] font-black text-blue-300 uppercase tracking-widest">' + window.tt('Qualifying complete') + '</div>'
+        + '<div class="text-xl font-black text-white mt-1">' + window.tt('Ready for the race') + '</div></div>'
         + '<div class="grid grid-cols-2 gap-2 text-center">'
         + '<div class="bg-navy-950 border border-gray-700 rounded-lg p-2"><div class="text-[11px] text-gray-500">GRID</div><div class="text-2xl font-black text-ice">' + (window._qualifyResult.position ? 'P' + window._qualifyResult.position : '—') + '</div></div>'
         + '<div class="bg-navy-950 border border-gray-700 rounded-lg p-2"><div class="text-[11px] text-gray-500">BEST LAP</div><div class="text-lg font-mono text-neon">' + (window._qualifyResult.bestLap ? fmt(window._qualifyResult.bestLap) : '—') + '</div></div></div>'
@@ -742,7 +742,7 @@ window._showQualifyHandoff = function() {
         + (ready ? '' : '<br><span class="text-amber-400">Plan is not valid yet — adjust the race settings first.</span>') + '</div>'
         + '<div class="flex flex-col gap-2">'
         + '<button type="button" id="qhStart" class="w-full bg-neon hover:bg-green-400 text-black font-black py-3 rounded-xl text-base uppercase tracking-wider disabled:opacity-40"' + (ready ? '' : ' disabled') + '>▶ Start race now</button>'
-        + '<button type="button" id="qhEdit" class="w-full bg-navy-800 border border-gray-600 text-gray-200 font-bold py-2.5 rounded-xl text-sm">Adjust the race plan first</button></div></div>';
+        + '<button type="button" id="qhEdit" class="w-full bg-navy-800 border border-gray-600 text-gray-200 font-bold py-2.5 rounded-xl text-sm">' + window.tt('Adjust the race plan first') + '</button></div></div>';
     document.body.appendChild(ov);
     ov.querySelector('#qhEdit').onclick = function() { ov.remove(); };
     ov.querySelector('#qhStart').onclick = function() {

@@ -287,7 +287,7 @@ window.createDriverInput = function(val, checked, squad) {
     // ── Drag handle ──
     const dragHandle = document.createElement('div');
     dragHandle.className = 'driver-drag-handle';
-    dragHandle.title = 'Drag to reorder';
+    dragHandle.title = window.t('dragToReorder');
     dragHandle.innerHTML = '<svg viewBox="0 0 16 16" fill="currentColor" width="12" height="12"><path d="M2 4h12v1.5H2zm0 3h12v1.5H2zm0 3h12V12H2z"/></svg>';
     dragHandle.addEventListener('mousedown',  (e) => window._driverDragStart(e, div), { passive: false });
     dragHandle.addEventListener('touchstart',  (e) => window._driverDragStart(e, div), { passive: false });
@@ -765,7 +765,7 @@ window.setPageBackground = function(bg) {
             window.showProGate('Photo Themes');
         }
         if (typeof window.showToast === 'function') {
-            window.showToast('Photo themes are available for Pro users', 'warning', 2500);
+            window.showToast(window.tt('Photo themes are available for Pro users'), 'warning', 2500);
         }
         return;
     }
@@ -879,7 +879,7 @@ window.toggleThemePanel = function() {
             const locked = isPhoto && !window._proUnlocked && !window._trialActive;
             s.classList.toggle('opacity-50', locked);
             s.classList.toggle('cursor-not-allowed', locked);
-            s.title = locked ? `${s.title || 'Photo'} (Pro)` : (s.title || '');
+            s.title = locked ? `${s.title || window.tt('Photo')} (Pro)` : (s.title || '');
         });
         // Show/hide custom photo upload based on Pro status
         const isPro = window._proUnlocked || window._trialActive;
@@ -1342,7 +1342,7 @@ window.updateStats = function(currentStintMs) {
             logCell.colSpan = 4;
             logCell.className = "bg-navy-950 p-2 text-[11px]";
             
-            let logsHtml = '<div class="stat-log-grid text-gray-500 border-b border-gray-700 pb-1 mb-1"><span>#</span><span>Drive</span><span>Pit</span></div>';
+            let logsHtml = '<div class="stat-log-grid text-gray-500 border-b border-gray-700 pb-1 mb-1"><span>#</span><span>' + window.tt('Drive') + '</span><span>' + window.tt('Pit') + '</span></div>';
             
             // לוגים היסטוריים (מה שנשמר ב-main.js)
             if (d.logs && d.logs.length > 0) {
@@ -1369,7 +1369,7 @@ window.updateStats = function(currentStintMs) {
             }
             
             if ((!d.logs || d.logs.length === 0) && (!isCurrent || window.state.isInPit)) {
-                 logsHtml += '<div class="text-center text-gray-600 py-1">No history</div>';
+                 logsHtml += '<div class="text-center text-gray-600 py-1">' + window.tt('No history') + '</div>';
             }
 
             logCell.innerHTML = logsHtml;
@@ -1662,7 +1662,7 @@ window.performStrategySave = async function() {
     const name = document.getElementById('saveStrategyName').value || 'Untitled';
     const visibility = document.querySelector('input[name="strategyVisibility"]:checked')?.value || 'private';
     
-    if (!window.cachedStrategy) return window.showToast("No strategy generated yet!", 'warning');
+    if (!window.cachedStrategy) return window.showToast(window.tt('No strategy generated yet!'), 'warning');
 
     // הכנת הנתונים לשליחה לשרת
     const payload = {
@@ -1784,7 +1784,7 @@ window.renderStrategyList = function(strategies) {
         list.innerHTML = `
             <div class="text-center py-8 opacity-50">
                 <div class="text-4xl mb-2">📂</div>
-                <div class="text-sm">No saved strategies found.</div>
+                <div class="text-sm">${window.tt('No saved strategies found.')}</div>
             </div>`;
         return;
     }
@@ -1806,7 +1806,7 @@ window.renderStrategyList = function(strategies) {
                 </div>
             </div>
             <div class="flex gap-2">
-                <button onclick="window.applyStrategy(${index})" class="bg-ice/20 text-ice px-3 py-1.5 rounded text-xs font-bold hover:bg-ice/40 transition">Load</button>
+                <button onclick="window.applyStrategy(${index})" class="bg-ice/20 text-ice px-3 py-1.5 rounded text-xs font-bold hover:bg-ice/40 transition">${window.tt('Load')}</button>
                 <button onclick="window.deleteStrategy(${index})" class="text-gray-600 hover:text-red-400 text-xs px-2 transition"><i class="fas fa-trash"></i></button>
             </div>
         </div>
@@ -1820,7 +1820,7 @@ window.applyStrategy = function(index) {
         const strategy = strategies[index];
         
         if (!strategy) {
-            window.showToast('Strategy not found!', 'error');
+            window.showToast(window.tt('Strategy not found!'), 'error');
             return;
         }
 
@@ -2135,7 +2135,7 @@ window.joinChat = function() {
         // Try to use the approved viewer name
         name = localStorage.getItem('strateger_viewer_name') || localStorage.getItem('strateger_chat_name');
     }
-    if (!name) return window.showToast('Name required', 'warning');
+    if (!name) return window.showToast(window.tt('Name required'), 'warning');
     
     // If viewer is already approved, skip approval request — go straight to chat
     if (window.viewerApprovalStatus === 'approved') {
@@ -2204,7 +2204,7 @@ window.onNameAccepted = function(name) {
 // Called when the host rejects the viewer's name
 window.onNameRejected = function(message) {
     const joinErr = document.getElementById('chatJoinError');
-    if (joinErr) { joinErr.classList.remove('hidden'); joinErr.innerText = message || 'Name rejected by host'; }
+    if (joinErr) { joinErr.classList.remove('hidden'); joinErr.innerText = message || window.tt('Name rejected by host'); }
     // Keep the login view visible so the user can choose a new name
     document.getElementById('chatLoginView').classList.remove('hidden');
     if (window.role === 'client') {
@@ -2676,14 +2676,14 @@ window.onLocationInput = function(value) {
             const results = [...aliasMatches, ...geoResults].slice(0, 12);
             if (spinner) spinner.classList.add('hidden');
             if (!results.length) {
-                dropdown.innerHTML = `<div class="px-3 py-2.5 text-[11px] text-gray-500">No locations found</div>`;
+                dropdown.innerHTML = `<div class="px-3 py-2.5 text-[11px] text-gray-500">${window.tt('No locations found')}</div>`;
                 dropdown.classList.remove('hidden');
                 return;
             }
             window._locationAutocompleteResults = results;
             dropdown.innerHTML = results.map((place, i) => {
                 const icon = place._isTrack ? '🏁' : '📍';
-                const sub = place._isTrack ? `<span class="text-blue-400 text-[11px] ml-1">Racing circuit</span>` : (place.country ? `<span class="text-gray-400 text-xs ml-1">${place.country}</span>` : '');
+                const sub = place._isTrack ? `<span class="text-blue-400 text-[11px] ml-1">${window.tt('Racing circuit')}</span>` : (place.country ? `<span class="text-gray-400 text-xs ml-1">${place.country}</span>` : '');
                 return `<div class="px-3 py-2.5 cursor-pointer hover:bg-navy-800 border-b border-gray-700/40 last:border-0 flex items-center gap-2" onmousedown="window.selectLocationSuggestion(${i})"><span class="text-sm shrink-0">${icon}</span><span class="min-w-0"><span class="font-bold text-white text-sm break-words whitespace-normal">${place.name}</span>${sub}</span></div>`;
             }).join('');
             dropdown.classList.remove('hidden');
@@ -3103,7 +3103,7 @@ window.initHorizontalPanels = function() {
 
             const btn = document.createElement('button');
             btn.className = 'dash-panel-move-btn';
-            btn.title = targetKey === 'right' ? 'Move to right panel' : 'Move to left panel';
+            btn.title = targetKey === 'right' ? window.tt('Move to right panel') : window.tt('Move to left panel');
             btn.innerHTML = targetKey === 'right' ? '⇥' : '⇤';
             btn.onclick = (e) => {
                 e.stopPropagation();

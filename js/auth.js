@@ -97,7 +97,7 @@ window.initGoogleAuth = function() {
 
 // --- Sign In ---
 window.googleSignIn = async function() {
-    if (typeof google === 'undefined') return window.showToast('Google API not loaded.', 'error');
+    if (typeof google === 'undefined') return window.showToast(window.tt('Google API not loaded.'), 'error');
     
     const client = google.accounts.oauth2.initTokenClient({
         client_id: GOOGLE_CLIENT_ID,
@@ -190,14 +190,14 @@ window.updateGoogleUI = function(signedIn) {
         const name = document.getElementById('googleNameSmall');
         
         if (avatar) avatar.src = googleUser.picture || '';
-        if (name) name.innerText = googleUser.name ? googleUser.name.split(' ')[0] : 'User';
+        if (name) name.innerText = googleUser.name ? googleUser.name.split(' ')[0] : window.tt('User');
         
     } else {
         if (btn) btn.classList.remove('hidden');
         if (userDisplay) userDisplay.classList.add('hidden');
         if (actionsBar) actionsBar.classList.add('hidden');
         if (statusEl) {
-            statusEl.innerText = 'Not connected';
+            statusEl.innerText = window.tt('Not connected');
             statusEl.className = 'text-[11px] text-gray-500';
         }
     }
@@ -235,7 +235,7 @@ window.sendTeamEmail = async function() {
     let message = document.getElementById('emailMessage').value;
     const attachStrategy = document.getElementById('attachStrategy').checked;
     
-    if (!recipients || !subject) return window.showToast('Missing fields', 'warning');
+    if (!recipients || !subject) return window.showToast(window.tt('Missing fields'), 'warning');
 
     localStorage.setItem('strateger_email_recipients', recipients);
 
@@ -285,7 +285,7 @@ window.sendTeamEmail = async function() {
 };
 
 window.shareStrategyEmail = function() {
-    if (!window.cachedStrategy && !window.previewData) return window.showToast('Generate strategy first', 'warning');
+    if (!window.cachedStrategy && !window.previewData) return window.showToast(window.tt('Generate strategy first'), 'warning');
     window.showTeamEmailModal();
     const subInput = document.getElementById('emailSubject');
     if(subInput) subInput.value = '🏎️ Race Strategy Plan';
@@ -406,7 +406,7 @@ window.createCalendarEvent = async function() {
     const location = document.getElementById('calendarLocation').value;
     const useRange = document.getElementById('calendarUseRange').checked;
     
-    if (!title || !date || !time) return window.showToast('Missing required fields', 'warning');
+    if (!title || !date || !time) return window.showToast(window.tt('Missing required fields'), 'warning');
     
     const startDateTime = new Date(`${date}T${time}`);
     let endDateTime;
@@ -416,7 +416,7 @@ window.createCalendarEvent = async function() {
         const endTime = document.getElementById('calendarEndTime').value;
         if (!endDate || !endTime) return window.showToast('Please fill in end date and time for date range', 'warning');
         endDateTime = new Date(`${endDate}T${endTime}`);
-        if (endDateTime <= startDateTime) return window.showToast('End date/time must be after start date/time', 'warning');
+        if (endDateTime <= startDateTime) return window.showToast(window.tt('End date/time must be after start date/time'), 'warning');
     } else {
         const raceDur = parseFloat(document.getElementById('raceDuration')?.value || 12);
         endDateTime = new Date(startDateTime.getTime() + raceDur * 60 * 60 * 1000);

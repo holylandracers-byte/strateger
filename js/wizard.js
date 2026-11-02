@@ -42,7 +42,11 @@
     function numField(id, label, { min = 0, step = 1, hint = '' } = {}) {
         return `<div class="wz-field">
             <label class="wz-label" for="wz_${id}">${esc(label)}</label>
-            <input class="wz-input" id="wz_${id}" type="number" inputmode="decimal" min="${min}" step="${step}" value="${esc(getReal(id))}" data-real="${id}">
+            <div class="wz-stepper">
+                <button type="button" class="wz-step-btn" data-bump="-${step}" data-for="${id}" data-min="${min}" aria-label="-">&minus;</button>
+                <input class="wz-input" id="wz_${id}" type="number" inputmode="decimal" min="${min}" step="${step}" value="${esc(getReal(id))}" data-real="${id}">
+                <button type="button" class="wz-step-btn" data-bump="${step}" data-for="${id}" data-min="${min}" aria-label="+">+</button>
+            </div>
             ${hint ? `<p class="wz-hint">${esc(hint)}</p>` : ''}
         </div>`;
     }
@@ -130,14 +134,14 @@
             const on = window._driverGroupParticipants || new Set();
             const names = pool.filter(d => on.has(d.name)).map(d => d.name).join(', ') || '—';
             const rows = [
-                [t('xWzType'), state.mode === 'qualify' ? t('xWzQuali') : t('xWzRaceOnly')],
-                [t('xWzDuration'), getReal('raceDuration', '12') + 'h'],
-                [t('xPitStops'), getReal('reqPitStops', '—')],
-                [t('xWzDrivers'), names],
-                [t('lblMinStint') + ' / ' + t('lblMaxStint'), getReal('minStint') + ' – ' + getReal('maxStint')]
+                ['type', t('xWzType'), state.mode === 'qualify' ? t('xWzQuali') : t('xWzRaceOnly')],
+                ['basics', t('xWzDuration'), getReal('raceDuration', '12') + 'h'],
+                ['basics', t('xPitStops'), getReal('reqPitStops', '—')],
+                ['drivers', t('xWzDrivers'), names],
+                ['rules', t('lblMinStint') + ' / ' + t('lblMaxStint'), getReal('minStint') + ' – ' + getReal('maxStint')]
             ];
             return `<h3 class="wz-q">${esc(t('xWzReady'))}</h3>
-                <dl class="wz-sum">${rows.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>`;
+                <dl class="wz-sum">${rows.map(([id, k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd><button type="button" class="wz-edit" data-goto="${id}">${esc(t('xWzEdit'))}</button></div>`).join('')}</dl>`;
         }
     };
 
@@ -153,11 +157,13 @@
             `<li class="${i === state.step ? 'is-now' : i < state.step ? 'is-done' : ''}"${i === state.step ? ' aria-current="step"' : ''}>
                 <span class="wz-dot">${i < state.step ? '<i class="fas fa-check"></i>' : i + 1}</span>
                 <span class="wz-step-name">${esc(t(s.label))}</span></li>`).join('');
+        root.querySelector('.wz-count').textContent = t('xWzStepOf').replace('{{a}}', state.step + 1).replace('{{b}}', list.length);
+        root.querySelector('.wz-bar-fill').style.width = ((state.step + 1) / list.length * 100) + '%';
         root.querySelector('.wz-body').innerHTML = bodies[cur.id]();
+        syncStyleSwitch();
         root.querySelector('.wz-back').style.visibility = state.step === 0 ? 'hidden' : 'visible';
         root.querySelector('.wz-back').textContent = t('xBack');
         root.querySelector('.wz-next').textContent = last ? t('xWzBuild') : t('xWzNext');
-        root.querySelector('.wz-skip').textContent = t('xWzSkip');
         root.querySelector('.wz-title').textContent = t('xWzTitle');
         root.querySelector('.wz-body').scrollTop = 0;
     }
@@ -168,6 +174,19 @@
             state.mode = modeBtn.dataset.mode;
             if (window.setSessionMode) window.setSessionMode(state.mode);
             return render();
+        }
+        const bump = e.target.closest('[data-bump]');
+        if (bump) {
+            const inp = $('wz_' + bump.dataset.for);
+            const v = Math.max(parseFloat(bump.dataset.min) || 0, (parseFloat(inp.value) || 0) + parseFloat(bump.dataset.bump));
+            inp.value = v;
+            return setReal(bump.dataset.for, v);
+        }
+        const go = e.target.closest('[data-goto]');
+        if (go) {
+            const idx = steps().findIndex(x => x.id === go.dataset.goto);
+            if (idx >= 0) { state.step = idx; render(); }
+            return;
         }
         const hours = e.target.closest('[data-hours]');
         if (hours) { setReal('raceDuration', hours.dataset.hours); return render(); }
@@ -215,6 +234,7 @@
     }
 
     function close(markSeen) {
+        syncStyleSwitch();
         const root = $('raceWizard');
         if (root) root.classList.add('hidden');
         document.body.classList.remove('wz-open');
@@ -232,8 +252,10 @@
             <div class="wz-sheet">
                 <header class="wz-head">
                     <h2 class="wz-title"></h2>
-                    <button type="button" class="wz-skip"></button>
+                    <span class="wz-count"></span>
                 </header>
+                <div class="wz-style-row">${styleSwitchHtml()}</div>
+                <div class="wz-bar"><div class="wz-bar-fill"></div></div>
                 <ol class="wz-progress"></ol>
                 <div class="wz-body"></div>
                 <footer class="wz-foot">
@@ -248,13 +270,43 @@
         });
         root.querySelector('.wz-next').onclick = next;
         root.querySelector('.wz-back').onclick = () => { if (state.step > 0) { state.step--; render(); } };
-        root.querySelector('.wz-skip').onclick = () => close(true);
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && !root.classList.contains('hidden')) close(true);
+            if (e.key === 'Escape' && !root.classList.contains('hidden')) window.setSetupStyle('full');
         });
         document.body.appendChild(root);
         return root;
     }
+
+    // Setup style: Guided (this wizard) vs Full setup (the long page). Remembered per device.
+    const STYLE_KEY = 'strateger_setup_style';
+    const getStyle = () => { try { return localStorage.getItem(STYLE_KEY) || ''; } catch (e) { return ''; } };
+
+    function styleSwitchHtml() {
+        return `<div class="wz-style" role="group" aria-label="${esc(t('xStyleLabel'))}">
+            <button type="button" class="wz-style-btn" data-style="guided" onclick="window.setSetupStyle('guided')"><i class="fas fa-route"></i><span data-i18n="xStyleGuided">${esc(t('xStyleGuided'))}</span></button>
+            <button type="button" class="wz-style-btn" data-style="full" onclick="window.setSetupStyle('full')"><i class="fas fa-sliders-h"></i><span data-i18n="xStyleFull">${esc(t('xStyleFull'))}</span></button>
+        </div>`;
+    }
+
+    function syncStyleSwitch() {
+        const cur = getStyle() || 'full';
+        document.querySelectorAll('[data-style]').forEach(b => {
+            const on = b.dataset.style === cur;
+            b.classList.toggle('is-on', on);
+            b.setAttribute('aria-pressed', on ? 'true' : 'false');
+        });
+    }
+
+    window.setSetupStyle = function (style) {
+        try { localStorage.setItem(STYLE_KEY, style); localStorage.setItem(SEEN_KEY, '1'); } catch (e) {}
+        syncStyleSwitch();
+        if (style === 'guided') window.openRaceWizard();
+        else close(false);
+    };
+    window.addEventListener('DOMContentLoaded', () => {
+        const slot = document.getElementById('setupStyleSlot');
+        if (slot) { slot.innerHTML = styleSwitchHtml(); syncStyleSwitch(); }
+    });
 
     window.openRaceWizard = function () {
         const root = build();
@@ -265,10 +317,13 @@
         render();
     };
 
-    // Once, after the first-run tour is done: offer the wizard, on the setup screen, never mid-race.
+    // After the first-run tour: open the wizard if Guided is chosen (or never decided yet), on the setup screen, never mid-race.
     window.addEventListener('load', () => {
         setTimeout(() => {
-            try { if (localStorage.getItem(SEEN_KEY) || localStorage.getItem('strateger_onboarded') !== 'true') return; } catch (e) { return; }  // first-run language picker + tour go first
+            try { if (localStorage.getItem('strateger_onboarded') !== 'true') return; } catch (e) { return; }  // first-run language picker + tour go first
+            const style = getStyle();
+            if (style === 'full') return;                 // chose the full page: respect it
+            try { if (!style && localStorage.getItem(SEEN_KEY)) return; } catch (e) { return; }
             const setup = $('setupScreen');
             if (setup && !setup.classList.contains('hidden') && window.role !== 'client' && window.role !== 'viewer') window.openRaceWizard();
         }, 900);

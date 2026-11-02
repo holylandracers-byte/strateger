@@ -167,7 +167,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window._qualifyRenderTick && window._qualifyRenderTick();
             if (window._qualifyInterval) clearInterval(window._qualifyInterval);
             window._qualifyInterval = setInterval(window._qualifyRenderTick, 500);
-            window.showToast && window.showToast('Qualifying session restored', 'info', 3000);
+            window.showToast && window.showToast(window.tt('Qualifying session restored'), 'info', 3000);
         }
     }
     
@@ -192,7 +192,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const muteBtn = document.getElementById('muteToggleBtn');
     if (muteBtn && window._soundMuted) {
         muteBtn.innerHTML = '<i class="fas fa-volume-mute"></i><span>' + (window.t ? window.t('menuSoundOff') : 'Sound off') + '</span>';
-        muteBtn.title = 'Unmute';
+        muteBtn.title = window.tt('Unmute');
     }
 
     // First-visit language picker + guided walkthrough (host only)
@@ -2840,7 +2840,7 @@ window.submitDriverId = function() {
     // Hide entry screen, show connecting screen
     document.getElementById('driverEntryScreen').classList.add('hidden');
     document.getElementById('clientWaitScreen').classList.remove('hidden');
-    document.getElementById('clientWaitScreen').innerHTML = '<div class="flex flex-col items-center justify-center gap-2"><div class="text-3xl animate-pulse font-bold text-ice">🏎️ Connecting...</div><div class="text-sm text-gray-500 mt-2">Joining race as driver</div></div>';
+    document.getElementById('clientWaitScreen').innerHTML = '<div class="flex flex-col items-center justify-center gap-2"><div class="text-3xl animate-pulse font-bold text-ice">🏎️ ' + window.t('connecting') + '</div><div class="text-sm text-gray-500 mt-2">' + window.tt('Joining race as driver') + '</div></div>';
     
     if (typeof window.connectToHost === 'function') window.connectToHost(code);
 };
@@ -4362,7 +4362,7 @@ window.shareRaceSummary = function() {
         navigator.clipboard.writeText(text).then(() => {
             window.showToast(t('copied') || 'Copied to clipboard!', 'success');
         }).catch(() => {
-            window.showToast('Could not copy', 'error');
+            window.showToast(window.tt('Could not copy'), 'error');
         });
     }
 };
@@ -5077,7 +5077,7 @@ window.requestAIStrategy = function() {
     if (typeof window.runSim === 'function') window.runSim();
     
     if (!window.cachedStrategy && !window.previewData) {
-        window.showToast('Generate a strategy first', 'warning');
+        window.showToast(window.tt('Generate a strategy first'), 'warning');
         return;
     }
     

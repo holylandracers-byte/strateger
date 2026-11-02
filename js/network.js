@@ -57,7 +57,7 @@ window.updateShareUI = function() {
     if (window.myId && window.role === 'host') {
         if (shareBtn) {
             shareBtn.classList.remove('hidden');
-            shareBtn.innerHTML = '<i class="fas fa-link"></i><span>Invite</span>';
+            shareBtn.innerHTML = '<i class="fas fa-link"></i><span>' + window.tt('Invite') + '</span>';
         }
         
         if (driverLinkBtn) {
@@ -262,7 +262,7 @@ window.updateViewerApprovalUI = function() {
             pendingList.appendChild(div);
         });
     } else {
-        pendingList.innerHTML = '<div class="text-xs text-gray-500 text-center py-4">No pending requests</div>';
+        pendingList.innerHTML = '<div class="text-xs text-gray-500 text-center py-4">' + window.tt('No pending requests') + '</div>';
     }
     
     // Render approved viewers
@@ -283,7 +283,7 @@ window.updateViewerApprovalUI = function() {
             approvedList.appendChild(div);
         });
     } else {
-        approvedList.innerHTML = '<div class="text-xs text-gray-500">No approved viewers yet</div>';
+        approvedList.innerHTML = '<div class="text-xs text-gray-500">' + window.tt('No approved viewers yet') + '</div>';
     }
 };
 
@@ -600,12 +600,12 @@ window.initHostPeer = function() {
 
 window.copyInviteLink = function() {
     const id = window.myId; 
-    if (!id) return window.showToast('No connection ID yet', 'warning');
+    if (!id) return window.showToast(window.tt('No connection ID yet'), 'warning');
     const link = `${window.location.origin}${window.location.pathname}?join=${id}`;
     navigator.clipboard.writeText(link).then(() => {
         const btn = document.getElementById('shareRaceBtn');
         const original = btn.innerHTML;
-        btn.innerHTML = '<i class="fas fa-check"></i><span>Copied</span>';
+        btn.innerHTML = '<i class="fas fa-check"></i><span>' + window.tt('Copied') + '</span>';
         
         setTimeout(() => {
             btn.innerHTML = original;
@@ -648,7 +648,7 @@ window.updateSyncStatus = function() {
             txt.innerText = `${count} Viewer${count > 1 ? 's' : ''}`;
         } else {
             dot.className = "sync-dot bg-yellow-500";
-            txt.innerText = "Waiting";
+            txt.innerText = window.tt('Waiting');
         }
     }
 };
@@ -700,7 +700,7 @@ try {
                         <div class="text-xl text-yellow-400 font-bold">⚠️ Role Changed</div>
                         <div class="text-sm text-gray-400 mt-2">You connected as <b>${msg.role}</b> in another tab.</div>
                         <div class="text-xs text-gray-500 mt-1">This ${myRole} session was closed.</div>
-                        <button onclick="location.reload()" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-500">Rejoin</button>
+                        <button onclick="location.reload()" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-500">${window.tt('Rejoin')}</button>
                     </div>`;
                 }
             }
@@ -754,7 +754,7 @@ window.connectToHost = function(hostId) {
                     // Show timeout on whichever screen is visible
                     const viewerScreen = document.getElementById('viewerNameScreen');
                     const waitScreen = document.getElementById('clientWaitScreen');
-                    const errorHtml = '<div class="flex flex-col items-center justify-center gap-2"><div class="text-xl text-yellow-400 font-bold">⏱️ Connection Timed Out</div><div class="text-xs text-gray-400 mt-2">Host may be offline or link expired</div><button onclick="location.reload()" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-500">Try Again</button></div>';
+                    const errorHtml = '<div class="flex flex-col items-center justify-center gap-2"><div class="text-xl text-yellow-400 font-bold">⏱️ ' + window.tt('Connection Timed Out') + '</div><div class="text-xs text-gray-400 mt-2">' + window.tt('Host may be offline or link expired') + '</div><button onclick="location.reload()" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-500">' + window.tt('Try Again') + '</button></div>';
                     const viewerError = document.getElementById('viewerNameError');
                     const viewerWaiting = document.getElementById('viewerWaitingMsg');
                     if (viewerScreen && !viewerScreen.classList.contains('hidden')) {
@@ -882,7 +882,7 @@ window.connectToHost = function(hostId) {
                     if (window.role === 'client' && typeof window.onNameRejected === 'function') {
                         window.onNameRejected(data.message || 'Name rejected by host');
                     } else {
-                        window.showToast(data.message || 'Error from host', 'error');
+                        window.showToast(data.message || window.tt('Error from host'), 'error');
                     }
                 } else if (data.type === 'NAME_ACCEPTED') {
                     // Host confirmed/normalized our name
@@ -969,7 +969,7 @@ window.connectToHost = function(hostId) {
                 } else if (data.type === 'VIEWER_REMOVED') {
                     // We were removed by the host
                     console.log('🚫 You have been removed from this race.');
-                    window.showToast(data.message || 'You have been removed from this race', 'error', 6000);
+                    window.showToast(data.message || window.tt('You have been removed from this race'), 'error', 6000);
                     // Close connection
                     setTimeout(() => {
                         try { window.conn.close(); } catch(e) {}
@@ -1003,7 +1003,7 @@ window.connectToHost = function(hostId) {
                 console.error('Host peer not found — link may be expired');
                 const waitScreen = document.getElementById('clientWaitScreen');
                 if (waitScreen) {
-                    waitScreen.innerHTML = '<div class="flex flex-col items-center justify-center gap-2"><div class="text-xl text-red-400 font-bold">❌ Host Not Found</div><div class="text-xs text-gray-400 mt-2">The race link may have expired or the host is offline</div><button onclick="location.reload()" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-500">Try Again</button></div>';
+                    waitScreen.innerHTML = '<div class="flex flex-col items-center justify-center gap-2"><div class="text-xl text-red-400 font-bold">❌ ' + window.tt('Host Not Found') + '</div><div class="text-xs text-gray-400 mt-2">' + window.tt('The race link may have expired or the host is offline') + '</div><button onclick="location.reload()" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-500">' + window.tt('Try Again') + '</button></div>';
                 }
             }
         });
@@ -1018,7 +1018,7 @@ window.attemptReconnection = function() {
         console.error('Max reconnection attempts reached');
         const waitScreen = document.getElementById('clientWaitScreen');
         if (waitScreen) {
-            waitScreen.innerHTML = '<div class="flex flex-col items-center justify-center gap-2"><div class="text-xl text-red-400 font-bold">⚠️ Connection Lost</div><div class="text-xs text-gray-400 mt-2">Host may have ended the race or closed connection</div><button onclick="location.reload()" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-500">Refresh Page</button></div>';
+            waitScreen.innerHTML = '<div class="flex flex-col items-center justify-center gap-2"><div class="text-xl text-red-400 font-bold">⚠️ ' + window.tt('Connection Lost') + '</div><div class="text-xs text-gray-400 mt-2">' + window.tt('Host may have ended the race or closed connection') + '</div><button onclick="location.reload()" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-500">' + window.tt('Refresh Page') + '</button></div>';
         }
         return;
     }

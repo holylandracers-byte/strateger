@@ -2038,7 +2038,7 @@ window.openTeamPicker = function(target) {
     ov.setAttribute('aria-modal', 'true');
     ov.innerHTML = `<div class="flex items-center justify-between mb-2">
             <h3 class="text-ice font-bold text-lg">${t('pickYourTeam')}</h3>
-            <button type="button" id="teamPickerClose" class="w-11 h-11 rounded-full text-gray-300 text-2xl" aria-label="Close">&times;</button>
+            <button type="button" id="teamPickerClose" class="w-11 h-11 rounded-full text-gray-300 text-2xl" aria-label="${window.tt('Close')}">&times;</button>
         </div>
         <input id="teamPickerFilter" type="search" class="input-field mb-2" placeholder="${t('pickTeamFilter')}" autocomplete="off">
         <div id="teamPickerList" class="flex-1 overflow-y-auto space-y-1.5 overscroll-contain"></div>`;
@@ -2619,7 +2619,7 @@ window.updateLtRestoreChip = function() {
         document.body.appendChild(chip);
     }
     chip.textContent = '📡 ' + ((window.t && window.t('live')) || 'Live') + ' ▸';
-    chip.setAttribute('aria-label', 'Show live timing');
+    chip.setAttribute('aria-label', window.tt('Show live timing'));
     chip.classList.remove('hidden');
 };
 

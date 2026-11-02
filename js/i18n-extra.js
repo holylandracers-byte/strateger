@@ -65,6 +65,12 @@
         xWzBuild: ['Build strategy', 'בנה אסטרטגיה', 'Créer la stratégie', 'Montar estratégia', 'Построить стратегию', 'بناء الاستراتيجية', 'Crear estrategia', 'Crea strategia', 'სტრატეგიის აგება', 'Strategie erstellen', '戦略を作成', 'Δημιουργία στρατηγικής'],
         xWzDuration: ['Duration', 'משך', 'Durée', 'Duração', 'Длительность', 'المدة', 'Duración', 'Durata', 'ხანგრძლივობა', 'Dauer', '時間', 'Διάρκεια'],
 
+        xStyleLabel: ['Setup style', 'סגנון הגדרה', 'Style de configuration', 'Estilo de configuração', 'Способ настройки', 'أسلوب الإعداد', 'Estilo de configuración', 'Stile di configurazione', 'გამართვის სტილი', 'Einrichtungsart', '設定スタイル', 'Τρόπος ρύθμισης'],
+        xStyleGuided: ['Guided', 'מודרך', 'Guidé', 'Guiado', 'По шагам', 'موجَّه', 'Guiado', 'Guidato', 'ეტაპობრივი', 'Geführt', 'ガイド付き', 'Βήμα-βήμα'],
+        xStyleFull: ['Full setup', 'הגדרה מלאה', 'Config complète', 'Configuração completa', 'Полная настройка', 'إعداد كامل', 'Config. completa', 'Config. completa', 'სრული გამართვა', 'Volle Einrichtung', '詳細設定', 'Πλήρης ρύθμιση'],
+        xWzStepOf: ['Step {{a}} of {{b}}', 'שלב {{a}} מתוך {{b}}', 'Étape {{a}} sur {{b}}', 'Passo {{a}} de {{b}}', 'Шаг {{a}} из {{b}}', 'الخطوة {{a}} من {{b}}', 'Paso {{a}} de {{b}}', 'Passo {{a}} di {{b}}', 'ნაბიჯი {{a}} / {{b}}', 'Schritt {{a}} von {{b}}', 'ステップ {{a}}/{{b}}', 'Βήμα {{a}} από {{b}}'],
+        xWzEdit: ['Edit', 'ערוך', 'Modifier', 'Editar', 'Изменить', 'تعديل', 'Editar', 'Modifica', 'შეცვლა', 'Ändern', '編集', 'Επεξεργασία'],
+
         // ── lite mode ──
         xLiteMode: ['Lite mode', 'מצב קליל', 'Mode léger', 'Modo leve', 'Лёгкий режим', 'الوضع الخفيف', 'Modo ligero', 'Modalità leggera', 'მსუბუქი რეჟიმი', 'Lite-Modus', 'ライトモード', 'Ελαφριά λειτουργία'],
         xLiteModeD: ['Fewer animations and effects. Helps on slow tablets.', 'פחות אנימציות ואפקטים. עוזר בטאבלטים איטיים.', 'Moins d\'animations et d\'effets. Utile sur tablettes lentes.', 'Menos animações e efeitos. Ajuda em tablets lentos.', 'Меньше анимаций и эффектов. Помогает на слабых планшетах.', 'حركات وتأثيرات أقل. يساعد على الأجهزة اللوحية البطيئة.', 'Menos animaciones y efectos. Ayuda en tablets lentas.', 'Meno animazioni ed effetti. Utile sui tablet lenti.', 'ნაკლები ანიმაცია და ეფექტი. ეხმარება ნელ ტაბლეტებს.', 'Weniger Animationen und Effekte. Hilft auf langsamen Tablets.', 'アニメーションと効果を減らします。低速なタブレット向け。', 'Λιγότερα εφέ και animations. Βοηθά σε αργά tablet.'],
