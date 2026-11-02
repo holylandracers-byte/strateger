@@ -438,13 +438,15 @@
             </div>
 
             <!-- ADVANCED CONSTRAINTS (collapsible, merged with toggles) -->
-            <div class="collapsible-section bg-navy-900/80 p-3 rounded-xl border border-gray-700/50 shadow-sm">
+            <div class="collapsible-section collapsed bg-navy-900/80 p-3 rounded-xl border border-gray-700/50 shadow-sm">
                 <h2 class="text-gray-300 text-sm font-bold flex items-center gap-2 cursor-pointer select-none" onclick="this.parentElement.classList.toggle('collapsed')">
                     <i class="fas fa-sliders-h text-gray-500/70 text-xs"></i> <span data-i18n="advancedConstraints">Advanced Constraints</span>
                     <i class="fas fa-chevron-down ml-auto text-[10px] text-gray-600 collapse-icon transition-transform"></i>
                 </h2>
                 <div class="collapse-body mt-3">
+                <p class="text-xs text-gray-400 mb-3">Optional rules from the organizer. Leave a number at 0 to switch that rule off.</p>
                 <!-- Toggles -->
+                <h3 class="rules-group-title">Driver rotation</h3>
                 <div class="flex flex-col gap-3 mb-3">
                     <div class="border-b border-gray-600 pb-2">
                         <label class="flex items-center gap-2 cursor-pointer">
@@ -498,6 +500,7 @@
                     </div>
                 </div>
                 <!-- Constraint fields -->
+                <h3 class="rules-group-title">Pit rules</h3>
                 <div class="grid grid-cols-2 gap-4 mb-3">
                     <div>
                         <label class="text-xs text-red-400 font-bold" data-i18n="lblPitClosedStart">🚫 Closed Start (min)</label>
@@ -513,18 +516,18 @@
                     <div class="flex items-center justify-between mb-2">
                         <div class="flex items-center gap-1.5">
                             <span class="text-orange-400 text-xs">∞</span>
-                            <span class="text-[10px] font-bold text-orange-300 uppercase tracking-wider">No Limit Endurance</span>
+                            <span class="text-xs font-bold text-orange-300">Kart changes</span>
                         </div>
-                        <span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-orange-900/50 text-orange-300">Auto-detected</span>
+                        <span class="text-[11px] text-orange-300">Shown because a key value is 0</span>
                     </div>
 
                     <!-- Kart-change interval: organizer tells you the frequency -->
                     <div class="mb-2">
-                        <label class="text-[9px] text-gray-300 font-bold">🔄 Kart-Change Interval (min)</label>
-                        <input type="number" id="kartChangeInterval" value="0" min="0" placeholder="0 = no interval"
+                        <label class="text-[9px] text-gray-300 font-bold">Kart change every (min)</label>
+                        <input type="number" id="kartChangeInterval" value="0" min="0" placeholder="Off"
                             onchange="window._updateKartChangeInfo(); window.runSim()" class="input-field border-orange-800/50">
                         <div id="kartChangeInfo" class="text-[9px] text-orange-400 mt-0.5 hidden"></div>
-                        <p class="text-[9px] text-gray-600 mt-0.5">Organizer sets when your team must change karts. Enter the frequency in minutes (e.g. 90 = every 90 min). 0 = disabled.</p>
+                        <p class="text-[9px] text-gray-600 mt-0.5">How often the organizer makes you change karts, e.g. 90 for every 90 min. 0 = off.</p>
                     </div>
 
                     <!-- Extra optional pits between mandatory kart-changes -->
@@ -537,19 +540,20 @@
                         <div>
                             <label class="text-[9px] text-gray-400" data-i18n="lblMinPitLapSec">Min Pit Lap (sec)</label>
                             <input type="number" id="minPitLapSec" value="0" min="0" onchange="window.runSim()" class="input-field border-orange-800/50">
-                            <p class="text-[9px] text-gray-600 mt-0.5">0 = no minimum (as fast as possible).</p>
+                            <p class="text-[9px] text-gray-600 mt-0.5">0 = off.</p>
                         </div>
                     </div>
 
                     <!-- Kart rotation: number of competing teams -->
                     <div class="mb-1">
                         <label class="text-[9px] text-gray-400" data-i18n="lblNumTeams">Competing Teams (rotation count)</label>
-                        <input type="number" id="numTeams" value="0" min="0" placeholder="0 = disabled"
+                        <input type="number" id="numTeams" value="0" min="0" placeholder="Off"
                             onchange="window._updateKartRotationInfo(); window.runSim()" class="input-field border-orange-800/50">
                         <div id="kartRotationInfo" class="text-[9px] text-orange-400 mt-0.5 hidden"></div>
-                        <p class="text-[9px] text-gray-600 mt-0.5">Used to derive required stops: teams − 1. Each team drives every kart once.</p>
+                        <p class="text-[9px] text-gray-600 mt-0.5">Required stops = teams − 1, so each team drives every kart once. 0 = off.</p>
                     </div>
                 </div>
+                <h3 class="rules-group-title">Driver limits</h3>
                 <div class="grid grid-cols-2 gap-4 mb-3">
                     <div>
                         <label class="text-xs text-gray-400" data-i18n="lblMinDrive">Min Driver Total (min)</label>
@@ -560,6 +564,7 @@
                         <input type="number" id="maxDriverTime" placeholder="0" onchange="window.runSim(); window.updateDriverMaxTimeWarnings && window.updateDriverMaxTimeWarnings()" class="input-field">
                     </div>
                 </div>
+                <h3 class="rules-group-title">Alerts and timing</h3>
                 <div class="grid grid-cols-2 gap-4 mb-3">
                     <div>
                         <label class="text-xs text-yellow-400 font-bold" data-i18n="lblBuffer">Pit Exit Buffer (s)</label>

@@ -3487,3 +3487,6 @@ body.watcher-mode #liveTeamHint { display: none !important; }
 @media (prefers-reduced-motion: reduce) {
     .animate-pulse, .sync-dot, .live-dot { animation: none !important; }
 }
+
+.rules-group-title { font-size: 13px; font-weight: 700; color: #e2e8f0; margin: 14px 0 8px; padding-top: 10px; border-top: 1px solid #1e293b; }
+.collapse-body > .rules-group-title:first-of-type { border-top: 0; padding-top: 0; margin-top: 0; }
