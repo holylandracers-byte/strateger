@@ -637,13 +637,13 @@
             <div id="setupActionCard" class="bg-navy-900/80 border border-gray-700/60 rounded-xl p-3 space-y-2 shadow-sm">
                 <!-- Primary actions row -->
                 <div class="flex gap-2">
-                    <button id="wtPreviewBtn" onclick="window.generatePreview(false, true)" class="flex-1 bg-gradient-to-br from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 text-white font-bold py-3 rounded-lg shadow-md transition text-sm active:scale-95 transform">
+                    <button id="wtPreviewBtn" onclick="window.generatePreview(false, true)" class="flex-1 bg-purple-600 hover:bg-purple-500 text-white font-bold py-3 rounded-lg shadow-md transition text-sm active:scale-95 transform">
                         <i class="fas fa-chart-bar mr-1.5"></i><span data-i18n="previewStrategy">Preview</span>
                     </button>
-                    <button id="startRaceBtn" onclick="window.initRace()" class="flex-1 bg-ice hover:bg-cyan-300 text-navy-950 font-black py-3 rounded-lg text-sm shadow-[0_0_14px_rgba(34,211,238,0.35)] hover:shadow-[0_0_20px_rgba(34,211,238,0.5)] transition uppercase tracking-wide active:scale-95 transform" data-i18n="startRace">
+                    <button id="startRaceBtn" onclick="window.initRace()" class="flex-1 bg-ice hover:bg-cyan-300 text-navy-950 font-black py-3 rounded-lg text-sm transition uppercase tracking-wide active:scale-95 transform" data-i18n="startRace">
                         ▶ Start Race
                     </button>
-                    <button id="startQualifyBtn" onclick="window.startQualifyingDirect()" class="hidden flex-1 bg-blue-500 hover:bg-blue-400 text-white font-black py-3 rounded-lg text-sm shadow-[0_0_14px_rgba(59,130,246,0.35)] transition uppercase tracking-wide active:scale-95 transform" data-i18n="startQualify">
+                    <button id="startQualifyBtn" onclick="window.startQualifyingDirect()" class="hidden flex-1 bg-blue-500 hover:bg-blue-400 text-white font-black py-3 rounded-lg text-sm transition uppercase tracking-wide active:scale-95 transform" data-i18n="startQualify">
                         ▶ Qualifying
                     </button>
                 </div>
@@ -673,7 +673,7 @@
 
             <!-- PRO UPGRADE BANNER (free tier only) -->
             <div id="proUpgradeBanner" class="hidden cursor-pointer group" onclick="window.showProGate()">
-                <div class="bg-gradient-to-r from-gold/8 via-amber-500/8 to-gold/8 border border-gold/25 hover:border-gold/50 rounded-xl p-3 transition-all duration-200 hover:shadow-[0_0_20px_rgba(251,191,36,0.1)]">
+                <div class="bg-gradient-to-r from-gold/8 via-amber-500/8 to-gold/8 border border-gold/25 hover:border-gold/50 rounded-xl p-3 transition-all duration-200">
                     <div class="flex items-center justify-center gap-2 mb-1">
                         <i class="fas fa-star text-gold text-sm group-hover:scale-110 transition-transform"></i>
                         <span class="text-sm font-black text-gold tracking-wide" data-i18n="proUpgradeTitle">Upgrade to Pro</span>
@@ -798,7 +798,7 @@
                 <button onclick="window.saveStrategy()" class="bg-gold/15 hover:bg-gold/25 text-gold font-bold py-2 px-3 rounded-xl border border-gold/40 transition text-sm" data-i18n="saveStratTitle">
                     <i class="fas fa-bookmark"></i>
                 </button>
-                <button id="previewStartRaceBtn" onclick="window.initRace()" class="flex-1 bg-gradient-to-r from-neon to-green-500 hover:from-green-400 hover:to-green-600 text-black font-black py-2 rounded-xl shadow-lg transition text-sm uppercase tracking-wider" data-i18n="startRace">
+                <button id="previewStartRaceBtn" onclick="window.initRace()" class="flex-1 bg-neon hover:bg-green-400 text-black font-black py-2 rounded-xl shadow-lg transition text-sm uppercase tracking-wider" data-i18n="startRace">
                     ▶ Start Race
                 </button>
             </div>
@@ -877,7 +877,7 @@
                 <button onclick="window.closeDemoModal()" class="flex-1 bg-navy-800 hover:bg-navy-700 text-gray-300 font-bold py-2.5 rounded-xl border border-gray-700 transition text-sm">
                     Cancel
                 </button>
-                <button onclick="window.launchSelectedDemo()" class="flex-[2] bg-gradient-to-r from-ice to-blue-500 hover:from-blue-400 hover:to-ice text-navy-950 font-black py-2.5 rounded-xl shadow-lg transition text-sm uppercase tracking-wider">
+                <button onclick="window.launchSelectedDemo()" class="flex-[2] bg-ice hover:bg-blue-400 text-navy-950 font-black py-2.5 rounded-xl shadow-lg transition text-sm uppercase tracking-wider">
                     <i class="fas fa-play mr-1.5"></i> Launch Demo
                 </button>
             </div>
@@ -1309,7 +1309,7 @@
                             <div id="pitInlineReadyBanner" class="hidden flex-1 py-1.5 rounded-lg text-center font-black text-base tracking-wider transition-all duration-300"></div>
                         </div>
 
-                        <button id="confirmRaceFinishBtn" onclick="window.confirmRaceFinish()" class="hidden w-full bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400 text-black font-black py-3 rounded-2xl text-base shadow-[0_0_20px_rgba(234,179,8,0.5)] transition active:scale-95 flex items-center justify-center gap-2 border border-yellow-300/50 animate-pulse">
+                        <button id="confirmRaceFinishBtn" onclick="window.confirmRaceFinish()" class="hidden w-full bg-yellow-500 hover:bg-yellow-400 text-black font-black py-3 rounded-2xl text-base transition active:scale-95 flex items-center justify-center gap-2 border border-yellow-300/50 animate-pulse">
                             <i class="fas fa-flag-checkered text-xl"></i>
                             <span data-i18n="confirmFinish">CONFIRM RACE FINISH</span>
                         </button>
@@ -1579,7 +1579,7 @@
                             <div id="qualifyLiveBest" class="text-sm font-mono text-neon">--</div>
                         </div>
                     </div>
-                    <button id="qualifyEnterPitBtn" onclick="window.qualifyEnterPit()" class="mt-2 w-full bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white font-bold py-2.5 rounded-xl transition active:scale-95 flex items-center justify-center gap-2">
+                    <button id="qualifyEnterPitBtn" onclick="window.qualifyEnterPit()" class="mt-2 w-full bg-red-600 hover:bg-red-500 text-white font-bold py-2.5 rounded-xl transition active:scale-95 flex items-center justify-center gap-2">
                         <i class="fas fa-flag-checkered"></i>
                         <span data-i18n="enterPit">ENTER PIT</span>
                     </button>
@@ -1640,7 +1640,7 @@
                         </table>
                     </div>
                     <button id="qualifyNextBtn" onclick="window.qualifyNextRun()"
-                        class="w-full bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-black py-5 rounded-2xl text-xl shadow-[0_0_20px_rgba(59,130,246,0.4)] transition active:scale-95 flex items-center justify-center gap-3">
+                        class="w-full bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-black py-5 rounded-2xl text-xl transition active:scale-95 flex items-center justify-center gap-3">
                         <i class="fas fa-forward"></i>
                         <span data-i18n="qualifyNextRun">Next Run</span>
                     </button>
@@ -1742,7 +1742,7 @@
                     placeholder="ABC1234" autocomplete="off" inputmode="text"
                     onkeydown="if(event.key==='Enter') window.submitDriverId()">
             </div>
-            <button onclick="window.submitDriverId()" class="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-amber-400 hover:to-orange-400 text-navy-950 font-bold py-4 rounded-xl text-xl shadow-lg transition transform active:scale-95 flex items-center justify-center gap-2">
+            <button onclick="window.submitDriverId()" class="w-full bg-orange-500 hover:bg-amber-400 text-navy-950 font-bold py-4 rounded-xl text-xl shadow-lg transition transform active:scale-95 flex items-center justify-center gap-2">
                 <i class="fas fa-car-side"></i> <span data-i18n="driverConnect">Connect as Driver</span>
             </button>
             <div id="driverEntryError" class="hidden text-red-400 text-sm text-center"></div>
@@ -1767,7 +1767,7 @@
                     placeholder="Name / Team name" autocomplete="off"
                     onkeydown="if(event.key==='Enter') window.submitViewerName()">
             </div>
-            <button onclick="window.submitViewerName()" class="w-full bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-cyan-400 hover:to-blue-500 text-white font-bold py-4 rounded-xl text-xl shadow-lg transition transform active:scale-95 flex items-center justify-center gap-2">
+            <button onclick="window.submitViewerName()" class="w-full bg-blue-600 hover:bg-cyan-400 text-white font-bold py-4 rounded-xl text-xl shadow-lg transition transform active:scale-95 flex items-center justify-center gap-2">
                 <i class="fas fa-eye"></i> <span data-i18n="requestToJoin">Request to Join</span>
             </button>
             <div id="viewerNameError" class="hidden text-red-400 text-sm text-center"></div>
@@ -2119,7 +2119,7 @@
             <div id="feedbackForm" class="bg-navy-800 border border-gray-600 p-3 rounded">
                 <div class="text-xs text-gray-400 font-bold mb-2" id="feedbackTitle" data-i18n="bugReportTitle">Bug Report</div>
                 <textarea id="feedbackText" class="input-field text-xs mb-2 resize-none" rows="4" data-i18n="describeIssue" placeholder="Describe the issue or suggestion..."></textarea>
-                <button onclick="window.submitFeedback()" class="w-full bg-gradient-to-r from-neon to-green-500 hover:from-green-400 hover:to-green-600 text-black font-bold py-2 rounded transition" data-i18n="send">Send</button>
+                <button onclick="window.submitFeedback()" class="w-full bg-neon hover:bg-green-400 text-black font-bold py-2 rounded transition" data-i18n="send">Send</button>
             </div>
         </div>
     </div>
@@ -2142,7 +2142,7 @@
                 <div class="text-2xl mb-1">🎁</div>
                 <div class="text-sm font-black text-neon mb-1">3-Day Free Trial</div>
                 <div class="text-[11px] text-gray-400 mb-3">Try every Pro feature free for 3 days — no payment needed. One trial per device.</div>
-                <button onclick="window._startTrialFromModal()" class="w-full bg-gradient-to-r from-neon to-green-500 hover:from-green-400 hover:to-green-600 text-black font-black py-2.5 rounded-lg transition text-sm active:scale-95 transform">
+                <button onclick="window._startTrialFromModal()" class="w-full bg-neon hover:bg-green-400 text-black font-black py-2.5 rounded-lg transition text-sm active:scale-95 transform">
                     Start Free Trial
                 </button>
             </div>
@@ -2208,7 +2208,7 @@
                 <p class="text-xs font-bold text-gray-300">② Already have a license key? Enter it:</p>
                 <div class="flex gap-2">
                     <input type="text" id="proLicenseInput" data-i18n="proEnterKey" placeholder="STRAT-XXXX-XXXX-XXXX-XXXX" class="input-field text-sm flex-1 font-mono tracking-wide">
-                    <button onclick="window.handleActivatePro()" class="bg-gradient-to-r from-gold to-amber-500 text-black font-bold px-4 py-2 rounded transition hover:from-amber-400 hover:to-gold text-sm whitespace-nowrap" data-i18n="proActivate">Activate</button>
+                    <button onclick="window.handleActivatePro()" class="bg-gold text-black font-bold px-4 py-2 rounded transition hover:bg-amber-400 text-sm whitespace-nowrap" data-i18n="proActivate">Activate</button>
                 </div>
                 <div id="proActivateError" class="hidden text-red-400 text-xs text-center"></div>
                 <div id="proActivateSuccess" class="hidden text-green-400 text-xs text-center font-bold"></div>
@@ -2242,7 +2242,7 @@
             <h3 id="wtTitle" class="text-base font-bold text-ice mb-1"></h3>
             <p id="wtDesc" class="text-sm text-gray-400 mb-4 leading-relaxed"></p>
             <div class="flex flex-col gap-2">
-                <button type="button" id="wtActionBtn" class="hidden w-full bg-gradient-to-r from-neon to-green-500 hover:from-green-400 hover:to-green-600 text-black font-bold py-2.5 rounded-xl transition text-sm"></button>
+                <button type="button" id="wtActionBtn" class="hidden w-full bg-neon hover:bg-green-400 text-black font-bold py-2.5 rounded-xl transition text-sm"></button>
                 <button type="button" id="wtNextBtn" class="w-full bg-ice hover:bg-cyan-300 text-navy-950 font-bold py-2.5 rounded-xl transition text-sm" data-i18n="onboardNext">Next</button>
             </div>
         </div>

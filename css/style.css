@@ -3479,3 +3479,11 @@ body.watcher-mode #liveTeamHint { display: none !important; }
 .phase-steps li.hidden { display: none; }
 .phase-steps li + li::before { content: '›'; margin-right: 14px; margin-left: -4px; color: #475569; }
 .phase-steps li[aria-current="step"] { color: #fff; background: #0f1c33; }
+
+
+/* Quieter: no gradient text, readable minimum size for labels */
+.gradient-text { animation: none !important; background: none !important; -webkit-text-fill-color: currentColor !important; color: #22d3ee; }
+.text-\[8px\], .text-\[9px\], .text-\[10px\] { font-size: 11px !important; }
+@media (prefers-reduced-motion: reduce) {
+    .animate-pulse, .sync-dot, .live-dot { animation: none !important; }
+}
