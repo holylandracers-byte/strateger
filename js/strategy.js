@@ -634,8 +634,10 @@ window._syncRaceTarget = function() {
     if (summary) {
         const h = Math.floor(totalMs / 3600000), m = Math.round((totalMs % 3600000) / 60000);
         const lapTxt = Math.floor(lapMs / 60000) + ':' + String(((lapMs / 1000) % 60).toFixed(1)).padStart(4, '0');
-        summary.textContent = '≈ ' + h + 'h ' + String(m).padStart(2, '0') + 'm  ·  ' + laps + ' × ' + lapTxt + ' (' + (driveMs / 60000).toFixed(0) + ' min driving)'
-            + (pitMs ? ' + ' + stops + ' × ' + (pitMs / 1000) + 's pit' : '');
+        summary.textContent = window.tf('lapSummary', {
+            total: window.fmtHM(totalMs), laps: laps, lap: lapTxt, min: (driveMs / 60000).toFixed(0),
+            pit: pitMs ? window.tf('lapSummaryPit', { n: stops, s: pitMs / 1000 }) : ''
+        });
     }
 };
 
@@ -934,7 +936,7 @@ window.runSim = function() {
     }
     if (window._compliance && window._compliance.failing.length && resEl) {
         resEl.innerHTML += '<br><span class="rule-status-bad"><i class="fas fa-exclamation-triangle"></i> '
-            + window._compliance.failing.length + ' ' + (window.tt ? window.tt('rule(s) not met') : 'rule(s) not met') + ': '
+            + window.tf('cpBroken', { n: window._compliance.failing.length }) + ': '
             + window._compliance.failing.map(function(f) { return window._escHtml(f.text); }).join(' · ') + '</span>';
     }
     if (typeof window.renderRuleStatus === 'function') window.renderRuleStatus();
@@ -967,9 +969,9 @@ window.initRace = function() {
         if (verdict.failing.length) {
             const list = verdict.failing.map(f => '• ' + f.text).join('\n');
             window.showConfirmModal(
-                '⚠️ ' + verdict.failing.length + ' ' + (window.tt ? window.tt('rule(s) not met') : 'rule(s) not met'),
+                '⚠️ ' + window.tf('cpBroken', { n: verdict.failing.length }),
                 list,
-                (window.tt ? window.tt('Start anyway') : 'Start anyway') + '?',
+                window.t('cpStartAnyway') + '?',
                 () => { window._complianceAcknowledged = true; try { window.initRace(); } finally { window._complianceAcknowledged = false; } }
             );
             return;

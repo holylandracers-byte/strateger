@@ -7,12 +7,10 @@
 //   window.renderComplianceBanner()            draws the result in the preview screen
 
 (function() {
-    const tt = function(x) { return typeof window.tt === 'function' ? window.tt(x) : x; };
-    const fmtMin = function(ms) { return Math.round(ms / 60000) + ' min'; };
-    const fmtHM = function(ms) {
-        const m = Math.round(ms / 60000);
-        return Math.floor(m / 60) + 'h ' + String(m % 60).padStart(2, '0') + 'm';
-    };
+    const F = function(key, vars) { return typeof window.tf === 'function' ? window.tf(key, vars) : key; };
+    const fmtMin = function(ms) { return String(Math.round(ms / 60000)); };
+    const fmtHM = function(ms) { return typeof window.fmtHM === 'function' ? window.fmtHM(ms) : Math.round(ms / 60000) + 'm'; };
+    const unitM = function() { const v = window.t ? window.t('unitMin') : 'm'; return v && v !== 'unitMin' ? v : 'm'; };
 
     window.checkCompliance = function(timeline, config) {
         config = config || window.config || {};
@@ -36,15 +34,15 @@
         if (config.raceTarget === 'laps' && config.raceLaps > 0 && config.avgLapSec > 0) {
             const laps = driveMs / (config.avgLapSec * 1000);
             const off = Math.abs(laps - config.raceLaps);
-            add('laps', off <= 1, tt('Lap target') + ': ' + Math.round(laps) + ' / ' + config.raceLaps + ' ' + tt('laps') + ' (' + fmtHM(totalMs) + ')', off);
+            add('laps', off <= 1, F('cpLapTarget', { done: Math.round(laps), goal: config.raceLaps, time: fmtHM(totalMs) }), off);
         } else if (raceMs > 0) {
             const off = Math.abs(totalMs - raceMs);
-            add('length', off <= 60000, tt('Race length') + ': ' + fmtHM(totalMs) + ' / ' + fmtHM(raceMs), off / 60000);
+            add('length', off <= 60000, F('cpRaceLength', { done: fmtHM(totalMs), goal: fmtHM(raceMs) }), off / 60000);
         }
 
         // 2) required number of stops
         if (config.reqStops > 0) {
-            add('stops', pits.length >= config.reqStops, tt('Required stops') + ': ' + pits.length + ' / ' + config.reqStops, config.reqStops - pits.length);
+            add('stops', pits.length >= config.reqStops, F('cpStops', { done: pits.length, goal: config.reqStops }), config.reqStops - pits.length);
         }
 
         // 3) stint length limits (min, max, fuel tank)
@@ -55,8 +53,8 @@
                 if (s._actual || s._done) return;
                 if ((bounds.minStintMs > 0 && s.duration < bounds.minStintMs - 500) || (bounds.effectiveMaxStint !== Infinity && s.duration > bounds.effectiveMaxStint + 500)) bad.push(i + 1);
             });
-            const range = (bounds.minStintMs > 0 ? fmtMin(bounds.minStintMs) : '0') + '–' + (bounds.effectiveMaxStint !== Infinity ? fmtMin(bounds.effectiveMaxStint) : '∞');
-            add('stint', bad.length === 0, bad.length ? tt('Stint length') + ' ' + range + ': ' + tt('stint') + ' ' + bad.join(', ') + ' ' + tt('outside') : tt('Stint length') + ' ' + range + ': ' + tt('all stints inside'), bad.length * 10);
+            const range = (bounds.minStintMs > 0 ? fmtMin(bounds.minStintMs) : '0') + '–' + (bounds.effectiveMaxStint !== Infinity ? fmtMin(bounds.effectiveMaxStint) : '∞') + unitM();
+            add('stint', bad.length === 0, F(bad.length ? 'cpStintBad' : 'cpStintOk', { range: range, list: bad.join(', ') }), bad.length * 10);
         }
 
         // 3b) per-driver stamina cap (used when there is no global max stint)
@@ -66,24 +64,24 @@
                 const d = drivers[s.driverIdx];
                 if (d && d.staminaMin > 0 && s.duration > d.staminaMin * 60000 + 500) bad.push(i + 1);
             });
-            if (drivers.some(function(d) { return d.staminaMin > 0; })) add('stamina', bad.length === 0, bad.length ? tt('Driver stamina limit') + ': ' + tt('stint') + ' ' + bad.join(', ') : tt('Driver stamina limit') + ': ' + tt('respected'), bad.length * 10);
+            if (drivers.some(function(d) { return d.staminaMin > 0; })) add('stamina', bad.length === 0, F(bad.length ? 'cpStaminaBad' : 'cpStaminaOk', { list: bad.join(', ') }), bad.length * 10);
         }
 
         // 4) minimum pit time
         if (config.pitTime > 0 && pits.length) {
             const bad = pits.filter(function(p) { return p.duration < config.pitTime * 1000 - 500; }).length;
-            add('pittime', bad === 0, tt('Minimum pit time') + ' ' + config.pitTime + 's: ' + (bad ? bad + ' ' + tt('pit(s) too short') : tt('every pit long enough')), bad);
+            add('pittime', bad === 0, F(bad ? 'cpPitTimeBad' : 'cpPitTimeOk', { n: config.pitTime, c: bad }), bad);
         }
 
         // 5) pit lane closed at the start / end of the race
         if (config.closedStart > 0 && entries.length) {
             const early = entries.filter(function(e) { return e < config.closedStart * 60000 - 500; }).length;
-            add('closedStart', early === 0, tt('Pit closed first') + ' ' + config.closedStart + ' min: ' + (early ? early + ' ' + tt('pit(s) inside the window') : tt('clear')), early * 10);
+            add('closedStart', early === 0, F(early ? 'cpClosedStartBad' : 'cpClosedStartOk', { n: config.closedStart, c: early }), early * 10);
         }
         if (config.closedEnd > 0 && entries.length) {
             const limit = raceMs - config.closedEnd * 60000;
             const late = entries.filter(function(e) { return e > limit + 500; }).length;
-            add('closedEnd', late === 0, tt('Pit closed last') + ' ' + config.closedEnd + ' min: ' + (late ? late + ' ' + tt('pit(s) inside the window') : tt('clear')), late * 10);
+            add('closedEnd', late === 0, F(late ? 'cpClosedEndBad' : 'cpClosedEndOk', { n: config.closedEnd, c: late }), late * 10);
         }
 
         // 6) custom closed windows from the regulations
@@ -91,7 +89,7 @@
             const a = Number(w[0]) * 60000, b = Number(w[1]) * 60000;
             if (!(b > a)) return;
             const inside = entries.filter(function(e) { return e >= a && e <= b; }).length;
-            add('window' + w[0] + '-' + w[1], inside === 0, tt('Pit closed') + ' ' + w[0] + '–' + w[1] + ' min: ' + (inside ? inside + ' ' + tt('pit(s) inside the window') : tt('clear')), inside * 10);
+            add('window' + w[0] + '-' + w[1], inside === 0, F(inside ? 'cpWindowBad' : 'cpWindowOk', { a: w[0], b: w[1], c: inside }), inside * 10);
         });
 
         // 7) kart change at least every N minutes
@@ -100,7 +98,7 @@
             const marks = [0].concat(entries, [totalMs]);
             let worst = 0;
             for (let i = 1; i < marks.length; i++) worst = Math.max(worst, marks[i] - marks[i - 1]);
-            add('kart', worst <= lim + 60000, tt('Kart change every') + ' ' + config.kartChangeIntervalMin + ' min: ' + tt('longest gap') + ' ' + fmtMin(worst), (worst - lim) / 60000);
+            add('kart', worst <= lim + 60000, F('cpKart', { n: config.kartChangeIntervalMin, g: fmtMin(worst) }), (worst - lim) / 60000);
         }
 
         // 8) driver rotation: no back-to-back stints, or at most N in a row
@@ -111,9 +109,9 @@
                 longest = Math.max(longest, run);
             }
             if (!config.allowDouble) {
-                add('double', longest <= 1, tt('No double stints') + ': ' + (longest <= 1 ? tt('respected') : tt('same driver twice in a row')), (longest - 1) * 100);
+                add('double', longest <= 1, F(longest <= 1 ? 'cpDoubleOk' : 'cpDoubleBad'), (longest - 1) * 100);
             } else if (config.maxConsecutive > 0) {
-                add('double', longest <= config.maxConsecutive, tt('Max consecutive stints') + ' ' + config.maxConsecutive + ': ' + tt('longest run') + ' ' + longest, (longest - config.maxConsecutive) * 100);
+                add('double', longest <= config.maxConsecutive, F('cpMaxConsec', { n: config.maxConsecutive, r: longest }), (longest - config.maxConsecutive) * 100);
             }
         }
 
@@ -125,22 +123,22 @@
         if (config.minDriverTotal > 0 && perDriver.length) {
             const lim = config.minDriverTotal * 60000;
             const low = perDriver.filter(function(d) { return d.ms < lim - 30000; });
-            add('minDrive', low.length === 0, tt('Min driver total') + ' ' + config.minDriverTotal + ' min: ' + (low.length ? low.map(function(d) { return d.name + ' ' + fmtMin(d.ms); }).join(', ') : tt('every driver reaches it')), low.reduce(function(a, d) { return a + (lim - d.ms) / 60000; }, 0));
+            add('minDrive', low.length === 0, F(low.length ? 'cpMinDriveBad' : 'cpMinDriveOk', { n: config.minDriverTotal, list: low.map(function(d) { return d.name + ' ' + fmtMin(d.ms) + unitM(); }).join(', ') }), low.reduce(function(a, d) { return a + (lim - d.ms) / 60000; }, 0));
         }
         if (config.maxDriverTotal > 0 && perDriver.length) {
             const lim = config.maxDriverTotal * 60000;
             const high = perDriver.filter(function(d) { return d.ms > lim + 30000; });
-            add('maxDrive', high.length === 0, tt('Max driver total') + ' ' + config.maxDriverTotal + ' min: ' + (high.length ? high.map(function(d) { return d.name + ' ' + fmtMin(d.ms); }).join(', ') : tt('nobody goes over')), high.reduce(function(a, d) { return a + (d.ms - lim) / 60000; }, 0));
+            add('maxDrive', high.length === 0, F(high.length ? 'cpMaxDriveBad' : 'cpMaxDriveOk', { n: config.maxDriverTotal, list: high.map(function(d) { return d.name + ' ' + fmtMin(d.ms) + unitM(); }).join(', ') }), high.reduce(function(a, d) { return a + (d.ms - lim) / 60000; }, 0));
         }
         const needN = Number(rules.minStintsPerDriver) || 0;
         if (needN > 0 && perDriver.length) {
             const low = perDriver.filter(function(d) { return d.n < needN; });
-            add('minStints', low.length === 0, tt('Min stints per driver') + ' ' + needN + ': ' + (low.length ? low.map(function(d) { return d.name + ' ' + d.n; }).join(', ') : tt('every driver reaches it')), low.reduce(function(a, d) { return a + (needN - d.n) * 5; }, 0));
+            add('minStints', low.length === 0, F(low.length ? 'cpMinStintsBad' : 'cpMinStintsOk', { n: needN, list: low.map(function(d) { return d.name + ' ' + d.n; }).join(', ') }), low.reduce(function(a, d) { return a + (needN - d.n) * 5; }, 0));
         }
         const capN = Number(rules.maxStintsPerDriver) || 0;
         if (capN > 0 && perDriver.length) {
             const high = perDriver.filter(function(d) { return d.n > capN; });
-            add('maxStints', high.length === 0, tt('Max stints per driver') + ' ' + capN + ': ' + (high.length ? high.map(function(d) { return d.name + ' ' + d.n; }).join(', ') : tt('nobody goes over')), high.reduce(function(a, d) { return a + (d.n - capN) * 5; }, 0));
+            add('maxStints', high.length === 0, F(high.length ? 'cpMaxStintsBad' : 'cpMaxStintsOk', { n: capN, list: high.map(function(d) { return d.name + ' ' + d.n; }).join(', ') }), high.reduce(function(a, d) { return a + (d.n - capN) * 5; }, 0));
         }
 
         const failing = items.filter(function(i) { return !i.ok; });
@@ -202,8 +200,8 @@
         const open = el.dataset.open === '1';
         const esc = window._escHtml || function(x) { return x; };
         const head = ok
-            ? '<i class="fas fa-shield-alt"></i> ' + c.total + ' ' + tt('rules checked') + ' · ' + tt('all met')
-            : '<i class="fas fa-exclamation-triangle"></i> ' + c.failing.length + ' ' + tt('of') + ' ' + c.total + ' ' + tt('rules broken');
+            ? '<i class="fas fa-shield-alt"></i> ' + F('cpHeadOk', { n: c.total })
+            : '<i class="fas fa-exclamation-triangle"></i> ' + F('cpHeadBad', { b: c.failing.length, n: c.total });
         el.className = 'compliance ' + (ok ? 'is-ok' : 'is-bad');
         el.innerHTML = '<button type="button" class="compliance-head" onclick="window._toggleCompliance()">' + head
             + '<i class="fas fa-chevron-' + (open ? 'up' : 'down') + ' compliance-chev"></i></button>'

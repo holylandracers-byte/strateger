@@ -228,7 +228,7 @@
             return '<div class="bg-navy-800 p-3 rounded border border-gray-700 flex justify-between items-center mb-2 hover:border-ice transition group">'
                 + '<div class="flex-1 cursor-pointer min-w-0" onclick="window.applyStrategy(' + index + ')">'
                 + '<div class="font-bold text-white text-sm flex items-center gap-2 flex-wrap">' + where + ' ' + esc(s.name) + ' ' + badge + '</div>'
-                + '<div class="text-[11px] text-gray-400 mt-1">📅 ' + new Date(s.timestamp).toLocaleString() + ' | ⏱️ ' + size + ' | 🛑 ' + (c.reqStops || 0) + ' ' + tr('stops', 'stops') + '</div></div>'
+                + '<div class="text-[11px] text-gray-400 mt-1">📅 ' + new Date(s.timestamp).toLocaleString() + ' | ⏱️ ' + size + ' | 🛑 ' + (c.reqStops || 0) + ' ' + tr('stopsLabel', 'stops') + '</div></div>'
                 + '<div class="flex gap-2"><button onclick="window.applyStrategy(' + index + ')" class="bg-ice/20 text-ice px-3 py-1.5 rounded text-xs font-bold hover:bg-ice/40 transition">' + window.tt('Load') + '</button>'
                 + (s._local ? '<button onclick="window.deleteStrategy(' + index + ')" class="text-gray-600 hover:text-red-400 text-xs px-2 transition" aria-label="Delete"><i class="fas fa-trash"></i></button>' : '')
                 + '</div></div>';

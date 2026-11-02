@@ -5295,7 +5295,7 @@ Be concise and practical.`;
                     if (scoreAfter > scoreBefore) {
                         // The AI plan is worse against the rules than the current one: keep the current plan.
                         stints.forEach((s, i) => Object.assign(s, before[i]));
-                        window.showToast(window.tt('The AI stint plan broke rules, so your current plan was kept.'), 'warning', 6000);
+                        window.showToast(window.t('cpAiRejected'), 'warning', 6000);
                     }
                     if (typeof window.recalculateTimelineTimes === 'function') window.recalculateTimelineTimes();
                     window.renderPreview && window.renderPreview();

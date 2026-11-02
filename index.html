@@ -570,7 +570,7 @@
 
                 <h3 class="rules-group-title" data-i18n="grpPitRules">Pit rules</h3>
                 <div class="rule" data-rule>
-                    <p class="rule-effect" style="margin-top:0">No pit stops are planned inside the closed window. Minutes from race start. Leave empty to turn off.</p>
+                    <p class="rule-effect" style="margin-top:0" data-i18n="rulePitClosedHint">No pit stops are planned inside the closed window. Minutes from race start. Leave empty to turn off.</p>
                     <div class="set-grid-2">
                         <div>
                             <label class="set-sublabel" for="pitClosedStart" data-i18n="lblPitClosedStart">Closed Start (min)</label>
@@ -952,9 +952,9 @@
 
             <div id="raceInfoPanel" class="flex-1 min-h-0 overflow-y-auto p-2 space-y-2">
 
-                <button type="button" id="noLiveChip" class="no-live-chip" onclick="window.setNoLiveDismissed(false)">&#128225; <span data-i18n="connectLive">Live timing</span></button>
+                <button type="button" id="noLiveChip" class="no-live-chip" onclick="window.setNoLiveDismissed(false)">&#128225; <span data-i18n="ltChip">Live timing</span></button>
                 <div id="noLiveHint" class="no-live-hint">
-                    <button type="button" class="no-live-close" onclick="window.setNoLiveDismissed(true)" aria-label="Hide live timing panel" title="Hide (you can bring it back later)">&times;</button>
+                    <button type="button" class="no-live-close" onclick="window.setNoLiveDismissed(true)" data-i18n-aria="ltHidePanel" data-i18n-title="ltHidePanel" aria-label="Hide" title="Hide (you can bring it back later)">&times;</button>
                     <p data-i18n="noLiveHint">Live timing is not connected. Positions and lap times appear here once a timing URL is set for this race.</p>
                     <form id="raceLtForm" class="no-live-form" onsubmit="window.connectLiveTimingMidRace(); return false;">
                         <div class="flex gap-1 mb-1">
@@ -968,19 +968,19 @@
                         </div>
                         <input type="url" id="raceLtUrl" class="input-field text-xs" data-i18n="liveTimingUrl" placeholder="Live Timing URL..." autocomplete="off" required>
                         <div class="no-live-filter">
-                            <label class="no-live-label" for="raceLtFilterBy">Which car is yours?</label>
+                            <label class="no-live-label" for="raceLtFilterBy" data-i18n="ltWhichCar">Which car is yours?</label>
                             <select id="raceLtFilterBy" class="input-field text-xs" onchange="window.onRaceLtFilterBy(this.value)">
-                                <option value="team">Match by team name</option>
-                                <option value="kart">Match by kart number</option>
-                                <option value="driver">Match by driver name</option>
-                                <option value="all">Don't filter - show every car</option>
+                                <option value="team" data-i18n-opt="ltByTeam">Match by team name</option>
+                                <option value="kart" data-i18n-opt="ltByKart">Match by kart number</option>
+                                <option value="driver" data-i18n-opt="ltByDriver">Match by driver name</option>
+                                <option value="all" data-i18n-opt="ltByAll">Don't filter - show every car</option>
                             </select>
                             <input type="text" id="raceLtValue" class="input-field text-xs" placeholder="Team name, e.g. Holyland Racing" autocomplete="off">
                             <p id="raceLtFilterHint" class="no-live-help"></p>
                         </div>
                         <div class="flex gap-2 flex-wrap">
                             <button type="submit" class="no-live-btn" data-i18n="connectLive">Connect</button>
-                            <button type="button" class="no-live-btn no-live-btn-alt" onclick="window.openTimingPage()">View timing page</button>
+                            <button type="button" class="no-live-btn no-live-btn-alt" onclick="window.openTimingPage()" data-i18n="ltViewPage">View timing page</button>
                         </div>
                     </form>
                     <div id="raceLtStatus" class="no-live-status" role="status" aria-live="polite"></div>
@@ -1086,7 +1086,7 @@
                     </div>
                     <div id="competitorsTable" class="mt-1 overflow-y-auto lt-table-scroll"></div>
                     <div id="apexIframeContainer" class="hidden mt-1">
-                        <div class="flex justify-end text-[11px] mb-1"><a id="apexIframeOpen" href="#" target="_blank" rel="noopener" class="text-ice underline">Open in new tab &#8599;</a></div>
+                        <div class="flex justify-end text-[11px] mb-1"><a id="apexIframeOpen" href="#" target="_blank" rel="noopener" class="text-ice underline"><span data-i18n="ltOpenTab">Open in new tab</span> &#8599;</a></div>
                         <iframe id="apexIframe" src="" class="w-full rounded" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
                     </div>
                     <!-- kartRankingPanel removed: replaced by the single avg-pace green highlight in the standings -->
@@ -1455,13 +1455,13 @@
 
     <div id="saveStrategyModal" class="hidden fixed inset-0 bg-navy-950/95 flex items-center justify-center p-4" style="z-index:400">
         <div class="bg-navy-900 border border-gray-700 p-4 rounded w-full max-w-md">
-            <h3 class="text-white font-bold mb-2">Save Strategy</h3>
-            <input type="text" id="saveStrategyName" placeholder="Strategy Name" class="input-field mb-2">
+            <h3 class="text-white font-bold mb-2" data-i18n="saveModalTitle">Save Strategy</h3>
+            <input type="text" id="saveStrategyName" placeholder="Strategy Name" data-i18n="saveNamePh" class="input-field mb-2">
             <div class="flex gap-4 mb-2 text-gray-300 text-xs">
-                <label><input type="radio" name="strategyVisibility" value="private" checked> Private</label>
-                <label><input type="radio" name="strategyVisibility" value="public"> Public (cloud)</label>
+                <label><input type="radio" name="strategyVisibility" value="private" checked> <span data-i18n="savePrivate">Private</span></label>
+                <label><input type="radio" name="strategyVisibility" value="public"> <span data-i18n="savePublic">Public (cloud)</span></label>
             </div>
-            <p class="text-[11px] text-gray-500 mb-4"><i class="fas fa-mobile-alt"></i> Always kept on this device. Sent to the cloud too when you are online; if not, it syncs later.</p>
+            <p class="text-[11px] text-gray-500 mb-4"><i class="fas fa-mobile-alt"></i> <span data-i18n="saveNote">Always kept on this device. Sent to the cloud too when you are online; if not, it syncs later.</span></p>
             <div class="flex gap-2">
                 <button id="saveStrategyConfirmBtn" onclick="window.performStrategySave()" class="flex-1 bg-ice text-navy-950 font-bold py-2 rounded" data-i18n="save">Save</button>
                 <button onclick="window.closeSaveStrategyModal()" class="flex-1 bg-navy-700 text-gray-300 py-2 rounded" data-i18n="cancel">Cancel</button>
@@ -2458,22 +2458,23 @@
     <script src="js/i18n-extra2.js?v=1"></script>
     <script src="js/i18n-extra3.js?v=1"></script>
     <script src="js/i18n-laps.js?v=1"></script>
+    <script src="js/i18n-new.js?v=1"></script>
     <script src="js/i18n-phrases.js?v=2"></script>
     <script src="js/i18n-phrases2.js?v=1"></script>
     <script src="js/i18n-phrases3.js?v=1"></script>
     <script src="js/auth.js?v=9"></script>
     <script src="js/network.js?v=10"></script>
-    <script src="js/strategy.js?v=17"></script>
+    <script src="js/strategy.js?v=18"></script>
     <script src="js/race-rules.js?v=5"></script>
-    <script src="js/compliance.js?v=1"></script>
-    <script src="js/export.js?v=1"></script>
-    <script src="js/autosave.js?v=1"></script>
-    <script src="js/live-extras.js?v=1"></script>
+    <script src="js/compliance.js?v=2"></script>
+    <script src="js/export.js?v=2"></script>
+    <script src="js/autosave.js?v=2"></script>
+    <script src="js/live-extras.js?v=2"></script>
     <script src="js/live-timing.js?v=19"></script>
     <script src="js/track-finder.js?v=2"></script>
-    <script src="js/ui.js?v=21"></script>
+    <script src="js/ui.js?v=22"></script>
     <script src="js/walkthrough.js?v=13"></script>
     <script src="js/wizard.js?v=2"></script>
-    <script src="js/main.js?v=26"></script>
+    <script src="js/main.js?v=27"></script>
 </body>
 </html>

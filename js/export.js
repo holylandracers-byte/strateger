@@ -5,7 +5,8 @@
 (function() {
     const esc = function(x) { return String(x == null ? '' : x).replace(/[&<>"]/g, function(c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); };
     const tr = function(k, fb) { const v = window.t ? window.t(k) : null; return (v && v !== k) ? v : fb; };
-    const hm = function(ms) { const m = Math.round(ms / 60000); return Math.floor(m / 60) + 'h ' + String(m % 60).padStart(2, '0') + 'm'; };
+    const hm = function(ms) { return window.fmtHM(ms); };
+    const um = function() { const v = window.t ? window.t('unitMin') : 'm'; return v && v !== 'unitMin' ? v : 'm'; };
     const clock = function(d) { return new Date(d).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); };
     const dayOf = function(d) { return new Date(d).toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' }); };
 
@@ -46,13 +47,13 @@
             t = b;
             const pit = pits[i];
             let pitCell = '';
-            if (pit && i < stints.length - 1) { pitCell = pit.duration > 0 ? '+' + Math.round(pit.duration / 1000) + 's' : tr('pit', 'Pit'); t += pit.duration; }
+            if (pit && i < stints.length - 1) { pitCell = pit.duration > 0 ? '+' + Math.round(pit.duration / 1000) + 's' : tr('pitNoun', 'Pit'); t += pit.duration; }
             const l = laps(s.duration);
             rows += '<tr class="xrow" style="border-top:1px solid ' + LINE + '">'
                 + '<td style="padding:9px 8px;color:' + MUTE + ';width:34px">' + (i + 1) + '</td>'
                 + '<td style="padding:9px 8px;font-weight:700;color:' + INK + '"><span style="display:inline-block;vertical-align:middle;width:10px;height:10px;border-radius:50%;background:' + esc(s.color || '#22d3ee') + ';margin-' + (rtl ? 'left' : 'right') + ':8px"></span>' + esc(s.driverName) + '</td>'
                 + '<td style="padding:9px 8px;font-variant-numeric:tabular-nums">' + clock(a) + ' – ' + clock(b) + '</td>'
-                + '<td style="padding:9px 8px;font-weight:700;font-variant-numeric:tabular-nums">' + Math.round(s.duration / 60000) + ' min</td>'
+                + '<td style="padding:9px 8px;font-weight:700;font-variant-numeric:tabular-nums">' + Math.round(s.duration / 60000) + um() + '</td>'
                 + (lapMs ? '<td style="padding:9px 8px;font-variant-numeric:tabular-nums">≈ ' + l + '</td>' : '')
                 + '<td style="padding:9px 8px;color:' + MUTE + '">' + pitCell + '</td></tr>';
         });
@@ -85,14 +86,14 @@
             + kpi(tr('lblRaceTarget', 'Race'), target)
             + kpi(tr('stints', 'Stints'), String(stints.length))
             + kpi(tr('pitNoun', 'Pit stops'), String(pits.length))
-            + kpi(tr('avgStint', 'Avg stint'), stints.length ? Math.round(driveMs / stints.length / 60000) + ' min' : '—')
+            + kpi(tr('avgStint', 'Avg stint'), stints.length ? Math.round(driveMs / stints.length / 60000) + um() : '—')
             + kpi(tr('driveNoun', 'Driving'), hm(driveMs))
             + '</div>'
             + h2(tr('xExpDrivers', 'Drivers'))
             + '<table style="width:100%;border-collapse:collapse"><thead><tr>' + th(tr('ltDriver', 'Driver')) + th(tr('driveNoun', 'Driving')) + th(tr('stints', 'Stints')) + th('') + th('%') + '</tr></thead><tbody>' + driverRows + '</tbody></table>'
             + h2(tr('timeline', 'Timeline'))
             + '<table style="width:100%;border-collapse:collapse"><thead><tr>' + th('#') + th(tr('ltDriver', 'Driver')) + th(tr('xTimes', 'Time')) + th(tr('xDuration', 'Duration')) + (lapMs ? th(tr('laps', 'Laps')) : '') + th(tr('pitNoun', 'Pit')) + '</tr></thead><tbody>' + rows + '</tbody></table>'
-            + (ruleRows ? h2(verdict.failing.length ? verdict.failing.length + ' ' + tr('rule(s) not met', 'rule(s) not met') : tr('All rules met', 'All rules met')) + ruleRows : '')
+            + (ruleRows ? h2(verdict.failing.length ? window.tf('cpBroken', { n: verdict.failing.length }) : tr('cpAllMet', 'All rules met')) + ruleRows : '')
             + '<div class="xrow" style="margin-top:28px;padding-top:10px;border-top:1px solid ' + LINE + ';color:' + MUTE + ';font-size:11px;display:flex;justify-content:space-between"><span>Strateger</span><span>' + esc(new Date().toLocaleString()) + '</span></div>';
         document.body.appendChild(sheet);
         return sheet;

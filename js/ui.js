@@ -1093,7 +1093,7 @@ window.renderPreview = function() {
     const raceTimeMs = window.config ? (window.config.raceMs || 0) : 0;
     const diffMs = (totalDrive + totalPit) - raceTimeMs;
     // Pinned totals line: driving + pits must add up to the race length (or, for a lap race, to the laps asked for).
-    const hmFmt = (ms) => { const m = Math.round(ms / 60000); return Math.floor(m / 60) + 'h ' + String(m % 60).padStart(2, '0') + 'm'; };
+    const hmFmt = (ms) => window.fmtHM(ms);
     const tl = (k, fb) => { const v = window.t ? window.t(k) : null; return (v && v !== k) ? v : fb; };
     const cfgNow = window.config || {};
     const isLapRace = cfgNow.raceTarget === 'laps' && cfgNow.raceLaps > 0;
