@@ -2973,7 +2973,7 @@ window.toggleDriverMode = function() {
             navigator.wakeLock.request('screen').catch(e => {});
         }
         // Update at higher frequency for responsiveness
-        window._driverModeInterval = setInterval(window.updateDriverMode, 500);
+        window._driverModeInterval = setInterval(window.updateDriverMode, window.liteTick ? window.liteTick(500) : 500);
         window.updateDriverMode();
     }
 };

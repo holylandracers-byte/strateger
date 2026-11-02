@@ -17,6 +17,12 @@ Existing features: strategy planning, qualifying, live timing (Apex, Alpha, Race
 Constraint from the user: keep all features, but organise them so the app stays clear. Simplicity is the priority.
 Web only, installable as a PWA. Code lives in plain HTML/CSS/JS (`index.html`, `css/style.css`, `js/*`).
 
+## Operating Context
+- Races come in two scenarios: Race only, or Qualifying + Race (qualifying has its own timer and driver order). Race creation is a guided, skippable wizard; the full setup screen remains as the advanced view.
+- Tablets are used trackside and are sometimes underpowered; the app must stay smooth there (a Lite mode that cuts effects and throttles renders).
+- UI is translated into 12 languages; every new phase/screen must use the i18n keys, never English-only strings.
+- Per-driver pit-warning lead time must be explained in plain language (when the driver is warned, vs. the race default).
+
 ## Product Principles
 - One primary task per moment; everything else is one step away, never competing.
 - Keep every feature, but progressively disclose the rare ones.

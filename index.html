@@ -179,6 +179,7 @@
                 </div>
                 <!-- Quick-action pill strip (collapsible body) -->
                 <div id="heroBody" class="quick-actions-strip mt-3">
+                    <button class="quick-pill" onclick="window.openRaceWizard && window.openRaceWizard()" data-i18n="xWzTitle">New race</button>
                     <button class="quick-pill" onclick="window.setSessionMode('race'); window.setQuickMode('sprint')" data-i18n="qpSprint">⚡ Sprint</button>
                     <button class="quick-pill" onclick="window.setSessionMode('race'); window.setQuickMode('endurance')" data-i18n="qpEndurance">🏁 Endurance</button>
                     <button class="quick-pill" onclick="window.setSessionMode('race'); window.setQuickMode('nolimit')" data-i18n="qpNoLimit">∞ No Limit</button>
@@ -735,19 +736,19 @@
                     </div>
                     <div class="panel-body space-y-2">
                         <div class="outcome-row">
-                            <span class="outcome-label">Pit stops</span>
+                            <span class="outcome-label" data-i18n="xPitStops">Pit stops</span>
                             <span id="adjOutPits" class="outcome-val">—</span>
                             <div class="flex-1 outcome-bar-track"><div id="adjBarPits" class="outcome-bar-fill safe" style="width:0%"></div></div>
                             <span id="adjDeltaPits" class="delta-badge delta-neutral ml-1">—</span>
                         </div>
                         <div class="outcome-row">
-                            <span class="outcome-label">Avg stint</span>
+                            <span class="outcome-label" data-i18n="xAvgStint">Avg stint</span>
                             <span id="adjOutStint" class="outcome-val">—</span>
                             <div class="flex-1 outcome-bar-track"><div id="adjBarStint" class="outcome-bar-fill safe" style="width:0%"></div></div>
                             <span id="adjDeltaStint" class="delta-badge delta-neutral ml-1">—</span>
                         </div>
                         <div class="outcome-row">
-                            <span class="outcome-label">Drive time</span>
+                            <span class="outcome-label" data-i18n="xDriveTime">Drive time</span>
                             <span id="adjOutDrive" class="outcome-val">—</span>
                             <div class="flex-1 outcome-bar-track"><div id="adjBarDrive" class="outcome-bar-fill safe" style="width:0%"></div></div>
                             <span id="adjDeltaDrive" class="delta-badge delta-neutral ml-1">—</span>
@@ -806,8 +807,8 @@
         <div class="demo-sheet">
             <div class="flex items-center justify-between mb-4">
                 <div>
-                    <div class="text-lg font-black text-white">Try a Demo Race</div>
-                    <div class="text-[11px] text-gray-500 mt-0.5">Pick a preset scenario and see the strategy live</div>
+                    <div class="text-lg font-black text-white" data-i18n="xDemoTitle">Try a Demo Race</div>
+                    <div class="text-[11px] text-gray-500 mt-0.5" data-i18n="xDemoSub">Pick a preset scenario and see the strategy live</div>
                 </div>
                 <button onclick="window.closeDemoModal()" class="w-8 h-8 flex items-center justify-center bg-navy-800 hover:bg-navy-700 text-gray-400 hover:text-white rounded-lg border border-gray-700 text-lg transition">&times;</button>
             </div>
@@ -819,11 +820,11 @@
                         <div class="flex items-center gap-2">
                             <span class="text-lg">⚡</span>
                             <div>
-                                <div class="text-xs font-black text-white">Sprint Race</div>
+                                <div class="text-xs font-black text-white" data-i18n="xSprint">Sprint Race</div>
                                 <div class="text-[11px] text-gray-500">1h · 3 drivers · 4 stops</div>
                             </div>
                         </div>
-                        <span class="delta-badge delta-positive">Beginner</span>
+                        <span class="delta-badge delta-positive" data-i18n="xBeginner">Beginner</span>
                     </div>
                     <!-- Mini bar chart preview -->
                     <div class="mini-stint-chart mt-2" id="demoChart_sprint" style="height:14px;"></div>
@@ -833,11 +834,11 @@
                         <div class="flex items-center gap-2">
                             <span class="text-lg">🏁</span>
                             <div>
-                                <div class="text-xs font-black text-white">Endurance Classic</div>
+                                <div class="text-xs font-black text-white" data-i18n="xEndurance">Endurance Classic</div>
                                 <div class="text-[11px] text-gray-500">6h · 4 drivers · 12 stops</div>
                             </div>
                         </div>
-                        <span class="delta-badge delta-neutral">Standard</span>
+                        <span class="delta-badge delta-neutral" data-i18n="xStandard">Standard</span>
                     </div>
                     <div class="mini-stint-chart mt-2" id="demoChart_endurance" style="height:14px;"></div>
                 </div>
@@ -846,11 +847,11 @@
                         <div class="flex items-center gap-2">
                             <span class="text-lg">🌙</span>
                             <div>
-                                <div class="text-xs font-black text-white">24h Night Race</div>
+                                <div class="text-xs font-black text-white" data-i18n="xNightRace">24h Night Race</div>
                                 <div class="text-[11px] text-gray-500">24h · 6 drivers · 2 squads</div>
                             </div>
                         </div>
-                        <span class="delta-badge delta-negative">Advanced</span>
+                        <span class="delta-badge delta-negative" data-i18n="xAdvanced">Advanced</span>
                     </div>
                     <div class="mini-stint-chart mt-2" id="demoChart_night24" style="height:14px;"></div>
                 </div>
@@ -858,7 +859,7 @@
 
             <!-- Qualifying strip preview -->
             <div class="mb-4">
-                <div class="section-divider">Qualifying Preview</div>
+                <div class="section-divider" data-i18n="xQualPreview">Qualifying Preview</div>
                 <div class="qualify-preview-strip" id="demoQualifyStrip">
                     <div class="qualify-segment-bar" style="flex:3; background: linear-gradient(90deg,#6366f1,#4f46e5);">Q1</div>
                     <div class="qualify-segment-bar" style="flex:3; background: linear-gradient(90deg,#7c3aed,#6d28d9);">Q2</div>
@@ -868,7 +869,7 @@
             </div>
 
             <div class="flex gap-2">
-                <button onclick="window.closeDemoModal()" class="flex-1 bg-navy-800 hover:bg-navy-700 text-gray-300 font-bold py-2.5 rounded-xl border border-gray-700 transition text-sm">
+                <button onclick="window.closeDemoModal()" class="flex-1 bg-navy-800 hover:bg-navy-700 text-gray-300 font-bold py-2.5 rounded-xl border border-gray-700 transition text-sm" data-i18n="cancel">
                     Cancel
                 </button>
                 <button onclick="window.launchSelectedDemo()" class="flex-[2] bg-ice hover:bg-blue-400 text-navy-950 font-black py-2.5 rounded-xl shadow-lg transition text-sm uppercase tracking-wider">
@@ -905,28 +906,28 @@
             </div>
 
             <!-- Live outcome visualisation -->
-            <div class="section-divider">Projected Outcome</div>
+            <div class="section-divider" data-i18n="xProjected">Projected Outcome</div>
             <div class="bg-navy-950/60 border border-gray-700/40 rounded-xl p-3 mb-4 space-y-2">
                 <div class="outcome-row">
-                    <span class="outcome-label">Pit stops</span>
+                    <span class="outcome-label" data-i18n="xPitStops">Pit stops</span>
                     <span id="ladjOutPits" class="outcome-val">—</span>
                     <div class="flex-1 outcome-bar-track ml-2"><div id="ladjBarPits" class="outcome-bar-fill safe" style="width:60%"></div></div>
                     <span id="ladjDeltaPits" class="delta-badge delta-neutral ml-2">—</span>
                 </div>
                 <div class="outcome-row">
-                    <span class="outcome-label">Avg stint</span>
+                    <span class="outcome-label" data-i18n="xAvgStint">Avg stint</span>
                     <span id="ladjOutStint" class="outcome-val">—</span>
                     <div class="flex-1 outcome-bar-track ml-2"><div id="ladjBarStint" class="outcome-bar-fill safe" style="width:75%"></div></div>
                     <span id="ladjDeltaStint" class="delta-badge delta-neutral ml-2">—</span>
                 </div>
                 <div class="outcome-row">
-                    <span class="outcome-label">Drive time</span>
+                    <span class="outcome-label" data-i18n="xDriveTime">Drive time</span>
                     <span id="ladjOutDrive" class="outcome-val">—</span>
                     <div class="flex-1 outcome-bar-track ml-2"><div id="ladjBarDrive" class="outcome-bar-fill safe" style="width:90%"></div></div>
                     <span id="ladjDeltaDrive" class="delta-badge delta-neutral ml-2">—</span>
                 </div>
                 <div class="outcome-row">
-                    <span class="outcome-label">Risk level</span>
+                    <span class="outcome-label" data-i18n="xRisk">Risk level</span>
                     <span id="ladjOutRisk" class="outcome-val">—</span>
                     <div class="flex-1 outcome-bar-track ml-2"><div id="ladjBarRisk" class="outcome-bar-fill safe" style="width:20%"></div></div>
                     <span id="ladjDeltaRisk" class="delta-badge delta-neutral ml-2">—</span>
@@ -940,7 +941,7 @@
             </div>
 
             <div class="flex gap-2">
-                <button onclick="window.closeLiveAdjustModal()" class="flex-1 bg-navy-800 hover:bg-navy-700 text-gray-300 font-bold py-2.5 rounded-xl border border-gray-700 transition text-sm">
+                <button onclick="window.closeLiveAdjustModal()" class="flex-1 bg-navy-800 hover:bg-navy-700 text-gray-300 font-bold py-2.5 rounded-xl border border-gray-700 transition text-sm" data-i18n="cancel">
                     Cancel
                 </button>
                 <button onclick="window.applyLiveAdjustment()" class="flex-[2] bg-neon/90 hover:bg-neon text-black font-black py-2.5 rounded-xl shadow-lg transition text-sm uppercase tracking-wider">
@@ -993,7 +994,7 @@
         <div id="stintNotifyBanner" class="hidden bg-navy-900 border-b border-amber-500 px-3 py-2 shrink-0">
             <div class="flex items-center justify-between gap-2">
                 <div class="min-w-0 flex-1">
-                    <div id="stintNotifyTitle" class="text-gray-100 text-sm font-bold truncate">Pit notify window</div>
+                    <div id="stintNotifyTitle" class="text-gray-100 text-sm font-bold truncate" data-i18n="xPitNotifyWindow">Pit notify window</div>
                     <div id="stintNotifySub" class="text-[11px] text-gray-400 font-mono truncate"></div>
                 </div>
                 <div class="flex items-center gap-2 shrink-0">
@@ -1468,21 +1469,21 @@
     
     <div id="emailTeamModal" class="hidden fixed inset-0 bg-navy-950/95 z-50 flex items-center justify-center p-4">
         <div class="bg-navy-900 border border-gray-700 p-4 rounded w-full max-w-md">
-            <h3 class="text-ice font-bold mb-2">Send Email</h3>
+            <h3 class="text-ice font-bold mb-2" data-i18n="xSendEmail">Send Email</h3>
             <input type="text" id="emailRecipients" placeholder="Emails..." class="input-field mb-2">
             <input type="text" id="emailSubject" value="Race Strategy" class="input-field mb-2">
             <textarea id="emailMessage" class="input-field mb-2 h-20"></textarea>
             <label class="flex gap-2 text-xs text-gray-300 mb-2"><input type="checkbox" id="attachStrategy" checked> Attach Strategy</label>
             <div class="flex gap-2">
-                <button onclick="window.sendTeamEmail()" class="flex-1 bg-ice text-navy-950 font-bold py-2 rounded">Send</button>
-                <button onclick="window.closeEmailModal()" class="flex-1 bg-navy-700 text-gray-300 py-2 rounded">Cancel</button>
+                <button onclick="window.sendTeamEmail()" class="flex-1 bg-ice text-navy-950 font-bold py-2 rounded" data-i18n="send">Send</button>
+                <button onclick="window.closeEmailModal()" class="flex-1 bg-navy-700 text-gray-300 py-2 rounded" data-i18n="cancel">Cancel</button>
             </div>
         </div>
     </div>
     
     <div id="calendarModal" class="hidden fixed inset-0 bg-navy-950/95 z-50 flex items-center justify-center p-4">
         <div class="bg-navy-900 border border-gray-700 p-4 rounded w-full max-w-md">
-            <h3 class="text-neon font-bold mb-2">Add to Calendar</h3>
+            <h3 class="text-neon font-bold mb-2" data-i18n="xAddCalendar">Add to Calendar</h3>
             <input type="text" id="calendarTitle" placeholder="Title" class="input-field mb-2">
             <div class="mb-2">
                 <label class="text-xs text-gray-400 mb-1 block">Start</label>
@@ -1506,8 +1507,8 @@
             </div>
             <input type="text" id="calendarLocation" placeholder="Location" class="input-field mb-2">
             <div class="flex gap-2">
-                <button onclick="window.createCalendarEvent()" class="flex-1 bg-neon text-navy-950 font-bold py-2 rounded">Create</button>
-                <button onclick="window.closeCalendarModal()" class="flex-1 bg-navy-700 text-gray-300 py-2 rounded">Cancel</button>
+                <button onclick="window.createCalendarEvent()" class="flex-1 bg-neon text-navy-950 font-bold py-2 rounded" data-i18n="create">Create</button>
+                <button onclick="window.closeCalendarModal()" class="flex-1 bg-navy-700 text-gray-300 py-2 rounded" data-i18n="cancel">Cancel</button>
             </div>
         </div>
     </div>
@@ -1521,8 +1522,8 @@
                 <label><input type="radio" name="strategyVisibility" value="public"> Public</label>
             </div>
             <div class="flex gap-2">
-                <button onclick="window.performStrategySave()" class="flex-1 bg-ice text-navy-950 font-bold py-2 rounded">Save</button>
-                <button onclick="window.closeSaveStrategyModal()" class="flex-1 bg-navy-700 text-gray-300 py-2 rounded">Cancel</button>
+                <button onclick="window.performStrategySave()" class="flex-1 bg-ice text-navy-950 font-bold py-2 rounded" data-i18n="save">Save</button>
+                <button onclick="window.closeSaveStrategyModal()" class="flex-1 bg-navy-700 text-gray-300 py-2 rounded" data-i18n="cancel">Cancel</button>
             </div>
         </div>
     </div>
@@ -1530,10 +1531,10 @@
     <div id="strategyModal" class="hidden fixed inset-0 bg-navy-950/95 z-50 flex items-center justify-center p-4">
         <div class="bg-navy-900 border border-gray-700 rounded w-full max-w-lg max-h-[80vh] flex flex-col">
             <div class="p-3 border-b border-gray-700 flex justify-between items-center">
-                <h3 class="text-ice font-bold">Saved Strategies</h3>
+                <h3 class="text-ice font-bold" data-i18n="xSavedStrategies">Saved Strategies</h3>
                 <button onclick="window.closeStrategyModal()" class="text-gray-400">&times;</button>
             </div>
-            <div id="strategyList" class="p-3 overflow-y-auto flex-1 text-xs space-y-2">Loading...</div>
+            <div id="strategyList" class="p-3 overflow-y-auto flex-1 text-xs space-y-2" data-i18n="xLoading">Loading...</div>
         </div>
     </div>
     
@@ -1821,8 +1822,8 @@
             <div id="chatLoginHint" class="text-xs text-gray-400 text-center mb-2">💬 Join the chat or just watch the race</div>
             <input type="text" id="chatUserName" class="input-field text-sm" placeholder="Enter your name / team name">
             <div id="chatJoinError" class="text-sm text-yellow-400 hidden"></div>
-            <button onclick="window.joinChat()" class="bg-ice text-navy-950 font-bold py-2 rounded text-sm hover:bg-cyan-300" id="chatJoinBtn">Join Chat</button>
-            <button onclick="window.skipChat()" class="bg-gray-700 text-gray-100 py-2 rounded text-sm hover:bg-gray-600 text-xs" id="chatSkipBtn">Just Watch (No Chat)</button>
+            <button onclick="window.joinChat()" class="bg-ice text-navy-950 font-bold py-2 rounded text-sm hover:bg-cyan-300" id="chatJoinBtn" data-i18n="xJoinChat">Join Chat</button>
+            <button onclick="window.skipChat()" class="bg-gray-700 text-gray-100 py-2 rounded text-sm hover:bg-gray-600 text-xs" id="chatSkipBtn" data-i18n="xJustWatch">Just Watch (No Chat)</button>
         </div>
 
         <div id="chatMessagesView" class="hidden flex-1 flex flex-col min-h-0">
@@ -1897,6 +1898,17 @@
 
             <!-- Scrollable content -->
             <div class="theme-panel-scroll">
+                <div class="lite-setting">
+                    <div>
+                        <div class="lite-title" data-i18n="xLiteMode">Lite mode</div>
+                        <div class="lite-desc" data-i18n="xLiteModeD">Fewer animations and effects. Helps on slow tablets.</div>
+                    </div>
+                    <div class="wz-seg" role="group">
+                        <button type="button" class="wz-seg-btn" data-lite-opt="auto" onclick="window.setLiteMode('auto')" data-i18n="xLiteAuto">Auto</button>
+                        <button type="button" class="wz-seg-btn" data-lite-opt="on" onclick="window.setLiteMode('on')" data-i18n="xLiteOn">On</button>
+                        <button type="button" class="wz-seg-btn" data-lite-opt="off" onclick="window.setLiteMode('off')" data-i18n="xLiteOff">Off</button>
+                    </div>
+                </div>
                 <!-- ─── CSS Themes ─── -->
                 <div class="theme-category-label">
                     <span class="theme-category-icon">🎨</span> Design Themes
@@ -2235,7 +2247,7 @@
                 <div id="proActivateSuccess" class="hidden text-green-400 text-xs text-center font-bold"></div>
             </div>
 
-            <button onclick="document.getElementById('proUpgradeModal').classList.add('hidden')" class="w-full bg-navy-800 text-gray-400 py-2 rounded-lg mt-4 hover:bg-navy-700 transition text-sm">Close</button>
+            <button onclick="document.getElementById('proUpgradeModal').classList.add('hidden')" class="w-full bg-navy-800 text-gray-400 py-2 rounded-lg mt-4 hover:bg-navy-700 transition text-sm" data-i18n="close">Close</button>
         </div>
     </div>
 
@@ -2335,8 +2347,8 @@
             <div id="confirmBody" class="text-sm text-gray-400"></div>
             <div id="confirmQuestion" class="text-sm text-ice font-semibold"></div>
             <div class="flex gap-3 pt-2">
-                <button onclick="window.dismissConfirmModal()" class="flex-1 bg-navy-800 border border-gray-600 text-gray-300 font-bold py-2.5 rounded-lg text-sm hover:bg-navy-700 transition">Cancel</button>
-                <button id="confirmOkBtn" onclick="window.executeConfirmAction()" class="flex-1 bg-red-600 hover:bg-red-500 text-white font-bold py-2.5 rounded-lg text-sm transition">Confirm</button>
+                <button onclick="window.dismissConfirmModal()" class="flex-1 bg-navy-800 border border-gray-600 text-gray-300 font-bold py-2.5 rounded-lg text-sm hover:bg-navy-700 transition" data-i18n="cancel">Cancel</button>
+                <button id="confirmOkBtn" onclick="window.executeConfirmAction()" class="flex-1 bg-red-600 hover:bg-red-500 text-white font-bold py-2.5 rounded-lg text-sm transition" data-i18n="xConfirm">Confirm</button>
             </div>
         </div>
     </div>
@@ -2499,7 +2511,9 @@
         </div>
     </div>
 
-    <script src="js/state.js?v=30"></script>
+    <script src="js/state.js?v=31"></script>
+    <script src="js/lite-mode.js?v=1"></script>
+    <script src="js/i18n-extra.js?v=1"></script>
     <script src="js/auth.js?v=9"></script>
     <script src="js/network.js?v=10"></script>
     <script src="js/strategy.js?v=14"></script>
@@ -2508,6 +2522,7 @@
     <script src="js/track-finder.js?v=2"></script>
     <script src="js/ui.js?v=19"></script>
     <script src="js/walkthrough.js?v=13"></script>
-    <script src="js/main.js?v=24"></script>
+    <script src="js/wizard.js?v=1"></script>
+    <script src="js/main.js?v=25"></script>
 </body>
 </html>

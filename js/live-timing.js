@@ -2367,7 +2367,7 @@ window.toggleOutlookCollapse = function() {
     // Runs twice a second so the widget clock doesn't visibly lag the raw feed by up to a
     // full second just from local tick phase -- some of the "1-2s delay" reported was this,
     // on top of the feed's own network/parse latency (which this can't remove).
-    setInterval(tick, 500);
+    setInterval(tick, window.liteTick ? window.liteTick(500) : 500);
     tick();
 })();
 

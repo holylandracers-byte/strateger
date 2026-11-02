@@ -3855,3 +3855,80 @@ body.lt-compact #apexViewToggle, body.lt-compact #addSecondaryTeamBtn, body.lt-c
     .sr-num-done { margin-left: 28px; }
 }
 body:has(#previewScreen:not(.hidden)) #installBanner { display: none !important; }
+
+/* ==========================================
+   NEW-RACE WIZARD
+   ========================================== */
+body.wz-open { overflow: hidden; }
+.wz { position: fixed; inset: 0; z-index: 400; display: flex; align-items: stretch; justify-content: center; background: rgba(2, 6, 23, 0.92); }
+.wz.hidden { display: none; }
+.wz-sheet { width: 100%; max-width: 560px; display: flex; flex-direction: column; background: var(--navy-950, #020617); padding: env(safe-area-inset-top, 0) 0 env(safe-area-inset-bottom, 0); }
+@media (min-width: 768px) { .wz-sheet { margin: 24px 0; border: 1px solid rgba(148,163,184,.2); border-radius: 16px; } }
+.wz-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px 6px; }
+.wz-title { font-size: 18px; font-weight: 800; color: #fff; letter-spacing: .02em; }
+.wz-skip { font-size: 13px; color: #94a3b8; min-height: 44px; padding: 0 8px; text-decoration: underline; text-underline-offset: 3px; }
+.wz-skip:hover { color: #fff; }
+.wz-progress { display: flex; gap: 4px; list-style: none; margin: 0; padding: 4px 16px 12px; }
+.wz-progress li { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; color: #64748b; font-size: 11px; }
+.wz-dot { width: 24px; height: 24px; border-radius: 999px; display: grid; place-items: center; font-size: 11px; font-weight: 800; border: 1px solid #334155; background: #0f172a; }
+.wz-progress li.is-now { color: var(--ice, #22d3ee); }
+.wz-progress li.is-now .wz-dot { border-color: var(--ice, #22d3ee); color: var(--ice, #22d3ee); }
+.wz-progress li.is-done .wz-dot { background: var(--ice, #22d3ee); border-color: var(--ice, #22d3ee); color: #020617; }
+.wz-step-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wz-body { flex: 1; overflow-y: auto; padding: 8px 16px 16px; -webkit-overflow-scrolling: touch; }
+.wz-q { font-size: 22px; font-weight: 800; color: #fff; margin: 4px 0 12px; line-height: 1.2; }
+.wz-hint { font-size: 13px; color: #94a3b8; margin: 4px 0 12px; line-height: 1.4; }
+.wz-field { margin-bottom: 16px; }
+.wz-label { display: block; font-size: 12px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; }
+.wz-input { width: 100%; min-height: 48px; padding: 0 12px; border-radius: 10px; background: #0f172a; border: 1px solid #334155; color: #fff; font-size: 16px; }
+.wz-input:focus { outline: none; border-color: var(--ice, #22d3ee); }
+.wz-big { font-size: 28px; font-weight: 800; min-height: 60px; text-align: center; }
+.wz-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.wz-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.wz-chip, .wz-seg-btn { min-height: 44px; padding: 0 14px; border-radius: 10px; background: #0f172a; border: 1px solid #334155; color: #cbd5e1; font-weight: 700; font-size: 14px; }
+.wz-chip.is-on, .wz-seg-btn.is-on { background: var(--ice, #22d3ee); border-color: var(--ice, #22d3ee); color: #020617; }
+.wz-seg { display: flex; gap: 6px; flex-wrap: wrap; }
+.wz-seg-btn { flex: 1; }
+.wz-cards { display: grid; gap: 12px; }
+.wz-card { display: grid; grid-template-columns: 40px 1fr; column-gap: 12px; text-align: start; padding: 16px; border-radius: 14px; background: #0f172a; border: 2px solid #334155; color: #fff; min-height: 76px; }
+.wz-card.is-on { border-color: var(--ice, #22d3ee); background: rgba(34, 211, 238, .08); }
+.wz-card-icon { grid-row: span 2; font-size: 22px; color: var(--ice, #22d3ee); align-self: center; text-align: center; }
+.wz-card-title { font-size: 17px; font-weight: 800; }
+.wz-card-desc { font-size: 13px; color: #94a3b8; }
+.wz-drivers { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.wz-driver { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 14px; border-radius: 999px; background: #0f172a; border: 2px solid #334155; color: #64748b; font-weight: 700; }
+.wz-driver-dot { width: 12px; height: 12px; border-radius: 999px; background: var(--dc); opacity: .4; }
+.wz-driver.is-on { border-color: var(--dc); color: #fff; }
+.wz-driver.is-on .wz-driver-dot { opacity: 1; }
+.wz-add { display: flex; gap: 8px; }
+.wz-add-btn { width: 48px; min-height: 48px; border-radius: 10px; background: var(--ice, #22d3ee); color: #020617; font-size: 16px; }
+.wz-sum { display: grid; gap: 1px; background: #1e293b; border-radius: 12px; overflow: hidden; margin: 0; }
+.wz-sum > div { display: flex; justify-content: space-between; gap: 16px; padding: 12px 14px; background: #0f172a; }
+.wz-sum dt { color: #94a3b8; font-size: 13px; }
+.wz-sum dd { margin: 0; color: #fff; font-weight: 700; text-align: end; }
+.wz-foot { display: flex; justify-content: space-between; gap: 12px; padding: 12px 16px 16px; border-top: 1px solid #1e293b; }
+.wz-back { min-height: 52px; padding: 0 20px; border-radius: 12px; color: #cbd5e1; font-weight: 700; background: #0f172a; border: 1px solid #334155; }
+.wz-next { flex: 1; min-height: 52px; border-radius: 12px; background: var(--ice, #22d3ee); color: #020617; font-weight: 900; font-size: 16px; }
+.wz button:focus-visible, .wz input:focus-visible { outline: 2px solid var(--ice, #22d3ee); outline-offset: 2px; }
+
+/* Per-driver warning field: readable, wrapping label */
+.driver-notify-input { width: 44px; }
+.driver-notify-label, .driver-stamina-label { font-size: 11px; max-width: 64px; line-height: 1.1; white-space: normal; }
+
+/* ==========================================
+   LITE MODE (slow tablets)
+   ========================================== */
+.lite-setting { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 12px; margin-bottom: 14px; border-radius: 12px; background: rgba(255,255,255,.04); border: 1px solid rgba(148,163,184,.2); }
+.lite-title { font-weight: 800; color: #fff; font-size: 14px; }
+.lite-desc { font-size: 12px; color: #94a3b8; max-width: 240px; }
+.lite-setting .wz-seg-btn { min-height: 36px; padding: 0 10px; font-size: 12px; }
+body.lite *, body.lite *::before, body.lite *::after {
+    animation: none !important;
+    transition: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    text-shadow: none !important;
+    scroll-behavior: auto !important;
+}
+body.lite .shadow, body.lite [class*="shadow-"], body.lite .set-card, body.lite .setup-hero, body.lite .theme-panel-modal { box-shadow: none !important; }
+body.lite .fa-spin { animation: fa-spin 1.2s linear infinite !important; }

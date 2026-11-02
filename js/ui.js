@@ -306,7 +306,7 @@ window.createDriverInput = function(val, checked, squad) {
     colorPicker.type = 'color';
     colorPicker.className = 'driver-color-picker';
     colorPicker.value = chosenColor;
-    colorPicker.title = 'Driver color';
+    colorPicker.title = window.t('xColorTip');
     colorPicker.addEventListener('click', (e) => e.stopPropagation());
     colorPicker.onchange = () => {
         accentBar.style.background = colorPicker.value;
@@ -331,7 +331,7 @@ window.createDriverInput = function(val, checked, squad) {
     const colorSwatch = document.createElement('div');
     colorSwatch.className = 'driver-color-swatch';
     colorSwatch.style.background = chosenColor;
-    colorSwatch.title = 'Change color';
+    colorSwatch.title = window.t('xColorTip');
     colorSwatch.addEventListener('click', (e) => { e.stopPropagation(); colorPicker.click(); });
     colorSwatch.appendChild(colorPicker);
 
@@ -346,7 +346,7 @@ window.createDriverInput = function(val, checked, squad) {
     const starterBtn = document.createElement('button');
     starterBtn.type = 'button';
     starterBtn.className = 'driver-starter-btn' + (checked ? ' is-starter' : '');
-    starterBtn.title = 'Set as race starter';
+    starterBtn.title = window.t('xStarterTip');
     starterBtn.innerHTML = '<svg viewBox="0 0 16 16" fill="currentColor" width="12" height="12"><path d="M2 2h12v2L8 9l6 5H2V2z"/></svg>';
     starterBtn.addEventListener('click', (e) => {
         e.preventDefault();
@@ -368,7 +368,7 @@ window.createDriverInput = function(val, checked, squad) {
     driverInput.type = 'text';
     driverInput.value = val;
     driverInput.className = 'driver-input';
-    driverInput.placeholder = 'Driver name';
+    driverInput.placeholder = window.t('xDriverNamePh');
     driverInput.addEventListener('click', (e) => e.stopPropagation());
 
     let _prevName = val;
@@ -441,7 +441,7 @@ window.createDriverInput = function(val, checked, squad) {
     // Represents how long this driver can physically handle in one stint.
     const staminaWrap = document.createElement('div');
     staminaWrap.className = 'driver-stamina-wrap hidden';
-    staminaWrap.title = 'Max stint this driver can handle (min). Used when no global max stint is set.';
+    staminaWrap.title = window.t('xMaxTip');
 
     const staminaInput = document.createElement('input');
     staminaInput.type = 'number';
@@ -455,7 +455,7 @@ window.createDriverInput = function(val, checked, squad) {
 
     const staminaLabel = document.createElement('span');
     staminaLabel.className = 'driver-stamina-label';
-    staminaLabel.textContent = 'm max';
+    staminaLabel.textContent = window.t('xMaxLabel');
 
     staminaWrap.appendChild(staminaInput);
     staminaWrap.appendChild(staminaLabel);
@@ -466,12 +466,18 @@ window.createDriverInput = function(val, checked, squad) {
     // Pit Exit Buffer stays a single race-wide setting -- it isn't a per-driver need.
     const notifyWrap = document.createElement('div');
     notifyWrap.className = 'driver-notify-wrap';
-    notifyWrap.title = "This driver's own advance-warning lead time (min) — overrides the race-wide Notify Lead Time. Leave blank to use the race default.";
+    const _leadDefault = () => parseFloat(document.getElementById('pitNotifyLeadMin')?.value) || 3;
+    const _refreshNotifyHints = () => {
+        const def = _leadDefault();
+        notifyWrap.title = window.t('xWarnTip').replace('{{n}}', def);
+        notifyInput.placeholder = String(def);
+    };
+    notifyWrap.addEventListener('pointerenter', () => _refreshNotifyHints());
 
     const notifyInput = document.createElement('input');
     notifyInput.type = 'number';
     notifyInput.className = 'driver-notify-input';
-    notifyInput.placeholder = window.t ? window.t('bufferDefault') : 'def.';
+    notifyInput.placeholder = String(_leadDefault());
     notifyInput.min = '0';
     notifyInput.step = '0.5';
     notifyInput.addEventListener('click', (e) => e.stopPropagation());
@@ -482,7 +488,8 @@ window.createDriverInput = function(val, checked, squad) {
 
     const notifyLabel = document.createElement('span');
     notifyLabel.className = 'driver-notify-label';
-    notifyLabel.textContent = 'm lead';
+    notifyLabel.textContent = window.t('xWarnLabel');
+    _refreshNotifyHints();
 
     notifyWrap.appendChild(notifyInput);
     notifyWrap.appendChild(notifyLabel);
