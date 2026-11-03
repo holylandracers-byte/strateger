@@ -360,7 +360,7 @@ window.addToGoogleCalendar = async function() {
 
     if (!googleUser) {
         window.showToast(t('googleLogin'), 'warning');
-        window.handleGoogleLogin();
+        window.googleSignIn();
         return;
     }
     
