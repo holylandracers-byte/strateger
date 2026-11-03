@@ -9,6 +9,7 @@ window._qualifyInterval = null;
 
 window._qualifyConfig = {
     format: 'segments',
+    formatChosen: false,   // the follow-up questions open once the format is picked
     segments: 3,
     participation: 'all',
     multiCount: 2,
@@ -76,12 +77,14 @@ if (!window.__qualifyPersistenceHookAttached) {
 
 window.setQualifyFormat = function(fmt) {
     window._qualifyConfig.format = fmt;
+    window._qualifyConfig.formatChosen = true;
     const simBtn = document.getElementById('qfmtSimpleBtn');
     const segBtn = document.getElementById('qfmtSegmentsBtn');
     const segRow = document.getElementById('qSegmentCountRow');
     if (simBtn) { simBtn.classList.toggle('bg-blue-600', fmt === 'simple'); simBtn.classList.toggle('text-white', fmt === 'simple'); simBtn.classList.toggle('bg-transparent', fmt !== 'simple'); simBtn.classList.toggle('text-gray-400', fmt !== 'simple'); }
     if (segBtn) { segBtn.classList.toggle('bg-blue-600', fmt === 'segments'); segBtn.classList.toggle('text-white', fmt === 'segments'); segBtn.classList.toggle('bg-transparent', fmt !== 'segments'); segBtn.classList.toggle('text-gray-400', fmt !== 'segments'); }
     if (segRow) segRow.classList.toggle('hidden', fmt !== 'segments');
+    window._syncQTree && window._syncQTree();
     window.updateQualifyPreview && window.updateQualifyPreview();
     window.saveHostState && window.saveHostState();
 };
@@ -197,6 +200,17 @@ window.setQPitRule = function(rule) {
 
 // ─── Session mode toggle (Race / Qualifying) ──────────────────────────────────
 
+// Which questions are showing: all of them once qualifying is on, the rest only after a format is picked.
+window._syncQTree = function() {
+    const cfg = window._qualifyConfig || {};
+    const on = window._sessionMode === 'qualify';
+    const show = (id, v) => { const el = document.getElementById(id); if (el) el.classList.toggle('hidden', !v); };
+    show('qTree', on);
+    show('qRest', on && cfg.formatChosen);
+    show('qSegmentCountRow', cfg.format === 'segments' && cfg.formatChosen);
+    show('qDurHint', cfg.format === 'segments');
+};
+
 window.setSessionMode = function(mode) {
     const on = mode === 'qualify';
     window._sessionMode = on ? 'qualify' : 'race';
@@ -210,8 +224,7 @@ window.setSessionMode = function(mode) {
     };
     mark(document.getElementById('qOnBtn'), on);
     mark(document.getElementById('qOffBtn'), !on);
-    const tree = document.getElementById('qTree');
-    if (tree) tree.classList.toggle('hidden', !on);
+    window._syncQTree();
     if (on) {
         const dur = document.getElementById('qualifyDuration');
         if (dur && !(parseInt(dur.value) > 0)) dur.value = 15;
@@ -267,16 +280,17 @@ window.updateQualifyPreview = function() {
     const secs = timePerRun % 60;
     const segCount = cfg.format === 'segments' ? cfg.segments : 1;
     const segLabels = segCount > 1 ? Array.from({length: segCount}, (_, i) => `Q${i+1}`).join(' → ') : '';
-    const pitInfo = cfg.pitRule === 'none' ? 'No pit required'
-        : cfg.pitRule === 'any' ? 'Pit stop required'
-        : `Pit ≥ ${parseInt(document.getElementById('qPitMinTime')?.value) || 30}s`;
+    const T = (k, fb) => { const v = window.t ? window.t(k) : null; return (v && v !== k) ? v : fb; };
+    const pitInfo = cfg.pitRule === 'none' ? window.tt('No pit stop required')
+        : cfg.pitRule === 'any' ? window.tt('Pit stop required')
+        : window.tt('Pit at least') + ' ' + (parseInt(document.getElementById('qPitMinTime')?.value) || 30) + ' ' + T('xUnitSec', 's');
 
-    let html = `<div class="font-bold text-blue-400 mb-1">${activeDrivers.length} driver(s) × ${runs} run(s) = ${totalRuns} total · ${mins}:${String(secs).padStart(2,'0')}/run</div>`;
+    let html = `<div class="font-bold text-blue-400 mb-1">${activeDrivers.length} ${T('xWzDrivers', 'drivers')} × ${runs} ${runs === 1 ? window.tt('Run') : window.tt('runs')} = ${totalRuns} · ${mins}:${String(secs).padStart(2,'0')} ${window.tt('per run')}</div>`;
     if (segCount > 1) html += `<div class="text-blue-300 mb-1">${segLabels}</div>`;
     html += `<div class="text-gray-500 mb-1">${pitInfo}</div>`;
     activeDrivers.forEach(d => {
         for (let r = 1; r <= runs; r++) {
-            html += `<div class="flex justify-between"><span>${d.name}</span><span class="text-gray-500">Run ${r}</span></div>`;
+            html += `<div class="flex justify-between"><span>${d.name}</span><span class="text-gray-500">${window.tt('Run')} ${r}</span></div>`;
         }
     });
     preview.innerHTML = html;

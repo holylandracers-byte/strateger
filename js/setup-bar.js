@@ -11,6 +11,8 @@
     const CARDS = ['qualifyingPanel', 'generalCard', 'driversCard', 'rulesCard', 'liveCard'];
 
     // A readout with no RTL letters is isolated as one LTR run, otherwise numbers and units swap places in Hebrew/Arabic.
+    const U = { h: () => t('unitHour', 'h'), m: () => t('unitMin', 'm'), s: () => t('xUnitSec', 's') };
+    const num = (v, u) => v + (u.length === 1 && /[a-z]/i.test(u) ? '' : ' ') + u;
     const iso = (txt) => (txt && !/[\u0590-\u08FF]/.test(txt)) ? '\u2066' + txt + '\u2069' : txt;
 
     // ---------- bar summary ----------
@@ -19,7 +21,7 @@
         if (!el) return;
         const bad = $('invalidStrategyWarning') && !$('invalidStrategyWarning').classList.contains('hidden');
         const lapRace = !!(window.isLapRace && window.isLapRace());
-        const len = lapRace ? ($('raceLaps')?.value || '') + ' ' + t('laps') : ($('raceDuration')?.value || '') + 'h';
+        const len = lapRace ? ($('raceLaps')?.value || '') + ' ' + t('laps') : num($('raceDuration')?.value || '', U.h());
         const stops = $('reqPitStops')?.value;
         const drivers = driverNames().length;
         const parts = [len];
@@ -28,7 +30,7 @@
         // The stint result box is hidden; its count rides in the bar, and its errors replace the summary.
         const sim = ($('simResult')?.textContent || '').trim();
         const err = /^⚠/.test(sim) ? sim : '';
-        const stints = !err && !$('simResult')?.classList.contains('hidden') ? (sim.match(/\d+/) || [])[0] : '';
+        const stints = !err ? (sim.match(/\d+/) || [])[0] : '';
         if (stints) parts.splice(1, 0, stints + ' ' + t('xStintsWord'));
         el.textContent = err || parts.join(' · ');
         el.title = el.textContent;
@@ -47,7 +49,7 @@
     const SECTIONS = {
         generalCard: () => {
             const lap = !!(window.isLapRace && window.isLapRace());
-            const len = lap ? ($('raceLaps')?.value || '') + ' ' + t('laps') : ($('raceDuration')?.value || '') + 'h';
+            const len = lap ? ($('raceLaps')?.value || '') + ' ' + t('laps') : num($('raceDuration')?.value || '', U.h());
             const stops = $('reqPitStops')?.value;
             return [len, stops ? stops + ' ' + t('xPitStops') : '', $('raceStartTime')?.value || ''].filter(Boolean).join(' · ');
         },
@@ -55,8 +57,9 @@
         rulesCard: () => $('rulesActiveCount') && !$('rulesActiveCount').classList.contains('hidden') ? $('rulesActiveCount').textContent : '',
         qualifyingPanel: () => {
             if (window._sessionMode !== 'qualify') return t('xQualOff', 'Off');
-            const segs = (window._qualifyConfig && window._qualifyConfig.segments) || '';
-            return ($('qualifyDuration')?.value || '') + ' min' + (segs ? ' · Q1' + (segs > 1 ? '–Q' + segs : '') : '');
+            const qc = window._qualifyConfig || {};
+            const segs = qc.format === 'simple' ? '' : (qc.segments || '');
+            return num($('qualifyDuration')?.value || '', U.m()) + (segs ? ' · Q1' + (segs > 1 ? '–Q' + segs : '') : '');
         },
         liveCard: () => ($('liveTimingUrl')?.value || '').replace(/^https?:\/\//, '').slice(0, 40)
     };
@@ -81,27 +84,27 @@
     const SUB_SUM = {
         xSecLength: () => {
             const lap = !!(window.isLapRace && window.isLapRace());
-            const len = lap ? ($('raceLaps')?.value || '') + ' ' + t('laps') : ($('raceDuration')?.value || '') + 'h';
+            const len = lap ? ($('raceLaps')?.value || '') + ' ' + t('laps') : num($('raceDuration')?.value || '', U.h());
             const stops = $('reqPitStops')?.value;
             return len + (stops ? ' · ' + stops + ' ' + t('xPitStops') : '');
         },
         lblRaceStart: () => [$('raceStartDate')?.value, $('raceStartTime')?.value].filter(Boolean).join(' · '),
         xSecStints: () => {
             const a = $('minStint')?.value, b = $('maxStint')?.value, p = $('minPitTime')?.value;
-            return [a || b ? (a || '–') + '–' + (b || '–') + ' min' : '', p ? p + ' s' : ''].filter(Boolean).join(' · ');
+            return [a || b ? num((a || '–') + '–' + (b || '–'), U.m()) : '', p ? num(p, U.s()) : ''].filter(Boolean).join(' · ');
         },
         lblTrackLocation: () => $('raceLocation')?.value || '',
         qualifyFormat: () => {
             const q = window._qualifyConfig || {};
             const segs = q.format === 'simple' ? '' : ' · Q1' + (q.segments > 1 ? '–Q' + q.segments : '');
-            return ($('qualifyDuration')?.value || '') + ' min' + segs + ' · ' + ($('qualifyRuns')?.value || 1) + '×';
+            return num($('qualifyDuration')?.value || '', U.m()) + segs + ' · ' + ($('qualifyRuns')?.value || 1) + '×';
         },
         qualifyParticipation: () => ({ one: t('qualifyPartOne'), multi: t('qualifyPartMulti'), all: t('qualifyPartAll') }[(window._qualifyConfig || {}).participation || 'all']),
-        qualifyPitRule: () => ({ none: t('qualifyPitNone'), any: t('qualifyPitAny'), min: t('qualifyPitMin') + ' ' + ($('qPitMinTime')?.value || '') + ' s' }[(window._qualifyConfig || {}).pitRule || 'none']),
+        qualifyPitRule: () => ({ none: t('qualifyPitNone'), any: t('qualifyPitAny'), min: t('qualifyPitMin') + ' ' + num($('qPitMinTime')?.value || '', U.s()) }[(window._qualifyConfig || {}).pitRule || 'none']),
         grpRotation: () => ($('allowDouble')?.checked ? t('lblDoubles') + ($('doubleStintsWanted')?.value ? ' · ' + $('doubleStintsWanted').value : '') : '') + (parseInt($('numSquads')?.value) ? ' · ' + $('numSquads').value + ' ' + t('lblSquads') : ''),
-        grpDriverLimits: () => { const a = $('minDriverTime')?.value, b = $('maxDriverTime')?.value; return a || b ? (a || '–') + '–' + (b || '–') + ' min' : ''; },
-        grpPitRules: () => { const a = $('pitClosedStart')?.value, b = $('pitClosedEnd')?.value; return (a || b ? (a || '0') + '–' + (b || '–') + ' min' : '') + ($('trackFuel')?.checked ? ' · ' + t('lblFuel') : ''); },
-        grpAlerts: () => ($('pitNotifyLeadMin')?.value || '') ? $('pitNotifyLeadMin').value + ' min' : ''
+        grpDriverLimits: () => { const a = $('minDriverTime')?.value, b = $('maxDriverTime')?.value; return a || b ? num((a || '–') + '–' + (b || '–'), U.m()) : ''; },
+        grpPitRules: () => { const a = $('pitClosedStart')?.value, b = $('pitClosedEnd')?.value; return (a || b ? num((a || '0') + '–' + (b || '–'), U.m()) : '') + ($('trackFuel')?.checked ? ' · ' + t('lblFuel') : ''); },
+        grpAlerts: () => ($('pitNotifyLeadMin')?.value || '') ? num($('pitNotifyLeadMin').value, U.m()) : ''
     };
     const subs = [];
     const isSubHead = (n) => n.nodeType === 1 && n.tagName === 'H3' && /(sec-sub|rules-group-title)/.test(n.className);
@@ -186,7 +189,7 @@
 
     function metaOf(s) {
         const c = s.config || {};
-        const size = c.raceTarget === 'laps' ? (c.raceLaps || 0) + ' ' + t('laps') : (Math.round((c.duration || 0) * 100) / 100) + 'h';
+        const size = c.raceTarget === 'laps' ? (c.raceLaps || 0) + ' ' + t('laps') : num(Math.round((c.duration || 0) * 100) / 100, U.h());
         const names = (s.drivers || []).map(d => d.name);
         const date = new Date(s.timestamp).toLocaleDateString(window.currentLang || [], { day: 'numeric', month: 'short' });
         return { line: [size, (c.reqStops || 0) + ' ' + t('xPitStops'), names.length + ' ' + t('xWzDrivers'), date].join(' · '), names };

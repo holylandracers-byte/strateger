@@ -4371,3 +4371,17 @@ body.lt-original #apexIframe { flex: 1 1 auto; width: 100%; height: auto !import
 /* Section titles never wrap; the readout gives way instead */
 .set-card-head > span:first-of-type, #driversCard > h2 > span:first-of-type { white-space: nowrap; flex: 0 0 auto !important; }
 .sec-sum { flex: 0 1 auto; min-width: 0; }
+
+/* Qualifying tiles: each choice has an icon, a name and one line of what it means */
+.qopts { display: grid; gap: 8px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.qopts.q3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.qopt { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-height: 92px; padding: 12px; text-align: start; cursor: pointer; border: 1px solid #334155; border-radius: 12px; background: rgba(2, 6, 23, .35); color: #94a3b8; transition: border-color .15s, background .15s, transform .12s; }
+.qopt:hover { border-color: #60a5fa; }
+.qopt:active { transform: scale(.98); }
+.qopt > i { font-size: 18px; color: #64748b; margin-bottom: 2px; transition: color .15s; }
+.qopt-t { font-size: 14px; font-weight: 800; color: #e2e8f0; line-height: 1.2; }
+.qopt-d { font-size: 12px; line-height: 1.3; color: #94a3b8; }
+.qopt.bg-blue-600 { background: rgba(59, 130, 246, .16) !important; border-color: #60a5fa; box-shadow: inset 0 0 0 1px #60a5fa; }
+.qopt.bg-blue-600 > i { color: #93c5fd; }
+.qopt.bg-blue-600 .qopt-d { color: #cbd5e1; }
+@media (max-width: 420px) { .qopts.q3 { grid-template-columns: 1fr; } .qopts.q3 .qopt { flex-direction: row; align-items: center; flex-wrap: wrap; min-height: 56px; gap: 4px 10px; } .qopts.q3 .qopt-d { flex-basis: 100%; padding-inline-start: 28px; } }

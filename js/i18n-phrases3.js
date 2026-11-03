@@ -4,6 +4,12 @@
 // ==========================================
 (function () {
     Object.assign(window._TT_PH = window._TT_PH || {}, {
+        'No pit stop required': ['אין חובת עצירת פיט', 'Aucun arrêt requis', 'Sem parada obrigatória'],
+        'Pit stop required': ['חובה עצירת פיט', 'Arrêt obligatoire', 'Parada obrigatória'],
+        'Pit at least': ['עצירה של לפחות', 'Arrêt d\'au moins', 'Parada de pelo menos'],
+        'runs': ['ריצות', 'passages', 'voltas'],
+        'per run': ['לריצה', 'par passage', 'por volta'],
+        'Run': ['ריצה', 'Passage', 'Volta'],
         'Track direction change (clock time)': ['שינוי כיוון מסלול (שעון)', 'Changement de sens de piste (heure)', 'Mudança de sentido da pista (hora)'],
         'The pit lane is shut around the moment the track reverses.': ['נתיב הפיט סגור סביב הרגע שבו כיוון המסלול מתהפך.', 'La voie des stands est fermée autour du changement de sens.', 'O box fica fechado em torno da inversão da pista.'],
         'Closed before (min)': ['סגור לפני (דק׳)', 'Fermé avant (min)', 'Fechado antes (min)'],

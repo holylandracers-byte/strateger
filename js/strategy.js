@@ -805,7 +805,7 @@ window.runSim = function() {
 
     if (durationResult.error) {
         const resEl = document.getElementById('simResult');
-        if (resEl && window._sessionMode !== 'qualify') {
+        if (resEl) {
             resEl.innerText = "⚠️ " + durationResult.error;
             resEl.classList.remove('hidden');
             resEl.style.borderColor = 'red';
@@ -835,7 +835,7 @@ window.runSim = function() {
 
     if (result.error) {
         const resEl = document.getElementById('simResult');
-        if (resEl && window._sessionMode !== 'qualify') {
+        if (resEl) {
             resEl.innerText = "⚠️ " + result.error;
             resEl.classList.remove('hidden');
             resEl.style.borderColor = 'red';
@@ -928,7 +928,7 @@ window.runSim = function() {
         const isRTL = document.documentElement.dir === 'rtl';
         const um = t('unitMin') || 'm';
         const uh = t('unitHour') || 'h';
-        if (window._sessionMode !== 'qualify') resEl.classList.remove('hidden');
+        resEl.classList.remove('hidden');
         resEl.style.borderColor = '#22d3ee';
         resEl.style.color = '#22d3ee';
         resEl.style.direction = isRTL ? 'rtl' : 'ltr';

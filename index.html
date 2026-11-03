@@ -45,9 +45,9 @@
     <script src="js/hakafast-scraper.js?v=7"></script>
     <script src="js/alpha-scraper.js?v=7"></script>
     <script src="js/live-timing-manager.js?v=9"></script>
-    <script src="js/qualifying.js?v=11"></script>
+    <script src="js/qualifying.js?v=13"></script>
 
-    <link rel="stylesheet" href="css/style.css?v=61">
+    <link rel="stylesheet" href="css/style.css?v=62">
 
     <script>
         tailwind.config = {
@@ -215,35 +215,37 @@
                 <!-- Decision tree: each answer opens the next question -->
                 <div class="q-step">
                     <div class="q-ask"><span class="q-n">1</span><span data-i18n="xQ1">Is there a qualifying session before the race?</span></div>
-                    <div class="seg" role="group">
-                        <button type="button" id="qOffBtn" onclick="window.setSessionMode('race')" class="bg-blue-600 text-white" data-i18n="xQNo">No, race only</button>
-                        <button type="button" id="qOnBtn" onclick="window.setSessionMode('qualify')" class="bg-transparent text-gray-400" data-i18n="xQYes">Yes</button>
+                    <div class="qopts q2">
+                            <button type="button" id="qOffBtn" onclick="window.setSessionMode('race')" class="qopt bg-blue-600 text-white"><i class="fas fa-flag-checkered"></i><span class="qopt-t" data-i18n="xQNo">No, race only</span><span class="qopt-d" data-i18n="xQNoD">Straight to the race</span></button>
+                            <button type="button" id="qOnBtn" onclick="window.setSessionMode('qualify')" class="qopt bg-transparent text-gray-400"><i class="fas fa-stopwatch"></i><span class="qopt-t" data-i18n="xQYes">Yes</span><span class="qopt-d" data-i18n="xQYesD">Plan a session first</span></button>
                     </div>
                 </div>
 
                 <div id="qTree" class="hidden">
                     <div class="q-step">
-                        <div class="q-ask"><span class="q-n">2</span><span data-i18n="xQ2">How is it run?</span></div>
-                        <div class="seg" role="group">
-                            <button type="button" id="qfmtSimpleBtn" onclick="window.setQualifyFormat('simple')" class="bg-transparent text-gray-400" data-i18n="qualifyFmtSimple">Simple</button>
-                            <button type="button" id="qfmtSegmentsBtn" onclick="window.setQualifyFormat('segments')" class="bg-blue-600 text-white" data-i18n="qualifyFmtSegments">Q1/Q2/Q3</button>
+                        <div class="q-ask"><span class="q-n">2</span><span data-i18n="xQ2">How is qualifying run?</span></div>
+                        <div class="qopts q2">
+                            <button type="button" id="qfmtSimpleBtn" onclick="window.setQualifyFormat('simple')" class="qopt bg-transparent text-gray-400"><i class="fas fa-stopwatch"></i><span class="qopt-t" data-i18n="qualifyFmtSimple">Simple</span><span class="qopt-d" data-i18n="xQFmtSimpleD">One session, fastest lap counts</span></button>
+                            <button type="button" id="qfmtSegmentsBtn" onclick="window.setQualifyFormat('segments')" class="qopt bg-transparent text-gray-400"><i class="fas fa-layer-group"></i><span class="qopt-t" data-i18n="qualifyFmtSegments">Q1/Q2/Q3</span><span class="qopt-d" data-i18n="xQFmtSegD">Knockout rounds: Q1, Q2, Q3</span></button>
                         </div>
-                        <div id="qSegmentCountRow" class="q-sub">
+                        <div id="qSegmentCountRow" class="hidden q-sub">
                             <div class="set-sublabel" data-i18n="qualifySegments">Segments</div>
                             <div class="seg" role="group">
                                 <button type="button" onclick="window.setQSegments(1)" id="qSeg1Btn" class="bg-transparent text-gray-400">Q1</button>
-                                <button type="button" onclick="window.setQSegments(2)" id="qSeg2Btn" class="bg-transparent text-gray-400">Q1+Q2</button>
-                                <button type="button" onclick="window.setQSegments(3)" id="qSeg3Btn" class="bg-blue-600 text-white">Q1+Q2+Q3</button>
+                                <button type="button" onclick="window.setQSegments(2)" id="qSeg2Btn" class="bg-transparent text-gray-400">Q1 → Q2</button>
+                                <button type="button" onclick="window.setQSegments(3)" id="qSeg3Btn" class="bg-blue-600 text-white">Q1 → Q2 → Q3</button>
                             </div>
+                            <p class="set-hint" data-i18n="xQSegNote">Each round is marked live. If your team is knocked out, the rounds after it are skipped.</p>
                         </div>
                     </div>
 
+                    <div id="qRest" class="hidden">
                     <div class="q-step">
-                        <div class="q-ask"><span class="q-n">3</span><span data-i18n="qualifyParticipation">Driver Participation</span></div>
-                        <div class="seg" role="group">
-                            <button type="button" id="qpartAllBtn" onclick="window.setQParticipation('all')" class="bg-blue-600 text-white" data-i18n="qualifyPartAll">All</button>
-                            <button type="button" id="qpartMultiBtn" onclick="window.setQParticipation('multi')" class="bg-transparent text-gray-400" data-i18n="qualifyPartMulti">Multiple</button>
-                            <button type="button" id="qpartOneBtn" onclick="window.setQParticipation('one')" class="bg-transparent text-gray-400" data-i18n="qualifyPartOne">One</button>
+                        <div class="q-ask"><span class="q-n">3</span><span data-i18n="xQ3">Who drives in qualifying?</span></div>
+                        <div class="qopts q3">
+                            <button type="button" id="qpartAllBtn" onclick="window.setQParticipation('all')" class="qopt bg-blue-600 text-white"><i class="fas fa-users"></i><span class="qopt-t" data-i18n="qualifyPartAll">All</span><span class="qopt-d" data-i18n="xQAllD">Every driver gets a run</span></button>
+                            <button type="button" id="qpartMultiBtn" onclick="window.setQParticipation('multi')" class="qopt bg-transparent text-gray-400"><i class="fas fa-user-friends"></i><span class="qopt-t" data-i18n="qualifyPartMulti">Multiple</span><span class="qopt-d" data-i18n="xQMultiD">Pick some drivers</span></button>
+                            <button type="button" id="qpartOneBtn" onclick="window.setQParticipation('one')" class="qopt bg-transparent text-gray-400"><i class="fas fa-user"></i><span class="qopt-t" data-i18n="qualifyPartOne">One</span><span class="qopt-d" data-i18n="xQOneD">A single driver</span></button>
                         </div>
                         <div id="qMultiCountRow" class="hidden q-sub">
                             <div class="set-sublabel" data-i18n="qualifyPartMultiCount">Select drivers</div>
@@ -269,14 +271,15 @@
                                     class="input-field set-big" oninput="window.updateQualifyPreview && window.updateQualifyPreview()">
                             </div>
                         </div>
+                        <p id="qDurHint" class="set-hint" data-i18n="xQDurHint">Each round lasts this long.</p>
                     </div>
 
                     <div class="q-step">
-                        <div class="q-ask"><span class="q-n">5</span><span data-i18n="qualifyPitRule">Pit Stop Rule</span></div>
-                        <div class="seg" role="group">
-                            <button type="button" id="qpitNoneBtn" onclick="window.setQPitRule('none')" class="bg-blue-600 text-white" data-i18n="qualifyPitNone">None</button>
-                            <button type="button" id="qpitAnyBtn" onclick="window.setQPitRule('any')" class="bg-transparent text-gray-400" data-i18n="qualifyPitAny">Any stop</button>
-                            <button type="button" id="qpitMinBtn" onclick="window.setQPitRule('min')" class="bg-transparent text-gray-400" data-i18n="qualifyPitMin">Min time</button>
+                        <div class="q-ask"><span class="q-n">5</span><span data-i18n="xQ5">Is a pit stop required in qualifying?</span></div>
+                        <div class="qopts q3">
+                            <button type="button" id="qpitNoneBtn" onclick="window.setQPitRule('none')" class="qopt bg-blue-600 text-white"><i class="fas fa-ban"></i><span class="qopt-t" data-i18n="qualifyPitNone">None</span><span class="qopt-d" data-i18n="xQPitNoneD">No stop needed</span></button>
+                            <button type="button" id="qpitAnyBtn" onclick="window.setQPitRule('any')" class="qopt bg-transparent text-gray-400"><i class="fas fa-wrench"></i><span class="qopt-t" data-i18n="qualifyPitAny">Any stop</span><span class="qopt-d" data-i18n="xQPitAnyD">Must pit at least once</span></button>
+                            <button type="button" id="qpitMinBtn" onclick="window.setQPitRule('min')" class="qopt bg-transparent text-gray-400"><i class="fas fa-hourglass-half"></i><span class="qopt-t" data-i18n="qualifyPitMin">Min time</span><span class="qopt-d" data-i18n="xQPitMinD">Stop for a minimum time</span></button>
                         </div>
                         <div id="qPitMinTimeRow" class="hidden q-sub">
                             <label class="set-sublabel" for="qPitMinTime" data-i18n="qualifyPitMinSec">Minimum seconds in pit</label>
@@ -286,6 +289,7 @@
                     </div>
 
                     <div id="qualifyStrategyPreview" class="set-preview"></div>
+                    </div><!-- end qRest -->
                 </div>
                 </div><!-- end collapse-body -->
             </div>
@@ -2436,17 +2440,17 @@
 
     <script src="js/state.js?v=35"></script>
     <script src="js/lite-mode.js?v=1"></script>
-    <script src="js/i18n-extra.js?v=9"></script>
+    <script src="js/i18n-extra.js?v=10"></script>
     <script src="js/i18n-extra2.js?v=1"></script>
     <script src="js/i18n-extra3.js?v=1"></script>
     <script src="js/i18n-laps.js?v=1"></script>
     <script src="js/i18n-new.js?v=1"></script>
     <script src="js/i18n-phrases.js?v=2"></script>
     <script src="js/i18n-phrases2.js?v=1"></script>
-    <script src="js/i18n-phrases3.js?v=2"></script>
+    <script src="js/i18n-phrases3.js?v=3"></script>
     <script src="js/auth.js?v=10"></script>
     <script src="js/network.js?v=10"></script>
-    <script src="js/strategy.js?v=21"></script>
+    <script src="js/strategy.js?v=22"></script>
     <script src="js/race-rules.js?v=6"></script>
     <script src="js/compliance.js?v=3"></script>
     <script src="js/export.js?v=3"></script>
@@ -2455,7 +2459,7 @@
     <script src="js/track-finder.js?v=2"></script>
     <script src="js/ui.js?v=29"></script>
     <script src="js/walkthrough.js?v=15"></script>
-    <script src="js/setup-bar.js?v=11"></script>
+    <script src="js/setup-bar.js?v=13"></script>
     <script src="js/main.js?v=31"></script>
     <script src="js/live-extras.js?v=4"></script>
 </body>
