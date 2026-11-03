@@ -187,6 +187,24 @@
         return { line: [size, (c.reqStops || 0) + ' ' + t('xPitStops'), names.length + ' ' + t('xWzDrivers'), date].join(' · '), names };
     }
 
+    function ribbon(s) {
+        const st = (s.timeline || []).filter(x => x.type === 'stint');
+        return st.length && window.ribbonHtml ? '<div class="ribbon home-ribbon" aria-hidden="true">' + window.ribbonHtml(st) + '</div>' : '';
+    }
+
+    // The last auto-saved plan, front and centre: pick up where you stopped.
+    function resumeCard(s, i) {
+        const m = metaOf(s);
+        const when = new Date(s.timestamp).toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+        return '<article class="home-resume">'
+            + '<div class="home-resume-main"><p class="home-resume-label">' + esc(t('xContinueLast', 'Continue where you left off')) + '</p>'
+            + '<h2 class="home-resume-name">' + esc(m.line.split(' · ').slice(0, 3).join(' · ')) + '</h2>'
+            + '<p class="home-card-meta">' + esc(t('xAutoSavedAt', 'Auto-saved')) + ' · ' + esc(when) + '</p>'
+            + ribbon(s) + '</div>'
+            + '<div class="home-card-act"><button type="button" class="home-go" data-act="preview" data-i="' + i + '">' + esc(t('xContinue', 'Continue')) + '</button></div>'
+            + '</article>';
+    }
+
     function card(s, i) {
         const m = metaOf(s);
         const qual = s.config && s.config.sessionMode === 'qualify';
@@ -196,7 +214,8 @@
         return '<article class="home-card">'
             + '<div class="home-card-main"><h2 class="home-card-name">' + cloud + '<span>' + esc(s.name) + '</span></h2>'
             + '<p class="home-card-meta">' + esc(m.line) + '</p>'
-            + (m.names.length ? '<p class="home-card-drivers">' + esc(m.names.join(' · ')) + '</p>' : '') + '</div>'
+            + (m.names.length ? '<p class="home-card-drivers">' + esc(m.names.join(' · ')) + '</p>' : '')
+            + ribbon(s) + '</div>'
             + '<div class="home-card-act">' + go
             + '<button type="button" class="home-ghost" data-act="edit" data-i="' + i + '">' + esc(t('xWzEdit', 'Edit')) + '</button>'
             + (s._local ? '<button type="button" class="home-ghost home-del" data-act="del" data-i="' + i + '" aria-label="Delete"><i class="fas fa-trash"></i></button>' : '')
@@ -209,13 +228,15 @@
         window.currentStrategies = main.concat(drafts);
         const box = $('homeList');
         if (!box) return;
+        const resume = $('homeResume');
+        if (resume) resume.innerHTML = drafts.length ? resumeCard(drafts[0], main.length) : '';
         box.innerHTML = main.length
             ? main.map((s, i) => card(s, i)).join('')
-            : '<div class="home-empty"><p>' + esc(t('xHomeEmpty', 'No saved strategies yet. Build one, save it, and start your race from here.')) + '</p></div>';
+            : (drafts.length ? '' : '<div class="home-empty"><p>' + esc(t('xHomeEmpty', 'No saved strategies yet. Build one, save it, and start your race from here.')) + '</p></div>');
         const dt = $('homeDraftsToggle'), dl = $('homeDrafts');
-        show(dt, drafts.length > 0);
-        if (dt) dt.textContent = t('xDrafts', 'Auto-saved drafts') + ' (' + drafts.length + ')';
-        if (dl) dl.innerHTML = drafts.map((s, i) => card(s, main.length + i)).join('');
+        show(dt, drafts.length > 1);
+        if (dt) dt.textContent = t('xDrafts', 'Auto-saved drafts') + ' (' + (drafts.length - 1) + ')';
+        if (dl) dl.innerHTML = drafts.slice(1).map((s, i) => card(s, main.length + 1 + i)).join('');
     }
 
     window.refreshStrategyHome = function () {

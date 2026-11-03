@@ -46,7 +46,7 @@
     <script src="js/live-timing-manager.js?v=9"></script>
     <script src="js/qualifying.js?v=9"></script>
 
-    <link rel="stylesheet" href="css/style.css?v=51">
+    <link rel="stylesheet" href="css/style.css?v=52">
 
     <script>
         tailwind.config = {
@@ -181,6 +181,7 @@
                 <h1 id="homeTitle" class="home-title" data-i18n="xHomeTitle">Strategies</h1>
                 <button type="button" id="newStrategyBtn" class="home-new" onclick="window.showStrategyEditor(true)"><i class="fas fa-plus"></i><span data-i18n="xNewStrategy">New strategy</span></button>
             </div>
+            <div id="homeResume"></div>
             <div id="homeList" class="home-list"></div>
             <button type="button" id="quickStartBtn" class="home-quick" onclick="window.showStrategyEditor(true)"><i class="fas fa-bolt"></i><span data-i18n="xQuickStart">Start without a strategy</span></button>
             <button type="button" id="homeDraftsToggle" class="home-drafts hidden"></button>
@@ -705,13 +706,15 @@
             <!-- ── LEFT / TOP: meta + driver strip + timeline ── -->
             <div id="previewMainCol" class="flex-1 flex flex-col min-h-0 gap-1.5 overflow-hidden">
 
-                <!-- Header row: title + weather + mini chart + controls -->
-                <div class="flex items-center gap-2 shrink-0">
+                <!-- Header row: title + status, weather, the race ribbon, controls -->
+                <div class="flex items-start gap-2 shrink-0">
                     <div class="flex-1 min-w-0">
-                        <div class="text-[11px] font-black text-gray-500 uppercase tracking-widest mb-0.5" data-i18n="previewTitle">Strategy Preview</div>
+                        <div class="pv-titlerow">
+                            <span class="pv-title" data-i18n="previewTitle">Strategy Preview</span>
+                            <div id="saveStatus" class="save-status hidden" role="status" aria-live="polite"></div>
+                        </div>
                         <div id="previewLocationWeather" class="text-[11px] text-blue-300 font-mono truncate hidden"></div>
-                        <div id="saveStatus" class="save-status hidden" role="status" aria-live="polite"></div>
-                        <div id="miniStintChart" class="mini-stint-chart mt-0.5" style="height:14px;"></div>
+                        <div id="miniStintChart" class="mini-stint-chart ribbon"></div>
                     </div>
                     <!-- Compact time strip (start → end + calendar) -->
                     <div class="flex items-center gap-1.5 shrink-0 bg-navy-900 border border-gray-700/60 rounded-lg px-2">
@@ -728,6 +731,8 @@
                         </button>
                     </div>
                 </div>
+
+                <div id="weatherPlanBar" class="pv-weather hidden"></div>
 
                 <!-- Rule compliance: every rule from setup + regulations, checked against this plan -->
                 <div id="complianceBanner" class="hidden shrink-0"></div>
@@ -2429,7 +2434,7 @@
 
     <script src="js/state.js?v=32"></script>
     <script src="js/lite-mode.js?v=1"></script>
-    <script src="js/i18n-extra.js?v=6"></script>
+    <script src="js/i18n-extra.js?v=7"></script>
     <script src="js/i18n-extra2.js?v=1"></script>
     <script src="js/i18n-extra3.js?v=1"></script>
     <script src="js/i18n-laps.js?v=1"></script>
@@ -2439,16 +2444,16 @@
     <script src="js/i18n-phrases3.js?v=1"></script>
     <script src="js/auth.js?v=9"></script>
     <script src="js/network.js?v=10"></script>
-    <script src="js/strategy.js?v=19"></script>
+    <script src="js/strategy.js?v=20"></script>
     <script src="js/race-rules.js?v=5"></script>
     <script src="js/compliance.js?v=2"></script>
     <script src="js/export.js?v=2"></script>
     <script src="js/autosave.js?v=3"></script>
     <script src="js/live-timing.js?v=20"></script>
     <script src="js/track-finder.js?v=2"></script>
-    <script src="js/ui.js?v=25"></script>
+    <script src="js/ui.js?v=26"></script>
     <script src="js/walkthrough.js?v=15"></script>
-    <script src="js/setup-bar.js?v=5"></script>
+    <script src="js/setup-bar.js?v=6"></script>
     <script src="js/main.js?v=27"></script>
     <script src="js/live-extras.js?v=4"></script>
 </body>

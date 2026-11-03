@@ -4263,3 +4263,44 @@ body.lt-original #apexIframe { flex: 1 1 auto; width: 100%; height: auto !import
 .sub.is-collapsed > .sub-body { display: none; }
 .sub:not(.is-collapsed) > .sub-head-wrap .sub-sum { opacity: .6; }
 .set-when > .set-label { display: none; }
+
+/* ==========================================
+   OVERDRIVE: the race ribbon, the resume card, the preview header
+   One idea carries the product: a strategy is a ribbon of stints, coloured by driver, wide as the stint is long.
+   ========================================== */
+.ribbon { display: flex; gap: 2px; align-items: stretch; height: 18px; border-radius: 6px; overflow: hidden; }
+.mini-stint-chart.ribbon { height: 18px; margin-top: 6px; }
+.ribbon-bar { min-width: 3px; opacity: .92; transform-origin: bottom; animation: ribbonGrow .5s cubic-bezier(.16, 1, .3, 1) both; }
+.ribbon-bar:nth-child(2n) { animation-delay: .02s; } .ribbon-bar:nth-child(3n) { animation-delay: .04s; } .ribbon-bar:nth-child(5n) { animation-delay: .06s; }
+.ribbon-bar.is-rain { background-image: repeating-linear-gradient(135deg, rgba(186, 230, 253, .6) 0 3px, transparent 3px 7px); }
+.ribbon-bar.is-heavy { background-image: repeating-linear-gradient(135deg, rgba(147, 197, 253, .85) 0 4px, transparent 4px 7px); }
+@keyframes ribbonGrow { from { transform: scaleY(.15); opacity: 0; } to { transform: scaleY(1); opacity: .92; } }
+@media (prefers-reduced-motion: reduce) { .ribbon-bar { animation: none; } }
+.home-ribbon { height: 10px; margin-top: 10px; border-radius: 5px; }
+
+/* Preview header: title and save status share a line, the ribbon gets its own */
+.pv-titlerow { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; }
+.pv-title { font-size: 13px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #94a3b8; }
+.pv-titlerow .save-status { margin: 0; }
+.pv-weather { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 8px 12px; border-radius: 10px; background: linear-gradient(90deg, rgba(59, 130, 246, .16), rgba(59, 130, 246, .05)); border: 1px solid rgba(96, 165, 250, .35); }
+.pv-weather.hidden { display: none; }
+.pv-rain-text { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: #bfdbfe; }
+.pv-plan { display: inline-flex; border: 1px solid rgba(96, 165, 250, .5); border-radius: 9px; overflow: hidden; }
+.pv-plan button { min-height: 38px; padding: 0 14px; background: transparent; border: 0; color: #bfdbfe; font-size: 13px; font-weight: 700; cursor: pointer; }
+.pv-plan button + button { border-inline-start: 1px solid rgba(96, 165, 250, .5); }
+.pv-plan button.is-on { background: #3b82f6; color: #fff; }
+
+/* Stint rows in rain read as rain */
+.stint-row.is-light { background-image: linear-gradient(90deg, rgba(96, 165, 250, .12), transparent 55%); }
+.stint-row.is-heavy { background-image: linear-gradient(90deg, rgba(59, 130, 246, .26), transparent 60%); }
+.stint-row.is-light .sr-num, .stint-row.is-heavy .sr-num { color: #93c5fd; }
+.sr-dur-input { font-size: 18px !important; font-weight: 800 !important; }
+
+/* Home: the resume card leads */
+.home-resume { display: flex; align-items: center; gap: 16px; padding: 18px 20px; margin-bottom: 14px; border-radius: 18px; background: radial-gradient(120% 140% at 0% 0%, rgba(34, 211, 238, .22), rgba(34, 211, 238, 0) 55%), #0a1424; border: 1px solid rgba(34, 211, 238, .45); box-shadow: 0 10px 28px rgba(0, 0, 0, .35); }
+.home-resume-main { flex: 1; min-width: 0; }
+.home-resume-label { margin: 0; font-size: 13px; font-weight: 700; color: #67e8f9; }
+.home-resume-name { margin: 4px 0 0; font-size: 26px; font-weight: 900; line-height: 1.1; color: #fff; font-variant-numeric: tabular-nums; }
+.home-resume .home-go { min-height: 52px; padding: 0 26px; font-size: 15px; }
+.home-card { background: #0b1220; }
+@media (max-width: 560px) { .home-resume { flex-direction: column; align-items: stretch; } .home-resume .home-go { width: 100%; } .home-resume-name { font-size: 22px; } }

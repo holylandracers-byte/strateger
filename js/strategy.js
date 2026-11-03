@@ -351,6 +351,11 @@ window.calculateStintDurations = function(config) {
     const liveRain = (trackCond === 'wet');
     const liveLight = (trackCond === 'drying');
 
+    // Rain plan (default) shortens the stints the forecast puts in rain; the dry plan keeps the forecast for
+    // information only. Either way the outlook is published so the preview can offer the choice.
+    const adaptOn = config.weatherAdapt !== false;
+    window._rainOutlook = { light: 0, heavy: 0, total: totalStints, adapted: adaptOn };
+
     if (typeof window.getVenueForecastAt === 'function' && rounded.length > 0) {
         const raceStartMs = Number.isFinite(Date.parse(window.raceStartTime)) ? Date.parse(window.raceStartTime) : Date.now();
         let cursor = raceStartMs;
@@ -364,18 +369,21 @@ window.calculateStintDurations = function(config) {
             const dry = ((code >= 0 && code <= 2) || code === 3) && precip < 0.2;
 
             weatherPerStint[idx] = heavyRain ? 'heavy' : lightRain ? 'light' : 'dry';
+            if (heavyRain) window._rainOutlook.heavy++; else if (lightRain) window._rainOutlook.light++;
 
             let next = dur;
-            if (heavyRain) next = Math.round(dur * 0.82);        // shorten significantly
-            else if (lightRain) next = Math.round(dur * 0.92);   // shorten moderately
-            else if (dry) next = Math.round(dur * 1.06);
+            if (adaptOn) {
+                if (heavyRain) next = Math.round(dur * 0.82);        // shorten significantly
+                else if (lightRain) next = Math.round(dur * 0.92);   // shorten moderately
+                else if (dry) next = Math.round(dur * 1.06);
+            }
             next = Math.max(safeMinStintMs, Math.min(effectiveMaxStint, next));
 
             cursor += dur;
             if (idx < totalStints - 1) cursor += pitTimeMs;
             return next;
         });
-        rounded = normalizeDurations(adapted);
+        if (adaptOn) rounded = normalizeDurations(adapted);
     } else if (liveRain || liveLight) {
         // No forecast provider but live track condition is rain — shorten all stints
         const factor = liveRain ? 0.82 : 0.92;
@@ -769,6 +777,7 @@ window.runSim = function() {
         squadWindowStart,
         squadWindowEnd,
         allowDouble,
+        weatherAdapt: window._weatherAdapt !== false,
         doubleStintsWanted: allowDouble ? (parseInt(document.getElementById('doubleStintsWanted')?.value) || 0) : 0,
         maxConsecutive,
         minDriverTotal: minDriverMin,

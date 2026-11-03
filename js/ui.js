@@ -1073,7 +1073,7 @@ window.renderPreview = function() {
         // the current/future ones — so Up is disabled right after the lock boundary.
         const prevLocked = index > 0 && !!(stints[index - 1]._actual || stints[index - 1]._done);
         return `
-            <div class="stint-row${stint._current ? ' is-current' : ''}${outOfBounds ? ' is-bad' : ''}" style="--sc:${stint.color}"
+            <div class="stint-row${stint._current ? ' is-current' : ''}${outOfBounds ? ' is-bad' : ''}${stint.weather === 'heavy' ? ' is-heavy' : stint.weather === 'light' ? ' is-light' : ''}" style="--sc:${stint.color}"
                  data-index="${index}" ondragstart="window.handleDragStart(event)" ondragover="window.handleDragOver(event)" ondragleave="window.handleDragLeave(event)" ondrop="window.handleDrop(event)">
                 <div class="sr-main">
                     <span class="sr-handle" title="${tr('dragToReorder', 'Drag to reorder')}"><i class="fas fa-grip-vertical"></i></span>
@@ -1788,6 +1788,7 @@ window.applyStrategy = function(index) {
                 const el = document.getElementById(id);
                 if (el) el.checked = !!val;
             };
+            window._weatherAdapt = strategy.config.weatherAdapt !== false;
             setCheck('allowDouble', strategy.config.allowDouble);
             setVal('doubleStintsWanted', strategy.config.doubleStintsWanted || '');
             if (typeof window.toggleMaxConsecutive === 'function') window.toggleMaxConsecutive();
@@ -3047,17 +3048,41 @@ window._closePreview = function() {
 };
 
 // Render a mini stint chart in a container element
-window.renderMiniStintChart = function(containerId, stints, maxMs) {
+// Race ribbon: one bar per stint, as wide as the stint is long, coloured by driver; rain stints are striped.
+window.ribbonHtml = function(stints) {
+    const PALETTE = ['#22d3ee','#a3e635','#f97316','#ef4444','#8b5cf6','#ec4899','#facc15','#34d399'];
+    return (stints || []).map(function(s, i) {
+        const color = s.color || PALETTE[i % PALETTE.length];
+        const rain = s.weather === 'heavy' ? ' is-rain is-heavy' : s.weather === 'light' ? ' is-rain' : '';
+        return '<div class="ribbon-bar' + rain + '" style="flex:' + Math.max(1, Math.round((s.duration || 60000) / 1000)) + ' 1 0;background:' + color + '" title="' + (s.driverName || '') + ': ' + Math.round((s.duration || 0) / 60000) + 'm"></div>';
+    }).join('');
+};
+window.renderMiniStintChart = function(containerId, stints) {
     const el = document.getElementById(containerId);
     if (!el) return;
-    if (!stints || stints.length === 0) { el.innerHTML = ''; return; }
-    const cap = maxMs || Math.max(...stints.map(s => s.duration || 0)) || 1;
-    const PALETTE = ['#22d3ee','#a3e635','#f97316','#ef4444','#8b5cf6','#ec4899','#facc15','#34d399'];
-    el.innerHTML = stints.map((s, i) => {
-        const h = Math.max(4, Math.round((s.duration / cap) * 24));
-        const color = s.color || PALETTE[i % PALETTE.length];
-        return `<div class="mini-stint-bar" style="height:${h}px;background:${color}" title="${s.driverName || ''}: ${Math.round(s.duration/60000)}m"></div>`;
-    }).join('');
+    el.classList.add('ribbon');
+    el.innerHTML = (!stints || stints.length === 0) ? '' : window.ribbonHtml(stints);
+};
+
+// Rain plan / dry plan: only shown when the forecast puts rain inside the race.
+window.renderWeatherPlanBar = function() {
+    const bar = document.getElementById('weatherPlanBar');
+    if (!bar) return;
+    const o = window._rainOutlook;
+    const wet = o ? o.light + o.heavy : 0;
+    if (!wet || !(window.previewData && window.previewData.timeline)) { bar.classList.add('hidden'); return; }
+    const on = window._weatherAdapt !== false;
+    const tr = function(k) { return window.t ? window.t(k) : k; };
+    bar.classList.remove('hidden');
+    bar.innerHTML = '<span class="pv-rain-text"><i class="fas fa-cloud-showers-heavy"></i>' + tr('xRainExpected').replace('{{n}}', wet).replace('{{m}}', o.total) + '</span>'
+        + '<div class="pv-plan" role="group">'
+        + '<button type="button" class="' + (on ? 'is-on' : '') + '" onclick="window.setWeatherPlan(true)">' + tr('xRainPlan') + '</button>'
+        + '<button type="button" class="' + (on ? '' : 'is-on') + '" onclick="window.setWeatherPlan(false)">' + tr('xDryPlan') + '</button></div>';
+};
+window.setWeatherPlan = function(adapt) {
+    window._weatherAdapt = !!adapt;
+    if (typeof window.runSim === 'function') window.runSim();
+    if (typeof window.generatePreview === 'function') window.generatePreview(false, true);
 };
 
 // Update mini chart in preview header after render
@@ -3069,8 +3094,8 @@ window.renderPreview = function() {
     // Update mini chart
     if (window.previewData?.timeline) {
         const stints = window.previewData.timeline.filter(t => t.type === 'stint');
-        const maxMs = stints.length > 0 ? Math.max(...stints.map(s => s.duration)) : 0;
-        window.renderMiniStintChart('miniStintChart', stints, maxMs);
+        window.renderMiniStintChart('miniStintChart', stints);
+        window.renderWeatherPlanBar();
         // Update driver count label
         const summary = {};
         stints.forEach(s => { summary[s.driverName] = true; });
