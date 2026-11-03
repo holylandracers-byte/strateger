@@ -4113,8 +4113,8 @@ body.lt-original #apexIframe { flex: 1 1 auto; width: 100%; height: auto !import
 #qualifyingPanel { --sec: #60a5fa; }
 #liveCard { --sec: #f87171; }
 #generalCard, #driversCard, #rulesCard, #qualifyingPanel, #liveCard {
-    background: #0b1220 !important;
-    border: 1px solid #1e293b !important;
+    background: var(--theme-panel, #0b1220) !important;
+    border: 1px solid var(--theme-border, #1e293b) !important;
     border-radius: 16px !important; padding: 16px !important; box-shadow: 0 6px 18px rgba(0, 0, 0, .28);
 }
 #liveCard { padding: 12px 16px !important; }
@@ -4153,7 +4153,7 @@ body.lt-original #apexIframe { flex: 1 1 auto; width: 100%; height: auto !import
 #driversCard #driversList .driver-row::before { font-size: 16px; flex-basis: 30px; }
 
 /* Rules: flat list, amber marks what is switched on */
-#rulesCard .rule { background: transparent; border: 0; border-top: 1px solid #1a2438; border-radius: 0; padding: 12px 0; margin: 0; }
+#rulesCard .rule { background: transparent; border: 0; border-top: 1px solid var(--theme-border, #1a2438); border-radius: 0; padding: 12px 0; margin: 0; }
 #rulesCard .rule.is-on { background: color-mix(in srgb, #fbbf24 6%, transparent); }
 #rulesCard .rule.is-on .rule-title::before { background: #fbbf24; }
 #rulesCard .rules-group-title { color: #fbbf24; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; border-top: 0; margin: 18px 0 2px; padding-top: 0; }
@@ -4188,7 +4188,7 @@ body.lt-original #apexIframe { flex: 1 1 auto; width: 100%; height: auto !import
 .home-new { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px; border-radius: 10px; border: 1px solid rgba(34, 211, 238, .5); background: rgba(34, 211, 238, .1); color: #22d3ee; font-size: 14px; font-weight: 700; cursor: pointer; transition: background .15s; }
 .home-new:hover { background: rgba(34, 211, 238, .2); }
 .home-list { display: flex; flex-direction: column; gap: 10px; }
-.home-card { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: 14px; background: linear-gradient(180deg, rgba(34, 211, 238, .06), #0b1220 70%); border: 1px solid rgba(34, 211, 238, .22); }
+.home-card { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: 14px; background: var(--theme-panel, #0b1220); border: 1px solid var(--theme-border, rgba(34, 211, 238, .22)); }
 .home-card-main { flex: 1; min-width: 0; }
 .home-card-name { margin: 0; display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 800; color: #f1f5f9; }
 .home-card-name i { font-size: 12px; color: #64748b; }
@@ -4249,7 +4249,7 @@ body.lt-original #apexIframe { flex: 1 1 auto; width: 100%; height: auto !import
 .home-quick i { color: #fbbf24; }
 
 /* Inner collapses: sub-sections inside a section */
-.sub + .sub { border-top: 1px solid #1a2438; }
+.sub + .sub { border-top: 1px solid var(--theme-border, #1a2438); }
 .sub-head-wrap { margin: 0 !important; padding: 0 !important; border: 0 !important; }
 .sub-head { width: 100%; min-height: 48px; display: flex; align-items: center; gap: 10px; padding: 0; background: none; border: 0; color: #e2e8f0; font-size: 14px; font-weight: 700; text-align: start; cursor: pointer; }
 .sub-head:focus-visible { outline: 2px solid var(--sec, #22d3ee); outline-offset: 2px; border-radius: 6px; }
@@ -4350,3 +4350,24 @@ body.lt-original #apexIframe { flex: 1 1 auto; width: 100%; height: auto !import
 @media (max-width: 560px) { .rule-dir { grid-template-columns: 1fr 1fr 44px; } .rule-dir > input[type="time"] { grid-column: 1 / -1; } }
 #rulesCard .num-stepper > button { min-height: 44px; flex-basis: 40px; }
 #rulesCard .num-stepper > .input-field { min-height: 44px; font-size: 16px !important; }
+
+/* Steppers keep number order (− left, + right) in RTL too */
+.num-stepper { direction: ltr; }
+[dir="rtl"] .num-stepper > button:first-child { border-radius: 8px 0 0 8px; }
+[dir="rtl"] .num-stepper > button:last-child { border-radius: 0 8px 8px 0; }
+[dir="rtl"] .set-when-sum i { transform: scaleX(-1); }
+
+/* Qualifying decision tree */
+.q-step { padding: 14px 0; border-top: 1px solid var(--theme-border, #1a2438); }
+.q-step:first-child { border-top: 0; padding-top: 0; }
+.q-ask { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; font-size: 15px; font-weight: 700; color: #e2e8f0; }
+.q-n { flex: none; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: rgba(96, 165, 250, .18); color: #93c5fd; font-size: 12px; font-weight: 800; }
+.q-sub { margin-top: 12px; padding-inline-start: 12px; border-inline-start: 2px solid rgba(96, 165, 250, .35); }
+.q-sub.hidden { display: none; }
+#qTree .set-preview { margin-top: 4px; }
+#qualifyingPanel .seg button { min-height: 46px; }
+@media (max-width: 420px) { #qualifyingPanel .seg button { font-size: 12px; padding: 0 4px; } }
+
+/* Section titles never wrap; the readout gives way instead */
+.set-card-head > span:first-of-type, #driversCard > h2 > span:first-of-type { white-space: nowrap; flex: 0 0 auto !important; }
+.sec-sum { flex: 0 1 auto; min-width: 0; }

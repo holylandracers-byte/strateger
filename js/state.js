@@ -3181,10 +3181,12 @@ window._updateRaceWhen = function() {
     const start = new Date((date || new Date().toISOString().slice(0, 10)) + 'T' + time + ':00');
     if (isNaN(start.getTime())) { el.classList.add('hidden'); return; }
     const end = new Date(start.getTime() + hours * 3600000);
-    const d = (x) => x.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' });
-    const tm = (x) => x.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const d = (x) => x.toLocaleDateString(window.currentLang || [], { weekday: 'short', day: 'numeric', month: 'short' });
+    const tm = (x) => x.toLocaleTimeString(window.currentLang || [], { hour: '2-digit', minute: '2-digit' });
     const days = Math.round((start.getTime() - Date.now()) / 86400000);
-    const when = days > 0 ? 'in ' + days + (days === 1 ? ' day' : ' days') : (days === 0 ? 'today' : '');
+    let when = '';
+    try { when = days >= 0 ? new Intl.RelativeTimeFormat(window.currentLang || [], { numeric: 'auto' }).format(days, 'day') : ''; }
+    catch (e) { when = days > 0 ? 'in ' + days + (days === 1 ? ' day' : ' days') : (days === 0 ? 'today' : ''); }
     el.innerHTML = '<b>' + d(start) + ' ' + tm(start) + '</b> <i class="fas fa-long-arrow-alt-right"></i> <b>' + d(end) + ' ' + tm(end) + '</b>' + (when ? ' <span>· ' + when + '</span>' : '');
     el.classList.remove('hidden');
 };

@@ -198,41 +198,33 @@ window.setQPitRule = function(rule) {
 // ─── Session mode toggle (Race / Qualifying) ──────────────────────────────────
 
 window.setSessionMode = function(mode) {
-    window._sessionMode = mode;
-    const raceBtn = document.getElementById('modeRaceBtn');
-    const qualBtn = document.getElementById('modeQualifyBtn');
-    const qualifyPanel = document.getElementById('qualifyingPanel');
+    const on = mode === 'qualify';
+    window._sessionMode = on ? 'qualify' : 'race';
     const simResult = document.getElementById('simResult');
     const startRaceBtn = document.getElementById('startRaceBtn');
     const startQualifyBtn = document.getElementById('startQualifyBtn');
-
-    window._sessionMode = mode === 'qualify' ? 'qualify' : 'race';
-    [raceBtn, qualBtn].forEach(btn => {
+    const mark = (btn, active) => {
         if (!btn) return;
-        btn.classList.remove('bg-ice', 'text-navy-950', 'bg-blue-600', 'text-white');
-        btn.classList.add('text-gray-400');
-    });
-
-    if (mode === 'qualify') {
-        qualBtn && qualBtn.classList.add('bg-blue-600', 'text-white');
-        qualBtn && qualBtn.classList.remove('text-gray-400');
+        btn.classList.toggle('bg-blue-600', active); btn.classList.toggle('text-white', active);
+        btn.classList.toggle('bg-transparent', !active); btn.classList.toggle('text-gray-400', !active);
+    };
+    mark(document.getElementById('qOnBtn'), on);
+    mark(document.getElementById('qOffBtn'), !on);
+    const tree = document.getElementById('qTree');
+    if (tree) tree.classList.toggle('hidden', !on);
+    if (on) {
+        const dur = document.getElementById('qualifyDuration');
+        if (dur && !(parseInt(dur.value) > 0)) dur.value = 15;
         simResult && simResult.classList.add('hidden');
         startRaceBtn && startRaceBtn.classList.add('hidden');
         startQualifyBtn && startQualifyBtn.classList.remove('hidden');
         window.updateQualifyPreview();
     } else {
-        raceBtn && raceBtn.classList.add('bg-ice', 'text-navy-950');
-        raceBtn && raceBtn.classList.remove('text-gray-400');
         simResult && simResult.classList.remove('hidden');
         startRaceBtn && startRaceBtn.classList.remove('hidden');
         startQualifyBtn && startQualifyBtn.classList.add('hidden');
     }
-};
-
-// Qualifying is optional: an empty duration means race only, a number switches it on.
-window._syncQualifyMode = function() {
-    const on = (parseInt(document.getElementById('qualifyDuration')?.value) || 0) > 0;
-    if ((window._sessionMode === 'qualify') !== on) window.setSessionMode(on ? 'qualify' : 'race');
+    window.saveHostState && window.saveHostState();
 };
 
 // ─── Preview ──────────────────────────────────────────────────────────────────

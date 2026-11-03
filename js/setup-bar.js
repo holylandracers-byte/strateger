@@ -10,6 +10,9 @@
     const esc = (x) => (window._escHtml ? window._escHtml(x) : String(x).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])));
     const CARDS = ['qualifyingPanel', 'generalCard', 'driversCard', 'rulesCard', 'liveCard'];
 
+    // A readout with no RTL letters is isolated as one LTR run, otherwise numbers and units swap places in Hebrew/Arabic.
+    const iso = (txt) => (txt && !/[\u0590-\u08FF]/.test(txt)) ? '\u2066' + txt + '\u2069' : txt;
+
     // ---------- bar summary ----------
     function summary() {
         const el = $('setupBarSummary');
@@ -51,7 +54,7 @@
         driversCard: () => driverNames().join(' · '),
         rulesCard: () => $('rulesActiveCount') && !$('rulesActiveCount').classList.contains('hidden') ? $('rulesActiveCount').textContent : '',
         qualifyingPanel: () => {
-            if (!(parseInt($('qualifyDuration')?.value) > 0)) return t('xQualOff', 'Off');
+            if (window._sessionMode !== 'qualify') return t('xQualOff', 'Off');
             const segs = (window._qualifyConfig && window._qualifyConfig.segments) || '';
             return ($('qualifyDuration')?.value || '') + ' min' + (segs ? ' · Q1' + (segs > 1 ? '–Q' + segs : '') : '');
         },
@@ -69,7 +72,7 @@
                 head.insertBefore(span, head.querySelector('.collapse-icon') || null);
             }
             let txt = '';
-            try { txt = SECTIONS[id](); } catch (e) {}
+            try { txt = iso(SECTIONS[id]()); } catch (e) {}
             if (span.textContent !== txt) span.textContent = txt;
         });
     }
@@ -103,7 +106,7 @@
     const subs = [];
     const isSubHead = (n) => n.nodeType === 1 && n.tagName === 'H3' && /(sec-sub|rules-group-title)/.test(n.className);
     function initInnerCollapse() {
-        [['qualifyingPanel', true], ['generalCard', true], ['rulesCard', false]].forEach(([cardId, firstOpen]) => {
+        [['generalCard', true], ['rulesCard', false]].forEach(([cardId, firstOpen]) => {
             const body = $(cardId)?.querySelector(':scope > .collapse-body');
             if (!body) return;
             Array.from(body.children).filter(isSubHead).forEach((h, idx) => {
@@ -131,7 +134,7 @@
     function subSummaries() {
         subs.forEach(o => {
             let txt = '';
-            try { txt = (SUB_SUM[o.key] && SUB_SUM[o.key]()) || ''; } catch (e) {}
+            try { txt = iso((SUB_SUM[o.key] && SUB_SUM[o.key]()) || ''); } catch (e) {}
             if (o.sum.textContent !== txt) o.sum.textContent = txt;
         });
     }

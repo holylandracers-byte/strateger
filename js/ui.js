@@ -1790,7 +1790,6 @@ window.applyStrategy = function(index) {
                 if (window.setQParticipation) window.setQParticipation(q.participation);
                 if (window.setQPitRule) window.setQPitRule(q.pitRule);
             }
-            if (strategy.config.sessionMode !== 'qualify') { const qd = document.getElementById('qualifyDuration'); if (qd) qd.value = ''; }
             if (window.setSessionMode) window.setSessionMode(strategy.config.sessionMode === 'qualify' ? 'qualify' : 'race');
             if (typeof window._normalizeOffFields === 'function') window._normalizeOffFields();
             
