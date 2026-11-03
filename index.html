@@ -179,7 +179,6 @@
                 </div>
                 <!-- Quick-action pill strip (collapsible body) -->
                 <div id="heroBody" class="quick-actions-strip mt-3">
-                    <button class="quick-pill" onclick="window.openRaceWizard && window.openRaceWizard()" data-i18n="xWzTitle">New race</button>
                     <button class="quick-pill" onclick="window.setSessionMode('race'); window.setQuickMode('sprint')" data-i18n="qpSprint">⚡ Sprint</button>
                     <button class="quick-pill" onclick="window.setSessionMode('race'); window.setQuickMode('endurance')" data-i18n="qpEndurance">🏁 Endurance</button>
                     <button class="quick-pill" onclick="window.setSessionMode('race'); window.setQuickMode('nolimit')" data-i18n="qpNoLimit">∞ No Limit</button>
@@ -204,9 +203,6 @@
             </div>
         </div>
 
-        <!-- Setup style: Guided wizard vs Full setup -->
-        <div class="max-w-6xl mx-auto mb-2"><div id="setupStyleSlot"></div></div>
-
         <!-- Session mode toggle: Race Only / Qualifying + Race -->
         <div class="max-w-6xl mx-auto mb-3">
             <div class="flex rounded-xl overflow-hidden border border-gray-700/50 bg-navy-900/50 shadow-sm">
@@ -226,13 +222,6 @@
 
         <!-- ════ COLUMN LEFT: race settings ════ -->
         <div id="configPanel" class="space-y-3 transition-opacity duration-300">
-
-            <!-- Step label -->
-            <div class="flex items-center gap-2 pb-1">
-                <span class="text-[11px] font-black text-ice bg-ice/10 border border-ice/30 rounded-full w-5 h-5 flex items-center justify-center shrink-0">1</span>
-                <span class="text-xs font-bold text-gray-400 uppercase tracking-widest" data-i18n="stepRaceSettings">Race Settings</span>
-                <div class="flex-1 h-px bg-gradient-to-r from-ice/20 to-transparent ml-1"></div>
-            </div>
 
             <!-- Qualifying settings panel (shown only in qualifying mode) -->
             <div id="qualifyingPanel" class="hidden collapsible-section set-card set-card-qual">
@@ -310,65 +299,6 @@
                 </div><!-- end collapse-body -->
             </div>
 
-            <!-- LIVE TIMING — collapsed by default -->
-            <div class="collapsible-section collapsed bg-navy-900/60 p-3 rounded-xl border border-red-900/30 shadow-sm">
-                <h2 class="text-gray-400 text-sm font-bold flex items-center gap-2 cursor-pointer select-none" onclick="this.parentElement.classList.toggle('collapsed')">
-                    <span class="sync-dot live-dot opacity-50"></span>
-                    <span data-i18n="liveTiming">Live Timing</span>
-                    <span class="text-[11px] text-gray-600 font-normal normal-case ml-1" data-i18n="optional">(optional)</span>
-                    <span id="proLockLiveTiming" class="hidden text-[11px] bg-gold/20 text-gold px-1.5 py-0.5 rounded-full font-bold border border-gold/30">🔒 PRO</span>
-                    <i class="fas fa-chevron-down ml-auto text-[11px] text-gray-600 collapse-icon transition-transform"></i>
-                </h2>
-                <div class="collapse-body mt-3">
-                <div class="mb-2">
-                    <div class="flex gap-1 mb-1">
-                        <select id="tfSystem" class="input-field text-xs" style="width:6.5rem" aria-label="Timing system">
-                            <option value="racefacer">RaceFacer</option>
-                            <option value="apex">Apex</option>
-                            <option value="alpha">Alpha</option>
-                        </select>
-                        <input type="text" id="tfTrack" list="tfTrackList" class="input-field text-xs flex-1 min-w-0" data-i18n="tfTrack" placeholder="Track name..." autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();window.findTrackUrl('setup')}">
-                        <button type="button" onclick="window.findTrackUrl('setup')" class="bg-red-900/50 border border-red-500/50 text-red-300 text-xs px-2 rounded hover:bg-red-900" data-i18n="tfFind">Find</button>
-                    </div>
-                    <datalist id="tfTrackList"></datalist>
-                    <input type="url" id="liveTimingUrl" data-i18n="liveTimingUrl" placeholder="Live Timing URL..." class="input-field text-xs mb-1">
-                </div>
-                <div class="mb-2">
-                    <label class="text-[11px] text-gray-400 block mb-1" data-i18n="ltSearchType">Filter By:</label>
-                    <div class="flex gap-2 mb-1">
-                        <label class="flex items-center gap-1 cursor-pointer">
-                            <input type="radio" name="searchType" value="team" checked class="accent-red-500 w-3 h-3">
-                            <span class="text-[11px] text-gray-300" data-i18n="ltTeam">Team</span>
-                        </label>
-                        <label class="flex items-center gap-1 cursor-pointer">
-                            <input type="radio" name="searchType" value="driver" class="accent-red-500 w-3 h-3">
-                            <span class="text-[11px] text-gray-300" data-i18n="ltDriver">Driver</span>
-                        </label>
-                        <label class="flex items-center gap-1 cursor-pointer">
-                            <input type="radio" name="searchType" value="kart" class="accent-red-500 w-3 h-3">
-                            <span class="text-[11px] text-gray-300" data-i18n="ltKart">Kart #</span>
-                        </label>
-                    </div>
-                    <input type="text" id="searchValue" class="input-field text-xs" data-i18n="ltPlaceholder" placeholder="Search value...">
-                </div>
-                <div class="mb-2">
-                    <label class="text-[11px] text-gray-400 flex items-center gap-1 cursor-pointer select-none" onclick="document.getElementById('wsPortOverrideRow').classList.toggle('hidden')">
-                        <i class="fas fa-chevron-right text-[11px]"></i>
-                        <span data-i18n="advancedConnection">Advanced connection</span>
-                    </label>
-                    <div id="wsPortOverrideRow" class="hidden mt-1">
-                        <label class="text-[11px] text-gray-500 block mb-1" data-i18n="wsPortOverrideLabel">Apex WS port override (leave blank = auto):</label>
-                        <input type="number" id="wsPortOverride" class="input-field text-xs" data-i18n="wsPortOverridePlaceholder" placeholder="e.g. 8523 or 8913" min="1" max="65535">
-                        <p class="text-[11px] text-gray-600 mt-1" data-i18n="wsPortOverrideHint">If live timing connects but shows no data, the feed's WebSocket port may differ from the auto-detected one. Try the venue's configPort+3 (HTTPS) or +2 (HTTP).</p>
-                    </div>
-                </div>
-                <div class="flex gap-2">
-                    <button onclick="window.testLiveTiming()" class="flex-1 bg-red-900/50 border border-red-500/50 text-red-300 text-xs py-1.5 rounded hover:bg-red-900" data-i18n="testBtn">Test</button>
-                    <button onclick="window.openManualInput()" class="flex-1 bg-fuel/20 border border-fuel/50 text-fuel text-xs py-1.5 rounded hover:bg-fuel/30" data-i18n="manualInput">Manual</button>
-                </div>
-                <div id="liveTimingStatus" class="text-[11px] text-gray-500 text-center mt-1"></div>
-                </div>
-            </div>
 
             <div id="simResult" class="bg-black/40 border border-ice/30 p-3 rounded text-xs text-ice font-mono text-center whitespace-pre-line hidden">
                 calculating...
@@ -498,7 +428,7 @@
             </div>
 
             <!-- RULES: every rule below feeds the strategy calculation. Active rules light up. -->
-            <div class="collapsible-section collapsed set-card" id="rulesCard">
+            <div class="collapsible-section set-card" id="rulesCard">
                 <h2 class="set-card-head" onclick="this.parentElement.classList.toggle('collapsed')">
                     <i class="fas fa-sliders-h set-card-icon"></i> <span data-i18n="advancedConstraints">Advanced Constraints</span>
                     <span id="rulesActiveCount" class="set-count hidden"></span>
@@ -653,17 +583,70 @@
                 </div>
             </div>
 
+
+            <!-- LIVE TIMING — collapsed by default -->
+            <div class="collapsible-section collapsed bg-navy-900/60 p-3 rounded-xl border border-red-900/30 shadow-sm">
+                <h2 class="text-gray-400 text-sm font-bold flex items-center gap-2 cursor-pointer select-none" onclick="this.parentElement.classList.toggle('collapsed')">
+                    <span class="sync-dot live-dot opacity-50"></span>
+                    <span data-i18n="liveTiming">Live Timing</span>
+                    <span class="text-[11px] text-gray-600 font-normal normal-case ml-1" data-i18n="optional">(optional)</span>
+                    <span id="proLockLiveTiming" class="hidden text-[11px] bg-gold/20 text-gold px-1.5 py-0.5 rounded-full font-bold border border-gold/30">🔒 PRO</span>
+                    <i class="fas fa-chevron-down ml-auto text-[11px] text-gray-600 collapse-icon transition-transform"></i>
+                </h2>
+                <div class="collapse-body mt-3">
+                <div class="mb-2">
+                    <div class="flex gap-1 mb-1">
+                        <select id="tfSystem" class="input-field text-xs" style="width:6.5rem" aria-label="Timing system">
+                            <option value="racefacer">RaceFacer</option>
+                            <option value="apex">Apex</option>
+                            <option value="alpha">Alpha</option>
+                        </select>
+                        <input type="text" id="tfTrack" list="tfTrackList" class="input-field text-xs flex-1 min-w-0" data-i18n="tfTrack" placeholder="Track name..." autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();window.findTrackUrl('setup')}">
+                        <button type="button" onclick="window.findTrackUrl('setup')" class="bg-red-900/50 border border-red-500/50 text-red-300 text-xs px-2 rounded hover:bg-red-900" data-i18n="tfFind">Find</button>
+                    </div>
+                    <datalist id="tfTrackList"></datalist>
+                    <input type="url" id="liveTimingUrl" data-i18n="liveTimingUrl" placeholder="Live Timing URL..." class="input-field text-xs mb-1">
+                </div>
+                <div class="mb-2">
+                    <label class="text-[11px] text-gray-400 block mb-1" data-i18n="ltSearchType">Filter By:</label>
+                    <div class="flex gap-2 mb-1">
+                        <label class="flex items-center gap-1 cursor-pointer">
+                            <input type="radio" name="searchType" value="team" checked class="accent-red-500 w-3 h-3">
+                            <span class="text-[11px] text-gray-300" data-i18n="ltTeam">Team</span>
+                        </label>
+                        <label class="flex items-center gap-1 cursor-pointer">
+                            <input type="radio" name="searchType" value="driver" class="accent-red-500 w-3 h-3">
+                            <span class="text-[11px] text-gray-300" data-i18n="ltDriver">Driver</span>
+                        </label>
+                        <label class="flex items-center gap-1 cursor-pointer">
+                            <input type="radio" name="searchType" value="kart" class="accent-red-500 w-3 h-3">
+                            <span class="text-[11px] text-gray-300" data-i18n="ltKart">Kart #</span>
+                        </label>
+                    </div>
+                    <input type="text" id="searchValue" class="input-field text-xs" data-i18n="ltPlaceholder" placeholder="Search value...">
+                </div>
+                <div class="mb-2">
+                    <label class="text-[11px] text-gray-400 flex items-center gap-1 cursor-pointer select-none" onclick="document.getElementById('wsPortOverrideRow').classList.toggle('hidden')">
+                        <i class="fas fa-chevron-right text-[11px]"></i>
+                        <span data-i18n="advancedConnection">Advanced connection</span>
+                    </label>
+                    <div id="wsPortOverrideRow" class="hidden mt-1">
+                        <label class="text-[11px] text-gray-500 block mb-1" data-i18n="wsPortOverrideLabel">Apex WS port override (leave blank = auto):</label>
+                        <input type="number" id="wsPortOverride" class="input-field text-xs" data-i18n="wsPortOverridePlaceholder" placeholder="e.g. 8523 or 8913" min="1" max="65535">
+                        <p class="text-[11px] text-gray-600 mt-1" data-i18n="wsPortOverrideHint">If live timing connects but shows no data, the feed's WebSocket port may differ from the auto-detected one. Try the venue's configPort+3 (HTTPS) or +2 (HTTP).</p>
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="window.testLiveTiming()" class="flex-1 bg-red-900/50 border border-red-500/50 text-red-300 text-xs py-1.5 rounded hover:bg-red-900" data-i18n="testBtn">Test</button>
+                    <button onclick="window.openManualInput()" class="flex-1 bg-fuel/20 border border-fuel/50 text-fuel text-xs py-1.5 rounded hover:bg-fuel/30" data-i18n="manualInput">Manual</button>
+                </div>
+                <div id="liveTimingStatus" class="text-[11px] text-gray-500 text-center mt-1"></div>
+                </div>
+            </div>
         </div><!-- end col-left -->
 
         <!-- ════ COLUMN RIGHT: drivers + actions ════ -->
         <div class="space-y-3 mt-3 md:mt-0">
-
-            <!-- Step label -->
-            <div class="flex items-center gap-2 pb-1">
-                <span class="text-[11px] font-black text-ice bg-ice/10 border border-ice/30 rounded-full w-5 h-5 flex items-center justify-center shrink-0">2</span>
-                <span class="text-xs font-bold text-gray-400 uppercase tracking-widest" data-i18n="driverConfig">Drivers</span>
-                <div class="flex-1 h-px bg-gradient-to-r from-ice/20 to-transparent ml-1"></div>
-            </div>
 
             <!-- DRIVERS (collapsible) -->
             <div class="collapsible-section bg-navy-900/80 p-3 rounded-xl border border-gray-700/50 shadow-sm">
@@ -691,34 +674,25 @@
                 </div>
             </div>
 
-            <!-- Step label -->
-            <div class="flex items-center gap-2 pb-1 mt-1">
-                <span class="text-[11px] font-black text-neon bg-neon/10 border border-neon/30 rounded-full w-5 h-5 flex items-center justify-center shrink-0">3</span>
-                <span class="text-xs font-bold text-gray-400 uppercase tracking-widest" data-i18n="stepGo">Let's Go</span>
-                <div class="flex-1 h-px bg-gradient-to-r from-neon/20 to-transparent ml-1"></div>
-            </div>
-
-            <!-- ACTION CARD -->
-            <div id="setupActionCard" class="bg-navy-900/80 border border-gray-700/60 rounded-xl p-3 space-y-3">
-                <!-- One primary action -->
-                <button id="startRaceBtn" onclick="window.initRace()" class="w-full bg-ice hover:bg-cyan-300 text-navy-950 font-black py-3.5 rounded-lg text-base transition uppercase tracking-wide active:scale-95 transform" data-i18n="startRace">
-                    ▶ Start Race
-                </button>
-                <button id="startQualifyBtn" onclick="window.startQualifyingDirect()" class="hidden w-full bg-blue-500 hover:bg-blue-400 text-white font-black py-3.5 rounded-lg text-base transition uppercase tracking-wide active:scale-95 transform" data-i18n="startQualify">
-                    ▶ Qualifying
-                </button>
-
-                <!-- Secondary actions: quiet links -->
-                <div class="setup-links">
-                    <button id="wtPreviewBtn" type="button" onclick="window.generatePreview(false, true)"><i class="fas fa-chart-bar"></i><span data-i18n="previewStrategy">Preview</span></button>
-                    <button type="button" onclick="window.showDriverEntryScreen()" title="Enter a race running on another device"><i class="fas fa-car-side"></i><span data-i18n="joinAsDriver">Join as Driver</span></button>
-                    <button type="button" onclick="window.showRaceHistory()"><i class="fas fa-history"></i><span data-i18n="raceHistory">History</span></button>
-                    <button type="button" id="rulesPdfBtn" onclick="window.openRulesPdfModalGated()"><i class="fas fa-file-pdf"></i><span data-i18n="rulesPdfBtn">Upload Race Rules (PDF)</span><span class="setup-links-tag">PRO</span><span id="rulesPdfBadge" class="hidden setup-links-tag setup-links-ok" data-i18n="rulesPdfLoaded">Rules Loaded</span></button>
-                </div>
-            </div>
-
         </div><!-- end col-right -->
         </div><!-- end 2-col grid -->
+
+        <!-- Secondary links -->
+        <div class="max-w-6xl mx-auto mt-3 setup-links">
+            <button type="button" onclick="window.showDriverEntryScreen()" title="Enter a race running on another device"><i class="fas fa-car-side"></i><span data-i18n="joinAsDriver">Join as Driver</span></button>
+            <button type="button" onclick="window.showRaceHistory()"><i class="fas fa-history"></i><span data-i18n="raceHistory">History</span></button>
+            <button type="button" id="rulesPdfBtn" onclick="window.openRulesPdfModalGated()"><i class="fas fa-file-pdf"></i><span data-i18n="rulesPdfBtn">Upload Race Rules (PDF)</span><span class="setup-links-tag">PRO</span><span id="rulesPdfBadge" class="hidden setup-links-tag setup-links-ok" data-i18n="rulesPdfLoaded">Rules Loaded</span></button>
+        </div>
+
+        <!-- Pinned action bar: always in reach, whatever the scroll position -->
+        <div id="setupActionCard" class="setup-bar">
+            <div class="setup-bar-inner">
+                <p id="setupBarSummary" class="setup-bar-sum" aria-live="polite"></p>
+                <button id="wtPreviewBtn" type="button" class="setup-bar-prev" onclick="window.generatePreview(false, true)"><i class="fas fa-chart-bar"></i><span data-i18n="previewStrategy">Preview</span></button>
+                <button id="startRaceBtn" onclick="window.initRace()" class="setup-bar-go" data-i18n="startRace">▶ Start Race</button>
+                <button id="startQualifyBtn" onclick="window.startQualifyingDirect()" class="hidden setup-bar-go is-quali" data-i18n="startQualify">▶ Qualifying</button>
+            </div>
+        </div>
     </div>
 
     <!-- ============================================================
@@ -2473,7 +2447,7 @@
     <script src="js/track-finder.js?v=2"></script>
     <script src="js/ui.js?v=22"></script>
     <script src="js/walkthrough.js?v=13"></script>
-    <script src="js/wizard.js?v=2"></script>
+    <script src="js/setup-bar.js?v=1"></script>
     <script src="js/main.js?v=27"></script>
     <script src="js/live-extras.js?v=4"></script>
 </body>
