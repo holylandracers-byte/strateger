@@ -4340,3 +4340,6 @@ body.lt-original #apexIframe { flex: 1 1 auto; width: 100%; height: auto !import
 
 .app-mark { display: inline-block; border-radius: 22%; box-shadow: 0 6px 18px rgba(0, 0, 0, .4); }
 .adjust-drawer[open] { flex: 1 1 100%; }
+
+.sr-handle-off { cursor: default; pointer-events: none; }
+.stint-row.is-current .sr-driver-static { background: color-mix(in srgb, var(--sc, #22d3ee) 24%, var(--navy-900)); border-color: color-mix(in srgb, var(--sc, #22d3ee) 60%, #334155); }

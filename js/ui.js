@@ -1071,16 +1071,19 @@ window.renderPreview = function() {
 
         // A stint can't be reordered past a locked (already-run) stint — only among
         // the current/future ones — so Up is disabled right after the lock boundary.
+        const driverLocked = window.isStintLocked(index, stints);
         const prevLocked = index > 0 && !!(stints[index - 1]._actual || stints[index - 1]._done);
         return `
             <div class="stint-row${stint._current ? ' is-current' : ''}${outOfBounds ? ' is-bad' : ''}${stint.weather === 'heavy' ? ' is-heavy' : stint.weather === 'light' ? ' is-light' : ''}" style="--sc:${stint.color}"
                  data-index="${index}" ondragstart="window.handleDragStart(event)" ondragover="window.handleDragOver(event)" ondragleave="window.handleDragLeave(event)" ondrop="window.handleDrop(event)">
                 <div class="sr-main">
-                    <span class="sr-handle" title="${tr('dragToReorder', 'Drag to reorder')}"><i class="fas fa-grip-vertical"></i></span>
+                    ${driverLocked ? '<span class="sr-handle sr-handle-off" aria-hidden="true"></span>' : `<span class="sr-handle" title="${tr('dragToReorder', 'Drag to reorder')}"><i class="fas fa-grip-vertical"></i></span>`}
                     <span class="sr-num">${index + 1}</span>
-                    <button type="button" class="sr-driver stint-driver-swap" data-stint-index="${index}" onclick="event.stopPropagation();window.openStintDriverPicker(${index})" aria-label="${tr('swapDriver', 'Swap driver')}: ${esc(stint.driverName)}">
+                    ${driverLocked
+                        ? `<span class="sr-driver sr-driver-static"><span class="sr-dot"></span><span class="sr-name">${esc(stint.driverName)}</span></span>`
+                        : `<button type="button" class="sr-driver stint-driver-swap" data-stint-index="${index}" onclick="event.stopPropagation();window.openStintDriverPicker(${index})" aria-label="${tr('swapDriver', 'Swap driver')}: ${esc(stint.driverName)}">
                         <span class="sr-dot"></span><span class="sr-name">${esc(stint.driverName)}</span><i class="fas fa-chevron-down sr-caret"></i>
-                    </button>
+                    </button>`}
                     <div class="sr-sub">${stint._current ? `<span class="sr-now"><span class="sr-now-dot"></span>${tr('stintInProgress', 'In progress')}</span>` : ''}<span>${startTimeStr}${arrow}${endTimeStr}</span>${checkeredFlag}${lapTag}${pitIndicator}${stintForecastTag}${ruleNote}</div>
                     <div class="sr-step">
                         <button type="button" class="sr-step-btn" onclick="window.nudgeStint(${index}, -1)" aria-label="-1 min"><i class="fas fa-minus"></i></button>
@@ -1185,7 +1188,7 @@ window.openStintDriverPicker = function(stintIndex) {
     if (!timeline) return;
     const stints = timeline.filter(s => s.type === 'stint');
     const current = stints[stintIndex];
-    if (!current || current._actual || current._done) return;
+    if (!current || window.isStintLocked(stintIndex, stints)) return;
 
     const tr = (k, fb) => { const v = window.t ? window.t(k) : null; return (v && v !== k) ? v : fb; };
     const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -1541,12 +1544,19 @@ window.initTouchDrag = function(container) {
 
 // Drag and drop: the driver of stint `from` is taken out and put in at `to`; the stints between shift by one.
 // Durations and times stay where they are (they belong to the slot, not the driver). Finished stints never move.
+// A stint is history once it has run, and the one being driven right now already has its driver.
+window.isStintLocked = function(idx, stints) {
+    const s = (stints || (window.previewData && window.previewData.timeline || []).filter(t => t.type === 'stint'))[idx];
+    if (!s) return true;
+    if (s._actual || s._done) return true;
+    return !!(window.state && window.state.isRunning && idx <= (window.state.globalStintNumber || 1) - 1);
+};
 window.reinsertStint = function(fromIdx, toIdx) {
     if (!window.previewData || !window.previewData.timeline) return;
     const stints = window.previewData.timeline.filter(t => t.type === 'stint');
     if (!stints[fromIdx] || !stints[toIdx] || fromIdx === toIdx) return;
     const lo = Math.min(fromIdx, toIdx), hi = Math.max(fromIdx, toIdx);
-    for (let i = lo; i <= hi; i++) if (stints[i]._actual || stints[i]._done) return;
+    for (let i = lo; i <= hi; i++) if (window.isStintLocked(i, stints)) return;
     const pick = (x) => ({ driverName: x.driverName, driverIdx: x.driverIdx, color: x.color, squad: x.squad });
     const order = stints.slice(lo, hi + 1).map(pick);
     const moved = order.splice(fromIdx - lo, 1)[0];
@@ -1567,7 +1577,7 @@ window.swapStints = function(fromIdx, toIdx) {
     const target = stints[toIdx];
     if (!source || !target) return;
     // Stints that already happened are locked — never overwrite recorded history.
-    if (source._actual || source._done || target._actual || target._done) return;
+    if (window.isStintLocked(fromIdx, stints) || window.isStintLocked(toIdx, stints)) return;
     const temp = { name: source.driverName, idx: source.driverIdx, col: source.color, sq: source.squad };
     source.driverName = target.driverName; source.driverIdx = target.driverIdx; source.color = target.color; source.squad = target.squad;
     target.driverName = temp.name; target.driverIdx = temp.idx; target.color = temp.col; target.squad = temp.sq;

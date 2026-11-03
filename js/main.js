@@ -2215,6 +2215,32 @@ window._syncPreviewWithActuals = function(actualDriverIdx, actualDriveDuration, 
     if (typeof window.recalculateTimelineTimes === 'function') window.recalculateTimelineTimes();
 };
 
+// Adds `extra` stints (each after a pit) to the end of the live plan: targets, schedule and the preview timeline.
+// Drivers rotate on from the last planned one; the stints that already ran are never touched.
+window._addStintsToPlan = function(afterIdx, extra) {
+    const st = window.state, drivers = window.drivers || [];
+    if (!Array.isArray(st.stintTargets) || !drivers.length) return;
+    const lastTarget = st.stintTargets[st.stintTargets.length - 1] || 60000;
+    for (let k = 0; k < extra; k++) {
+        st.stintTargets.push(lastTarget);
+        const sched = st.stintSchedule;
+        if (Array.isArray(sched) && sched.length) {
+            const last = sched[sched.length - 1];
+            const di = (last.driverIdx + 1) % drivers.length;
+            sched.push({ driverIdx: di, driverName: drivers[di].name, squad: drivers[di].squad, activeSquad: last.activeSquad, squadModeActive: last.squadModeActive, duration: lastTarget, stintNumber: sched.length + 1 });
+        }
+        const tl = window.previewData && window.previewData.timeline;
+        if (Array.isArray(tl) && tl.length) {
+            const stints = tl.filter(x => x.type === 'stint');
+            const pits = tl.filter(x => x.type === 'pit');
+            const lastStint = stints[stints.length - 1], lastPit = pits[pits.length - 1];
+            const di = (lastStint.driverIdx + 1) % drivers.length;
+            if (lastPit) tl.push(Object.assign({}, lastPit, { _actual: false, _plannedDuration: undefined }));
+            tl.push(Object.assign({}, lastStint, { driverIdx: di, driverName: drivers[di].name, color: drivers[di].color, squad: drivers[di].squad, stintNumber: stints.length + 1, duration: lastTarget, _actual: false, _done: false, _current: false, _plannedDuration: undefined }));
+        }
+    }
+};
+
 window.confirmPitExit = function(autoDetected) {
     // Guard: race is finished — no pit actions allowed
     if (window.state.isFinished || (!window.state.isRunning && window.state.startTime)) return;
@@ -2296,12 +2322,25 @@ window.confirmPitExit = function(autoDetected) {
         if (!(drivePoolMs > 0)) return;
         const plannedMs = remaining.reduce((a, b) => a + b, 0);
         if (Math.abs(plannedMs - drivePoolMs) < 30000) return; // still on plan
-        let newRemaining = remaining.map(t => Math.round(t * drivePoolMs / plannedMs));
+        const bounds = window.getStintBoundsMs ? window.getStintBoundsMs(window.config) : null;
+        // A stint that already ran is history: its real length replaces the plan, and nothing below touches it again.
+        targets[completedIdx] = driveDuration;
+        // If the time left cannot be covered within the max stint, the plan needs more stops, as it did at the start.
+        const cap = bounds && bounds.effectiveMaxStint !== Infinity ? bounds.effectiveMaxStint : 0;
+        let count = remaining.length;
+        if (cap > 0) {
+            while (count < remaining.length + 12 && (raceRemainingMs - (count - 1) * pitTimeMs) / count > cap) count++;
+        }
+        if (count > remaining.length && typeof window._addStintsToPlan === 'function') {
+            window._addStintsToPlan(completedIdx, count - remaining.length);
+            remaining.length = 0;
+            for (let k = completedIdx + 1; k < targets.length; k++) remaining.push(targets[k]);
+        }
+        const poolNow = raceRemainingMs - (remaining.length - 1) * pitTimeMs;
+        const baseSum = remaining.reduce((a, b) => a + b, 0) || 1;
+        let newRemaining = remaining.map(t => Math.round(t * poolNow / baseSum));
         if (typeof window.normalizeStintDurationsMs === 'function') {
-            newRemaining = window.normalizeStintDurationsMs(newRemaining, {
-                totalTargetMs: drivePoolMs,
-                bounds: window.getStintBoundsMs(window.config)
-            }).durations;
+            newRemaining = window.normalizeStintDurationsMs(newRemaining, { totalTargetMs: poolNow, bounds: bounds }).durations;
         }
         for (let i = 0; i < newRemaining.length; i++) targets[completedIdx + 1 + i] = newRemaining[i];
         console.log(`♻️ Pit exit recalc: ${(drivePoolMs / 60000).toFixed(1)}m of driving left across ${newRemaining.length} stints (was ${(plannedMs / 60000).toFixed(1)}m)`);
