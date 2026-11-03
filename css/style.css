@@ -4304,3 +4304,25 @@ body.lt-original #apexIframe { flex: 1 1 auto; width: 100%; height: auto !import
 .home-resume .home-go { min-height: 52px; padding: 0 26px; font-size: 15px; }
 .home-card { background: #0b1220; }
 @media (max-width: 560px) { .home-resume { flex-direction: column; align-items: stretch; } .home-resume .home-go { width: 100%; } .home-resume-name { font-size: 22px; } }
+
+/* Phone: one compact two-line row per stint (grip, number, driver, minutes), times underneath */
+@media (max-width: 619px) {
+    .stint-row { padding: 5px 8px 5px 4px; }
+    .sr-main { display: grid; grid-template-columns: 34px 18px minmax(0, 1fr) auto; align-items: center; gap: 2px 6px; }
+    .sr-handle { width: 34px !important; min-height: 38px; height: 38px; }
+    .sr-num { min-width: 0; }
+    .sr-driver { flex: none; width: auto; max-width: none; min-height: 38px; height: 38px; padding: 0 10px; font-size: 14px; }
+    .sr-step { height: 38px; min-height: 38px; margin: 0; }
+    .sr-step-btn { width: 34px; font-size: 12px; }
+    .sr-dur-input { width: 42px; font-size: 16px !important; }
+    .sr-sub { grid-column: 2 / -1; order: 0; width: auto; flex: none; padding: 0; gap: 0 10px; font-size: 11px; line-height: 1.2; }
+    .sr-num-done { margin-left: 0; }
+    .sr-dur-static { justify-self: end; }
+}
+@media (max-width: 619px) {
+    .sr-handle { grid-column: 1; grid-row: 1; }
+    .sr-num, .sr-num-done { grid-column: 2; grid-row: 1; }
+    .sr-driver { grid-column: 3; grid-row: 1; }
+    .sr-step, .sr-dur-static { grid-column: 4; grid-row: 1; }
+    .sr-sub { grid-column: 2 / -1; grid-row: 2; }
+}
