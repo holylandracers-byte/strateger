@@ -1083,6 +1083,8 @@ window.initRace = function() {
     }
     
     window.state.targetStintMs = window.state.stintTargets[0] || (window.config.maxStint * 60000);
+    // The "next driver" shown on the dashboard starts out as the driver the plan has for stint 2.
+    if (typeof window.cycleNextDriver === 'function') window.cycleNextDriver(true);
 
     document.getElementById('setupScreen').classList.add('hidden');
     document.getElementById('previewScreen').classList.add('hidden');

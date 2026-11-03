@@ -374,11 +374,11 @@ window.sendBrowserNotification = function(message) {
 
     // Browser notification
     if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification('🏎️ Strateger', { body: message, icon: 'https://cdn-icons-png.flaticon.com/512/2418/2418779.png' });
+        new Notification('Strateger', { body: message, icon: '/icons/icon-192.png' });
     } else if ('Notification' in window && Notification.permission !== 'denied') {
         Notification.requestPermission().then(p => {
             if (p === 'granted') {
-                new Notification('🏎️ Strateger', { body: message });
+                new Notification('Strateger', { body: message });
             }
         });
     }
@@ -1676,6 +1676,17 @@ window.updatePitModalLogic = function() {
 
 window.currentPitAdjustment = 0;
 
+// How much one tap of the pit-time buttons adds or removes (5, 10, 15 or 30 s), remembered on this device.
+window.pitAdjStep = 5;
+try { window.pitAdjStep = parseInt(localStorage.getItem('strateger_pit_step')) || 5; } catch (e) {}
+window.setPitAdjStep = function(n) {
+    window.pitAdjStep = n;
+    try { localStorage.setItem('strateger_pit_step', String(n)); } catch (e) {}
+    document.querySelectorAll('.pit-adj-step button').forEach(b => b.classList.toggle('is-on', parseInt(b.dataset.step) === n));
+    document.querySelectorAll('.pit-adj-n').forEach(el => { el.textContent = n; });
+};
+window.addEventListener('DOMContentLoaded', () => window.setPitAdjStep(window.pitAdjStep));
+
 window.adjustPitTime = function(seconds) {
     window.currentPitAdjustment += seconds;
     const dashDisplay = document.getElementById('dashboardPitAdjDisplay');
@@ -1974,11 +1985,49 @@ window.cycleNextDriver = function(forceValidation = false, manualOverride = fals
         attempts++;
     }
 
+    // Picking the next driver by hand changes the plan too, not only the label.
+    if (manualOverride && typeof window.applyNextDriverToPlan === 'function') window.applyNextDriverToPlan();
+
     const nextDriver = window.drivers[window.state.nextDriverIdx];
     const nextEls = [document.getElementById('nextDriverName'), document.getElementById('modalNextDriverName')];
     nextEls.forEach(el => { if(el && nextDriver) el.innerText = nextDriver.name; });
 
     if (typeof window.broadcast === 'function') window.broadcast();
+};
+
+// The next stint goes to the driver picked on the dashboard. That driver's next planned stint takes the
+// driver who was planned for this one, so nobody drives more or less than the plan had them down for.
+window.applyNextDriverToPlan = function() {
+    const st = window.state;
+    const drivers = window.drivers || [];
+    const want = st.nextDriverIdx;
+    const i = st.globalStintNumber || 1;                       // 0-based index of the next stint
+    const sched = st.stintSchedule;
+    if (!Array.isArray(sched) || !sched[i] || !drivers[want] || sched[i].driverIdx === want) return;
+
+    const lists = [sched];
+    const stintsOf = (tl) => Array.isArray(tl) ? tl.filter(x => x.type === 'stint') : null;
+    const pv = stintsOf(window.previewData && window.previewData.timeline);
+    const cs = stintsOf(window.cachedStrategy && window.cachedStrategy.timeline);
+    if (pv) lists.push(pv);
+    if (cs && (!pv || cs[0] !== pv[0])) lists.push(cs);
+
+    lists.forEach(list => {
+        const here = list[i];
+        if (!here) return;
+        const old = { driverIdx: here.driverIdx, driverName: here.driverName, squad: here.squad, color: here.color };
+        const put = (row, d, idx) => {
+            row.driverIdx = idx; row.driverName = d.name; row.squad = d.squad;
+            if ('color' in row || list !== sched) row.color = d.color;
+        };
+        let j = -1;
+        for (let k = i + 1; k < list.length; k++) {
+            if (list[k].driverIdx === want && !list[k]._done && !list[k]._actual) { j = k; break; }
+        }
+        put(here, drivers[want], want);
+        if (j >= 0) put(list[j], drivers[old.driverIdx] || { name: old.driverName, squad: old.squad, color: old.color }, old.driverIdx);
+    });
+    if (typeof window.renderFrame === 'function') window.renderFrame();
 };
 
 window.playReleaseSound = function() {
@@ -3150,7 +3199,7 @@ window._fireDriverAlert = function(message, minutesBefore) {
     // Browser notification
     if ('Notification' in window && Notification.permission === 'granted') {
         try {
-            new Notification('🏎️ Strateger', { body: `${message} (${minutesBefore}min)`, icon: '/favicon.ico', tag: 'stint-alert' });
+            new Notification('Strateger', { body: `${message} (${minutesBefore}min)`, icon: '/icons/icon-192.png', tag: 'stint-alert' });
         } catch(e) {}
     } else if ('Notification' in window && Notification.permission !== 'denied') {
         Notification.requestPermission();
@@ -3293,7 +3342,7 @@ window._fireStrategyNotification = function(message, type) {
         try {
             new Notification('🏁 Strateger', { 
                 body: message, 
-                icon: '/favicon.ico', 
+                icon: '/icons/icon-192.png', 
                 tag: 'strategy-' + Date.now(),
                 requireInteraction: false
             });

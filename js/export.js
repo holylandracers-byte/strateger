@@ -79,7 +79,7 @@
         sheet.style.cssText = 'position:absolute;left:-12000px;top:0;width:1100px;box-sizing:border-box;padding:44px 48px;background:#fff;color:' + INK + ';font-family:system-ui,-apple-system,Segoe UI,sans-serif;font-size:14px;line-height:1.35';
         sheet.innerHTML =
             '<div class="xrow" style="display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid ' + ACCENT + ';padding-bottom:14px">'
-            + '<div><div style="font-size:12px;letter-spacing:.2em;color:' + ACCENT + ';font-weight:800">STRATEGER</div>'
+            + '<div><div style="font-size:12px;letter-spacing:.2em;color:' + ACCENT + ';font-weight:800;display:flex;align-items:center"><svg viewBox="0 0 64 64" width="30" height="30" style="vertical-align:middle;margin-inline-end:8px"><rect width="64" height="64" rx="13" fill="#070f1e"/><g fill="none" stroke-width="8" transform="rotate(-90 32 32)"><circle cx="32" cy="32" r="20" stroke="#22d3ee" stroke-dasharray="34 91.66" stroke-dashoffset="-4"/><circle cx="32" cy="32" r="20" stroke="#a3e635" stroke-dasharray="34 91.66" stroke-dashoffset="-45.9"/><circle cx="32" cy="32" r="20" stroke="#fb923c" stroke-dasharray="34 91.66" stroke-dashoffset="-87.8"/></g><path d="M28 24.5v15l12.5-7.5z" fill="#f8fafc"/></svg>STRATEGER</div>'
             + '<div style="font-size:30px;font-weight:900;margin-top:4px">' + esc(tr('xExpTitle', 'Race strategy')) + (place ? ' · ' + esc(place) : '') + '</div></div>'
             + '<div style="text-align:' + (rtl ? 'left' : 'right') + ';color:' + MUTE + '"><div style="font-weight:700;color:' + INK + '">' + dayOf(start) + '</div><div>' + clock(start) + ' → ' + clock(end) + '</div></div></div>'
             + '<div class="xrow" style="display:flex;gap:10px;margin-top:20px">'

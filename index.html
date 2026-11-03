@@ -6,6 +6,7 @@
     <title>Strateger - Race Strategy Manager</title>
     
     <link rel="icon" type="image/svg+xml" href="/icons/icon-512.svg">
+    <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
 
     <!-- PWA -->
     <link rel="manifest" href="/manifest.json">
@@ -46,7 +47,7 @@
     <script src="js/live-timing-manager.js?v=9"></script>
     <script src="js/qualifying.js?v=9"></script>
 
-    <link rel="stylesheet" href="css/style.css?v=54">
+    <link rel="stylesheet" href="css/style.css?v=57">
 
     <script>
         tailwind.config = {
@@ -1232,11 +1233,15 @@
                             </div>
                             <details class="adjust-drawer shrink-0">
                                 <summary class="adjust-summary" data-i18n="pitTimeAdj">Pit time</summary>
-                            <div class="flex items-center gap-0.5 bg-navy-950 px-1 py-1 rounded border border-gray-700 shrink-0">
-                                <button id="penaltyBtnMinus5" onclick="window.adjustPitTime(-5)" class="penalty-btn bg-green-900/30 hover:bg-green-800 text-green-400 border border-green-600/30 px-1.5 py-0.5 rounded text-xs font-bold transition">-5</button>
-                                <button id="penaltyBtnPlus5" onclick="window.adjustPitTime(5)" class="penalty-btn bg-red-900/30 hover:bg-red-800 text-red-400 border border-red-600/30 px-1.5 py-0.5 rounded text-xs font-bold transition">+5</button>
-                                <button id="penaltyBtnPlus10" onclick="window.adjustPitTime(10)" class="penalty-btn bg-red-900/30 hover:bg-red-800 text-red-400 border border-red-600/30 px-1.5 py-0.5 rounded text-xs font-bold transition">+10</button>
-                                <div id="dashboardPitAdjDisplay" class="bg-black/30 px-1.5 py-0.5 rounded text-ice font-mono font-bold text-xs min-w-[28px] text-center">0</div>
+                            <div class="pit-adj">
+                                <div class="pit-adj-step" role="group" aria-label="Step">
+                                    <button type="button" data-step="5" onclick="window.setPitAdjStep(5)">5</button>
+                                    <button type="button" data-step="10" onclick="window.setPitAdjStep(10)">10</button>
+                                    <button type="button" data-step="15" onclick="window.setPitAdjStep(15)">15</button>
+                                    <button type="button" data-step="30" onclick="window.setPitAdjStep(30)">30</button>
+                                </div>
+                                <button id="penaltyBtnMinus5" type="button" onclick="window.adjustPitTime(-window.pitAdjStep)" class="penalty-btn pit-adj-btn is-less">&minus;<span class="pit-adj-n">5</span>s</button>
+                                <button id="penaltyBtnPlus5" type="button" onclick="window.adjustPitTime(window.pitAdjStep)" class="penalty-btn pit-adj-btn is-more">+<span class="pit-adj-n">5</span>s</button>
                             </div>
                             </details>
                         </div>
@@ -1595,7 +1600,7 @@
 
     <div id="savedRaceModal" class="hidden fixed inset-0 bg-navy-950/98 z-50 flex items-center justify-center p-4">
         <div class="bg-navy-900 border-2 border-ice p-6 rounded-xl w-full max-w-sm text-center shadow-2xl">
-            <div class="text-3xl mb-1">🏎️</div>
+            <div class="mb-2"><img src="/icons/icon-192.svg" class="app-mark" alt="" width="44" height="44"></div>
             <div id="savedRaceTeamName" class="text-base font-black text-ice mb-1 hidden"></div>
             <h2 class="text-sm font-bold text-gray-300 mb-4" data-i18n="activeRaceFound">Active Race Found</h2>
             <!-- Time remaining — large and prominent -->
@@ -1673,7 +1678,7 @@
     <!-- ==================== DRIVER ID ENTRY SCREEN ==================== -->
     <div id="driverEntryScreen" class="hidden fixed inset-0 bg-navy-950 z-[100] flex flex-col items-center justify-center p-6">
         <div class="text-center mb-6">
-            <div class="text-4xl mb-2">🏎️</div>
+            <div class="mb-3"><img src="/icons/icon-192.svg" class="app-mark" alt="" width="56" height="56"></div>
             <h1 class="text-2xl font-bold text-ice tracking-widest">DRIVER MODE</h1>
             <p class="text-sm text-gray-400 mt-1" data-i18n="driverEntryHint">Enter the race ID to connect</p>
         </div>
@@ -1698,7 +1703,7 @@
     <!-- ==================== VIEWER NAME ENTRY SCREEN ==================== -->
     <div id="viewerNameScreen" class="hidden fixed inset-0 bg-navy-950 z-[100] flex flex-col items-center justify-center p-6">
         <div class="text-center mb-6">
-            <div class="text-4xl mb-2">👀</div>
+            <div class="mb-3"><img src="/icons/icon-192.svg" class="app-mark" alt="" width="56" height="56"></div>
             <h1 class="text-2xl font-bold text-ice tracking-widest">STRATEGER</h1>
             <p class="text-sm text-gray-400 mt-1" data-i18n="viewerNameHint">Enter your name to join the race</p>
         </div>
@@ -2432,7 +2437,7 @@
         </div>
     </div>
 
-    <script src="js/state.js?v=32"></script>
+    <script src="js/state.js?v=34"></script>
     <script src="js/lite-mode.js?v=1"></script>
     <script src="js/i18n-extra.js?v=7"></script>
     <script src="js/i18n-extra2.js?v=1"></script>
@@ -2444,17 +2449,17 @@
     <script src="js/i18n-phrases3.js?v=1"></script>
     <script src="js/auth.js?v=10"></script>
     <script src="js/network.js?v=10"></script>
-    <script src="js/strategy.js?v=20"></script>
+    <script src="js/strategy.js?v=21"></script>
     <script src="js/race-rules.js?v=5"></script>
     <script src="js/compliance.js?v=2"></script>
-    <script src="js/export.js?v=2"></script>
+    <script src="js/export.js?v=3"></script>
     <script src="js/autosave.js?v=3"></script>
     <script src="js/live-timing.js?v=20"></script>
     <script src="js/track-finder.js?v=2"></script>
     <script src="js/ui.js?v=26"></script>
     <script src="js/walkthrough.js?v=15"></script>
     <script src="js/setup-bar.js?v=6"></script>
-    <script src="js/main.js?v=27"></script>
+    <script src="js/main.js?v=29"></script>
     <script src="js/live-extras.js?v=4"></script>
 </body>
 </html>

@@ -4326,3 +4326,17 @@ body.lt-original #apexIframe { flex: 1 1 auto; width: 100%; height: auto !import
     .sr-step, .sr-dur-static { grid-column: 4; grid-row: 1; }
     .sr-sub { grid-column: 2 / -1; grid-row: 2; }
 }
+
+/* Pit time adjust: two buttons, one step size you choose */
+.adjust-drawer > .pit-adj { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 6px; background: var(--navy-950, #020617); border: 1px solid #334155; border-radius: 10px; }
+.pit-adj-step { display: inline-flex; border: 1px solid #334155; border-radius: 8px; overflow: hidden; }
+.pit-adj-step button { min-width: 36px; min-height: 36px; padding: 0 8px; background: transparent; border: 0; color: #94a3b8; font-size: 12px; font-weight: 700; cursor: pointer; }
+.pit-adj-step button + button { border-inline-start: 1px solid #334155; }
+.pit-adj-step button.is-on { background: #22d3ee; color: #020617; }
+.pit-adj-btn { min-width: 64px; min-height: 40px; padding: 0 14px; border-radius: 10px; font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.pit-adj-btn.is-less { background: rgba(34, 197, 94, .14); color: #4ade80; border: 1px solid rgba(34, 197, 94, .4); }
+.pit-adj-btn.is-more { background: rgba(239, 68, 68, .14); color: #f87171; border: 1px solid rgba(239, 68, 68, .4); }
+#btnPitAdjBadge { font-size: 15px !important; font-weight: 800; }
+
+.app-mark { display: inline-block; border-radius: 22%; box-shadow: 0 6px 18px rgba(0, 0, 0, .4); }
+.adjust-drawer[open] { flex: 1 1 100%; }

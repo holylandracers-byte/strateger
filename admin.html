@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/svg+xml" href="/icons/icon-512.svg">
+    <link rel="apple-touch-icon" href="/icons/icon-192.png">
     <title>Strateger Admin — License Manager</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -39,7 +41,7 @@
     <!-- Admin Dashboard -->
     <div id="dashboard" class="max-w-4xl mx-auto hidden">
         <div class="flex items-center justify-between mb-6">
-            <h1 class="text-xl font-bold">🔑 License Manager</h1>
+            <h1 class="text-xl font-bold flex items-center gap-3"><img src="/icons/icon-192.svg" alt="" width="32" height="32">License Manager</h1>
             <div class="flex gap-2 items-center">
                 <span id="totalCount" class="text-gray-400 text-sm"></span>
                 <button onclick="logout()" class="btn text-gray-400 text-sm hover:text-white">Logout</button>

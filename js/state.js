@@ -655,7 +655,7 @@ window.translations = {
         statusHeader: "מצב",
         onTrack: "במסלול",
         inPits: "בפיטס",
-        squadSwitch: "צהלי חולייה",
+        squadSwitch: "החלף חוליה",
         viewerApprovalRequest: "מבקש להתחבר",
         approveViewer: "אשר",
         rejectViewer: "דחוי",
