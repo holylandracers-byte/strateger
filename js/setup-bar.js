@@ -183,7 +183,7 @@
         const c = s.config || {};
         const size = c.raceTarget === 'laps' ? (c.raceLaps || 0) + ' ' + t('laps') : (Math.round((c.duration || 0) * 100) / 100) + 'h';
         const names = (s.drivers || []).map(d => d.name);
-        const date = new Date(s.timestamp).toLocaleDateString([], { day: 'numeric', month: 'short' });
+        const date = new Date(s.timestamp).toLocaleDateString(window.currentLang || [], { day: 'numeric', month: 'short' });
         return { line: [size, (c.reqStops || 0) + ' ' + t('xPitStops'), names.length + ' ' + t('xWzDrivers'), date].join(' · '), names };
     }
 
@@ -195,7 +195,7 @@
     // The last auto-saved plan, front and centre: pick up where you stopped.
     function resumeCard(s, i) {
         const m = metaOf(s);
-        const when = new Date(s.timestamp).toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+        const when = new Date(s.timestamp).toLocaleString(window.currentLang || [], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
         return '<article class="home-resume">'
             + '<div class="home-resume-main"><p class="home-resume-label">' + esc(t('xContinueLast', 'Continue where you left off')) + '</p>'
             + '<h2 class="home-resume-name">' + esc(m.line.split(' · ').slice(0, 3).join(' · ')) + '</h2>'
@@ -293,6 +293,17 @@
                 const r = origMode.apply(this, arguments);
                 if (!$('strategyEditor')?.classList.contains('hidden')) openOnly(mode === 'qualify' ? 'qualifyingPanel' : 'generalCard');
                 schedule();
+                return r;
+            };
+        }
+        // Text built in JS (cards, readouts) is written in the language of the moment, so redo it when the language changes.
+        const origLang = window.setLanguage;
+        if (typeof origLang === 'function') {
+            window.setLanguage = function () {
+                const r = origLang.apply(this, arguments);
+                if ($('strategyHome') && !$('strategyHome').classList.contains('hidden')) window.refreshStrategyHome();
+                subs.forEach(o => { const k = o.key; const el = o.wrap.querySelector('.sub-title'); if (el && k) el.textContent = t(k, el.textContent); });
+                summary();
                 return r;
             };
         }
