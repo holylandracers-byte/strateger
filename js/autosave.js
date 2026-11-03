@@ -17,12 +17,29 @@
 
     window._localStrategies = function() { return read(KEY); };
 
+    // Qualifying settings travel inside config, so a saved strategy can start qualifying too.
+    function withSession(cfg) {
+        const out = Object.assign({}, cfg || {});
+        out.sessionMode = window._sessionMode === 'qualify' ? 'qualify' : 'race';
+        if (out.sessionMode === 'qualify') {
+            const q = window._qualifyConfig || {};
+            out.qualify = {
+                duration: parseInt(document.getElementById('qualifyDuration')?.value) || 15,
+                runs: parseInt(document.getElementById('qualifyRuns')?.value) || 1,
+                format: q.format || 'segments', segments: q.segments || 3,
+                participation: q.participation || 'all', pitRule: q.pitRule || 'none',
+                pitMinSec: parseInt(document.getElementById('qPitMinTime')?.value) || 30
+            };
+        }
+        return out;
+    }
+
     function snapshot(name, isPublic) {
         if (!window.cachedStrategy || !window.previewData || !window.previewData.timeline) return null;
         return {
             name: name,
             isPublic: !!isPublic,
-            config: window.config,
+            config: withSession(window.config),
             drivers: window.drivers,
             timeline: window.previewData.timeline,
             driverSchedule: window.previewData.driverSchedule,
@@ -164,6 +181,7 @@
             }
             if (!cloud) { const q = read(PENDING); q.push(entry.id); write(PENDING, q); }
             window.closeSaveStrategyModal();
+            document.dispatchEvent(new CustomEvent('strategy:saved'));
             setStatus(cloud ? '☁️ ' + tr('savedToCloud', 'Saved to cloud') : tr('savedOnDevice', 'Saved on this device'), 'ok');
             window.showToast(cloud ? '☁️ ' + tr('savedToCloud', 'Saved to cloud') + ' · ' + tr('andOnDevice', 'and on this device')
                 : '💾 ' + tr('savedOnDevice', 'Saved on this device') + ' — ' + tr('willSyncLater', 'it will sync when you are back online'), cloud ? 'success' : 'info', 5000);
@@ -209,6 +227,26 @@
         }
     };
 
+    // Same data as the library, without the modal: device copies at once, cloud copies when they arrive.
+    window.getStrategyList = async function(onUpdate) {
+        const local = read(KEY).map(function(x) { x._local = true; return x; });
+        onUpdate(local.slice());
+        if (navigator.onLine === false) return;
+        try {
+            const deviceId = sessionStorage.getItem('strateger_host_id') || '';
+            const response = await fetch(window.APP_CONFIG.API_BASE + '/.netlify/functions/get-strategies?deviceId=' + deviceId);
+            const result = await response.json();
+            if (!result.success || !Array.isArray(result.strategies)) return;
+            const cloud = result.strategies.map(function(x) {
+                return { name: x.name, config: x.config || { duration: (x.race_duration_ms || 0) / 3600000, reqStops: x.required_stops || 0 },
+                    drivers: x.drivers || [], timeline: x.timeline || [], driverSchedule: x.driver_schedule || [],
+                    timestamp: x.created_at || new Date().toISOString(), type: x.is_public ? 'public' : 'private', id: 'cloud-' + x.id, synced: true };
+            });
+            const only = local.filter(function(x) { return !x.synced; });
+            onUpdate(cloud.concat(only));
+        } catch (e) { /* device copies stay on screen */ }
+    };
+
     window.renderStrategyList = function(strategies, banner) {
         const list = document.getElementById('strategyList');
         if (!list) return;
@@ -241,7 +279,8 @@
         window.showConfirmModal('🗑️ Delete Strategy', s.name, tr('deletePermanently', 'Delete permanently?'), function() {
             write(KEY, read(KEY).filter(function(x) { return x.id !== s.id; }));
             write(PENDING, read(PENDING).filter(function(id) { return id !== s.id; }));
-            window.loadStrategyLibrary();
+            if (window.refreshStrategyHome && document.getElementById('strategyHome') && !document.getElementById('strategyHome').classList.contains('hidden')) window.refreshStrategyHome();
+            else window.loadStrategyLibrary();
         });
     };
 })();

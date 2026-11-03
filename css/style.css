@@ -4102,3 +4102,139 @@ body.lt-original #apexIframe { flex: 1 1 auto; width: 100%; height: auto !import
     #heroBody::-webkit-scrollbar { display: none; }
     #heroBody .quick-pill { flex: 0 0 auto; }
 }
+
+/* ==========================================
+   SETUP VISUAL IDENTITY: each section has its own colour, weight and job
+   Race = cyan, the main decision. Drivers = lime, the lineup. Rules = amber, quiet fine print.
+   Qualifying = blue. Live timing = red.
+   ========================================== */
+#simResult { display: none !important; }   /* result rides in the pinned bar instead */
+#generalCard { --sec: #22d3ee; }
+#driversCard { --sec: #a3e635; }
+#rulesCard { --sec: #fbbf24; }
+#qualifyingPanel { --sec: #60a5fa; }
+#liveCard { --sec: #f87171; }
+#generalCard, #driversCard, #rulesCard, #qualifyingPanel, #liveCard {
+    background: linear-gradient(180deg, color-mix(in srgb, var(--sec) 8%, #0f172a) 0%, #0b1220 70%) !important;
+    border: 1px solid color-mix(in srgb, var(--sec) 26%, #1e293b) !important;
+    border-radius: 16px !important; padding: 16px !important; box-shadow: 0 6px 18px rgba(0, 0, 0, .28);
+}
+#rulesCard { background: #0b1220 !important; border-color: #1e293b !important; box-shadow: none; }
+#liveCard { padding: 12px 16px !important; }
+
+/* Section heads: icon chip in the section colour, readout on the right */
+#generalCard .set-card-head, #rulesCard .set-card-head, #qualifyingPanel .set-card-head,
+#driversCard > h2, #liveCard > h2 {
+    font-size: 17px !important; font-weight: 800 !important; color: #f1f5f9 !important; gap: 12px !important; min-height: 40px; margin: 0 !important;
+}
+#liveCard > h2 { font-size: 15px !important; color: #cbd5e1 !important; }
+#generalCard .set-card-icon, #rulesCard .set-card-icon, #qualifyingPanel .set-card-icon,
+#driversCard > h2 > i:first-child {
+    display: grid; place-items: center; width: 34px; height: 34px; flex: none; border-radius: 10px;
+    background: color-mix(in srgb, var(--sec) 16%, transparent); color: var(--sec) !important; opacity: 1; font-size: 15px !important;
+}
+.sec-sum { flex: none; max-width: 55%; margin-inline-start: auto; font-size: 13px; font-weight: 600; color: color-mix(in srgb, var(--sec) 70%, #cbd5e1); font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#generalCard .set-card-head > span:first-of-type, #rulesCard .set-card-head > span:first-of-type, #qualifyingPanel .set-card-head > span:first-of-type { flex: 0 1 auto; }
+.collapsible-section.collapsed .sec-sum { display: inline; }
+.collapsible-section:not(.collapsed) > h2 .sec-sum { opacity: .8; }
+
+/* Race: the dials get real size */
+#generalCard .set-label { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: #94a3b8; }
+#generalCard .set-big { font-size: 30px !important; font-weight: 800; line-height: 1; }
+#generalCard #durationBlock .num-stepper > button, #generalCard #reqPitStops ~ button, #generalCard .set-grid-2 > div > .num-stepper > button { min-height: 60px; }
+#generalCard .set-grid-2 > div > .num-stepper > .input-field { min-height: 60px; }
+#generalCard .set-chips button { min-height: 40px; font-weight: 600; }
+#generalCard .set-chips button:hover { background: rgba(34, 211, 238, .1); }
+#generalCard .set-when { background: rgba(2, 6, 23, .55); border-color: color-mix(in srgb, var(--sec) 18%, #1e293b); }
+
+/* Drivers: a board, one tall row per driver, starter lit */
+#driversCard #driversList .driver-row { min-height: 60px; border-radius: 12px; margin-bottom: 8px; background: #0c1322; }
+#driversCard #driversList .driver-row.is-starter-row { background: color-mix(in srgb, #a3e635 7%, #0c1322); border-color: rgba(163, 230, 53, .45); box-shadow: none; }
+#driversCard #driversList .driver-row.is-starter-row::before, .driver-row.is-starter-row .driver-starter-label { color: #bef264; }
+#driversCard .driver-starter-btn.is-starter { background: rgba(163, 230, 53, .16); border-color: rgba(163, 230, 53, .6); color: #bef264; box-shadow: none; }
+#driversCard .driver-input { font-size: 16px; font-weight: 700; }
+#driversCard #driversList .driver-row::before { font-size: 16px; flex-basis: 30px; }
+
+/* Rules: flat list, amber marks what is switched on */
+#rulesCard .rule { background: transparent; border: 0; border-top: 1px solid #1a2438; border-radius: 0; padding: 12px 0; margin: 0; }
+#rulesCard .rule.is-on { background: color-mix(in srgb, #fbbf24 6%, transparent); }
+#rulesCard .rule.is-on .rule-title::before { background: #fbbf24; }
+#rulesCard .rules-group-title { color: #fbbf24; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; border-top: 0; margin: 18px 0 2px; padding-top: 0; }
+#rulesCard .set-count { color: #fbbf24; background: rgba(251, 191, 36, .14); }
+#rulesCard .set-switch:checked { background: #fbbf24; }
+
+/* Qualifying: blue session band */
+#qualifyingPanel .set-label { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: #94a3b8; }
+#qualifyingPanel .seg button.bg-blue-600 { background: #3b82f6 !important; }
+#qualifyingPanel .set-big { font-size: 28px !important; font-weight: 800; }
+#generalCard > .collapse-body, #qualifyingPanel > .collapse-body, #rulesCard > .collapse-body, #driversCard > .collapse-body, #liveCard > .collapse-body { margin-top: 14px; }
+.setup-bar-go.is-secondary { background: transparent; color: #22d3ee; border: 1px solid rgba(34, 211, 238, .5); }
+.setup-bar-go.is-secondary:hover { background: rgba(34, 211, 238, .12); }
+.setup-bar-go.is-quali.is-secondary { color: #93c5fd; border-color: rgba(96, 165, 250, .5); background: transparent; }
+@media (max-width: 560px) { .setup-bar-inner { row-gap: 8px; } .setup-bar-prev { order: 3; } }
+@media (max-width: 560px) {
+    .setup-bar-prev span { display: none; }
+    .setup-bar-prev { padding: 0; width: 48px; justify-content: center; }
+    .setup-bar-go { flex: 1.4; padding: 0 12px; font-size: 15px; }
+    .setup-bar-go.is-secondary { flex: 1; }
+}
+@media (max-width: 560px) {
+    .setup-bar-go { font-size: 13px; letter-spacing: 0; padding: 0 8px; min-width: 0; }
+    .setup-bar-inner { gap: 8px; }
+}
+
+/* ==========================================
+   HOME: saved strategies. A race starts from here.
+   ========================================== */
+.home-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 8px 0 14px; }
+.home-title { margin: 0; font-size: 22px; font-weight: 800; color: #f1f5f9; }
+.home-new { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px; border-radius: 10px; border: 1px solid rgba(34, 211, 238, .5); background: rgba(34, 211, 238, .1); color: #22d3ee; font-size: 14px; font-weight: 700; cursor: pointer; transition: background .15s; }
+.home-new:hover { background: rgba(34, 211, 238, .2); }
+.home-list { display: flex; flex-direction: column; gap: 10px; }
+.home-card { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: 14px; background: linear-gradient(180deg, rgba(34, 211, 238, .06), #0b1220 70%); border: 1px solid rgba(34, 211, 238, .22); }
+.home-card-main { flex: 1; min-width: 0; }
+.home-card-name { margin: 0; display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 800; color: #f1f5f9; }
+.home-card-name i { font-size: 12px; color: #64748b; }
+.home-card-name span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.home-card-meta { margin: 4px 0 0; font-size: 13px; color: #94a3b8; font-variant-numeric: tabular-nums; }
+.home-card-drivers { margin: 2px 0 0; font-size: 12px; color: #64748b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.home-card-act { display: flex; align-items: center; gap: 8px; flex: none; }
+.home-go { min-height: 44px; padding: 0 18px; border-radius: 10px; border: 0; background: #22d3ee; color: #020617; font-size: 14px; font-weight: 800; cursor: pointer; transition: transform .15s ease-out, background .15s; }
+.home-go:hover { background: #67e8f9; }
+.home-go:active { transform: scale(.97); }
+.home-go.is-quali { background: #3b82f6; color: #fff; }
+.home-go.is-quali:hover { background: #60a5fa; }
+.home-ghost { min-height: 44px; min-width: 44px; padding: 0 12px; border-radius: 10px; border: 1px solid rgba(148, 163, 184, .3); background: transparent; color: #cbd5e1; font-size: 13px; font-weight: 600; cursor: pointer; }
+.home-ghost:hover { color: #22d3ee; border-color: #22d3ee; }
+.home-del:hover { color: #fca5a5; border-color: #ef4444; }
+.home-empty { padding: 28px 16px; text-align: center; border: 1px dashed #334155; border-radius: 14px; color: #94a3b8; font-size: 14px; }
+.home-drafts { margin: 14px 0 8px; padding: 8px 4px; background: none; border: 0; color: #94a3b8; font-size: 13px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.home-drafts:hover { color: #22d3ee; }
+.home-links { margin-top: 18px; }
+.editor-back { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 10px 0 6px; background: none; border: 0; color: #94a3b8; font-size: 14px; font-weight: 600; cursor: pointer; }
+.editor-back:hover { color: #22d3ee; }
+@media (max-width: 560px) {
+    .home-card { flex-direction: column; align-items: stretch; gap: 10px; }
+    .home-card-act .home-go { flex: 1; }
+}
+
+/* Setup sub-sections inside a card */
+.sec-sub { margin: 22px 0 10px; padding-top: 16px; border-top: 1px solid #1a2438; font-size: 14px; font-weight: 700; color: #e2e8f0; }
+.sec-sub.is-first { margin-top: 0; padding-top: 0; border-top: 0; }
+#qualifyingPanel .set-block, #generalCard .set-block { margin-top: 10px; }
+
+/* Buttons: calmer type (the bar and the mode switch were shouting) */
+.setup-bar-go { font-size: 14px !important; font-weight: 700 !important; letter-spacing: .01em !important; text-transform: none !important; min-height: 46px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.setup-bar-prev { font-size: 13px; }
+#modeRaceBtn, #modeQualifyBtn { font-size: 14px !important; min-height: 46px; }
+#startRaceBtn, #startQualifyBtn { display: none !important; }
+
+/* Remove button on the driver row */
+.driver-remove { width: 40px; align-self: stretch; flex: none; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; color: #64748b; cursor: pointer; touch-action: manipulation; }
+.driver-remove:hover { color: #fca5a5; background: rgba(239, 68, 68, .08); }
+.driver-remove:focus-visible { outline: 2px solid #fca5a5; outline-offset: -2px; }
+.driver-row.opacity-50 .driver-remove { display: none; }
+#driverGroupContainer { margin-bottom: 10px !important; }
+.collapsible-section.collapsed > .collapse-body { margin-top: 0 !important; }
+.sec-sum + .collapse-icon { margin-inline-start: 0 !important; }
+#rulesCard .set-count { display: none; }

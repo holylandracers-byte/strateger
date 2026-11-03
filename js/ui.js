@@ -133,53 +133,9 @@ window.applyDriverGroupToRace = function(triggerSim = true) {
 window.renderDriverGroupUI = function() {
     const container = document.getElementById('driverGroupContainer');
     if (!container) return;
-    const pool = window.getDriverPool();
     const t = window.t || (k => k);
 
     container.innerHTML = '';
-
-    // Pool tags
-    const tagsDiv = document.createElement('div');
-    tagsDiv.className = 'flex flex-wrap gap-1.5 mb-2';
-
-    const selectedCount = pool.filter(d => window._driverGroupParticipants.has(d.name)).length;
-
-    pool.forEach(d => {
-        const active = window._driverGroupParticipants.has(d.name);
-        // A selected driver is locked (cannot deselect) when doing so would drop below 2
-        const locked = active && selectedCount <= 2;
-
-        const tag = document.createElement('button');
-        tag.type = 'button';
-        tag.className = `driver-group-tag flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold border transition select-none ${
-            active
-                ? 'text-navy-950 border-transparent shadow-md'
-                : 'bg-navy-950 text-gray-400 border-gray-600 hover:border-gray-400'
-        }${locked ? ' cursor-default' : ''}`;
-        if (active) {
-            tag.style.background = d.color;
-            tag.style.borderColor = d.color;
-        }
-        tag.title = locked
-            ? (t('minTwoDrivers') || 'Minimum 2 drivers required')
-            : active ? t('clickToRemoveFromRace') : t('clickToAddToRace');
-        tag.onclick = () => locked ? null : window.toggleDriverParticipant(d.name);
-
-        const nameSpan = document.createElement('span');
-        nameSpan.textContent = d.name;
-
-        const removeBtn = document.createElement('span');
-        removeBtn.innerHTML = '&times;';
-        removeBtn.className = 'ml-0.5 opacity-60 hover:opacity-100 cursor-pointer text-[11px]';
-        removeBtn.title = t('removeFromGroup');
-        removeBtn.onclick = (e) => { e.stopPropagation(); window.removeDriverFromPool(d.name); };
-
-        tag.appendChild(nameSpan);
-        tag.appendChild(removeBtn);
-        tagsDiv.appendChild(tag);
-    });
-
-    container.appendChild(tagsDiv);
 
     // Add driver input
     const addRow = document.createElement('div');
@@ -204,12 +160,6 @@ window.renderDriverGroupUI = function() {
     addRow.appendChild(addBtn);
     container.appendChild(addRow);
 
-    if (pool.length > 0) {
-        const hint = document.createElement('p');
-        hint.className = 'text-[11px] text-gray-500 mt-1.5';
-        hint.textContent = t('driverGroupHint') || 'Tap a driver to include/exclude from this race';
-        container.appendChild(hint);
-    }
 };
 
 window._commitDriverGroupInput = function() {
@@ -530,6 +480,22 @@ window.createDriverInput = function(val, checked, squad) {
     div.appendChild(notifyWrap);
     div.appendChild(squadLabel);
 
+    // ── Remove (the driver leaves the group; a row without a saved driver is just dropped) ──
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'driver-remove';
+    removeBtn.setAttribute('aria-label', window.t('removeFromGroup'));
+    removeBtn.title = window.t('removeFromGroup');
+    removeBtn.innerHTML = '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8"/></svg>';
+    removeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const name = driverInput.value;
+        if (window.getDriverPool().some(d => d.name === name)) { window.removeDriverFromPool(name); return; }
+        const list = div.parentNode;
+        if (list && list.children.length > 2) { div.remove(); window.syncStarterToTop(); window.runSim(); }
+    });
+    div.appendChild(removeBtn);
+
     document.getElementById('driversList').appendChild(div);
 };
 
@@ -541,6 +507,15 @@ window.syncStarterToTop = function() {
     if (top) {
         document.querySelectorAll('#driversList .starter-radio').forEach(r => { r.checked = false; });
         top.checked = true;
+    }
+    // Keep the saved driver order in step with the list, so a rebuild keeps the lineup.
+    const order = rows.map(r => r.querySelector('.driver-input')?.value).filter(Boolean);
+    const pool = window.getDriverPool();
+    const ranked = order.map(n => pool.find(d => d.name === n)).filter(Boolean);
+    if (ranked.length && ranked.length === order.length) {
+        const rest = pool.filter(d => !ranked.includes(d));
+        const next = ranked.concat(rest);
+        if (next.some((d, i) => d !== pool[i])) window.saveDriverPool(next);
     }
     window.updateStarterVisuals();
 };
@@ -1798,6 +1773,17 @@ window.applyStrategy = function(index) {
             setVal('avgLapSec', strategy.config.avgLapSec);
             setVal('kartChangeInterval', strategy.config.kartChangeIntervalMin);
             if (typeof window._setRaceTarget === 'function') window._setRaceTarget(strategy.config.raceTarget || 'time', true);
+            const q = strategy.config.qualify;
+            if (strategy.config.sessionMode === 'qualify' && q) {
+                setVal('qualifyDuration', q.duration);
+                setVal('qualifyRuns', q.runs);
+                setVal('qPitMinTime', q.pitMinSec);
+                if (window.setQualifyFormat) window.setQualifyFormat(q.format);
+                if (window.setQSegments) window.setQSegments(q.segments);
+                if (window.setQParticipation) window.setQParticipation(q.participation);
+                if (window.setQPitRule) window.setQPitRule(q.pitRule);
+            }
+            if (window.setSessionMode) window.setSessionMode(strategy.config.sessionMode === 'qualify' ? 'qualify' : 'race');
             if (typeof window._normalizeOffFields === 'function') window._normalizeOffFields();
             
             // עדכון צ'קבוקסים

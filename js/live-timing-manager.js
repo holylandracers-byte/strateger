@@ -81,6 +81,7 @@ class LiveTimingManager {
         if (url.includes('racefacer')) return 'racefacer';
         if (url.includes('apex-timing') || url.includes('apex_timing') || url.includes('apextiming')) return 'apex';
         if (url.includes('alphatiming.co.uk')) return 'alpha';
+        if (lower.includes('hammertiming')) return 'hammer';
         // Hakafast has no fixed public domain, so it's detected by the "hakafast" keyword
         // or, as a last resort, the generic "/live-timing/" path — but only once every
         // branded provider above has already been ruled out (Apex URLs also contain
@@ -130,6 +131,12 @@ class LiveTimingManager {
             this.startApexScraper(url);
         } else if (this.provider === 'alpha') {
             this.startAlphaScraper(url);
+        } else if (this.provider === 'hammer') {
+            // Hammer Timing's data feed only answers its own website, so the app cannot read it.
+            // The live page opens inside the app instead; stops and laps are logged with Manual input.
+            window.liveTimingConfig = Object.assign(window.liveTimingConfig || {}, { url: url });
+            if (window.showToast) window.showToast(window.tt('xHammerNote'), 'info', 9000);
+            if (typeof window.openTimingPage === 'function') window.openTimingPage();
         } else {
             console.error('[LiveTimingManager] Unknown timing provider');
             if (this.config.onError) {

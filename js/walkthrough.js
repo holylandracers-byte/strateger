@@ -36,12 +36,12 @@
         },
         {
             id: 'hero',
-            target: '#setupHeroCard',
+            target: '#strategyHome',
             titleKey: 'wtTitleHero',
             descKey: 'wtDescHero',
             before: () => {
-                ensureHeroExpanded();
-                scrollToEl('#setupHeroCard');
+                if (window.showStrategyHome) window.showStrategyHome();
+                scrollToEl('#strategyHome');
             }
         },
         {
@@ -51,6 +51,7 @@
             titleKey: 'wtTitleRules',
             descKey: 'wtDescRules',
             before: () => {
+                if (window.showStrategyEditor) window.showStrategyEditor();
                 expandCollapsible('#raceDuration');
                 scrollToEl('#raceDuration');
                 if (typeof window.runSim === 'function') window.runSim();
