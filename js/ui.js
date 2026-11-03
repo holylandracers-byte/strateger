@@ -351,9 +351,10 @@ window.createDriverInput = function(val, checked, squad) {
     starterBtn.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        document.querySelectorAll('.starter-radio').forEach(r => r.checked = false);
-        radio.checked = true;
-        window.updateStarterVisuals();
+        // The top of the list starts the race: picking a starter moves that driver to the top.
+        const list = div.parentNode;
+        if (list && list.firstElementChild !== div) list.insertBefore(div, list.firstElementChild);
+        window.syncStarterToTop();
         window.runSim();
     });
 
@@ -494,7 +495,31 @@ window.createDriverInput = function(val, checked, squad) {
     notifyWrap.appendChild(notifyInput);
     notifyWrap.appendChild(notifyLabel);
 
+    // ── Move up / down (tap-friendly alternative to dragging) ──
+    const moveBox = document.createElement('div');
+    moveBox.className = 'driver-move';
+    [['up', 'M3 10l5-5 5 5', 'moveUp'], ['down', 'M3 6l5 5 5-5', 'moveDown']].forEach(([dir, path, key]) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'driver-move-btn';
+        b.setAttribute('aria-label', window.t(key));
+        b.title = window.t(key);
+        b.innerHTML = '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="' + path + '"/></svg>';
+        b.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const list = div.parentNode;
+            if (!list) return;
+            if (dir === 'up' && div.previousElementSibling) list.insertBefore(div, div.previousElementSibling);
+            else if (dir === 'down' && div.nextElementSibling) list.insertBefore(div.nextElementSibling, div);
+            else return;
+            window.syncStarterToTop();
+            window.runSim();
+        });
+        moveBox.appendChild(b);
+    });
+
     div.appendChild(dragHandle);
+    div.appendChild(moveBox);
     div.appendChild(accentBar);
     div.appendChild(colorSwatch);
     div.appendChild(radio);
@@ -506,6 +531,18 @@ window.createDriverInput = function(val, checked, squad) {
     div.appendChild(squadLabel);
 
     document.getElementById('driversList').appendChild(div);
+};
+
+// The driver at the top of the list is the starter, so reordering the list moves the start.
+window.syncStarterToTop = function() {
+    const rows = Array.from(document.querySelectorAll('#driversList .driver-row'))
+        .filter(r => !r.classList.contains('opacity-50'));
+    const top = rows[0] && rows[0].querySelector('.starter-radio');
+    if (top) {
+        document.querySelectorAll('#driversList .starter-radio').forEach(r => { r.checked = false; });
+        top.checked = true;
+    }
+    window.updateStarterVisuals();
 };
 
 window.updateStarterVisuals = function() {
@@ -3579,7 +3616,7 @@ if (_origRunSimForHero) {
 
         // Re-check starter radio integrity: if the checked radio is still present nothing
         // changes; the DOM reorder just changed visual position which is all we need.
-        window.updateStarterVisuals();
+        window.syncStarterToTop();
         if (typeof window.runSim === 'function') window.runSim();
     }
 })();

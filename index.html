@@ -46,7 +46,7 @@
     <script src="js/live-timing-manager.js?v=8"></script>
     <script src="js/qualifying.js?v=9"></script>
 
-    <link rel="stylesheet" href="css/style.css?v=38">
+    <link rel="stylesheet" href="css/style.css?v=41">
 
     <script>
         tailwind.config = {
@@ -163,29 +163,6 @@
 
         <!-- Hero / Branding — redesigned -->
         <div class="max-w-6xl mx-auto mb-3 pt-1">
-            <!-- Hero card (collapsible) -->
-            <div class="setup-hero mb-3" id="setupHeroCard">
-                <div class="flex items-center justify-between cursor-pointer select-none" onclick="window.toggleHero()">
-                    <div>
-                        <div class="setup-hero-title" data-i18n="heroTitle">Race Strategy</div>
-                        <div class="setup-hero-sub" id="heroSubText" data-i18n="heroSub">Plan stints · Manage drivers · Win races</div>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <!-- Mini chart placeholder that fills when previewData exists -->
-                        <div id="heroMiniChart" class="mini-stint-chart" style="height:20px;min-width:60px;"></div>
-                        <span id="heroToggleLabel" class="text-[11px] text-gray-500 whitespace-nowrap" data-i18n="heroCollapse">Hide</span>
-                        <i id="heroToggleIcon" class="fas fa-chevron-up text-xs text-gray-500 transition-transform"></i>
-                    </div>
-                </div>
-                <!-- Quick-action pill strip (collapsible body) -->
-                <div id="heroBody" class="quick-actions-strip mt-3">
-                    <button class="quick-pill" onclick="window.setSessionMode('race'); window.setQuickMode('sprint')" data-i18n="qpSprint">⚡ Sprint</button>
-                    <button class="quick-pill" onclick="window.setSessionMode('race'); window.setQuickMode('endurance')" data-i18n="qpEndurance">🏁 Endurance</button>
-                    <button class="quick-pill" onclick="window.setSessionMode('race'); window.setQuickMode('nolimit')" data-i18n="qpNoLimit">∞ No Limit</button>
-                    <button class="quick-pill" onclick="window.loadStrategyLibrary && window.loadStrategyLibrary()" data-i18n="qpLibrary">📚 Library</button>
-                </div>
-            </div>
-
             <!-- Google Actions bar (shown when signed in) -->
             <div id="googleActionsBar" class="hidden grid grid-cols-3 gap-2 mt-1">
                 <button onclick="window.showTeamEmailModal()" class="bg-navy-800 border border-gray-700 hover:border-ice p-2 rounded-xl flex flex-col items-center gap-1 group transition">
@@ -215,6 +192,32 @@
                     <i class="fas fa-stopwatch text-xs"></i> <span data-i18n="modeQualify">Qualifying + Race</span>
                 </button>
             </div>
+        </div>
+
+        <div class="max-w-6xl mx-auto mb-3 setup-presets-wrap">
+            <!-- Hero card (collapsible) -->
+            <div class="setup-hero mb-3" id="setupHeroCard">
+                <div class="flex items-center justify-between cursor-pointer select-none" onclick="window.toggleHero()">
+                    <div>
+                        <div class="setup-hero-title" data-i18n="heroTitle">Race Strategy</div>
+                        <div class="setup-hero-sub" id="heroSubText" data-i18n="heroSub">Plan stints · Manage drivers · Win races</div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <!-- Mini chart placeholder that fills when previewData exists -->
+                        <div id="heroMiniChart" class="mini-stint-chart" style="height:20px;min-width:60px;"></div>
+                        <span id="heroToggleLabel" class="text-[11px] text-gray-500 whitespace-nowrap" data-i18n="heroCollapse">Hide</span>
+                        <i id="heroToggleIcon" class="fas fa-chevron-up text-xs text-gray-500 transition-transform"></i>
+                    </div>
+                </div>
+                <!-- Quick-action pill strip (collapsible body) -->
+                <div id="heroBody" class="quick-actions-strip mt-3">
+                    <button class="quick-pill" onclick="window.setSessionMode('race'); window.setQuickMode('sprint')" data-i18n="qpSprint">⚡ Sprint</button>
+                    <button class="quick-pill" onclick="window.setSessionMode('race'); window.setQuickMode('endurance')" data-i18n="qpEndurance">🏁 Endurance</button>
+                    <button class="quick-pill" onclick="window.setSessionMode('race'); window.setQuickMode('nolimit')" data-i18n="qpNoLimit">∞ No Limit</button>
+                    <button class="quick-pill" onclick="window.loadStrategyLibrary && window.loadStrategyLibrary()" data-i18n="qpLibrary">📚 Library</button>
+                </div>
+            </div>
+
         </div>
 
         <!-- outer wrapper: single col on phone, 2-col on tablet -->
@@ -309,7 +312,7 @@
             </div>
 
             <!-- GENERAL INFO (collapsible) -->
-            <div class="collapsible-section set-card">
+            <div id="generalCard" class="collapsible-section set-card">
                 <h2 class="set-card-head" onclick="this.parentElement.classList.toggle('collapsed')">
                     <i class="fas fa-flag-checkered set-card-icon"></i> <span data-i18n="generalInfo">General Info</span>
                     <span id="autoSaveState" class="set-saved" aria-live="polite"><i class="fas fa-check"></i> <span data-i18n="autoSaved">Saved</span></span>
@@ -585,7 +588,7 @@
 
 
             <!-- LIVE TIMING — collapsed by default -->
-            <div class="collapsible-section collapsed bg-navy-900/60 p-3 rounded-xl border border-red-900/30 shadow-sm">
+            <div id="liveCard" class="collapsible-section collapsed bg-navy-900/60 p-3 rounded-xl border border-red-900/30 shadow-sm">
                 <h2 class="text-gray-400 text-sm font-bold flex items-center gap-2 cursor-pointer select-none" onclick="this.parentElement.classList.toggle('collapsed')">
                     <span class="sync-dot live-dot opacity-50"></span>
                     <span data-i18n="liveTiming">Live Timing</span>
@@ -646,10 +649,10 @@
         </div><!-- end col-left -->
 
         <!-- ════ COLUMN RIGHT: drivers + actions ════ -->
-        <div class="space-y-3 mt-3 md:mt-0">
+        <div id="setupRightCol" class="space-y-3 mt-3 md:mt-0">
 
             <!-- DRIVERS (collapsible) -->
-            <div class="collapsible-section bg-navy-900/80 p-3 rounded-xl border border-gray-700/50 shadow-sm">
+            <div id="driversCard" class="collapsible-section bg-navy-900/80 p-3 rounded-xl border border-gray-700/50 shadow-sm">
                 <h2 class="text-ice text-sm font-bold flex items-center gap-2 cursor-pointer select-none" onclick="this.parentElement.classList.toggle('collapsed')">
                     <i class="fas fa-users text-ice/60 text-xs"></i> <span data-i18n="driverConfig">Drivers</span>
                     <i class="fas fa-chevron-down ml-auto text-xs text-gray-500 collapse-icon transition-transform"></i>
@@ -2445,7 +2448,7 @@
     <script src="js/autosave.js?v=2"></script>
     <script src="js/live-timing.js?v=20"></script>
     <script src="js/track-finder.js?v=2"></script>
-    <script src="js/ui.js?v=22"></script>
+    <script src="js/ui.js?v=23"></script>
     <script src="js/walkthrough.js?v=13"></script>
     <script src="js/setup-bar.js?v=1"></script>
     <script src="js/main.js?v=27"></script>

@@ -4031,3 +4031,74 @@ body.lt-original #apexIframe { flex: 1 1 auto; width: 100%; height: auto !import
     .setup-bar-sum { flex-basis: 100%; }
     .setup-bar-go { flex: 1; }
 }
+
+/* ==========================================
+   SETUP LAYOUT v3: three decisions in the order they are made
+   Race -> Drivers -> Rules. Drivers stay in view beside the race on wide screens.
+   ========================================== */
+/* Team name: a quiet label, not the loudest thing on the screen */
+.header-center .flex { justify-content: center; }
+#teamNameInput.team-identity-input {
+    width: auto !important; min-width: 7rem; max-width: min(14rem, 100%); flex: 0 1 14rem;
+    font-size: .8125rem !important; font-weight: 600 !important; letter-spacing: .02em;
+    text-shadow: none; color: #cbd5e1; border-bottom-color: transparent !important;
+    border-radius: 6px; padding: 4px 8px !important; background: rgba(148, 163, 184, .08) !important;
+}
+#teamNameInput.team-identity-input:focus { background: rgba(148, 163, 184, .14) !important; color: #fff; border-bottom-color: #22d3ee !important; }
+#teamNameInput.team-identity-input::placeholder { color: #64748b; font-weight: 500; }
+
+/* Session row: mode switch, then one slim line of presets (hero card retired) */
+#setupHeroCard { background: none; border: 0; padding: 0 !important; margin: 0 !important; overflow: visible; }
+#setupHeroCard::before { display: none; }
+#setupHeroCard > div:first-child { display: none; }
+#heroBody { display: flex !important; margin-top: 8px !important; flex-wrap: wrap; gap: 6px; }
+.setup-presets-wrap { margin-top: -4px; }
+#setupScreen .quick-pill { min-height: 36px; padding: 0 12px !important; font-size: 12px !important; }
+#modeRaceBtn, #modeQualifyBtn { min-height: 48px; font-size: 15px; }
+
+/* The grid: columns are dissolved so each card can be ordered on its own */
+#setupScreen #setupColumnsGrid { display: grid !important; grid-template-columns: minmax(0, 1fr) !important; gap: 12px !important; align-items: start; }
+#configPanel, #setupRightCol { display: contents; }
+#setupColumnsGrid #raceCountdownBanner { order: -1; }
+#setupColumnsGrid #qualifyingPanel { order: 1; }
+#setupColumnsGrid #generalCard { order: 2; }
+#setupColumnsGrid #simResult, #setupColumnsGrid #invalidStrategyWarning { order: 3; }
+#setupColumnsGrid #driversCard { order: 4; }
+#setupColumnsGrid #rulesCard { order: 5; }
+#setupColumnsGrid #liveCard { order: 6; }
+#configPanel > *, #setupRightCol > * { margin: 0 !important; min-width: 0; }
+@media (min-width: 900px) {
+    #setupScreen #setupColumnsGrid { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr) !important; gap: 14px 18px !important; }
+    #configPanel > *, #setupRightCol > * { grid-column: 1; }
+    #setupColumnsGrid #raceCountdownBanner { grid-column: 1 / -1; }
+    #setupColumnsGrid #driversCard { grid-column: 2; grid-row: 1 / span 6; position: sticky; top: 8px; max-height: calc(100vh - 150px); overflow-y: auto; }
+}
+
+/* Driver lineup: position number, starter on top, move buttons */
+#driversList { counter-reset: lineup; }
+#driversList .driver-row { counter-increment: lineup; }
+#driversList .driver-row::before {
+    content: counter(lineup); flex: 0 0 26px; text-align: center; font-size: 13px; font-weight: 800;
+    color: #64748b; font-variant-numeric: tabular-nums;
+}
+#driversList .driver-row.is-starter-row::before { color: #22d3ee; }
+.driver-move { display: flex; flex-direction: column; flex-shrink: 0; }
+.driver-move-btn { width: 34px; height: 22px; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; color: #64748b; cursor: pointer; touch-action: manipulation; }
+.driver-move-btn:hover { color: #22d3ee; background: rgba(34, 211, 238, .08); }
+.driver-move-btn:active { background: #22d3ee; color: #020617; }
+.driver-move-btn:focus-visible { outline: 2px solid #22d3ee; outline-offset: -2px; }
+.driver-move-btn svg { pointer-events: none; }
+@media (pointer: coarse) { .driver-move-btn { height: 26px; width: 40px; } }
+
+/* Stint limits: three fields in a row must not clip their value */
+#generalCard .set-grid-3 .num-stepper > button { flex-basis: 30px; min-height: 44px; font-size: 18px; }
+#generalCard .set-grid-3 .num-stepper > .input-field { min-width: 0; padding-inline: 2px !important; font-size: 17px !important; }
+@media (max-width: 480px) {
+    #generalCard .set-grid-3 { grid-template-columns: 1fr 1fr; }
+    #generalCard .set-grid-3 > :last-child { grid-column: 1 / -1; }
+}
+@media (max-width: 560px) {
+    #heroBody { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+    #heroBody::-webkit-scrollbar { display: none; }
+    #heroBody .quick-pill { flex: 0 0 auto; }
+}
