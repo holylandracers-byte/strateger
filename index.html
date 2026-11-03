@@ -45,9 +45,9 @@
     <script src="js/hakafast-scraper.js?v=7"></script>
     <script src="js/alpha-scraper.js?v=7"></script>
     <script src="js/live-timing-manager.js?v=9"></script>
-    <script src="js/qualifying.js?v=9"></script>
+    <script src="js/qualifying.js?v=10"></script>
 
-    <link rel="stylesheet" href="css/style.css?v=58">
+    <link rel="stylesheet" href="css/style.css?v=59">
 
     <script>
         tailwind.config = {
@@ -197,20 +197,6 @@
             <div class="max-w-6xl mx-auto mb-3">
                 <button type="button" class="editor-back" onclick="window.showStrategyHome()"><i class="fas fa-chevron-left"></i><span data-i18n="xHomeTitle">Strategies</span></button>
             </div>
-        <!-- Session mode toggle: Race Only / Qualifying + Race -->
-        <div class="max-w-6xl mx-auto mb-3">
-            <div class="flex rounded-xl overflow-hidden border border-gray-700/50 bg-navy-900/50 shadow-sm">
-                <button id="modeRaceBtn" onclick="window.setSessionMode('race')"
-                    class="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-bold transition bg-ice text-navy-950 active:scale-95 transform">
-                    <i class="fas fa-flag-checkered text-xs"></i> <span data-i18n="modeRace">Race Only</span>
-                </button>
-                <button id="modeQualifyBtn" onclick="window.setSessionMode('qualify')"
-                    class="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-bold transition text-gray-400 hover:text-white hover:bg-blue-900/20 border-l border-gray-700/50 active:scale-95 transform">
-                    <i class="fas fa-stopwatch text-xs"></i> <span data-i18n="modeQualify">Qualifying + Race</span>
-                </button>
-            </div>
-        </div>
-
         <!-- outer wrapper: single col on phone, 2-col on tablet -->
         <div id="setupColumnsGrid" class="max-w-6xl mx-auto md:grid md:grid-cols-2 md:gap-4 md:items-start">
 
@@ -218,7 +204,7 @@
         <div id="configPanel" class="space-y-3 transition-opacity duration-300">
 
             <!-- Qualifying settings panel (shown only in qualifying mode) -->
-            <div id="qualifyingPanel" class="hidden collapsible-section set-card set-card-qual">
+            <div id="qualifyingPanel" class="collapsible-section set-card set-card-qual">
                 <h2 class="set-card-head" onclick="this.parentElement.classList.toggle('collapsed')">
                     <i class="fas fa-stopwatch set-card-icon"></i>
                     <span data-i18n="qualifyTitle">Qualifying Session</span>
@@ -248,8 +234,9 @@
                 <div class="set-grid-2 set-block">
                     <div>
                         <label class="set-label" for="qualifyDuration" data-i18n="qualifyDuration">Duration (min)</label>
-                        <input type="number" id="qualifyDuration" value="15" min="1" max="120"
-                            class="input-field set-big" oninput="window.updateQualifyPreview && window.updateQualifyPreview()">
+                        <input type="number" id="qualifyDuration" value="" placeholder="Off" min="1" max="120"
+                            class="input-field set-big" oninput="window._syncQualifyMode && window._syncQualifyMode(); window.updateQualifyPreview && window.updateQualifyPreview()">
+                        <p class="set-hint" data-i18n="xQualHint">Leave empty to skip qualifying.</p>
                     </div>
                     <div>
                         <label class="set-label" for="qualifyRuns" data-i18n="qualifyRuns">Runs per driver</label>
@@ -2439,27 +2426,27 @@
 
     <script src="js/state.js?v=34"></script>
     <script src="js/lite-mode.js?v=1"></script>
-    <script src="js/i18n-extra.js?v=7"></script>
+    <script src="js/i18n-extra.js?v=8"></script>
     <script src="js/i18n-extra2.js?v=1"></script>
     <script src="js/i18n-extra3.js?v=1"></script>
     <script src="js/i18n-laps.js?v=1"></script>
     <script src="js/i18n-new.js?v=1"></script>
     <script src="js/i18n-phrases.js?v=2"></script>
     <script src="js/i18n-phrases2.js?v=1"></script>
-    <script src="js/i18n-phrases3.js?v=1"></script>
+    <script src="js/i18n-phrases3.js?v=2"></script>
     <script src="js/auth.js?v=10"></script>
     <script src="js/network.js?v=10"></script>
     <script src="js/strategy.js?v=21"></script>
-    <script src="js/race-rules.js?v=5"></script>
-    <script src="js/compliance.js?v=2"></script>
+    <script src="js/race-rules.js?v=6"></script>
+    <script src="js/compliance.js?v=3"></script>
     <script src="js/export.js?v=3"></script>
     <script src="js/autosave.js?v=3"></script>
     <script src="js/live-timing.js?v=20"></script>
     <script src="js/track-finder.js?v=2"></script>
-    <script src="js/ui.js?v=27"></script>
+    <script src="js/ui.js?v=28"></script>
     <script src="js/walkthrough.js?v=15"></script>
-    <script src="js/setup-bar.js?v=8"></script>
-    <script src="js/main.js?v=30"></script>
+    <script src="js/setup-bar.js?v=10"></script>
+    <script src="js/main.js?v=31"></script>
     <script src="js/live-extras.js?v=4"></script>
 </body>
 </html>

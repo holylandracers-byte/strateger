@@ -1,5 +1,7 @@
 // Race rules: structured rules that change the strategy itself, not just a note.
 //   closedWindows      [[fromMin, toMin], ...]  pit lane closed, minutes from the race start
+//   directionChanges  [{time:'HH:MM', before, after}]  track reverses at this clock time; the pit lane is shut from
+//                                               `before` minutes ahead to `after` minutes behind it (becomes a closed window)
 //   minStintsPerDriver n                         every driver must drive at least n stints
 //   notes              [text, ...]               rules the engine cannot model, kept as a checklist
 // The engine (applyRaceRules) runs from runSim() after the base plan is built, nudges pit stops out of
@@ -18,15 +20,34 @@ window.raceRules = (function() {
     if (!r) {
         let notes = [];
         try { notes = JSON.parse(localStorage.getItem('strateger_rule_notes') || '[]'); } catch (e) {}
-        r = { closedWindows: [], minStintsPerDriver: 0, maxStintsPerDriver: 0, notes: notes };
+        r = { closedWindows: [], directionChanges: [], minStintsPerDriver: 0, maxStintsPerDriver: 0, notes: notes };
     }
     r.closedWindows = Array.isArray(r.closedWindows) ? r.closedWindows : [];
+    r.directionChanges = Array.isArray(r.directionChanges) ? r.directionChanges : [];
     r.notes = Array.isArray(r.notes) ? r.notes : [];
     r.minStintsPerDriver = Number(r.minStintsPerDriver) || 0;
     r.maxStintsPerDriver = Number(r.maxStintsPerDriver) || 0;
     return r;
 })();
 window._ruleMessages = [];
+
+// Every closed pit window in minutes from the race start: the typed windows plus each direction change
+// converted from its clock time (needs the race start time; a change before the start rolls to the next day).
+window.raceClosedWindows = function() {
+    const r = window.raceRules || {};
+    const out = (r.closedWindows || []).map(function(w) { return [Number(w[0]), Number(w[1])]; });
+    const st = String((document.getElementById('raceStartTime') || {}).value || '').split(':');
+    if (st.length < 2 || !Number.isFinite(+st[0]) || !Number.isFinite(+st[1])) return out;
+    const startMin = (+st[0]) * 60 + (+st[1]);
+    (r.directionChanges || []).forEach(function(d) {
+        const p = String(d.time || '').split(':');
+        if (p.length < 2 || !Number.isFinite(+p[0]) || !Number.isFinite(+p[1])) return;
+        let at = (+p[0]) * 60 + (+p[1]) - startMin;
+        if (at < 0) at += 1440;
+        out.push([Math.max(0, at - (Number(d.before) || 0)), at + (Number(d.after) || 0)]);
+    });
+    return out;
+};
 
 window._escHtml = function(x) {
     return String(x).replace(/[&<>"]/g, function(c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; });
@@ -45,7 +66,7 @@ window.applyRaceRules = function(timeline, config) {
     const minMs = (config.minStint || 0) * 60000;
     const maxMs = (config.maxStint || 0) * 60000;
     const okLen = function(ms) { return ms >= minMs && (!maxMs || ms <= maxMs); };
-    const wins = (rules.closedWindows || [])
+    const wins = window.raceClosedWindows()
         .map(function(w) { return [Number(w[0]) * 60000, Number(w[1]) * 60000]; })
         .filter(function(w) { return Number.isFinite(w[0]) && Number.isFinite(w[1]) && w[1] > w[0]; });
 
@@ -200,6 +221,16 @@ window.renderRuleNotes = function() {
                 + '<button type="button" class="rule-window-del" data-win-del="' + i + '" aria-label="' + window.tt('Remove window') + '"><i class="fas fa-trash-alt"></i></button></div>';
         }).join('')
         + '</div><button type="button" id="ruleAddWindow" class="rule-add"><i class="fas fa-plus"></i> ' + window.tt('Add closed window') + '</button>'
+        + '<div class="set-sublabel" style="margin-top:8px">' + window.tt('Track direction change (clock time)') + '</div>'
+        + '<p class="set-hint" style="margin-top:2px">' + window.tt('The pit lane is shut around the moment the track reverses.') + '</p>'
+        + '<div class="rule-windows">'
+        + (r.directionChanges || []).map(function(d, i) {
+            return '<div class="rule-dir"><input type="time" class="input-field" value="' + esc(d.time || '') + '" data-dir="' + i + '" data-f="time" aria-label="' + window.tt('Time') + '">'
+                + '<label class="rule-dir-f"><span>' + window.tt('Closed before (min)') + '</span><input type="number" min="0" class="input-field" value="' + Number(d.before || 0) + '" data-dir="' + i + '" data-f="before"></label>'
+                + '<label class="rule-dir-f"><span>' + window.tt('Closed after (min)') + '</span><input type="number" min="0" class="input-field" value="' + Number(d.after || 0) + '" data-dir="' + i + '" data-f="after"></label>'
+                + '<button type="button" class="rule-window-del" data-dir-del="' + i + '" aria-label="' + window.tt('Remove window') + '"><i class="fas fa-trash-alt"></i></button></div>';
+        }).join('')
+        + '</div><button type="button" id="ruleAddDir" class="rule-add"><i class="fas fa-plus"></i> ' + window.tt('Add direction change') + '</button>'
         + '<div class="set-grid-2">'
         + '<div><label class="set-sublabel" for="ruleMinStints">' + window.tt('Min stints per driver') + '</label><input type="number" min="0" id="ruleMinStints" class="input-field" value="' + r.minStintsPerDriver + '"></div>'
         + '<div><label class="set-sublabel" for="ruleMaxStints">' + window.tt('Max stints per driver') + '</label><input type="number" min="0" id="ruleMaxStints" class="input-field" value="' + r.maxStintsPerDriver + '"></div>'
@@ -220,6 +251,19 @@ window.renderRuleNotes = function() {
     });
     card.querySelectorAll('[data-win-del]').forEach(function(btn) {
         btn.addEventListener('click', function() { r.closedWindows.splice(Number(btn.dataset.winDel), 1); window.saveRaceRules(); window.renderRuleNotes(); window.runSim && window.runSim(); });
+    });
+    card.querySelectorAll('[data-dir]').forEach(function(inp) {
+        inp.addEventListener('change', function() {
+            const d = r.directionChanges[Number(inp.dataset.dir)];
+            d[inp.dataset.f] = inp.dataset.f === 'time' ? inp.value : Math.max(0, Number(inp.value) || 0);
+            changed();
+        });
+    });
+    card.querySelectorAll('[data-dir-del]').forEach(function(btn) {
+        btn.addEventListener('click', function() { r.directionChanges.splice(Number(btn.dataset.dirDel), 1); window.saveRaceRules(); window.renderRuleNotes(); window.runSim && window.runSim(); });
+    });
+    card.querySelector('#ruleAddDir').addEventListener('click', function() {
+        r.directionChanges.push({ time: '', before: 5, after: 5 }); window.saveRaceRules(); window.renderRuleNotes();
     });
     card.querySelector('#ruleAddWindow').addEventListener('click', function() {
         r.closedWindows.push([0, 0]); window.saveRaceRules(); window.renderRuleNotes();
@@ -262,11 +306,14 @@ window._showRulesProposal = function(text) {
     const avgStint = sv('reqPitStops') && raceMin ? raceMin / (sv('reqPitStops') + 1) : 0;
     const ksi = settings.findIndex(function(kv) { return kv[0] === 'kartChangeInterval'; });
     if (ksi >= 0 && avgStint && Math.abs(Number(settings[ksi][1]) - avgStint) <= 2) settings.splice(ksi, 1);
+    const dirs = (Array.isArray(parsed.directionChanges) ? parsed.directionChanges : [])
+        .filter(function(d) { return d && /^\d{1,2}:\d{2}/.test(String(d.time || '')); })
+        .map(function(d) { return { time: String(d.time).slice(0, 5).padStart(5, '0'), before: Math.max(0, Number(d.beforeMin) || 0), after: Math.max(0, Number(d.afterMin) || 0) }; }).slice(0, 6);
     const reasons = (parsed.reasons && typeof parsed.reasons === 'object') ? parsed.reasons : {};
     const minStints = Number(parsed.minStintsPerDriver) > 0 ? Math.floor(Number(parsed.minStintsPerDriver)) : 0;
     const maxStints = Number(parsed.maxStintsPerDriver) > 0 ? Math.floor(Number(parsed.maxStintsPerDriver)) : 0;
     const notes = Array.isArray(parsed.notes) ? parsed.notes.map(String).filter(Boolean).slice(0, 20) : [];
-    if (!settings.length && !wins.length && !minStints && !maxStints && !notes.length) return;
+    if (!settings.length && !wins.length && !dirs.length && !minStints && !maxStints && !notes.length) return;
 
     const old = document.getElementById('rulesProposalModal');
     if (old) old.remove();
@@ -297,6 +344,7 @@ window._showRulesProposal = function(text) {
         + '<div class="space-y-1">'
         + settings.map(function(kv) { return row('data-rule-key="' + kv[0] + '" data-rule-val="' + Number(kv[1]) + '"', window.tt(window._RULE_FIELDS[kv[0]]), document.getElementById(kv[0]).value || '—', Number(kv[1]), kv[0]); }).join('')
         + (wins.length ? row('data-rule-wins="1"', window.tt('Pit lane closed during the race (min from start)'), '—', wins.map(function(w) { return w[0] + '–' + w[1]; }).join(', '), 'closedWindows') : '')
+        + (dirs.length ? row('data-rule-dirs="1"', window.tt('Track direction change (clock time)'), '—', dirs.map(function(d) { return d.time + ' (−' + d.before + '/+' + d.after + ')'; }).join(', '), 'directionChanges') : '')
         + (minStints ? row('data-rule-minstints="' + minStints + '"', window.tt('Min stints per driver'), window.raceRules.minStintsPerDriver || '—', minStints, 'minStintsPerDriver') : '')
         + (maxStints ? row('data-rule-maxstints="' + maxStints + '"', window.tt('Max stints per driver'), window.raceRules.maxStintsPerDriver || '—', maxStints, 'maxStintsPerDriver') : '')
         + '</div>'
@@ -316,6 +364,7 @@ window._showRulesProposal = function(text) {
         });
         if (typeof window._normalizeOffFields === 'function') window._normalizeOffFields();
         if (wins.length && ov.querySelector('input[data-rule-wins]:checked')) r.closedWindows = wins;
+        if (dirs.length && ov.querySelector('input[data-rule-dirs]:checked')) r.directionChanges = dirs;
         const ms = ov.querySelector('input[data-rule-minstints]:checked');
         if (ms) r.minStintsPerDriver = minStints;
         if (ov.querySelector('input[data-rule-maxstints]:checked')) r.maxStintsPerDriver = maxStints;

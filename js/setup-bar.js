@@ -51,6 +51,7 @@
         driversCard: () => driverNames().join(' · '),
         rulesCard: () => $('rulesActiveCount') && !$('rulesActiveCount').classList.contains('hidden') ? $('rulesActiveCount').textContent : '',
         qualifyingPanel: () => {
+            if (!(parseInt($('qualifyDuration')?.value) > 0)) return t('xQualOff', 'Off');
             const segs = (window._qualifyConfig && window._qualifyConfig.segments) || '';
             return ($('qualifyDuration')?.value || '') + ' min' + (segs ? ' · Q1' + (segs > 1 ? '–Q' + segs : '') : '');
         },
@@ -116,6 +117,7 @@
                 const key = h.getAttribute('data-i18n') || '';
                 const label = h.textContent;
                 h.className = 'sub-head-wrap';
+                h.removeAttribute('data-i18n');   // the language pass would overwrite the button; the title span carries the key instead
                 h.innerHTML = '<button type="button" class="sub-head" aria-expanded="' + (wrap.classList.contains('is-collapsed') ? 'false' : 'true') + '"><span class="sub-title"' + (key ? ' data-i18n="' + key + '"' : '') + '>' + esc(label) + '</span><span class="sub-sum"></span><i class="fas fa-chevron-down sub-chev"></i></button>';
                 wrap.appendChild(h); wrap.appendChild(inner);
                 h.querySelector('button').addEventListener('click', () => {
@@ -168,7 +170,7 @@
     window.showStrategyEditor = function () {
         show($('strategyHome'), false); show($('strategyEditor'), true); show($('setupActionCard'), true);
         if (typeof window.runSim === 'function') { try { window.runSim(); } catch (e) {} }
-        openOnly(window._sessionMode === 'qualify' ? 'qualifyingPanel' : 'generalCard');
+        openOnly('generalCard');
         schedule();
         window.scrollTo(0, 0);
     };
@@ -201,7 +203,8 @@
             + '<h2 class="home-resume-name">' + esc(m.line.split(' · ').slice(0, 3).join(' · ')) + '</h2>'
             + '<p class="home-card-meta">' + esc(t('xAutoSavedAt', 'Auto-saved')) + ' · ' + esc(when) + '</p>'
             + ribbon(s) + '</div>'
-            + '<div class="home-card-act"><button type="button" class="home-go" data-act="preview" data-i="' + i + '">' + esc(t('xContinue', 'Continue')) + '</button></div>'
+            + '<div class="home-card-act"><button type="button" class="home-go" data-act="preview" data-i="' + i + '">' + esc(t('xContinue', 'Continue')) + '</button>'
+            + '<button type="button" class="home-ghost" data-act="edit" data-i="' + i + '">' + esc(t('xWzEdit', 'Edit')) + '</button></div>'
             + '</article>';
     }
 
@@ -291,7 +294,6 @@
         if (typeof origMode === 'function') {
             window.setSessionMode = function (mode) {
                 const r = origMode.apply(this, arguments);
-                if (!$('strategyEditor')?.classList.contains('hidden')) openOnly(mode === 'qualify' ? 'qualifyingPanel' : 'generalCard');
                 schedule();
                 return r;
             };
@@ -316,3 +318,4 @@
     window.addEventListener('load', () => setTimeout(summary, 600));
     window.updateSetupBarSummary = summary;
 })();
+ 

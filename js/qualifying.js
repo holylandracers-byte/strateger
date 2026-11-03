@@ -206,6 +206,7 @@ window.setSessionMode = function(mode) {
     const startRaceBtn = document.getElementById('startRaceBtn');
     const startQualifyBtn = document.getElementById('startQualifyBtn');
 
+    window._sessionMode = mode === 'qualify' ? 'qualify' : 'race';
     [raceBtn, qualBtn].forEach(btn => {
         if (!btn) return;
         btn.classList.remove('bg-ice', 'text-navy-950', 'bg-blue-600', 'text-white');
@@ -215,7 +216,6 @@ window.setSessionMode = function(mode) {
     if (mode === 'qualify') {
         qualBtn && qualBtn.classList.add('bg-blue-600', 'text-white');
         qualBtn && qualBtn.classList.remove('text-gray-400');
-        qualifyPanel && qualifyPanel.classList.remove('hidden');
         simResult && simResult.classList.add('hidden');
         startRaceBtn && startRaceBtn.classList.add('hidden');
         startQualifyBtn && startQualifyBtn.classList.remove('hidden');
@@ -223,11 +223,16 @@ window.setSessionMode = function(mode) {
     } else {
         raceBtn && raceBtn.classList.add('bg-ice', 'text-navy-950');
         raceBtn && raceBtn.classList.remove('text-gray-400');
-        qualifyPanel && qualifyPanel.classList.add('hidden');
         simResult && simResult.classList.remove('hidden');
         startRaceBtn && startRaceBtn.classList.remove('hidden');
         startQualifyBtn && startQualifyBtn.classList.add('hidden');
     }
+};
+
+// Qualifying is optional: an empty duration means race only, a number switches it on.
+window._syncQualifyMode = function() {
+    const on = (parseInt(document.getElementById('qualifyDuration')?.value) || 0) > 0;
+    if ((window._sessionMode === 'qualify') !== on) window.setSessionMode(on ? 'qualify' : 'race');
 };
 
 // ─── Preview ──────────────────────────────────────────────────────────────────

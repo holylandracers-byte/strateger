@@ -5363,6 +5363,7 @@ Respond in language "${lang}". Give:
  "closedWindows": [[fromMin, toMin]],   // pit lane closed windows during the race, minutes from race start. Do NOT repeat the first/last minutes already given as pitClosedStart / pitClosedEnd
  "reasons": {"<settings key, closedWindows, minStintsPerDriver or maxStintsPerDriver>": "short quote or paraphrase of the exact rule, max 14 words"},
  // kartChangeInterval ONLY if the rules force a kart swap on a time schedule (e.g. every 60 min) in addition to normal pit stops. If every pit stop already changes kart and driver, omit it. Never put the average stint length there.
+ "directionChanges": [{"time": "HH:MM clock time", "beforeMin": n, "afterMin": n}],   // ONLY when the track reverses direction during the race and the pit lane is shut around it. time = clock time of the change, beforeMin/afterMin = minutes the pit lane is closed before/after it (0 if not stated)
  "minStintsPerDriver": n,
  "maxStintsPerDriver": n,
  "notes": ["short rule the setup fields cannot express, e.g. Pit lane closed under red flag"],

@@ -4067,12 +4067,10 @@ body.lt-original #apexIframe { flex: 1 1 auto; width: 100%; height: auto !import
 #setupColumnsGrid #rulesCard { order: 5; }
 #setupColumnsGrid #liveCard { order: 6; }
 #configPanel > *, #setupRightCol > * { margin: 0 !important; min-width: 0; }
-@media (min-width: 900px) {
-    #setupScreen #setupColumnsGrid { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr) !important; gap: 14px 18px !important; }
-    #configPanel > *, #setupRightCol > * { grid-column: 1; }
-    #setupColumnsGrid #raceCountdownBanner { grid-column: 1 / -1; }
-    #setupColumnsGrid #driversCard { grid-column: 2; grid-row: 1 / span 6; position: sticky; top: 8px; max-height: calc(100vh - 150px); overflow-y: auto; }
-}
+/* One centred column on every screen: the accordion shows one section at a time, so side-by-side columns only left gaps */
+#strategyEditor { max-width: 760px; margin-inline: auto; }
+#strategyEditor > .max-w-6xl, #strategyEditor #setupColumnsGrid { max-width: none; }
+#setupScreen #setupColumnsGrid { grid-template-columns: minmax(0, 1fr) !important; }
 
 /* Driver lineup: position number, starter on top, move buttons */
 #driversList { counter-reset: lineup; }
@@ -4115,11 +4113,10 @@ body.lt-original #apexIframe { flex: 1 1 auto; width: 100%; height: auto !import
 #qualifyingPanel { --sec: #60a5fa; }
 #liveCard { --sec: #f87171; }
 #generalCard, #driversCard, #rulesCard, #qualifyingPanel, #liveCard {
-    background: linear-gradient(180deg, color-mix(in srgb, var(--sec) 8%, #0f172a) 0%, #0b1220 70%) !important;
-    border: 1px solid color-mix(in srgb, var(--sec) 26%, #1e293b) !important;
+    background: #0b1220 !important;
+    border: 1px solid #1e293b !important;
     border-radius: 16px !important; padding: 16px !important; box-shadow: 0 6px 18px rgba(0, 0, 0, .28);
 }
-#rulesCard { background: #0b1220 !important; border-color: #1e293b !important; box-shadow: none; }
 #liveCard { padding: 12px 16px !important; }
 
 /* Section heads: icon chip in the section colour, readout on the right */
@@ -4211,6 +4208,8 @@ body.lt-original #apexIframe { flex: 1 1 auto; width: 100%; height: auto !import
 .home-drafts { margin: 14px 0 8px; padding: 8px 4px; background: none; border: 0; color: #94a3b8; font-size: 13px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
 .home-drafts:hover { color: #22d3ee; }
 .home-links { margin-top: 18px; }
+[dir="rtl"] .editor-back i { transform: scaleX(-1); }
+[dir="rtl"] .collapsible-section.collapsed .collapse-icon { transform: rotate(90deg); }
 .editor-back { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 10px 0 6px; background: none; border: 0; color: #94a3b8; font-size: 14px; font-weight: 600; cursor: pointer; }
 .editor-back:hover { color: #22d3ee; }
 @media (max-width: 560px) {
@@ -4343,3 +4342,11 @@ body.lt-original #apexIframe { flex: 1 1 auto; width: 100%; height: auto !import
 
 .sr-handle-off { cursor: default; pointer-events: none; }
 .stint-row.is-current .sr-driver-static { background: color-mix(in srgb, var(--sc, #22d3ee) 24%, var(--navy-900)); border-color: color-mix(in srgb, var(--sc, #22d3ee) 60%, #334155); }
+
+/* Direction-change rows: clock time, minutes closed before and after */
+.rule-dir { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1fr) 44px; gap: 8px; align-items: end; }
+.rule-dir-f { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.rule-dir-f > span { font-size: 11px; color: #94a3b8; line-height: 1.2; }
+@media (max-width: 560px) { .rule-dir { grid-template-columns: 1fr 1fr 44px; } .rule-dir > input[type="time"] { grid-column: 1 / -1; } }
+#rulesCard .num-stepper > button { min-height: 44px; flex-basis: 40px; }
+#rulesCard .num-stepper > .input-field { min-height: 44px; font-size: 16px !important; }

@@ -85,7 +85,7 @@
         }
 
         // 6) custom closed windows from the regulations
-        (rules.closedWindows || []).forEach(function(w) {
+        (window.raceClosedWindows ? window.raceClosedWindows() : (rules.closedWindows || [])).forEach(function(w) {
             const a = Number(w[0]) * 60000, b = Number(w[1]) * 60000;
             if (!(b > a)) return;
             const inside = entries.filter(function(e) { return e >= a && e <= b; }).length;
