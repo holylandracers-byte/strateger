@@ -471,6 +471,14 @@ window.calculateStrategyLogic = function(config) {
     let timeline = [];
     let accumulatedRaceTime = 0;
 
+    // "Double stints to use": spread exactly N back-to-back stints (same driver twice) across the race.
+    // While N is set, the planner makes no other doubles, so the count the strategist asked for is the count they get.
+    const wantedDoubles = (config.allowDouble && config.doubleStintsWanted > 0 && window.drivers.length > 1)
+        ? Math.min(config.doubleStintsWanted, totalStints - 1) : 0;
+    const forcedDoubles = new Set();
+    for (let k = 0; k < wantedDoubles; k++) forcedDoubles.add(Math.max(1, Math.round((k + 1) * (totalStints - 1) / (wantedDoubles + 1))));
+    const plainConfig = wantedDoubles > 0 ? { ...extendedConfig, allowDouble: false } : extendedConfig;
+
     for (let i = 0; i < totalStints; i++) {
         const duration = stintDurations[i];
         const isLast = (i === totalStints - 1);
@@ -480,27 +488,31 @@ window.calculateStrategyLogic = function(config) {
         let selectedIdx = -1;
         let activeSquad = null;
 
-        if (config.useSquads && allSquadLabels.length > 1 && squadWindow) {
+        const wantDouble = forcedDoubles.has(i) && i > 0
+            && !(extendedConfig.maxDriverTotalMs > 0 && driverStats[currentDriverIdx].driven >= extendedConfig.maxDriverTotalMs);
+        if (wantDouble) {
+            selectedIdx = currentDriverIdx;
+        } else if (config.useSquads && allSquadLabels.length > 1 && squadWindow) {
             // Determine which squad should be driving at this stint's start time
             activeSquad = window.getScheduledSquad(stintStartTime, squadWindow, allSquadLabels);
 
             if (activeSquad) {
                 // Inside squad window — pick from the scheduled squad
-                selectedIdx = window.selectDriverFromSquad(activeSquad, stintStartTime, driverStats, currentDriverIdx, extendedConfig, consecutiveCount);
+                selectedIdx = window.selectDriverFromSquad(activeSquad, stintStartTime, driverStats, currentDriverIdx, plainConfig, consecutiveCount);
                 if (selectedIdx === null) {
                     // Fallback: try other squads in order
                     for (let s = 1; s < allSquadLabels.length; s++) {
                         const fallback = allSquadLabels[(allSquadLabels.indexOf(activeSquad) + s) % allSquadLabels.length];
-                        selectedIdx = window.selectDriverFromSquad(fallback, stintStartTime, driverStats, currentDriverIdx, extendedConfig, consecutiveCount);
+                        selectedIdx = window.selectDriverFromSquad(fallback, stintStartTime, driverStats, currentDriverIdx, plainConfig, consecutiveCount);
                         if (selectedIdx !== null) break;
                     }
                 }
             } else {
                 // Outside squad window — all drivers share equally
-                selectedIdx = window.selectMostRestedDriver(stintStartTime, driverStats, currentDriverIdx, extendedConfig, consecutiveCount);
+                selectedIdx = window.selectMostRestedDriver(stintStartTime, driverStats, currentDriverIdx, plainConfig, consecutiveCount);
             }
         } else {
-            selectedIdx = window.selectMostRestedDriver(stintStartTime, driverStats, currentDriverIdx, extendedConfig, consecutiveCount);
+            selectedIdx = window.selectMostRestedDriver(stintStartTime, driverStats, currentDriverIdx, plainConfig, consecutiveCount);
         }
 
         if (selectedIdx === null || selectedIdx === -1) {
@@ -757,6 +769,7 @@ window.runSim = function() {
         squadWindowStart,
         squadWindowEnd,
         allowDouble,
+        doubleStintsWanted: allowDouble ? (parseInt(document.getElementById('doubleStintsWanted')?.value) || 0) : 0,
         maxConsecutive,
         minDriverTotal: minDriverMin,
         maxDriverTotal: maxDriverMin,

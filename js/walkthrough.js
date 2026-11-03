@@ -223,6 +223,7 @@
         if (!el) return;
         const section = el.closest('.collapsible-section');
         if (section) section.classList.remove('collapsed');
+        if (window._openSubFor) window._openSubFor(el);
     }
 
     /** Resolve the outer container to highlight (full section, not inner input). */

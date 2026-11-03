@@ -1072,8 +1072,6 @@ window.renderPreview = function() {
         // A stint can't be reordered past a locked (already-run) stint — only among
         // the current/future ones — so Up is disabled right after the lock boundary.
         const prevLocked = index > 0 && !!(stints[index - 1]._actual || stints[index - 1]._done);
-        const canMoveUp = !isFirst && !prevLocked;
-        const canMoveDown = !isLast;
         return `
             <div class="stint-row${stint._current ? ' is-current' : ''}${outOfBounds ? ' is-bad' : ''}" style="--sc:${stint.color}"
                  data-index="${index}" ondragstart="window.handleDragStart(event)" ondragover="window.handleDragOver(event)" ondragleave="window.handleDragLeave(event)" ondrop="window.handleDrop(event)">
@@ -1089,10 +1087,6 @@ window.renderPreview = function() {
                         <input type="number" inputmode="numeric" value="${durationMin}" min="${minStintMin}" max="${maxStintMin}" aria-label="${tr('lblStintMinutes', 'Stint minutes')}"
                                onchange="window.updateStintDuration(${index}, this.value)" class="sr-dur-input${outOfBounds ? ' is-bad' : ''}">
                         <button type="button" class="sr-step-btn" onclick="window.nudgeStint(${index}, 1)" aria-label="+1 min"><i class="fas fa-plus"></i></button>
-                    </div>
-                    <div class="sr-move">
-                        <button type="button" class="sr-move-btn" onclick="window.moveStint(${index}, -1)" ${canMoveUp ? '' : 'disabled'} aria-label="${tr('moveUp', 'Move up')}"><i class="fas fa-chevron-up"></i></button>
-                        <button type="button" class="sr-move-btn" onclick="window.moveStint(${index}, 1)" ${canMoveDown ? '' : 'disabled'} aria-label="${tr('moveDown', 'Move down')}"><i class="fas fa-chevron-down"></i></button>
                     </div>
                 </div>
             </div>
@@ -1445,7 +1439,7 @@ window.handleDrop = function(e) {
     document.querySelector('.draggable-source')?.classList.remove('draggable-source');
     const targetIndex = parseInt(targetRow.getAttribute('data-index'));
     if (window.draggedStintIndex !== null && window.draggedStintIndex !== targetIndex) {
-        window.swapStints(window.draggedStintIndex, targetIndex);
+        window.reinsertStint(window.draggedStintIndex, targetIndex);
     }
     window.draggedStintIndex = null;
 };
@@ -1500,34 +1494,18 @@ window.initTouchDrag = function(container) {
     const rowAt = (x, y) => document.elementFromPoint(x, y)?.closest('.stint-row[data-index]:not(.stint-row-locked)');
     const clear = () => container.querySelectorAll('.drag-over, .is-dragging').forEach(i => i.classList.remove('drag-over', 'is-dragging'));
 
-    // A row only moves after its grip is held for 2 s without sliding; anything shorter is a scroll.
-    const HOLD_MS = 2000, SLIDE_PX = 10;
-    let armTimer = null, armRow = null, armX = 0, armY = 0;
-    const disarm = () => { clearTimeout(armTimer); armTimer = null; if (armRow) armRow.classList.remove('is-arming'); armRow = null; };
-
+    // Touch the grip and drag: no hold needed. Only the grip drags, so the rest of the row still scrolls.
     container.addEventListener('touchstart', function(e) {
         const handle = e.target.closest('.sr-handle');
         if (!handle) return;
         const row = handle.closest('[data-index]');
-        if (!row) return;
-        disarm();
-        armRow = row; armX = e.touches[0].clientX; armY = e.touches[0].clientY;
-        row.classList.add('is-arming');
-        armTimer = setTimeout(function() {
-            armTimer = null;
-            row.classList.remove('is-arming');
-            window._touchDragState = { fromIdx: parseInt(row.getAttribute('data-index'), 10), el: row };
-            row.classList.add('is-dragging');
-            window.haptic && window.haptic('medium');
-        }, HOLD_MS);
+        if (!row || row.classList.contains('stint-row-locked')) return;
+        window._touchDragState = { fromIdx: parseInt(row.getAttribute('data-index'), 10), el: row };
+        row.classList.add('is-dragging');
+        window.haptic && window.haptic('light');
     }, { passive: true });
 
     container.addEventListener('touchmove', function(e) {
-        if (armTimer) {
-            const t0 = e.touches[0];
-            if (Math.abs(t0.clientX - armX) > SLIDE_PX || Math.abs(t0.clientY - armY) > SLIDE_PX) disarm();
-            return;
-        }
         if (!window._touchDragState) return;
         e.preventDefault();
         const touch = e.touches[0];
@@ -1540,7 +1518,6 @@ window.initTouchDrag = function(container) {
     }, { passive: false });
 
     container.addEventListener('touchend', function(e) {
-        disarm();
         const drag = window._touchDragState;
         window._touchDragState = null;
         if (!drag) return;
@@ -1550,19 +1527,39 @@ window.initTouchDrag = function(container) {
         if (target) {
             const toIdx = parseInt(target.getAttribute('data-index'), 10);
             if (toIdx !== drag.fromIdx) {
-                window.haptic && window.haptic('light');
-                window.swapStints(drag.fromIdx, toIdx);
+                window.haptic && window.haptic('medium');
+                window.reinsertStint(drag.fromIdx, toIdx);
             }
         }
     }, { passive: true });
 
     container.addEventListener('touchcancel', function() {
-        disarm();
         window._touchDragState = null;
         clear();
     });
 };
 
+// Drag and drop: the driver of stint `from` is taken out and put in at `to`; the stints between shift by one.
+// Durations and times stay where they are (they belong to the slot, not the driver). Finished stints never move.
+window.reinsertStint = function(fromIdx, toIdx) {
+    if (!window.previewData || !window.previewData.timeline) return;
+    const stints = window.previewData.timeline.filter(t => t.type === 'stint');
+    if (!stints[fromIdx] || !stints[toIdx] || fromIdx === toIdx) return;
+    const lo = Math.min(fromIdx, toIdx), hi = Math.max(fromIdx, toIdx);
+    for (let i = lo; i <= hi; i++) if (stints[i]._actual || stints[i]._done) return;
+    const pick = (x) => ({ driverName: x.driverName, driverIdx: x.driverIdx, color: x.color, squad: x.squad });
+    const order = stints.slice(lo, hi + 1).map(pick);
+    const moved = order.splice(fromIdx - lo, 1)[0];
+    order.splice(toIdx - lo, 0, moved);
+    order.forEach((o, k) => Object.assign(stints[lo + k], o));
+    const schedule = window.state && window.state.stintSchedule;
+    if (Array.isArray(schedule)) order.forEach((o, k) => {
+        const row = schedule[lo + k];
+        if (row) { row.driverName = o.driverName; row.driverIdx = o.driverIdx; row.squad = o.squad; }
+    });
+    window.renderPreview();
+    if (window.state?.isRunning && typeof window.broadcast === 'function') window.broadcast();
+};
 window.swapStints = function(fromIdx, toIdx) {
     if (!window.previewData || !window.previewData.timeline) return;
     const stints = window.previewData.timeline.filter(t => t.type === 'stint');
@@ -1792,6 +1789,8 @@ window.applyStrategy = function(index) {
                 if (el) el.checked = !!val;
             };
             setCheck('allowDouble', strategy.config.allowDouble);
+            setVal('doubleStintsWanted', strategy.config.doubleStintsWanted || '');
+            if (typeof window.toggleMaxConsecutive === 'function') window.toggleMaxConsecutive();
             const numSquadsEl = document.getElementById('numSquads');
             if (numSquadsEl) numSquadsEl.value = String(strategy.config.numSquads || (strategy.config.useSquads ? 2 : 0));
         }

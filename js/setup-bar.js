@@ -31,6 +31,7 @@
         el.title = el.textContent;
         el.classList.toggle('is-bad', !!bad || !!err);
         cardSummaries();
+        subSummaries();
     }
 
     function driverNames() {
@@ -71,6 +72,72 @@
             if (span.textContent !== txt) span.textContent = txt;
         });
     }
+
+    // ---------- inner collapses: each card's sub-sections fold on their own ----------
+    const SUB_SUM = {
+        xSecLength: () => {
+            const lap = !!(window.isLapRace && window.isLapRace());
+            const len = lap ? ($('raceLaps')?.value || '') + ' ' + t('laps') : ($('raceDuration')?.value || '') + 'h';
+            const stops = $('reqPitStops')?.value;
+            return len + (stops ? ' · ' + stops + ' ' + t('xPitStops') : '');
+        },
+        lblRaceStart: () => [$('raceStartDate')?.value, $('raceStartTime')?.value].filter(Boolean).join(' · '),
+        xSecStints: () => {
+            const a = $('minStint')?.value, b = $('maxStint')?.value, p = $('minPitTime')?.value;
+            return [a || b ? (a || '–') + '–' + (b || '–') + ' min' : '', p ? p + ' s' : ''].filter(Boolean).join(' · ');
+        },
+        lblTrackLocation: () => $('raceLocation')?.value || '',
+        qualifyFormat: () => {
+            const q = window._qualifyConfig || {};
+            const segs = q.format === 'simple' ? '' : ' · Q1' + (q.segments > 1 ? '–Q' + q.segments : '');
+            return ($('qualifyDuration')?.value || '') + ' min' + segs + ' · ' + ($('qualifyRuns')?.value || 1) + '×';
+        },
+        qualifyParticipation: () => ({ one: t('qualifyPartOne'), multi: t('qualifyPartMulti'), all: t('qualifyPartAll') }[(window._qualifyConfig || {}).participation || 'all']),
+        qualifyPitRule: () => ({ none: t('qualifyPitNone'), any: t('qualifyPitAny'), min: t('qualifyPitMin') + ' ' + ($('qPitMinTime')?.value || '') + ' s' }[(window._qualifyConfig || {}).pitRule || 'none']),
+        grpRotation: () => ($('allowDouble')?.checked ? t('lblDoubles') + ($('doubleStintsWanted')?.value ? ' · ' + $('doubleStintsWanted').value : '') : '') + (parseInt($('numSquads')?.value) ? ' · ' + $('numSquads').value + ' ' + t('lblSquads') : ''),
+        grpDriverLimits: () => { const a = $('minDriverTime')?.value, b = $('maxDriverTime')?.value; return a || b ? (a || '–') + '–' + (b || '–') + ' min' : ''; },
+        grpPitRules: () => { const a = $('pitClosedStart')?.value, b = $('pitClosedEnd')?.value; return (a || b ? (a || '0') + '–' + (b || '–') + ' min' : '') + ($('trackFuel')?.checked ? ' · ' + t('lblFuel') : ''); },
+        grpAlerts: () => ($('pitNotifyLeadMin')?.value || '') ? $('pitNotifyLeadMin').value + ' min' : ''
+    };
+    const subs = [];
+    const isSubHead = (n) => n.nodeType === 1 && n.tagName === 'H3' && /(sec-sub|rules-group-title)/.test(n.className);
+    function initInnerCollapse() {
+        [['qualifyingPanel', true], ['generalCard', true], ['rulesCard', false]].forEach(([cardId, firstOpen]) => {
+            const body = $(cardId)?.querySelector(':scope > .collapse-body');
+            if (!body) return;
+            Array.from(body.children).filter(isSubHead).forEach((h, idx) => {
+                const wrap = document.createElement('div');
+                wrap.className = 'sub' + (idx === 0 && firstOpen ? '' : ' is-collapsed');
+                const inner = document.createElement('div');
+                inner.className = 'sub-body';
+                let n = h.nextSibling;
+                while (n && !isSubHead(n)) { const nx = n.nextSibling; inner.appendChild(n); n = nx; }
+                h.parentNode.insertBefore(wrap, h);
+                const key = h.getAttribute('data-i18n') || '';
+                const label = h.textContent;
+                h.className = 'sub-head-wrap';
+                h.innerHTML = '<button type="button" class="sub-head" aria-expanded="' + (wrap.classList.contains('is-collapsed') ? 'false' : 'true') + '"><span class="sub-title"' + (key ? ' data-i18n="' + key + '"' : '') + '>' + esc(label) + '</span><span class="sub-sum"></span><i class="fas fa-chevron-down sub-chev"></i></button>';
+                wrap.appendChild(h); wrap.appendChild(inner);
+                h.querySelector('button').addEventListener('click', () => {
+                    const c = wrap.classList.toggle('is-collapsed');
+                    h.querySelector('button').setAttribute('aria-expanded', c ? 'false' : 'true');
+                });
+                subs.push({ wrap, key, sum: h.querySelector('.sub-sum') });
+            });
+        });
+    }
+    function subSummaries() {
+        subs.forEach(o => {
+            let txt = '';
+            try { txt = (SUB_SUM[o.key] && SUB_SUM[o.key]()) || ''; } catch (e) {}
+            if (o.sum.textContent !== txt) o.sum.textContent = txt;
+        });
+    }
+    // open the sub-section that holds a field (tour, validation messages)
+    window._openSubFor = function (el) {
+        const w = el && el.closest && el.closest('.sub');
+        if (w) { w.classList.remove('is-collapsed'); const b = w.querySelector('.sub-head'); if (b) b.setAttribute('aria-expanded', 'true'); }
+    };
 
     // ---------- accordion: one section open at a time ----------
     let accordionBusy = false;
@@ -124,10 +191,8 @@
         const m = metaOf(s);
         const qual = s.config && s.config.sessionMode === 'qualify';
         const cloud = s.synced ? '<i class="fas fa-cloud" title="Cloud"></i>' : '<i class="fas fa-mobile-alt" title="' + esc(t('savedOnDevice', 'Saved on this device')) + '"></i>';
-        const go = qual
-            ? '<button type="button" class="home-go is-quali" data-act="quali" data-i="' + i + '">' + esc(t('xStartQualiShort', 'Qualifying')) + '</button>'
-              + '<button type="button" class="home-go" data-act="race" data-i="' + i + '">' + esc(t('xStartRaceShort', 'Race')) + '</button>'
-            : '<button type="button" class="home-go" data-act="race" data-i="' + i + '">' + esc(t('xStartRaceShort', 'Race')) + '</button>';
+        const go = (qual ? '<button type="button" class="home-go is-quali" data-act="quali" data-i="' + i + '">' + esc(t('xStartQualiShort', 'Qualifying')) + '</button>' : '')
+            + '<button type="button" class="home-go" data-act="preview" data-i="' + i + '">' + esc(t('xPreviewStart', 'Preview and start')) + '</button>';
         return '<article class="home-card">'
             + '<div class="home-card-main"><h2 class="home-card-name">' + cloud + '<span>' + esc(s.name) + '</span></h2>'
             + '<p class="home-card-meta">' + esc(m.line) + '</p>'
@@ -165,10 +230,8 @@
             show(prev, false); show($('setupScreen'), true);
             window.showStrategyEditor();
         } else {
-            setTimeout(() => {
-                if (then === 'quali') { show(prev, false); window.startQualifyingDirect(); }
-                else window.initRace();
-            }, 60);
+            // Nothing starts on its own: the preview is where the last-minute changes happen and Start Race lives.
+            if (then === 'quali') setTimeout(() => { show(prev, false); window.startQualifyingDirect(); }, 60);
         }
     }
 
@@ -212,6 +275,7 @@
                 return r;
             };
         }
+        initInnerCollapse();
         initAccordion();
         initHome();
         window.showStrategyHome();
