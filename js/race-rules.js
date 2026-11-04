@@ -136,7 +136,7 @@ window.applyRaceRules = function(timeline, config) {
     (function() { const e = entriesNow(); pitsArr.forEach(function(p, i) { p.raceTimeAtEntry = e[i]; }); })();
 
     // 2) every driver drives at least N stints
-    const need = Number(rules.minStintsPerDriver) || 0;
+    const need = Math.max(Number(rules.minStintsPerDriver) || 0, config.everyoneDrives ? 1 : 0);
     if (need > 0) {
         const stints = timeline.filter(function(x) { return x.type === 'stint'; });
         const nDrivers = (window.drivers || []).length;

@@ -4,7 +4,7 @@
 
 window.updateDriversFromUI = function() {
     // Exclude placeholder rows injected by the minimum-driver framework
-    const realRows = Array.from(document.querySelectorAll('#driversList .driver-row')).filter(row => !row.classList.contains('opacity-50'));
+    const realRows = Array.from(document.querySelectorAll('#driversList .driver-row')).filter(row => !row.classList.contains('opacity-50') && !row.classList.contains('is-sitout'));
     const inputs = realRows.map(row => row.querySelector('.driver-input')).filter(Boolean);
     const radios = realRows.map(row => row.querySelector('.starter-radio')).filter(Boolean);
     if (!inputs.length) return;
@@ -139,6 +139,10 @@ window.calculateStintDurations = function(config) {
         // Take the larger of user-entered stops or organizer-derived stops
         derivedStops = Math.max(derivedStops, mandatoryChanges);
     }
+
+    // Everyone drives: with N drivers on the grid that takes at least N-1 stops (a team of 3 needs only 2).
+    const activeDrivers = (window.drivers || []).length;
+    if (config.everyoneDrives && activeDrivers > 1) derivedStops = Math.max(derivedStops, activeDrivers - 1);
 
     // The required stops are a minimum. If the stint cap (max stint / fuel tank) cannot cover the race
     // with that few stops, add the stops the cap forces instead of quietly dropping race time.
@@ -800,6 +804,7 @@ window.runSim = function() {
         squadWindowStart,
         squadWindowEnd,
         allowDouble,
+        everyoneDrives: document.getElementById('everyoneDrives')?.checked || false,
         weatherAdapt: window._weatherAdapt !== false,
         doubleStintsWanted: allowDouble ? (parseInt(document.getElementById('doubleStintsWanted')?.value) || 0) : 0,
         maxConsecutive,

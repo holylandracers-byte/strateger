@@ -494,6 +494,27 @@ window.createDriverInput = function(val, checked, squad) {
         const list = div.parentNode;
         if (list && list.children.length > 2) { div.remove(); window.syncStarterToTop(); window.runSim(); }
     });
+    // ── Sits out: stays in the group but does not drive this race (a team of 4 where only 3 drive) ──
+    const sitBtn = document.createElement('button');
+    sitBtn.type = 'button';
+    sitBtn.className = 'driver-sit-btn';
+    sitBtn.title = window.t('sitOutTip');
+    sitBtn.setAttribute('aria-label', window.t('sitOutTip'));
+    sitBtn.innerHTML = '<i class="fas fa-user-slash" aria-hidden="true"></i>';
+    const sitOutNow = () => { const e = window.getDriverPool().find(d => d.name === driverInput.value.trim()); return !!(e && e.sitOut); };
+    const showSitOut = (on) => { div.classList.toggle('is-sitout', on); sitBtn.setAttribute('aria-pressed', String(on)); };
+    showSitOut(sitOutNow());
+    sitBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const on = !div.classList.contains('is-sitout');
+        const pool = window.getDriverPool();
+        const entry = pool.find(d => d.name === driverInput.value.trim());
+        if (entry) { entry.sitOut = on; window.saveDriverPool(pool); }
+        showSitOut(on);
+        window.syncStarterToTop();
+        window.runSim();
+    });
+    div.appendChild(sitBtn);
     div.appendChild(removeBtn);
 
     document.getElementById('driversList').appendChild(div);
@@ -502,7 +523,7 @@ window.createDriverInput = function(val, checked, squad) {
 // The driver at the top of the list is the starter, so reordering the list moves the start.
 window.syncStarterToTop = function() {
     const rows = Array.from(document.querySelectorAll('#driversList .driver-row'))
-        .filter(r => !r.classList.contains('opacity-50'));
+        .filter(r => !r.classList.contains('opacity-50') && !r.classList.contains('is-sitout'));
     const top = rows[0] && rows[0].querySelector('.starter-radio');
     if (top) {
         document.querySelectorAll('#driversList .starter-radio').forEach(r => { r.checked = false; });
@@ -1810,6 +1831,7 @@ window.applyStrategy = function(index) {
             };
             window._weatherAdapt = strategy.config.weatherAdapt !== false;
             setCheck('allowDouble', strategy.config.allowDouble);
+            setCheck('everyoneDrives', strategy.config.everyoneDrives);
             setVal('doubleStintsWanted', strategy.config.doubleStintsWanted || '');
             if (typeof window.toggleMaxConsecutive === 'function') window.toggleMaxConsecutive();
             const numSquadsEl = document.getElementById('numSquads');

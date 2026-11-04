@@ -4377,3 +4377,12 @@ body.lt-original #apexIframe { flex: 1 1 auto; width: 100%; height: auto !import
 #durationBlock.is-derived .duration-hm { display: flex; align-items: center; justify-content: center; min-height: 60px; margin-top: 0; font-size: 30px; font-weight: 800; color: #f1f5f9; background: #020617; border: 1px solid #334155; border-radius: 10px; }
 #noStopsBtn.is-on { background: rgba(34, 211, 238, .14); border-color: var(--ice, #22d3ee); color: var(--ice, #22d3ee); }
 .set-chips button.is-on { background: rgba(34, 211, 238, .14); border-color: var(--ice, #22d3ee); color: var(--ice, #22d3ee); }
+
+/* Driver who sits out this race */
+.driver-sit-btn { width: 36px; align-self: stretch; flex: none; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; color: #64748b; font-size: 13px; cursor: pointer; touch-action: manipulation; }
+.driver-sit-btn:hover { color: #fbbf24; }
+.driver-sit-btn:focus-visible { outline: 2px solid #fbbf24; outline-offset: -2px; }
+.driver-row.is-sitout .driver-sit-btn { color: #fbbf24; background: rgba(251, 191, 36, .1); }
+.driver-row.is-sitout .driver-input { opacity: .45; text-decoration: line-through; }
+.driver-row.is-sitout .driver-accent-bar, .driver-row.is-sitout .driver-color-swatch { opacity: .4; }
+@media (max-width: 560px) { #driversList .driver-sit-btn { order: 11; } }

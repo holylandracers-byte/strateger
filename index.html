@@ -48,7 +48,7 @@
     <script src="js/live-timing-manager.js?v=9"></script>
     <script src="js/qualifying.js?v=13"></script>
 
-    <link rel="stylesheet" href="css/style.css?v=67">
+    <link rel="stylesheet" href="css/style.css?v=68">
 
     <script>
         tailwind.config = {
@@ -449,6 +449,14 @@
                 <p class="set-hint" style="margin-top:0" data-i18n="rulesIntro">Optional rules from the organizer. Leave a field empty (Off) to switch that rule off.</p>
 
                 <h3 class="rules-group-title" data-i18n="grpRotation">Driver rotation</h3>
+
+                <div class="rule" data-rule>
+                    <label class="rule-head">
+                        <input type="checkbox" id="everyoneDrives" onchange="window.runSim()" class="set-switch">
+                        <span class="rule-title" data-i18n="lblEveryoneDrives">Every driver drives at least once</span>
+                    </label>
+                    <p class="rule-effect" data-i18n="lblEveryoneDrivesHint">Adds the stops needed so each driver gets a stint. Use the sit-out button on a driver who will not drive.</p>
+                </div>
 
                 <div class="rule" data-rule>
                     <label class="rule-head">
@@ -2451,7 +2459,7 @@
         </div>
     </div>
 
-    <script src="js/state.js?v=37"></script>
+    <script src="js/state.js?v=38"></script>
     <script src="js/lite-mode.js?v=1"></script>
     <script src="js/i18n-extra.js?v=10"></script>
     <script src="js/i18n-extra2.js?v=1"></script>
@@ -2463,14 +2471,14 @@
     <script src="js/i18n-phrases3.js?v=6"></script>
     <script src="js/auth.js?v=10"></script>
     <script src="js/network.js?v=10"></script>
-    <script src="js/strategy.js?v=25"></script>
-    <script src="js/race-rules.js?v=9"></script>
+    <script src="js/strategy.js?v=26"></script>
+    <script src="js/race-rules.js?v=10"></script>
     <script src="js/compliance.js?v=3"></script>
     <script src="js/export.js?v=3"></script>
     <script src="js/autosave.js?v=4"></script>
     <script src="js/live-timing.js?v=20"></script>
     <script src="js/track-finder.js?v=2"></script>
-    <script src="js/ui.js?v=33"></script>
+    <script src="js/ui.js?v=35"></script>
     <script src="js/walkthrough.js?v=15"></script>
     <script src="js/setup-bar.js?v=13"></script>
     <script src="js/main.js?v=34"></script>
