@@ -1307,8 +1307,10 @@ function updateRemainingStrategyLogic(raceRemainingMs) {
     const hasMaxStint = !isNaN(maxStintRaw) && maxStintRaw > 0;
     const hasMinStint = !isNaN(minStintRaw) && minStintRaw > 0;
 
-    // 2-minute tolerance band around max and min
-    const TOLERANCE_MS = 2 * 60000;
+    // Tolerance band around max and min: a stint that close to the limit is, in practice,
+    // a max (or min) stint -- 70 / 67 / 66 on a 70 max are all "max", so they group together.
+    const TOLERANCE_MS = 5 * 60000;
+    const MIN_TOLERANCE_MS = 3 * 60000;
 
     const maxStintVal = hasMaxStint ? maxStintRaw : null;
     const minStintVal = hasMinStint ? minStintRaw : null;
@@ -1343,7 +1345,7 @@ function updateRemainingStrategyLogic(raceRemainingMs) {
     // Classify a stint duration in ms using 2-minute tolerance bands
     function classifyStint(ms) {
         if (hasMaxStint && ms >= maxStintMs - TOLERANCE_MS) return 'max';
-        if (hasMinStint && ms <= minStintMs + TOLERANCE_MS) return 'min';
+        if (hasMinStint && ms <= minStintMs + MIN_TOLERANCE_MS) return 'min';
         return 'normal';
     }
 
@@ -1419,14 +1421,20 @@ function updateRemainingStrategyLogic(raceRemainingMs) {
     const groups = [];
     stintDescriptors.forEach(s => {
         const last = groups[groups.length - 1];
-        const key = (s.type === 'normal' || s.type === 'min') ? `${s.type}-${s.min}` : s.type;
-        if (last && last.key === key && s.idx != null) {
+        // max / min stints group by kind (their real durations differ a little and are
+        // shown as a range); regular and impossible ones group by whole minutes
+        const key = (s.type === 'max' || s.type === 'min') ? s.type : `${s.type}-${s.min}`;
+        const mins = Math.round((s.ms != null ? s.ms : s.min * 60000) / 60000);
+        if (last && last.key === key) {
             last.count++;
-            last.idxs.push(s.idx);
+            last.lo = Math.min(last.lo, mins);
+            last.hi = Math.max(last.hi, mins);
+            if (s.idx != null) last.idxs.push(s.idx);
         } else {
-            groups.push({ key, type: s.type, min: s.min, count: 1, idxs: s.idx != null ? [s.idx] : [] });
+            groups.push({ key, type: s.type, min: s.min, count: 1, lo: mins, hi: mins, idxs: s.idx != null ? [s.idx] : [] });
         }
     });
+    const spanLabel = g => g.lo === g.hi ? `${g.lo}m` : `${g.lo}–${g.hi}m`;
 
     let phtml = '';
 
@@ -1449,13 +1457,11 @@ function updateRemainingStrategyLogic(raceRemainingMs) {
 
     groups.forEach(g => {
         const prefix = g.count > 1 ? `${g.count}× ` : '';
-        const idx = g.idxs.length === 1 ? g.idxs[0] : null; // only single-stint groups are unambiguous to edit
+        const idx = (g.count === 1 && g.idxs.length === 1) ? g.idxs[0] : null; // only single-stint groups are unambiguous to edit
         if (g.type === 'max') {
-            const label = hasMaxStint ? ` (${maxStintVal}m)` : '';
-            phtml += pill(`${prefix}${t('max')}${label}`, 'pill-max', null, idx);
+            phtml += pill(`${prefix}${t('max')} · ${spanLabel(g)}`, 'pill-max', hasMaxStint ? `Max stint ${maxStintVal}m` : null, idx);
         } else if (g.type === 'min') {
-            const label = hasMinStint ? ` (${minStintVal}m)` : '';
-            phtml += pill(`${prefix}${t('min') || 'MIN'}${label}`, 'pill-min', null, idx);
+            phtml += pill(`${prefix}${t('min') || 'MIN'} · ${spanLabel(g)}`, 'pill-min', hasMinStint ? `Min stint ${minStintVal}m` : null, idx);
         } else if (g.type === 'normal') {
             phtml += pill(`${prefix}${t('norm') || 'NORM'} ${g.min}m`, 'pill-normal', null, idx);
         } else {
