@@ -1755,7 +1755,7 @@ window.saveStrategy = function() {
         // איפוס שדה השם
         const nameInput = document.getElementById('saveStrategyName');
         const loaded = window._loadedStrategyName || '';
-        if (nameInput) nameInput.value = loaded || `Strategy ${new Date().toLocaleTimeString()}`;
+        if (nameInput) nameInput.value = loaded || `${(window.t && window.t('strategyDefaultName') !== 'strategyDefaultName') ? window.t('strategyDefaultName') : 'Strategy'} ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
         const row = document.getElementById('saveReplaceRow');
         if (row) row.classList.toggle('hidden', !loaded);
     }

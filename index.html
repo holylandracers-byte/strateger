@@ -48,7 +48,7 @@
     <script src="js/live-timing-manager.js?v=9"></script>
     <script src="js/qualifying.js?v=13"></script>
 
-    <link rel="stylesheet" href="css/style.css?v=70">
+    <link rel="stylesheet" href="css/style.css?v=72">
 
     <script>
         tailwind.config = {
@@ -109,6 +109,11 @@
                 <span id="syncText" class="text-xs text-gray-400 hidden sm:inline" data-i18n="synced">Synced</span>
             </div>
             <div id="liveIndicator" class="hidden sync-dot live-dot shrink-0"></div>
+
+            <button id="chatToggleBtn" type="button" onclick="window.toggleChat()" class="header-chat-btn" style="display: none;" aria-label="Chat" title="Race Chat">
+                <i class="fas fa-comment-dots"></i>
+                <span id="chatUnreadBadge" class="hidden header-chat-badge">0</span>
+            </button>
 
             <div class="header-overflow-wrap relative shrink-0">
                 <button type="button" id="headerMenuBtn" onclick="document.getElementById('headerOverflowMenu').classList.toggle('hidden')" class="header-menu-btn" aria-label="Menu" aria-haspopup="true">
@@ -1474,6 +1479,7 @@
                 <label><input type="radio" name="saveWhere" value="cloud" checked> <span data-i18n="saveWhereCloud">Device + cloud</span></label>
                 <label><input type="radio" name="saveWhere" value="device"> <span data-i18n="saveWhereDevice">This device only</span></label>
             </div>
+            <p class="text-[11px] text-gray-500 mb-1"><i class="fas fa-rotate"></i> <span data-i18n="saveAutoNote">Changes are saved automatically under this name. Leave the name as is, or type your own.</span></p>
             <p class="text-[11px] text-gray-500 mb-4"><i class="fas fa-mobile-alt"></i> <span data-i18n="saveNote">Always kept on this device. Sent to the cloud too when you are online; if not, it syncs later.</span></p>
             <div class="flex gap-2">
                 <button id="saveStrategyConfirmBtn" onclick="window.performStrategySave()" class="flex-1 bg-ice text-navy-950 font-bold py-2 rounded" data-i18n="save">Save</button>
@@ -1761,10 +1767,6 @@
         <div class="text-sm text-gray-500 mt-2" data-i18n="waitingForHost">Waiting for host to start race</div>
     </div>
 
-    <button id="chatToggleBtn" onclick="window.toggleChat()" class="fixed bottom-4 right-4 z-50 bg-blue-600 hover:bg-blue-500 text-white p-3 rounded-full shadow-lg border border-blue-400" style="display: none;">
-        <i class="fas fa-comment-dots text-xl"></i>
-        <span id="chatUnreadBadge" class="hidden absolute -top-1 -left-1 bg-red-500 text-white text-[11px] font-bold px-1.5 py-0.5 rounded-full">0</span>
-    </button>
 
     <div id="chatPanel" class="hidden fixed bottom-16 right-4 z-50 w-72 h-80 bg-navy-900 border border-gray-700 rounded-lg shadow-2xl flex flex-col overflow-hidden">
         <div class="bg-navy-800 p-2 border-b border-gray-700 flex justify-between items-center">
@@ -2489,7 +2491,7 @@
     <script src="js/i18n-extra2.js?v=1"></script>
     <script src="js/i18n-extra3.js?v=1"></script>
     <script src="js/i18n-laps.js?v=1"></script>
-    <script src="js/i18n-new.js?v=1"></script>
+    <script src="js/i18n-new.js?v=2"></script>
     <script src="js/i18n-phrases.js?v=2"></script>
     <script src="js/i18n-phrases2.js?v=1"></script>
     <script src="js/i18n-phrases3.js?v=6"></script>
@@ -2501,13 +2503,13 @@
     <script src="js/race-rules.js?v=11"></script>
     <script src="js/compliance.js?v=3"></script>
     <script src="js/export.js?v=3"></script>
-    <script src="js/autosave.js?v=4"></script>
+    <script src="js/autosave.js?v=5"></script>
     <script src="js/live-timing.js?v=21"></script>
     <script src="js/track-finder.js?v=2"></script>
-    <script src="js/ui.js?v=37"></script>
+    <script src="js/ui.js?v=38"></script>
     <script src="js/walkthrough.js?v=15"></script>
     <script src="js/setup-bar.js?v=13"></script>
-    <script src="js/main.js?v=35"></script>
+    <script src="js/main.js?v=36"></script>
     <script src="js/live-extras.js?v=4"></script>
 </body>
 </html>

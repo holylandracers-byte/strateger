@@ -80,7 +80,17 @@
             config: p.config, drivers: p.drivers, timeline: p.timeline, driverSchedule: p.driverSchedule,
             sig: signature(p)
         };
-        if (opts.auto) {
+        if (opts.replaceName) {
+            // the plan being edited already has a name: keep updating that one entry
+            const same = list.filter(function(s) { return !s.auto && s.name === opts.replaceName; });
+            if (same.length) {
+                entry.id = same[0].id;
+                entry.type = same[0].type;
+                entry.auto = false;
+                list.splice(list.indexOf(same[0]), 1);
+                same.slice(1).forEach(function(d) { list.splice(list.indexOf(d), 1); });
+            }
+        } else if (opts.auto) {
             const last = list.filter(function(s) { return s.auto; }).sort(function(a, b) { return new Date(b.timestamp) - new Date(a.timestamp); })[0];
             if (last && last.sig === entry.sig) return last;          // nothing changed since the last autosave
             // keep only the newest few autosaves
@@ -105,10 +115,11 @@
         clearTimeout(timer);
         if (!dirty) return;
         if (window.state && window.state.isRunning) { dirty = false; return; }   // a live race has its own state saving
-        const label = tr('autoSavedName', 'Auto-saved') + ' · ' + new Date().toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-        const saved = window.saveStrategyLocal({ name: label, auto: true });
+        const named = window._loadedStrategyName;
+        const label = named || (tr('autoSavedName', 'Auto-saved') + ' · ' + new Date().toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }));
+        const saved = window.saveStrategyLocal(named ? { name: named, replaceName: named } : { name: label, auto: true });
         dirty = false;
-        setStatus(saved ? tr('savedOnDevice', 'Saved on this device') + ' ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : tr('autosaveFailed', 'Could not save on this device'), saved ? 'ok' : 'bad');
+        setStatus(saved ? (named ? '“' + named + '” · ' : '') + tr('savedOnDevice', 'Saved on this device') + ' ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : tr('autosaveFailed', 'Could not save on this device'), saved ? 'ok' : 'bad');
     };
 
     // activity anywhere in setup or the preview keeps pushing the 15 s timer back

@@ -3355,7 +3355,7 @@ window.updateStrategyNotifications = function() {
     
     // === Squad sleep/wake info display (continuous) ===
     const squadInfoEl = document.getElementById('squadStatusInfo');
-    if (squadInfoEl && window.config.useSquads) {
+    if (squadInfoEl && window.config.useSquads && window.state.isNightMode) {
         const allLabels = window.getSquadLabelsInUse ? window.getSquadLabelsInUse() : ['A', 'B'];
         const active = window.state.activeSquad;
         const sleeping = allLabels.filter(l => l !== active);
