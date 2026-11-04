@@ -2638,7 +2638,9 @@ window.onLocationInput = function(value) {
                         const cat = r.category || r.class;
                         // Cities and towns often come back as administrative boundaries (rank 10-20), so those count too.
                         const isTown = cat === 'boundary' && r.type === 'administrative' && r.place_rank >= 10 && r.place_rank <= 20;
-                        return cat === 'place' || isTown || (cat === 'leisure' && /track|sports_centre|stadium/.test(r.type || '')) || cat === 'sport';
+                        if (cat === 'place' || isTown || cat === 'sport' || (cat === 'leisure' && /track|sports_centre|stadium/.test(r.type || ''))) return true;
+                        // Districts, industrial/retail zones and stations are valid places too; only street-level results stay out.
+                        return /^(landuse|railway|aeroway)$/.test(cat) && !/^(level_crossing|tram_stop|halt)$/.test(r.type || '');
                     });
                 })().catch(() => [])
             ]);
