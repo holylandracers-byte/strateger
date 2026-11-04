@@ -123,7 +123,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const joinCode = urlParams.get('join');
     const driverCode = urlParams.get('driver');
 
-    if (driverCode) {
+    const coHost = urlParams.get('co');
+    const coKey = urlParams.get('k');
+
+    if (coHost && coKey && !driverCode) {
+        // Delegate (co-admin) link
+        window.startCoAdminSession(coHost, coKey);
+    } else if (driverCode) {
         // Driver link — show ID entry screen for verification
         window.role = 'client';
         window._autoDriverMode = true;

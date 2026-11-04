@@ -4411,3 +4411,46 @@ body.lt-original #apexIframe { flex: 1 1 auto; width: 100%; height: auto !import
 .set-chips button.is-on { background: rgba(34, 211, 238, .14); border-color: var(--ice, #22d3ee); color: var(--ice, #22d3ee); }
 
 
+
+
+/* ==================== CHAT ABOVE THE LIVE-TIMING WIDGET ==================== */
+/* .lt-widget-wrapper sits at z-index 100, so the old z-50 chat opened *underneath* it.
+   Stay above the widget but below the modals (110+). */
+#chatToggleBtn { z-index: 105; }
+#chatPanel { z-index: 106; max-height: calc(100dvh - 80px - var(--safe-bottom, 0px)); }
+
+/* ==================== LIVE TIMING: tiles / standings / both ==================== */
+body.lt-pane-tiles .lt-pane-table,
+body.lt-pane-tiles #apexIframeContainer { display: none !important; }
+body.lt-pane-table-only .lt-tiles { display: none !important; }
+/* Standings only: give the freed height to the table so it scrolls inside the widget */
+body.lt-pane-table-only .lt-table-scroll { max-height: min(60vh, 460px); }
+@media (min-width: 1024px) {
+    body.lt-pane-table-only .lt-table-scroll { max-height: none; }
+}
+
+/* ==================== TABLETS: tighter sizing, either orientation ==================== */
+/* One row of six tiles instead of two rows of three, smaller paddings, so the standings,
+   strategy and pit controls all fit without scrolling as the tablet is turned. */
+@media (min-width: 601px) and (max-width: 1366px) and (pointer: coarse) {
+    .lt-tiles { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+    .lt-tiles > div { padding: 2px 3px; }
+    .lt-tiles > div > div:first-child { font-size: 10px; line-height: 1.1; }
+    .lt-tiles #livePosition { font-size: 1rem; }
+    #liveTimingPanel { padding: 4px 6px; }
+    #liveTimingDragHandle { margin-bottom: 2px; }
+    #statsTable td { padding-top: 2px; padding-bottom: 2px; }
+    #pitEntryBtn { padding-top: 8px; padding-bottom: 8px; font-size: 1rem; }
+    #modeButtonsContainer button { padding-top: 4px; padding-bottom: 4px; }
+    #racePanelsWrapper { gap: 6px; }
+}
+@media (min-width: 601px) and (max-width: 1023px) and (orientation: portrait) and (pointer: coarse) {
+    .lt-table-scroll { max-height: 150px; }
+}
+
+/* ==================== DELEGATE (co-admin) ==================== */
+.dlg-perm { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 6px; background: rgba(15, 23, 42, .6); font-size: 12px; cursor: pointer; }
+.dlg-perm input { width: 16px; height: 16px; accent-color: #22d3ee; flex: none; }
+.dlg-perm small { display: block; color: #64748b; font-size: 11px; }
+body.co-admin-session #shareRaceBtn, body.co-admin-session #driverLinkBtn, body.co-admin-session #delegateBtn { display: none !important; }
+.co-badge { position: fixed; top: 56px; inset-inline-end: 10px; z-index: 104; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; background: #0f172a; color: #fbbf24; border: 1px solid #fbbf2466; pointer-events: none; }

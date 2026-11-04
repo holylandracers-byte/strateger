@@ -67,6 +67,8 @@ window.updateShareUI = function() {
         if (manageBtn) {
             manageBtn.classList.remove('hidden');
         }
+
+        document.getElementById('delegateBtn')?.classList.remove('hidden');
         
         const idEl = document.getElementById('myHostId');
         if (idEl) idEl.innerText = window.myId;
@@ -387,6 +389,9 @@ window.initHostPeer = function() {
                     return;
                 }
 
+                // === Delegate (co-admin) join + permitted commands ===
+                if (typeof window.handleDelegateMessage === 'function' && window.handleDelegateMessage(c, data)) return;
+
                 // === Handle Driver Identification (driver clients bypass viewer approval) ===
                 if (data.type === 'DRIVER_IDENTIFY') {
                     console.log(`🏎️ Peer ${c.peer.substring(0, 8)} identified as DRIVER`);
@@ -582,6 +587,7 @@ window.initHostPeer = function() {
                 window.connectedViewers.delete(c.peer); // Remove from connected viewers map
                 window.connections = window.connections.filter(conn => conn.peer !== c.peer);
                 window.updateViewerDropdown();
+                if (typeof window.delegateConnClosed === 'function') window.delegateConnClosed();
             });
         });
         
@@ -784,8 +790,13 @@ window.connectToHost = function(hostId) {
                     window.conn.send({ type: 'DRIVER_IDENTIFY', timestamp: Date.now() });
                 }
                 
+                // Delegate (co-admin) joins with its invite key instead of asking for viewer approval
+                if (window._coAdmin) {
+                    window.conn.send({ type: 'COADMIN_JOIN', key: window._coAdmin.key });
+                }
+
                 // Auto-send viewer approval request with pending name
-                if (window.pendingChatName && !window._autoDriverMode) {
+                if (window.pendingChatName && !window._autoDriverMode && !window._coAdmin) {
                     window.requestViewerApproval(window.pendingChatName);
                     console.log(`📡 Sent approval request as "${window.pendingChatName}"`);
                 }
@@ -873,6 +884,10 @@ window.connectToHost = function(hostId) {
                 } else if (data.type === 'CHAT') {
                     // Render incoming chats for viewers
                     window.renderChatMessage(data);
+                } else if (data.type === 'COADMIN_GRANTED') {
+                    if (typeof window.onCoAdminGranted === 'function') window.onCoAdminGranted(data);
+                } else if (data.type === 'COADMIN_PERMS') {
+                    if (typeof window.onCoAdminPerms === 'function') window.onCoAdminPerms(data);
                 } else if (data.type === 'PRIVATE_MESSAGE') {
                     // Legacy support: convert to CHAT-like message
                     const msg = { type: 'CHAT', sender: data.sender || 'Host', text: data.message, role: 'host', recipient: window.myId, timestamp: Date.now() };

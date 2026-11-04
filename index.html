@@ -48,7 +48,7 @@
     <script src="js/live-timing-manager.js?v=9"></script>
     <script src="js/qualifying.js?v=13"></script>
 
-    <link rel="stylesheet" href="css/style.css?v=69">
+    <link rel="stylesheet" href="css/style.css?v=70">
 
     <script>
         tailwind.config = {
@@ -118,6 +118,7 @@
                     <div class="hdr-menu-group">
                         <div class="hdr-menu-label" data-i18n="menuTeam">Team</div>
                         <button id="shareRaceBtn" type="button" onclick="window.copyInviteLink()" class="hdr-menu-item hidden"><i class="fas fa-link"></i><span data-i18n="invite">Invite</span></button>
+                        <button id="delegateBtn" type="button" onclick="window.openDelegateModal()" class="hdr-menu-item hidden"><i class="fas fa-user-shield"></i><span data-i18n="delegate">Delegate</span></button>
                         <button id="driverLinkBtn" type="button" onclick="window.copyDriverLink()" class="hdr-menu-item hidden"><i class="fas fa-car-side"></i><span data-i18n="driverLink">Driver Link</span></button>
                         <button id="viewerManageBtn" type="button" onclick="window.openViewerApprovalModal()" class="hdr-menu-item hidden"><i class="fas fa-users-cog"></i><span data-i18n="manageViewers">Manage viewers</span><span id="viewerPendingBadge" class="hidden hdr-menu-badge">0</span></button>
                         <button id="proUpgradeBanner" type="button" onclick="window.showProGate(); document.getElementById('headerOverflowMenu').classList.add('hidden')" class="hdr-menu-item hidden"><i class="fas fa-star"></i><span data-i18n="proUpgradeTitle">Upgrade to Pro</span></button>
@@ -1007,6 +1008,7 @@
                             <button id="addSecondaryTeamBtn" data-i18n-aria="ariaSecondTeam" aria-label="Watch a second team" onclick="window.openTeamPicker('secondary')" class="lt-laptop-only text-[11px] bg-navy-700 border border-gray-600 text-gray-300 px-2 py-0.5 rounded" title="Watch a second team">➕👥</button>
                             <!-- Force Pit Out: bypasses 20s guard and live timing auto-exit, shown only when in pit -->
                             <button id="forcePitOutBtn" onclick="window.forcePitOut()" class="hidden text-[11px] bg-amber-600 hover:bg-amber-500 text-white font-bold px-2 py-0.5 rounded border border-amber-400 transition" title="Force pit out now (override)">⚡ OUT</button>
+                            <button id="ltPaneBtn" type="button" onclick="window.cycleLtPane()" class="text-[11px] bg-navy-700 border border-gray-600 text-gray-300 px-2 py-0.5 rounded" title="Switch view: tiles / standings" aria-label="Switch live timing view">&#9638;</button>
                             <button id="ltMinBtn" type="button" onclick="window.setLtView('compact')" class="text-[11px] bg-navy-700 border border-gray-600 text-gray-300 px-2 py-0.5 rounded" title="Minimize live timing" aria-label="Minimize live timing">&#9644;</button>
                             <button id="ltHideBtn" type="button" onclick="window.setLtView('hidden')" class="text-[11px] bg-navy-700 border border-gray-600 text-gray-300 px-2 py-0.5 rounded" title="Hide live timing" aria-label="Hide live timing">&#128065;</button>
                             <button onclick="window.stopLiveTiming()" class="text-[11px] bg-red-900 text-white px-2 rounded" data-i18n="stop">Stop</button>
@@ -1016,7 +1018,7 @@
                         <span id="ltCompactText">-</span>
                         <button type="button" onclick="window.setLtView('full')" class="text-[11px] bg-navy-700 border border-gray-600 text-ice px-2 py-0.5 rounded" aria-label="Expand live timing">&#9633; Expand</button>
                     </div>
-                    <div class="grid grid-cols-3 gap-1 text-center">
+                    <div id="ltTiles" class="lt-tiles grid grid-cols-3 gap-1 text-center">
                         <div class="bg-navy-950 rounded border border-gray-700 p-1">
                             <div class="text-[11px] text-gray-500" data-i18n="pos">POS</div>
                             <div class="flex items-center justify-center gap-1">
@@ -1032,8 +1034,6 @@
                             <div class="text-[11px] text-gray-500" data-i18n="best">BEST</div>
                             <div id="liveBestLap" class="text-sm font-mono text-neon">-</div>
                         </div>
-                    </div>
-                    <div class="grid grid-cols-3 gap-1 text-center mt-1">
                         <div class="bg-navy-950 rounded border border-gray-700 p-1">
                             <div class="text-[11px] text-gray-500" data-i18n="laps">LAPS</div>
                             <div id="liveLaps" class="text-sm font-bold text-white">-</div>
@@ -1074,9 +1074,9 @@
                     </div>
                     <!-- Category filter chips (laptop only): jump straight to a category instead of
                          scanning every row -- built once categories are known from the feed. -->
-                    <div id="categoryFilterRow" class="hidden lt-laptop-only mt-1 flex flex-wrap gap-1"></div>
+                    <div id="categoryFilterRow" class="lt-pane-table hidden lt-laptop-only mt-1 flex flex-wrap gap-1"></div>
                     <!-- Competitor table header -->
-                    <div id="competitorsTableHeader" class="hidden grid gap-0 text-[11px] font-bold uppercase text-gray-600 tracking-wider px-1 py-0.5 border-b border-gray-700/50 mt-1" style="grid-template-columns: 22px 22px 1fr 44px 46px 52px 52px">
+                    <div id="competitorsTableHeader" class="lt-pane-table hidden grid gap-0 text-[11px] font-bold uppercase text-gray-600 tracking-wider px-1 py-0.5 border-b border-gray-700/50 mt-1" style="grid-template-columns: 22px 22px 1fr 44px 46px 52px 52px">
                         <span></span>
                         <span>#</span>
                         <span>Name</span>
@@ -1085,7 +1085,7 @@
                         <span class="text-right">Lap</span>
                         <span class="text-right lt-col-s1">Avg</span>
                     </div>
-                    <div id="competitorsTable" class="mt-1 overflow-y-auto lt-table-scroll"></div>
+                    <div id="competitorsTable" class="lt-pane-table mt-1 overflow-y-auto lt-table-scroll"></div>
                     <div id="apexIframeContainer" class="hidden mt-1">
                         <div class="flex justify-end text-[11px] mb-1"><a id="apexIframeOpen" href="#" target="_blank" rel="noopener" class="text-ice underline"><span data-i18n="ltOpenTab">Open in new tab</span> &#8599;</a></div>
                         <iframe id="apexIframe" src="" class="w-full rounded" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
@@ -1810,6 +1810,24 @@
         </div>
     </div>
 
+    <!-- Delegate (co-admin) Modal (Host Only) -->
+    <div id="delegateModal" class="hidden fixed inset-0 bg-navy-950/95 z-[110] flex items-center justify-center p-3">
+        <div class="bg-navy-900 border border-gray-700 rounded-lg p-4 max-w-lg w-full max-h-[88vh] overflow-y-auto">
+            <div class="flex items-center justify-between mb-2">
+                <h3 class="text-lg font-bold text-ice flex items-center gap-2"><i class="fas fa-user-shield"></i><span data-i18n="delegate">Delegate</span></h3>
+                <button type="button" onclick="window.closeDelegateModal()" class="text-gray-400 hover:text-white text-2xl leading-none" aria-label="Close">&times;</button>
+            </div>
+            <p class="text-xs text-gray-400 mb-3">Hand part of the admin job to another phone, tablet or laptop. Pick what it may do; guests stay read-only and drivers keep driver mode. Create as many as you need and change or revoke them any time.</p>
+            <div class="bg-navy-800 border border-gray-700 rounded-lg p-2 space-y-2 mb-3">
+                <input type="text" id="dlgLabel" class="input-field text-sm" placeholder="Name (e.g. Pit wall tablet)" maxlength="30">
+                <div id="dlgPresets" class="flex flex-wrap gap-1"></div>
+                <div id="dlgNewPerms" class="grid grid-cols-1 sm:grid-cols-2 gap-1"></div>
+                <button type="button" onclick="window.createDelegateInvite()" class="w-full bg-ice text-navy-950 font-bold py-2 rounded text-sm"><i class="fas fa-plus"></i> Create delegate link</button>
+            </div>
+            <div id="dlgList" class="space-y-2"></div>
+        </div>
+    </div>
+
     <!-- Viewer Approval Modal (Host Only) -->
     <div id="viewerApprovalModal" class="hidden fixed inset-0 bg-navy-950/95 z-[110] flex items-center justify-center p-4">
         <div class="bg-navy-900 border border-gray-700 rounded-lg p-6 max-w-md w-full max-h-[70vh] overflow-y-auto">
@@ -2477,18 +2495,19 @@
     <script src="js/i18n-phrases3.js?v=6"></script>
     <script src="js/i18n-phrases4.js?v=1"></script>
     <script src="js/auth.js?v=10"></script>
-    <script src="js/network.js?v=10"></script>
+    <script src="js/network.js?v=11"></script>
+    <script src="js/delegate.js?v=1"></script>
     <script src="js/strategy.js?v=27"></script>
     <script src="js/race-rules.js?v=11"></script>
     <script src="js/compliance.js?v=3"></script>
     <script src="js/export.js?v=3"></script>
     <script src="js/autosave.js?v=4"></script>
-    <script src="js/live-timing.js?v=20"></script>
+    <script src="js/live-timing.js?v=21"></script>
     <script src="js/track-finder.js?v=2"></script>
-    <script src="js/ui.js?v=36"></script>
+    <script src="js/ui.js?v=37"></script>
     <script src="js/walkthrough.js?v=15"></script>
     <script src="js/setup-bar.js?v=13"></script>
-    <script src="js/main.js?v=34"></script>
+    <script src="js/main.js?v=35"></script>
     <script src="js/live-extras.js?v=4"></script>
 </body>
 </html>

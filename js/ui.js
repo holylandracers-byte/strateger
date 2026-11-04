@@ -1905,6 +1905,7 @@ window.enforceViewerMode = function() {
     const viewOnlySelectors = ['#btnPush', '#btnBad', '#btnResetMode'];
     viewOnlySelectors.forEach(sel => {
         document.querySelectorAll(sel).forEach(el => {
+            if (window.coAllowsEl && window.coAllowsEl(el)) return; // delegate was granted this control
             el.disabled = true;
             el.style.pointerEvents = 'none';
             el.classList.add('opacity-60', 'cursor-not-allowed');
@@ -1933,6 +1934,7 @@ window.enforceViewerMode = function() {
             // Don't hide chat, push/problem (view-only), or google sign-in
             if (el.closest('#chatPanel') || el.closest('#chatToggleBtn') || el.id === 'googleSignInBtn') return;
             if (el.dataset.viewerDisabled === 'true') return; // Already handled as view-only
+            if (window.coAllowsEl && window.coAllowsEl(el)) return; // delegate was granted this control
             
             if (el.tagName === 'INPUT' || el.tagName === 'SELECT') {
                 el.disabled = true;

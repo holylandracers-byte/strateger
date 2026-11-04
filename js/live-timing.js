@@ -2626,6 +2626,38 @@ window.updateLtRestoreChip = function() {
     chip.classList.remove('hidden');
 };
 
+// ---- Inside the full widget: tiles only / standings only / both ----
+// A tablet can't always fit the six tiles AND the standings, so the header button cycles
+// between them in place (the standings scroll inside the widget). Remembered per device,
+// which also serves as "open on a different view by default".
+window.ltPane = 'both';
+try { window.ltPane = localStorage.getItem('strateger_lt_pane') || 'both'; } catch (e) {}
+
+window.setLtPane = function(pane) {
+    if (pane !== 'tiles' && pane !== 'table') pane = 'both';
+    window.ltPane = pane;
+    try { localStorage.setItem('strateger_lt_pane', pane); } catch (e) {}
+    document.body.classList.toggle('lt-pane-tiles', pane === 'tiles');
+    document.body.classList.toggle('lt-pane-table-only', pane === 'table');
+    const btn = document.getElementById('ltPaneBtn');
+    if (btn) {
+        const icon = { both: '▦', tiles: '▤', table: '☰' }[pane];
+        btn.innerHTML = icon;
+        btn.title = btn.getAttribute('aria-label') + ': ' + pane;
+        btn.classList.toggle('text-ice', pane !== 'both');
+    }
+};
+
+window.cycleLtPane = function() {
+    const order = ['both', 'tiles', 'table'];
+    window.setLtPane(order[(order.indexOf(window.ltPane) + 1) % order.length]);
+};
+
+(function initLtPane() {
+    const apply = function() { window.setLtPane(window.ltPane); };
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', apply); else apply();
+})();
+
 (function initLtView() {
     const apply = function() { window.setLtView(window.ltView); };
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', apply); else apply();
