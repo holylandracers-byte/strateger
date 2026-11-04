@@ -2647,6 +2647,7 @@ window.onLocationInput = function(value) {
             const fromMeteo = meteoResults.map(r => ({ name: r.name, admin1: r.admin1 || '', country: r.country || '', lat: r.latitude, lon: r.longitude, displayName: [r.name, r.country].filter(Boolean).join(', ') }));
             const fromNominatim = nominatimResults.map(r => ({ name: (r.display_name || '').split(',')[0] || r.name || query, admin1: r.address?.state || r.address?.county || '', country: r.address?.country || '', lat: Number(r.lat), lon: Number(r.lon), displayName: [(r.display_name || '').split(',')[0] || r.name || query, r.address?.country || ''].filter(Boolean).join(', ') }));
             const seen = new Set();
+            const keptPoints = [];
             const plain = x => String(x || '').toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
             const aliasNames = new Set(aliasMatches.map(a => plain(a.name)));
             const geoResults = [...fromMeteo, ...fromNominatim].filter(r => {
@@ -2655,7 +2656,11 @@ window.onLocationInput = function(value) {
                 const pn = plain(r.name);
                 if ([...aliasNames].some(an => pn === an || pn.includes(an) || an.includes(pn))) return false;
                 if (seen.has(key)) return false;
+                // Spelled differently but the same spot (Hutzot / Hotzot HaMifratz): within 1 km counts as one place.
+                const near = keptPoints.some(p => Math.hypot((p.lat - r.lat) * 111, (p.lon - r.lon) * 111 * Math.cos(r.lat * Math.PI / 180)) < 1);
+                if (near) return false;
                 seen.add(key);
+                if (Number.isFinite(r.lat) && Number.isFinite(r.lon)) keptPoints.push({ lat: r.lat, lon: r.lon });
                 return true;
             }).slice(0, 10);
             const results = [...aliasMatches, ...geoResults].slice(0, 12);
