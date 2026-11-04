@@ -248,14 +248,14 @@ window.renderRuleNotes = function() {
         '<button type="button" id="ruleCardToggle" class="rule-head rule-card-toggle" aria-expanded="' + (!collapsed) + '" aria-controls="ruleCardBody"><span class="rule-title">' + window.tt('Custom race rules') + '</span>'
         + '<span class="rule-note" style="color:#c4b5fd">' + (active ? active + ' ' + window.tt('set') : window.tt('applied to the strategy')) + '</span><i class="fas fa-chevron-down rule-card-chev" aria-hidden="true"></i></button>'
         + '<div id="ruleCardBody" class="rule-card-body"' + (collapsed ? ' hidden' : '') + '>'
-        + '<div class="set-sublabel" style="margin-top:4px">' + window.tt('Pit lane closed windows (minutes from race start)') + '</div>'
+        + (r.closedWindows.length ? '<div class="set-sublabel" style="margin-top:4px">' + window.tt('Pit lane closed windows (minutes from race start)') + '</div>' : '')
         + '<div class="rule-windows">'
         + r.closedWindows.map(function(w, i) {
             return '<div class="rule-window"><input type="number" min="0" value="' + Number(w[0]) + '" class="input-field" data-win="' + i + '" data-pos="0" aria-label="' + window.tt('From') + '">'
                 + '<i class="fas fa-long-arrow-alt-right" aria-hidden="true"></i><input type="number" min="0" value="' + Number(w[1]) + '" class="input-field" data-win="' + i + '" data-pos="1" aria-label="' + window.tt('To') + '">'
                 + '<button type="button" class="rule-window-del" data-win-del="' + i + '" aria-label="' + window.tt('Remove window') + '"><i class="fas fa-trash-alt"></i></button></div>';
         }).join('')
-        + '</div><button type="button" id="ruleAddWindow" class="rule-add"><i class="fas fa-plus"></i> ' + window.tt('Add closed window') + '</button>'
+        + '</div>'
         + '<div class="set-sublabel" style="margin-top:8px">' + window.tt('Track direction change') + '</div>'
         + '<p class="set-hint" style="margin-top:2px">' + window.tt('The pit lane is shut around the moment the track reverses.') + '</p>'
         + '<div class="rule-windows">'
@@ -308,9 +308,6 @@ window.renderRuleNotes = function() {
     });
     card.querySelector('#ruleAddDir').addEventListener('click', function() {
         r.directionChanges.push({ at: 'clock', time: '', lane: 'in', before: 5, after: 5 }); window.saveRaceRules(); window.renderRuleNotes();
-    });
-    card.querySelector('#ruleAddWindow').addEventListener('click', function() {
-        r.closedWindows.push([0, 0]); window.saveRaceRules(); window.renderRuleNotes();
     });
     card.querySelector('#ruleMinStints').addEventListener('change', function(e) { r.minStintsPerDriver = Math.max(0, parseInt(e.target.value) || 0); changed(); });
     card.querySelector('#ruleMaxStints').addEventListener('change', function(e) { r.maxStintsPerDriver = Math.max(0, parseInt(e.target.value) || 0); changed(); });
