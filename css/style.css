@@ -4169,11 +4169,11 @@ body.lt-original #apexIframe { flex: 1 1 auto; width: 100%; height: auto !import
 .setup-bar-go.is-secondary:hover { background: rgba(34, 211, 238, .12); }
 .setup-bar-go.is-quali.is-secondary { color: #93c5fd; border-color: rgba(96, 165, 250, .5); background: transparent; }
 @media (max-width: 560px) { .setup-bar-inner { row-gap: 8px; } .setup-bar-prev { order: 3; } }
-@media (max-width: 560px) {
-    .setup-bar-prev span { display: none; }
+@media (max-width: 640px) {
+    .setup-bar-prev span, .setup-bar-go span { display: none; }
     .setup-bar-prev { padding: 0; width: 48px; justify-content: center; }
-    .setup-bar-go { flex: 1.4; padding: 0 12px; font-size: 15px; }
-    .setup-bar-go.is-secondary { flex: 1; }
+    .setup-bar-go { flex: 1; padding: 0 12px; font-size: 18px; }
+    .setup-bar-go i { font-size: 18px; }
 }
 @media (max-width: 560px) {
     .setup-bar-go { font-size: 13px; letter-spacing: 0; padding: 0 8px; min-width: 0; }
@@ -4344,16 +4344,12 @@ body.lt-original #apexIframe { flex: 1 1 auto; width: 100%; height: auto !import
 .stint-row.is-current .sr-driver-static { background: color-mix(in srgb, var(--sc, #22d3ee) 24%, var(--navy-900)); border-color: color-mix(in srgb, var(--sc, #22d3ee) 60%, #334155); }
 
 /* Direction-change rows: when it happens, which pit is closed, minutes closed before and after */
-.rule-dir { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; align-items: end; padding: 10px; border: 1px solid #1e293b; border-radius: 10px; background: rgba(2, 6, 23, .4); }
-.rule-dir .rule-dir-f:nth-of-type(1), .rule-dir .rule-dir-f:nth-of-type(2) { grid-column: span 1; }
+.rule-dir { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; align-items: end; padding: 12px; border: 1px solid #1e293b; border-radius: 10px; background: rgba(2, 6, 23, .4); }
 .rule-dir-f { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.rule-dir-f > span { font-size: 11px; color: #94a3b8; line-height: 1.2; }
-.rule-dir select.input-field { min-height: 44px; }
-.rule-dir .rule-window-del { justify-self: end; }
-@media (max-width: 560px) {
-    .rule-dir { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 44px; }
-    .rule-dir .rule-dir-time { grid-column: 1 / -1; }
-}
+.rule-dir-f > span { font-size: 12px; color: #94a3b8; line-height: 1.2; }
+.rule-dir .input-field { width: 100%; min-height: 44px; }
+.rule-dir .rule-dir-time { grid-column: 1 / -1; }
+.rule-dir .rule-dir-del { grid-column: 1 / -1; justify-self: end; width: auto; padding: 0 14px; }
 
 /* Custom rules card folds away */
 .rule-card-toggle { width: 100%; background: none; border: 0; padding: 0; color: inherit; text-align: start; font: inherit; }
@@ -4364,9 +4360,9 @@ body.lt-original #apexIframe { flex: 1 1 auto; width: 100%; height: auto !import
 .rule-card-body[hidden] { display: none; }
 
 /* Phone: the name gets a full line to itself when the row is crowded (grip, move, colour, starter, remove) */
-@media (max-width: 560px) {
-    #driversList .driver-row { flex-wrap: wrap; }
-    #driversList .driver-name-wrap { flex: 1 1 90px; min-width: 90px; }
+#driversList .driver-row { flex-wrap: wrap; }
+#driversList .driver-name-wrap { flex: 1 1 110px; min-width: 110px; }
+@media (max-width: 900px) {
     #driversList .driver-remove { order: 12; }
     #driversList .driver-notify-wrap, #driversList .driver-stamina-wrap { flex: 1 1 100%; order: 20; justify-content: flex-end; padding: 0 12px 8px; }
 }

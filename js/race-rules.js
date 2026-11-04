@@ -235,14 +235,13 @@ window.renderRuleNotes = function() {
         card.id = 'raceRuleNotesCard';
         card.className = 'rule rule-custom';
         card.setAttribute('data-rule', '');
-        const intro = body.querySelector('p');
-        body.insertBefore(card, intro ? intro.nextSibling : body.firstChild);
+        body.appendChild(card);
     }
     const r = window.raceRules;
     const esc = window._escHtml;
-    let collapsed = false;
-    try { collapsed = localStorage.getItem('strateger_rules_card_collapsed') === '1'; } catch (e) {}
-    const active = r.closedWindows.length + (r.directionChanges || []).length + (r.minStintsPerDriver ? 1 : 0) + (r.maxStintsPerDriver ? 1 : 0) + r.notes.length;
+    let collapsed = true;
+    try { collapsed = localStorage.getItem('strateger_rules_card_collapsed') !== '0'; } catch (e) {}
+    const active =r.closedWindows.length + (r.directionChanges || []).length + (r.minStintsPerDriver ? 1 : 0) + (r.maxStintsPerDriver ? 1 : 0) + r.notes.length;
     card.classList.toggle('is-collapsed', collapsed);
     card.innerHTML =
         '<button type="button" id="ruleCardToggle" class="rule-head rule-card-toggle" aria-expanded="' + (!collapsed) + '" aria-controls="ruleCardBody"><span class="rule-title">' + window.tt('Custom race rules') + '</span>'
@@ -256,7 +255,7 @@ window.renderRuleNotes = function() {
                 + '<button type="button" class="rule-window-del" data-win-del="' + i + '" aria-label="' + window.tt('Remove window') + '"><i class="fas fa-trash-alt"></i></button></div>';
         }).join('')
         + '</div>'
-        + '<div class="set-sublabel" style="margin-top:8px">' + window.tt('Track direction change') + '</div>'
+        + '<div class="set-sublabel">' + window.tt('Track direction change') + '</div>'
         + '<p class="set-hint" style="margin-top:2px">' + window.tt('The pit lane is shut around the moment the track reverses.') + '</p>'
         + '<div class="rule-windows">'
         + (r.directionChanges || []).map(function(d, i) {
@@ -266,10 +265,10 @@ window.renderRuleNotes = function() {
             return '<div class="rule-dir">'
                 + '<label class="rule-dir-f"><span>' + window.tt('Direction changes at') + '</span><select class="input-field" data-dir="' + i + '" data-f="at">' + opt('clock', half ? 'half' : 'clock', window.tt('Clock time')) + opt('half', half ? 'half' : 'clock', window.tt('Half the race')) + '</select></label>'
                 + '<label class="rule-dir-f"><span>' + window.tt('Closed pit') + '</span><select class="input-field" data-dir="' + i + '" data-f="lane">' + opt('in', lane, window.tt('Pit in')) + opt('out', lane, window.tt('Pit out')) + opt('both', lane, window.tt('Pit in and out')) + '</select></label>'
-                + '<button type="button" class="rule-window-del" data-dir-del="' + i + '" aria-label="' + window.tt('Remove window') + '"><i class="fas fa-trash-alt"></i></button>'
                 + (half ? '' : '<label class="rule-dir-f rule-dir-time"><span>' + window.tt('Time') + '</span><input type="time" class="input-field" value="' + esc(d.time || '') + '" data-dir="' + i + '" data-f="time"></label>')
                 + '<label class="rule-dir-f"><span>' + window.tt('Closed before (min)') + '</span><input type="number" min="0" class="input-field" value="' + Number(d.before || 0) + '" data-dir="' + i + '" data-f="before"></label>'
                 + '<label class="rule-dir-f"><span>' + window.tt('Closed after (min)') + '</span><input type="number" min="0" class="input-field" value="' + Number(d.after || 0) + '" data-dir="' + i + '" data-f="after"></label>'
+                + '<button type="button" class="rule-window-del rule-dir-del" data-dir-del="' + i + '" aria-label="' + window.tt('Remove window') + '"><i class="fas fa-trash-alt"></i></button>'
                 + '</div>';
         }).join('')
         + '</div><button type="button" id="ruleAddDir" class="rule-add"><i class="fas fa-plus"></i> ' + window.tt('Add direction change') + '</button>'
@@ -307,7 +306,7 @@ window.renderRuleNotes = function() {
         btn.addEventListener('click', function() { r.directionChanges.splice(Number(btn.dataset.dirDel), 1); window.saveRaceRules(); window.renderRuleNotes(); window.runSim && window.runSim(); });
     });
     card.querySelector('#ruleAddDir').addEventListener('click', function() {
-        r.directionChanges.push({ at: 'clock', time: '', lane: 'in', before: 5, after: 5 }); window.saveRaceRules(); window.renderRuleNotes();
+        r.directionChanges.push({ at: 'half', time: '', lane: 'in', before: 5, after: 5 }); window.saveRaceRules(); window.renderRuleNotes();
     });
     card.querySelector('#ruleMinStints').addEventListener('change', function(e) { r.minStintsPerDriver = Math.max(0, parseInt(e.target.value) || 0); changed(); });
     card.querySelector('#ruleMaxStints').addEventListener('change', function(e) { r.maxStintsPerDriver = Math.max(0, parseInt(e.target.value) || 0); changed(); });

@@ -711,10 +711,10 @@
         <div id="setupActionCard" class="setup-bar">
             <div class="setup-bar-inner">
                 <p id="setupBarSummary" class="setup-bar-sum" aria-live="polite"></p>
-                <button id="wtPreviewBtn" type="button" class="setup-bar-prev" onclick="window.generatePreview(false, true)"><i class="fas fa-chart-bar"></i><span data-i18n="previewStrategy">Preview</span></button>
-                <button id="saveStrategyBtn" type="button" onclick="window.saveStrategyFromEditor()" class="setup-bar-go"><i class="fas fa-save"></i><span data-i18n="xSaveStrategy">Save strategy</span></button>
-                <button id="startRaceBtn" onclick="window.initRace()" class="setup-bar-go is-secondary" data-i18n="xStartNowRace">Start race</button>
-                <button id="startQualifyBtn" onclick="window.startQualifyingDirect()" class="hidden setup-bar-go is-secondary is-quali" data-i18n="xStartNowQuali">Start qualifying</button>
+                <button id="wtPreviewBtn" type="button" class="setup-bar-prev" aria-label="Preview" onclick="window.generatePreview(false, true)"><i class="fas fa-chart-bar"></i><span data-i18n="previewStrategy">Preview</span></button>
+                <button id="saveStrategyBtn" type="button" onclick="window.saveStrategyFromEditor()" class="setup-bar-go" aria-label="Save strategy"><i class="fas fa-save"></i><span data-i18n="xSaveStrategy">Save strategy</span></button>
+                <button id="startRaceBtn" type="button" onclick="window.initRace()" class="setup-bar-go is-secondary" aria-label="Start race"><i class="fas fa-flag-checkered"></i><span data-i18n="xStartNowRace">Start race</span></button>
+                <button id="startQualifyBtn" type="button" onclick="window.startQualifyingDirect()" class="hidden setup-bar-go is-secondary is-quali" aria-label="Start qualifying"><i class="fas fa-stopwatch"></i><span data-i18n="xStartNowQuali">Start qualifying</span></button>
             </div>
         </div>
     </div>
@@ -1467,6 +1467,14 @@
             <div class="flex gap-4 mb-2 text-gray-300 text-xs">
                 <label><input type="radio" name="strategyVisibility" value="private" checked> <span data-i18n="savePrivate">Private</span></label>
                 <label><input type="radio" name="strategyVisibility" value="public"> <span data-i18n="savePublic">Public (cloud)</span></label>
+            </div>
+            <div id="saveReplaceRow" class="hidden flex flex-col gap-1 mb-2 text-gray-300 text-xs">
+                <label><input type="radio" name="saveReplace" value="replace" checked> <span data-i18n="saveReplace">Replace the saved strategy with this name</span></label>
+                <label><input type="radio" name="saveReplace" value="new"> <span data-i18n="saveAsNew">Save as a new strategy</span></label>
+            </div>
+            <div class="flex gap-4 mb-2 text-gray-300 text-xs">
+                <label><input type="radio" name="saveWhere" value="cloud" checked> <span data-i18n="saveWhereCloud">Device + cloud</span></label>
+                <label><input type="radio" name="saveWhere" value="device"> <span data-i18n="saveWhereDevice">This device only</span></label>
             </div>
             <p class="text-[11px] text-gray-500 mb-4"><i class="fas fa-mobile-alt"></i> <span data-i18n="saveNote">Always kept on this device. Sent to the cloud too when you are online; if not, it syncs later.</span></p>
             <div class="flex gap-2">

@@ -1743,7 +1743,10 @@ window.saveStrategy = function() {
         modal.classList.remove('hidden');
         // איפוס שדה השם
         const nameInput = document.getElementById('saveStrategyName');
-        if (nameInput) nameInput.value = `Strategy ${new Date().toLocaleTimeString()}`;
+        const loaded = window._loadedStrategyName || '';
+        if (nameInput) nameInput.value = loaded || `Strategy ${new Date().toLocaleTimeString()}`;
+        const row = document.getElementById('saveReplaceRow');
+        if (row) row.classList.toggle('hidden', !loaded);
     }
 };
 
@@ -1767,6 +1770,7 @@ window.applyStrategy = function(index) {
         }
 
         console.log("Loading strategy:", strategy.name, strategy);
+        window._loadedStrategyName = strategy.auto ? '' : (strategy.name || '');
 
         // 1. שחזור נתונים לזיכרון - כולל כל הנתונים שנשמרו
         window.config = strategy.config || {};

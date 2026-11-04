@@ -118,7 +118,7 @@
                 const inner = document.createElement('div');
                 inner.className = 'sub-body';
                 let n = h.nextSibling;
-                while (n && !isSubHead(n)) { const nx = n.nextSibling; inner.appendChild(n); n = nx; }
+                while (n && !isSubHead(n) && n.id !== 'raceRuleNotesCard') { const nx = n.nextSibling; inner.appendChild(n); n = nx; }
                 h.parentNode.insertBefore(wrap, h);
                 const key = h.getAttribute('data-i18n') || '';
                 const label = h.textContent;

@@ -162,14 +162,30 @@
         const isPublic = (document.querySelector('input[name="strategyVisibility"]:checked')?.value || 'private') === 'public';
         if (!window.cachedStrategy) return window.showToast(window.tt('No strategy generated yet!'), 'warning');
 
+        const deviceOnly = document.querySelector('input[name="saveWhere"]:checked')?.value === 'device';
+        const replace = !document.getElementById('saveReplaceRow')?.classList.contains('hidden')
+            && document.querySelector('input[name="saveReplace"]:checked')?.value === 'replace';
+
         const btn = document.getElementById('saveStrategyConfirmBtn');
         const original = btn ? btn.innerHTML : '';
         if (btn) { btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; btn.disabled = true; }
         try {
+            if (replace) {
+                const old = read(KEY).filter(function(s) { return !(s.name === name && !s.auto); });
+                write(KEY, old);
+            }
             const entry = window.saveStrategyLocal({ name: name, isPublic: isPublic });
             if (!entry) throw new Error(tr('autosaveFailed', 'Could not save on this device'));
+            window._loadedStrategyName = name;
             dirty = false; clearTimeout(timer);
             let cloud = false;
+            if (deviceOnly) {
+                window.closeSaveStrategyModal();
+                document.dispatchEvent(new CustomEvent('strategy:saved'));
+                setStatus(tr('savedOnDevice', 'Saved on this device'), 'ok');
+                window.showToast('💾 ' + tr('savedOnDevice', 'Saved on this device'), 'info', 4000);
+                return;
+            }
             if (navigator.onLine !== false) {
                 try {
                     await postCloud(snapshot(name, isPublic));
