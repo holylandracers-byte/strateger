@@ -1,7 +1,9 @@
 // Race rules: structured rules that change the strategy itself, not just a note.
 //   closedWindows      [[fromMin, toMin], ...]  pit lane closed, minutes from the race start
-//   directionChanges  [{time:'HH:MM', before, after}]  track reverses at this clock time; the pit lane is shut from
-//                                               `before` minutes ahead to `after` minutes behind it (becomes a closed window)
+//   directionChanges  [{at:'clock'|'half', time:'HH:MM', lane:'in'|'out'|'both', before, after}]  track reverses at this clock
+//                                               time (or at half the race length); the pit lane is shut from `before` minutes
+//                                               ahead to `after` minutes behind it. `lane` says which pit is closed: entering
+//                                               (in), leaving (out) or both. It becomes a closed window.
 //   minStintsPerDriver n                         every driver must drive at least n stints
 //   notes              [text, ...]               rules the engine cannot model, kept as a checklist
 // The engine (applyRaceRules) runs from runSim() after the base plan is built, nudges pit stops out of
@@ -35,16 +37,24 @@ window._ruleMessages = [];
 // converted from its clock time (needs the race start time; a change before the start rolls to the next day).
 window.raceClosedWindows = function() {
     const r = window.raceRules || {};
-    const out = (r.closedWindows || []).map(function(w) { return [Number(w[0]), Number(w[1])]; });
+    const out = (r.closedWindows || []).map(function(w) { return [Number(w[0]), Number(w[1]), 'in']; });
     const st = String((document.getElementById('raceStartTime') || {}).value || '').split(':');
-    if (st.length < 2 || !Number.isFinite(+st[0]) || !Number.isFinite(+st[1])) return out;
-    const startMin = (+st[0]) * 60 + (+st[1]);
+    const hasStart = st.length >= 2 && Number.isFinite(+st[0]) && Number.isFinite(+st[1]);
+    const startMin = hasStart ? (+st[0]) * 60 + (+st[1]) : 0;
+    const raceMin = ((window.config && window.config.raceMs) || (parseFloat((document.getElementById('raceDuration') || {}).value) || 0) * 3600000) / 60000;
     (r.directionChanges || []).forEach(function(d) {
-        const p = String(d.time || '').split(':');
-        if (p.length < 2 || !Number.isFinite(+p[0]) || !Number.isFinite(+p[1])) return;
-        let at = (+p[0]) * 60 + (+p[1]) - startMin;
-        if (at < 0) at += 1440;
-        out.push([Math.max(0, at - (Number(d.before) || 0)), at + (Number(d.after) || 0)]);
+        let at;
+        if (d.at === 'half') {
+            if (!(raceMin > 0)) return;
+            at = raceMin / 2;
+        } else {
+            const p = String(d.time || '').split(':');
+            if (!hasStart || p.length < 2 || !Number.isFinite(+p[0]) || !Number.isFinite(+p[1])) return;
+            at = (+p[0]) * 60 + (+p[1]) - startMin;
+            if (at < 0) at += 1440;
+        }
+        const lane = d.lane === 'out' || d.lane === 'both' ? d.lane : 'in';
+        out.push([Math.max(0, at - (Number(d.before) || 0)), at + (Number(d.after) || 0), lane]);
     });
     return out;
 };
@@ -65,42 +75,59 @@ window.applyRaceRules = function(timeline, config) {
     const msgs = [];
     const minMs = (config.minStint || 0) * 60000;
     const maxMs = (config.maxStint || 0) * 60000;
-    const okLen = function(ms) { return ms >= minMs && (!maxMs || ms <= maxMs); };
+    const raceTotalMs = Number(config.raceMs) || 0;
     const wins = window.raceClosedWindows()
-        .map(function(w) { return [Number(w[0]) * 60000, Number(w[1]) * 60000]; })
-        .filter(function(w) { return Number.isFinite(w[0]) && Number.isFinite(w[1]) && w[1] > w[0]; });
+        .map(function(w) { return [Number(w[0]) * 60000, Number(w[1]) * 60000, w[2] || 'in']; });
+    // The "closed at start / end" settings are closed windows too: pits must stay out of them like any other.
+    if ((config.closedStart || 0) > 0) wins.push([0, config.closedStart * 60000, 'in']);
+    if ((config.closedEnd || 0) > 0 && raceTotalMs > 0) wins.push([raceTotalMs - config.closedEnd * 60000, raceTotalMs, 'in']);
+    for (let i = wins.length - 1; i >= 0; i--) if (!Number.isFinite(wins[i][0]) || !Number.isFinite(wins[i][1]) || wins[i][1] <= wins[i][0]) wins.splice(i, 1);
 
-    // 1) keep pit entries out of closed windows. A run of consecutive pits [p..q] is shifted together by d:
-    //    the stint before pit p absorbs +d, the stint after pit q absorbs -d, stints in between keep their length.
+    // 1) keep pits out of closed windows. A closed window shuts the pit entry, the pit exit or both (its `lane`).
+    //    A run of consecutive pits [p..q] is shifted together by d: the stint before pit p absorbs +d, the stint
+    //    after pit q absorbs -d, stints in between keep their length. Stints aim one minute under the max first.
     const stintsArr = timeline.filter(function(x) { return x.type === 'stint'; });
     const pitsArr = timeline.filter(function(x) { return x.type === 'pit'; });
-    const inWin = function(t) { return wins.some(function(w) { return t >= w[0] && t <= w[1]; }); };
+    const hit = function(w, entry, dur) {
+        const lane = w[2];
+        return ((lane === 'in' || lane === 'both') && entry >= w[0] && entry <= w[1])
+            || ((lane === 'out' || lane === 'both') && entry + dur >= w[0] && entry + dur <= w[1]);
+    };
+    const blocked = function(entry, dur) { return wins.filter(function(w) { return hit(w, entry, dur); })[0] || null; };
     const entriesNow = function() {
         let t = 0; const e = [];
         timeline.forEach(function(it) { if (it.type === 'pit') e.push(t); t += it.duration; });
         return e;
     };
     const stuck = {};
-    for (let pass = 0; pass < 24 && wins.length; pass++) {
+    const softMs = maxMs > 0 ? Math.max(minMs, maxMs - 60000) : 0;
+    for (let pass = 0; pass < 48 && wins.length; pass++) {
         const e = entriesNow();
         let k = -1;
-        for (let i = 0; i < e.length; i++) if (inWin(e[i]) && !stuck[i]) { k = i; break; }
+        for (let i = 0; i < e.length; i++) if (blocked(e[i], pitsArr[i].duration) && !stuck[i]) { k = i; break; }
         if (k < 0) break;
-        const w = wins.filter(function(x) { return e[k] >= x[0] && e[k] <= x[1]; })[0];
+        const w = blocked(e[k], pitsArr[k].duration);
+        const dur = pitsArr[k].duration;
+        const exitAdj = (w[2] === 'in') ? 0 : dur;
+        const tries = [(w[0] - 30000) - (e[k] + exitAdj), (w[1] + 5000) - e[k] - (w[2] === 'out' ? dur : 0)];
         let best = null;
-        [(w[0] - 30000) - e[k], (w[1] + 5000) - e[k]].forEach(function(d) {
-            for (let span = 0; span < pitsArr.length; span++) {
-                for (let p = Math.max(0, k - span); p <= k; p++) {
-                    const q = p + span;
-                    if (q < k || q >= pitsArr.length) continue;
-                    if (!okLen(stintsArr[p].duration + d) || !okLen(stintsArr[q + 1].duration - d)) continue;
-                    let clear = true;
-                    for (let j = p; j <= q; j++) if (inWin(e[j] + d)) clear = false;
-                    if (!clear) continue;
-                    const cost = Math.abs(d) + span * 1000;
-                    if (!best || cost < best.cost) best = { d: d, p: p, q: q, cost: cost };
+        [softMs, maxMs].forEach(function(limit, level) {
+            if (best) return;
+            const okAt = function(ms) { return ms >= minMs && (!limit || ms <= limit); };
+            tries.forEach(function(d) {
+                for (let span = 0; span < pitsArr.length; span++) {
+                    for (let p = Math.max(0, k - span); p <= k; p++) {
+                        const q = p + span;
+                        if (q < k || q >= pitsArr.length) continue;
+                        if (!okAt(stintsArr[p].duration + d) || !okAt(stintsArr[q + 1].duration - d)) continue;
+                        let clear = true;
+                        for (let j = p; j <= q; j++) if (blocked(e[j] + d, pitsArr[j].duration)) clear = false;
+                        if (!clear) continue;
+                        const cost = Math.abs(d) + span * 1000;
+                        if (!best || cost < best.cost) best = { d: d, p: p, q: q, cost: cost };
+                    }
                 }
-            }
+            });
         });
         if (!best) { stuck[k] = true; continue; }
         stintsArr[best.p].duration += best.d;
@@ -174,13 +201,15 @@ window.applyRaceRules = function(timeline, config) {
     }
 
     // 3) report each closed window
+    const laneTxt = { 'in': window.tt('pit in'), out: window.tt('pit out'), both: window.tt('pit in and out') };
     wins.forEach(function(w) {
         let t = 0, bad = 0;
         timeline.forEach(function(item) {
-            if (item.type === 'pit' && t >= w[0] && t <= w[1]) bad++;
+            if (item.type === 'pit' && hit(w, t, item.duration)) bad++;
             t += item.duration;
         });
-        msgs.push({ ok: bad === 0, text: window.tt('Pit closed') + ' ' + w[0] / 60000 + '–' + w[1] / 60000 + ' min: ' + (bad ? bad + ' ' + window.tt('pit(s) inside the window') : window.tt('clear')) });
+        const mins = function(ms) { return Math.round(ms / 600) / 100; };
+        msgs.push({ ok: bad === 0, text: window.tt('Pit closed') + ' ' + mins(w[0]) + '–' + mins(w[1]) + ' min' + (w[2] !== 'in' ? ' (' + laneTxt[w[2]] + ')' : '') + ': ' + (bad ? bad + ' ' + window.tt('pit(s) inside the window') : window.tt('clear')) });
     });
 
     window._ruleMessages = msgs;
@@ -211,8 +240,14 @@ window.renderRuleNotes = function() {
     }
     const r = window.raceRules;
     const esc = window._escHtml;
+    let collapsed = false;
+    try { collapsed = localStorage.getItem('strateger_rules_card_collapsed') === '1'; } catch (e) {}
+    const active = r.closedWindows.length + (r.directionChanges || []).length + (r.minStintsPerDriver ? 1 : 0) + (r.maxStintsPerDriver ? 1 : 0) + r.notes.length;
+    card.classList.toggle('is-collapsed', collapsed);
     card.innerHTML =
-        '<div class="rule-head" style="cursor:default"><span class="rule-title">' + window.tt('Custom race rules') + '</span><span class="rule-note" style="color:#c4b5fd">' + window.tt('applied to the strategy') + '</span></div>'
+        '<button type="button" id="ruleCardToggle" class="rule-head rule-card-toggle" aria-expanded="' + (!collapsed) + '" aria-controls="ruleCardBody"><span class="rule-title">' + window.tt('Custom race rules') + '</span>'
+        + '<span class="rule-note" style="color:#c4b5fd">' + (active ? active + ' ' + window.tt('set') : window.tt('applied to the strategy')) + '</span><i class="fas fa-chevron-down rule-card-chev" aria-hidden="true"></i></button>'
+        + '<div id="ruleCardBody" class="rule-card-body"' + (collapsed ? ' hidden' : '') + '>'
         + '<div class="set-sublabel" style="margin-top:4px">' + window.tt('Pit lane closed windows (minutes from race start)') + '</div>'
         + '<div class="rule-windows">'
         + r.closedWindows.map(function(w, i) {
@@ -221,14 +256,21 @@ window.renderRuleNotes = function() {
                 + '<button type="button" class="rule-window-del" data-win-del="' + i + '" aria-label="' + window.tt('Remove window') + '"><i class="fas fa-trash-alt"></i></button></div>';
         }).join('')
         + '</div><button type="button" id="ruleAddWindow" class="rule-add"><i class="fas fa-plus"></i> ' + window.tt('Add closed window') + '</button>'
-        + '<div class="set-sublabel" style="margin-top:8px">' + window.tt('Track direction change (clock time)') + '</div>'
+        + '<div class="set-sublabel" style="margin-top:8px">' + window.tt('Track direction change') + '</div>'
         + '<p class="set-hint" style="margin-top:2px">' + window.tt('The pit lane is shut around the moment the track reverses.') + '</p>'
         + '<div class="rule-windows">'
         + (r.directionChanges || []).map(function(d, i) {
-            return '<div class="rule-dir"><input type="time" class="input-field" value="' + esc(d.time || '') + '" data-dir="' + i + '" data-f="time" aria-label="' + window.tt('Time') + '">'
+            const half = d.at === 'half';
+            const lane = d.lane === 'out' || d.lane === 'both' ? d.lane : 'in';
+            const opt = function(v, cur, label) { return '<option value="' + v + '"' + (v === cur ? ' selected' : '') + '>' + label + '</option>'; };
+            return '<div class="rule-dir">'
+                + '<label class="rule-dir-f"><span>' + window.tt('Direction changes at') + '</span><select class="input-field" data-dir="' + i + '" data-f="at">' + opt('clock', half ? 'half' : 'clock', window.tt('Clock time')) + opt('half', half ? 'half' : 'clock', window.tt('Half the race')) + '</select></label>'
+                + '<label class="rule-dir-f"><span>' + window.tt('Closed pit') + '</span><select class="input-field" data-dir="' + i + '" data-f="lane">' + opt('in', lane, window.tt('Pit in')) + opt('out', lane, window.tt('Pit out')) + opt('both', lane, window.tt('Pit in and out')) + '</select></label>'
+                + '<button type="button" class="rule-window-del" data-dir-del="' + i + '" aria-label="' + window.tt('Remove window') + '"><i class="fas fa-trash-alt"></i></button>'
+                + (half ? '' : '<label class="rule-dir-f rule-dir-time"><span>' + window.tt('Time') + '</span><input type="time" class="input-field" value="' + esc(d.time || '') + '" data-dir="' + i + '" data-f="time"></label>')
                 + '<label class="rule-dir-f"><span>' + window.tt('Closed before (min)') + '</span><input type="number" min="0" class="input-field" value="' + Number(d.before || 0) + '" data-dir="' + i + '" data-f="before"></label>'
                 + '<label class="rule-dir-f"><span>' + window.tt('Closed after (min)') + '</span><input type="number" min="0" class="input-field" value="' + Number(d.after || 0) + '" data-dir="' + i + '" data-f="after"></label>'
-                + '<button type="button" class="rule-window-del" data-dir-del="' + i + '" aria-label="' + window.tt('Remove window') + '"><i class="fas fa-trash-alt"></i></button></div>';
+                + '</div>';
         }).join('')
         + '</div><button type="button" id="ruleAddDir" class="rule-add"><i class="fas fa-plus"></i> ' + window.tt('Add direction change') + '</button>'
         + '<div class="set-grid-2">'
@@ -240,7 +282,7 @@ window.renderRuleNotes = function() {
                 + '<button type="button" id="ruleClearNotes" class="rule-add" style="margin:0">' + window.tt('Clear') + '</button></div><ul class="rule-notes">'
                 + r.notes.map(function(n) { return '<li>' + esc(n) + '</li>'; }).join('') + '</ul></div>'
             : '')
-        + '<div id="ruleStatus" class="rule-status"></div>';
+        + '<div id="ruleStatus" class="rule-status"></div></div>';
 
     const changed = function() { window.saveRaceRules(); if (typeof window.runSim === 'function') window.runSim(); };
     card.querySelectorAll('input[data-win]').forEach(function(inp) {
@@ -255,7 +297,9 @@ window.renderRuleNotes = function() {
     card.querySelectorAll('[data-dir]').forEach(function(inp) {
         inp.addEventListener('change', function() {
             const d = r.directionChanges[Number(inp.dataset.dir)];
-            d[inp.dataset.f] = inp.dataset.f === 'time' ? inp.value : Math.max(0, Number(inp.value) || 0);
+            const f = inp.dataset.f;
+            d[f] = (f === 'time' || f === 'at' || f === 'lane') ? inp.value : Math.max(0, Number(inp.value) || 0);
+            if (f === 'at') window.renderRuleNotes();
             changed();
         });
     });
@@ -263,13 +307,18 @@ window.renderRuleNotes = function() {
         btn.addEventListener('click', function() { r.directionChanges.splice(Number(btn.dataset.dirDel), 1); window.saveRaceRules(); window.renderRuleNotes(); window.runSim && window.runSim(); });
     });
     card.querySelector('#ruleAddDir').addEventListener('click', function() {
-        r.directionChanges.push({ time: '', before: 5, after: 5 }); window.saveRaceRules(); window.renderRuleNotes();
+        r.directionChanges.push({ at: 'clock', time: '', lane: 'in', before: 5, after: 5 }); window.saveRaceRules(); window.renderRuleNotes();
     });
     card.querySelector('#ruleAddWindow').addEventListener('click', function() {
         r.closedWindows.push([0, 0]); window.saveRaceRules(); window.renderRuleNotes();
     });
     card.querySelector('#ruleMinStints').addEventListener('change', function(e) { r.minStintsPerDriver = Math.max(0, parseInt(e.target.value) || 0); changed(); });
     card.querySelector('#ruleMaxStints').addEventListener('change', function(e) { r.maxStintsPerDriver = Math.max(0, parseInt(e.target.value) || 0); changed(); });
+    card.querySelector('#ruleCardToggle').addEventListener('click', function() {
+        const now = !card.classList.contains('is-collapsed');
+        try { localStorage.setItem('strateger_rules_card_collapsed', now ? '1' : '0'); } catch (e) {}
+        window.renderRuleNotes();
+    });
     const clr = card.querySelector('#ruleClearNotes');
     if (clr) clr.addEventListener('click', function() { r.notes = []; window.saveRaceRules(); window.renderRuleNotes(); });
     window.renderRuleStatus();
@@ -308,7 +357,7 @@ window._showRulesProposal = function(text) {
     if (ksi >= 0 && avgStint && Math.abs(Number(settings[ksi][1]) - avgStint) <= 2) settings.splice(ksi, 1);
     const dirs = (Array.isArray(parsed.directionChanges) ? parsed.directionChanges : [])
         .filter(function(d) { return d && /^\d{1,2}:\d{2}/.test(String(d.time || '')); })
-        .map(function(d) { return { time: String(d.time).slice(0, 5).padStart(5, '0'), before: Math.max(0, Number(d.beforeMin) || 0), after: Math.max(0, Number(d.afterMin) || 0) }; }).slice(0, 6);
+        .map(function(d) { return { at: 'clock', lane: 'in', time: String(d.time).slice(0, 5).padStart(5, '0'), before: Math.max(0, Number(d.beforeMin) || 0), after: Math.max(0, Number(d.afterMin) || 0) }; }).slice(0, 6);
     const reasons = (parsed.reasons && typeof parsed.reasons === 'object') ? parsed.reasons : {};
     const minStints = Number(parsed.minStintsPerDriver) > 0 ? Math.floor(Number(parsed.minStintsPerDriver)) : 0;
     const maxStints = Number(parsed.maxStintsPerDriver) > 0 ? Math.floor(Number(parsed.maxStintsPerDriver)) : 0;

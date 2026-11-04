@@ -141,7 +141,9 @@ window.calculateStintDurations = function(config) {
 
     // The required stops are a minimum. If the stint cap (max stint / fuel tank) cannot cover the race
     // with that few stops, add the stops the cap forces instead of quietly dropping race time.
-    const capMs = Math.min(config.maxStint > 0 ? config.maxStint * 60000 : Infinity, config.fuel > 0 ? config.fuel * 60000 : Infinity);
+    // Plan one minute under the cap (max 70 plans 69); the stop count below uses that same ceiling.
+    const planBounds = window.getStintBoundsMs(config);
+    const capMs = planBounds.planMaxStint;
     const isLapRace = config.raceTarget === 'laps' && config.avgLapSec > 0 && config.raceLaps > 0;
     const lapDriveMs = isLapRace ? config.raceLaps * config.avgLapSec * 1000 : 0;
     const stopsBeforeCap = derivedStops;
@@ -169,9 +171,11 @@ window.calculateStintDurations = function(config) {
     const maxStintMs = config.maxStint > 0 ? config.maxStint * 60000 : raceMs;
     const fuelLimitMs = config.fuel > 0 ? config.fuel * 60000 : Infinity;
     
-    const effectiveMaxStint = Math.min(maxStintMs, fuelLimitMs);
-    // Target 1 minute below max to leave buffer for pit entry.
-    const targetStintDuration = effectiveMaxStint - 60000;
+    // With a real cap (max stint or fuel) every stint, first, middle, last or rain-adjusted, lands at cap-1 at most.
+    const hasCap = config.maxStint > 0 || config.fuel > 0;
+    const rawEffective = Math.min(maxStintMs, fuelLimitMs);
+    const effectiveMaxStint = hasCap ? Math.min(rawEffective, Math.max(rawEffective - 60000, safeMinStintMs)) : rawEffective;
+    const targetStintDuration = hasCap ? effectiveMaxStint : rawEffective - 60000;
 
     let durationFirst = Math.max(safeMinStintMs, targetStintDuration); 
     if (closedStartMs > 0) {
@@ -1157,7 +1161,9 @@ window.getStintBoundsMs = function(config) {
     const maxStintMs = c.maxStint > 0 ? c.maxStint * 60000 : Infinity;
     const fuelLimitMs = c.fuel > 0 ? c.fuel * 60000 : Infinity;
     const effectiveMaxStint = Math.min(maxStintMs, fuelLimitMs);
-    return { minStintMs, maxStintMs, effectiveMaxStint, fuelLimitMs };
+    // Plans aim one minute under the cap (max 70 plans 69) so a slow lap or a late pit never breaks the rule.
+    const planMaxStint = effectiveMaxStint === Infinity ? Infinity : Math.min(effectiveMaxStint, Math.max(effectiveMaxStint - 60000, minStintMs));
+    return { minStintMs, maxStintMs, effectiveMaxStint, planMaxStint, fuelLimitMs };
 };
 
 /** Clamp stints to min/max and redistribute overflow so total drive time is preserved. */
@@ -1165,10 +1171,13 @@ window.normalizeStintDurationsMs = function(durations, opts) {
     opts = opts || {};
     const bounds = opts.bounds || window.getStintBoundsMs(window.config);
     const minMs = bounds.minStintMs > 0 ? bounds.minStintMs : 0;
-    const maxMs = bounds.effectiveMaxStint === Infinity ? Infinity : bounds.effectiveMaxStint;
     const totalTargetMs = opts.totalTargetMs != null
         ? opts.totalTargetMs
         : durations.reduce((a, b) => a + b, 0);
+    // Automatic re-plans (opts.plan) stay one minute under the cap while the time still fits; manual edits may use the full cap.
+    const planOk = !!opts.plan && bounds.planMaxStint != null && bounds.planMaxStint !== Infinity
+        && totalTargetMs <= durations.length * bounds.planMaxStint + 1000;
+    const maxMs = bounds.effectiveMaxStint === Infinity ? Infinity : (planOk ? bounds.planMaxStint : bounds.effectiveMaxStint);
 
     let d = durations.map(x => Math.round((Number(x) || 0) / 1000) * 1000);
     const n = d.length;
@@ -1279,7 +1288,7 @@ window.fixPreviewStintViolations = function(silent) {
     const targetDriveMs = raceMs - totalPitMs - lockedMs;
     const result = window.normalizeStintDurationsMs(
         free.map(s => s.duration),
-        { totalTargetMs: targetDriveMs, bounds: window.getStintBoundsMs(window.config) }
+        { totalTargetMs: targetDriveMs, bounds: window.getStintBoundsMs(window.config), plan: true }
     );
     free.forEach((s, i) => { s.duration = result.durations[i]; });
 
@@ -1322,7 +1331,8 @@ window.fixRemainingStintTargets = function(silent) {
     const totalRemaining = remaining.reduce((a, b) => a + b, 0);
     const result = window.normalizeStintDurationsMs(remaining, {
         totalTargetMs: totalRemaining,
-        bounds
+        bounds,
+        plan: true
     });
     for (let i = 0; i < result.durations.length; i++) {
         targets[currentIdx + 1 + i] = result.durations[i];

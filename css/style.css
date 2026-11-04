@@ -4343,45 +4343,30 @@ body.lt-original #apexIframe { flex: 1 1 auto; width: 100%; height: auto !import
 .sr-handle-off { cursor: default; pointer-events: none; }
 .stint-row.is-current .sr-driver-static { background: color-mix(in srgb, var(--sc, #22d3ee) 24%, var(--navy-900)); border-color: color-mix(in srgb, var(--sc, #22d3ee) 60%, #334155); }
 
-/* Direction-change rows: clock time, minutes closed before and after */
-.rule-dir { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1fr) 44px; gap: 8px; align-items: end; }
+/* Direction-change rows: when it happens, which pit is closed, minutes closed before and after */
+.rule-dir { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; align-items: end; padding: 10px; border: 1px solid #1e293b; border-radius: 10px; background: rgba(2, 6, 23, .4); }
+.rule-dir .rule-dir-f:nth-of-type(1), .rule-dir .rule-dir-f:nth-of-type(2) { grid-column: span 1; }
 .rule-dir-f { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .rule-dir-f > span { font-size: 11px; color: #94a3b8; line-height: 1.2; }
-@media (max-width: 560px) { .rule-dir { grid-template-columns: 1fr 1fr 44px; } .rule-dir > input[type="time"] { grid-column: 1 / -1; } }
-#rulesCard .num-stepper > button { min-height: 44px; flex-basis: 40px; }
-#rulesCard .num-stepper > .input-field { min-height: 44px; font-size: 16px !important; }
+.rule-dir select.input-field { min-height: 44px; }
+.rule-dir .rule-window-del { justify-self: end; }
+@media (max-width: 560px) {
+    .rule-dir { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 44px; }
+    .rule-dir .rule-dir-time { grid-column: 1 / -1; }
+}
 
-/* Steppers keep number order (− left, + right) in RTL too */
-.num-stepper { direction: ltr; }
-[dir="rtl"] .num-stepper > button:first-child { border-radius: 8px 0 0 8px; }
-[dir="rtl"] .num-stepper > button:last-child { border-radius: 0 8px 8px 0; }
-[dir="rtl"] .set-when-sum i { transform: scaleX(-1); }
+/* Custom rules card folds away */
+.rule-card-toggle { width: 100%; background: none; border: 0; padding: 0; color: inherit; text-align: start; font: inherit; }
+.rule-card-toggle:focus-visible { outline: 2px solid #a78bfa; outline-offset: 2px; border-radius: 6px; }
+.rule-card-chev { margin-inline-start: auto; font-size: 12px; color: #94a3b8; transition: transform .2s cubic-bezier(.16, 1, .3, 1); }
+.rule-custom.is-collapsed .rule-card-chev { transform: rotate(-90deg); }
+[dir="rtl"] .rule-custom.is-collapsed .rule-card-chev { transform: rotate(90deg); }
+.rule-card-body[hidden] { display: none; }
 
-/* Qualifying decision tree */
-.q-step { padding: 14px 0; border-top: 1px solid var(--theme-border, #1a2438); }
-.q-step:first-child { border-top: 0; padding-top: 0; }
-.q-ask { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; font-size: 15px; font-weight: 700; color: #e2e8f0; }
-.q-n { flex: none; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: rgba(96, 165, 250, .18); color: #93c5fd; font-size: 12px; font-weight: 800; }
-.q-sub { margin-top: 12px; padding-inline-start: 12px; border-inline-start: 2px solid rgba(96, 165, 250, .35); }
-.q-sub.hidden { display: none; }
-#qTree .set-preview { margin-top: 4px; }
-#qualifyingPanel .seg button { min-height: 46px; }
-@media (max-width: 420px) { #qualifyingPanel .seg button { font-size: 12px; padding: 0 4px; } }
-
-/* Section titles never wrap; the readout gives way instead */
-.set-card-head > span:first-of-type, #driversCard > h2 > span:first-of-type { white-space: nowrap; flex: 0 0 auto !important; }
-.sec-sum { flex: 0 1 auto; min-width: 0; }
-
-/* Qualifying tiles: each choice has an icon, a name and one line of what it means */
-.qopts { display: grid; gap: 8px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.qopts.q3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.qopt { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-height: 92px; padding: 12px; text-align: start; cursor: pointer; border: 1px solid #334155; border-radius: 12px; background: rgba(2, 6, 23, .35); color: #94a3b8; transition: border-color .15s, background .15s, transform .12s; }
-.qopt:hover { border-color: #60a5fa; }
-.qopt:active { transform: scale(.98); }
-.qopt > i { font-size: 18px; color: #64748b; margin-bottom: 2px; transition: color .15s; }
-.qopt-t { font-size: 14px; font-weight: 800; color: #e2e8f0; line-height: 1.2; }
-.qopt-d { font-size: 12px; line-height: 1.3; color: #94a3b8; }
-.qopt.bg-blue-600 { background: rgba(59, 130, 246, .16) !important; border-color: #60a5fa; box-shadow: inset 0 0 0 1px #60a5fa; }
-.qopt.bg-blue-600 > i { color: #93c5fd; }
-.qopt.bg-blue-600 .qopt-d { color: #cbd5e1; }
-@media (max-width: 420px) { .qopts.q3 { grid-template-columns: 1fr; } .qopts.q3 .qopt { flex-direction: row; align-items: center; flex-wrap: wrap; min-height: 56px; gap: 4px 10px; } .qopts.q3 .qopt-d { flex-basis: 100%; padding-inline-start: 28px; } }
+/* Phone: the name gets a full line to itself when the row is crowded (grip, move, colour, starter, remove) */
+@media (max-width: 560px) {
+    #driversList .driver-row { flex-wrap: wrap; }
+    #driversList .driver-name-wrap { flex: 1 1 90px; min-width: 90px; }
+    #driversList .driver-remove { order: 12; }
+    #driversList .driver-notify-wrap, #driversList .driver-stamina-wrap { flex: 1 1 100%; order: 20; justify-content: flex-end; padding: 0 12px 8px; }
+}

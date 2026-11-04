@@ -1192,9 +1192,12 @@ window.openStintDriverPicker = function(stintIndex) {
 
     const tr = (k, fb) => { const v = window.t ? window.t(k) : null; return (v && v !== k) ? v : fb; };
     const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    // The race's own driver list (name, colour and index) is what the stints use, so the picker offers exactly that:
+    // the colour here is the colour set in the driver's row, never a stale copy from the saved pool.
     const pool = window.getDriverPool ? window.getDriverPool() : [];
     const slots = window._effectiveDriverSlots ? window._effectiveDriverSlots() : pool;
-    const drivers = slots.length > 0 ? slots : pool;
+    const raceDrivers = Array.isArray(window.drivers) && window.drivers.length ? window.drivers : null;
+    const drivers = raceDrivers || (slots.length > 0 ? slots : pool);
     const maxDriverMs = (parseFloat(document.getElementById('maxDriverTime')?.value) || 0) * 60000;
     const noDoubles = document.getElementById('allowDouble') ? !document.getElementById('allowDouble').checked : false;
     const fmt = (ms) => window.formatTimeHMS ? window.formatTimeHMS(ms) : Math.round(ms / 60000) + 'm';
@@ -1250,12 +1253,12 @@ window.openStintDriverPicker = function(stintIndex) {
             const targets = (window._sdpApplyAll && sameCount > 1)
                 ? stints.map((s, i) => i).filter(i => i >= stintIndex && stints[i].driverName === current.driverName && !(stints[i]._actual || stints[i]._done))
                 : [stintIndex];
-            const driverPool = window.getDriverPool ? window.getDriverPool() : [];
-            const poolIdx = driverPool.findIndex(d => d.name === driver.name);
+            const pickIdx = parseInt(btn.dataset.di, 10);
             targets.forEach(i => {
-                const idx = poolIdx >= 0 ? poolIdx : i;
+                const idx = raceDrivers ? pickIdx : i;
                 stints[i].driverName = driver.name;
                 stints[i].color = driver.color;
+                if (raceDrivers) stints[i].squad = driver.squad;
                 stints[i].driverIdx = idx;
                 const sched = window.state && window.state.stintSchedule && window.state.stintSchedule[i];
                 if (sched) { sched.driverName = driver.name; sched.color = driver.color; sched.driverIdx = idx; }
@@ -1490,42 +1493,18 @@ window._bindLongPressAction = function(el, opts) {
 window._touchDragState = null;
 
 window.initTouchDrag = function(container) {
-    if (!container || !window._isTouchDevice) return;
+    if (!container) return;
     if (container.dataset.touchDragInit === '1') return;
     container.dataset.touchDragInit = '1';
 
     const rowAt = (x, y) => document.elementFromPoint(x, y)?.closest('.stint-row[data-index]:not(.stint-row-locked)');
     const clear = () => container.querySelectorAll('.drag-over, .is-dragging').forEach(i => i.classList.remove('drag-over', 'is-dragging'));
-
-    // Touch the grip and drag: no hold needed. Only the grip drags, so the rest of the row still scrolls.
-    container.addEventListener('touchstart', function(e) {
-        const handle = e.target.closest('.sr-handle');
-        if (!handle) return;
-        const row = handle.closest('[data-index]');
-        if (!row || row.classList.contains('stint-row-locked')) return;
-        window._touchDragState = { fromIdx: parseInt(row.getAttribute('data-index'), 10), el: row };
-        row.classList.add('is-dragging');
-        window.haptic && window.haptic('light');
-    }, { passive: true });
-
-    container.addEventListener('touchmove', function(e) {
-        if (!window._touchDragState) return;
-        e.preventDefault();
-        const touch = e.touches[0];
-        container.querySelectorAll('.drag-over').forEach(i => i.classList.remove('drag-over'));
-        const target = rowAt(touch.clientX, touch.clientY);
-        if (target && target !== window._touchDragState.el) target.classList.add('drag-over');
-        const rect = container.getBoundingClientRect();
-        if (touch.clientY < rect.top + 56) container.scrollTop -= 14;
-        else if (touch.clientY > rect.bottom - 56) container.scrollTop += 14;
-    }, { passive: false });
-
-    container.addEventListener('touchend', function(e) {
+    const finish = (e, drop) => {
         const drag = window._touchDragState;
         window._touchDragState = null;
         if (!drag) return;
-        const touch = e.changedTouches[0];
-        const target = rowAt(touch.clientX, touch.clientY);
+        try { container.releasePointerCapture(drag.pointerId); } catch (err) {}
+        const target = drop ? rowAt(e.clientX, e.clientY) : null;
         clear();
         if (target) {
             const toIdx = parseInt(target.getAttribute('data-index'), 10);
@@ -1534,11 +1513,41 @@ window.initTouchDrag = function(container) {
                 window.reinsertStint(drag.fromIdx, toIdx);
             }
         }
-    }, { passive: true });
+    };
 
-    container.addEventListener('touchcancel', function() {
-        window._touchDragState = null;
-        clear();
+    // Touch and pen only (a mouse keeps the native drag). Only the grip drags, so the rest of the row still scrolls.
+    // The container captures the pointer: if the list re-renders mid-drag the gesture keeps reporting to it.
+    container.addEventListener('pointerdown', function(e) {
+        if (e.pointerType === 'mouse') return;
+        const handle = e.target.closest && e.target.closest('.sr-handle');
+        if (!handle) return;
+        const row = handle.closest('[data-index]');
+        if (!row || row.classList.contains('stint-row-locked')) return;
+        window._touchDragState = { fromIdx: parseInt(row.getAttribute('data-index'), 10), pointerId: e.pointerId };
+        try { container.setPointerCapture(e.pointerId); } catch (err) {}
+        row.classList.add('is-dragging');
+        window.haptic && window.haptic('light');
+        e.preventDefault();
+    });
+
+    container.addEventListener('pointermove', function(e) {
+        const drag = window._touchDragState;
+        if (!drag || e.pointerId !== drag.pointerId) return;
+        e.preventDefault();
+        container.querySelectorAll('.drag-over').forEach(i => i.classList.remove('drag-over'));
+        const target = rowAt(e.clientX, e.clientY);
+        const from = container.querySelector('.stint-row[data-index="' + drag.fromIdx + '"]');
+        if (target && target !== from) target.classList.add('drag-over');
+        const rect = container.getBoundingClientRect();
+        if (e.clientY < rect.top + 56) container.scrollTop -= 14;
+        else if (e.clientY > rect.bottom - 56) container.scrollTop += 14;
+    });
+
+    container.addEventListener('pointerup', function(e) {
+        if (window._touchDragState && e.pointerId === window._touchDragState.pointerId) finish(e, true);
+    });
+    container.addEventListener('pointercancel', function(e) {
+        if (window._touchDragState && e.pointerId === window._touchDragState.pointerId) finish(e, false);
     });
 };
 

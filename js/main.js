@@ -1265,7 +1265,8 @@ function _maybeRecalcAfterDrift() {
     if (remainingSlice.length > 0 && typeof window.normalizeStintDurationsMs === 'function') {
         const norm = window.normalizeStintDurationsMs(remainingSlice, {
             totalTargetMs: futurePool,
-            bounds: window.getStintBoundsMs(window.config)
+            bounds: window.getStintBoundsMs(window.config),
+            plan: true
         });
         for (let i = 0; i < norm.durations.length; i++) {
             newTargets[currentStintIdx + 1 + i] = norm.durations[i];
@@ -2326,7 +2327,7 @@ window.confirmPitExit = function(autoDetected) {
         // A stint that already ran is history: its real length replaces the plan, and nothing below touches it again.
         targets[completedIdx] = driveDuration;
         // If the time left cannot be covered within the max stint, the plan needs more stops, as it did at the start.
-        const cap = bounds && bounds.effectiveMaxStint !== Infinity ? bounds.effectiveMaxStint : 0;
+        const cap = bounds && bounds.planMaxStint !== Infinity ? bounds.planMaxStint : 0;
         let count = remaining.length;
         if (cap > 0) {
             while (count < remaining.length + 12 && (raceRemainingMs - (count - 1) * pitTimeMs) / count > cap) count++;
@@ -2340,7 +2341,7 @@ window.confirmPitExit = function(autoDetected) {
         const baseSum = remaining.reduce((a, b) => a + b, 0) || 1;
         let newRemaining = remaining.map(t => Math.round(t * poolNow / baseSum));
         if (typeof window.normalizeStintDurationsMs === 'function') {
-            newRemaining = window.normalizeStintDurationsMs(newRemaining, { totalTargetMs: poolNow, bounds: bounds }).durations;
+            newRemaining = window.normalizeStintDurationsMs(newRemaining, { totalTargetMs: poolNow, bounds: bounds, plan: true }).durations;
         }
         for (let i = 0; i < newRemaining.length; i++) targets[completedIdx + 1 + i] = newRemaining[i];
         console.log(`♻️ Pit exit recalc: ${(drivePoolMs / 60000).toFixed(1)}m of driving left across ${newRemaining.length} stints (was ${(plannedMs / 60000).toFixed(1)}m)`);
