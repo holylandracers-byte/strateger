@@ -48,7 +48,7 @@
     <script src="js/live-timing-manager.js?v=9"></script>
     <script src="js/qualifying.js?v=13"></script>
 
-    <link rel="stylesheet" href="css/style.css?v=68">
+    <link rel="stylesheet" href="css/style.css?v=69">
 
     <script>
         tailwind.config = {
@@ -360,9 +360,6 @@
                     <div>
                         <label class="set-label" for="reqPitStops" data-i18n="lblStops">Req. Stops</label>
                         <input type="number" id="reqPitStops" value="15" placeholder="Off" onchange="window.runSim()" class="input-field set-big text-neon">
-                        <div class="set-chips" role="group" aria-label="Required stops presets">
-                            <button type="button" id="noStopsBtn" onclick="document.getElementById('reqPitStops').value='';window.runSim()" data-i18n="noRequiredStops">No required stops</button>
-                        </div>
                     </div>
                 </div>
 
@@ -494,13 +491,14 @@
                         <div class="set-grid-2">
                             <div>
                                 <label class="set-sublabel" for="squadWindowStart" data-i18n="lblSquadWindowStart">Start</label>
-                                <input type="time" id="squadWindowStart" class="input-field squad-start-time" onchange="window.runSim()">
+                                <input type="time" id="squadWindowStart" class="input-field squad-start-time" onchange="window._updateSquadSummary(); window.runSim()">
                             </div>
                             <div>
                                 <label class="set-sublabel" for="squadWindowEnd" data-i18n="lblSquadWindowEnd">End</label>
-                                <input type="time" id="squadWindowEnd" class="input-field" onchange="window.runSim()">
+                                <input type="time" id="squadWindowEnd" class="input-field" onchange="window._updateSquadSummary(); window.runSim()">
                             </div>
                         </div>
+                        <p id="squadWindowSummary" class="set-when-sum" aria-live="polite"></p>
                         <p class="set-hint" data-i18n="lblSquadScheduleHint">Outside this window all drivers share equally. Inside, squads rotate evenly.</p>
                     </div>
                 </div>
@@ -2477,16 +2475,17 @@
     <script src="js/i18n-phrases.js?v=2"></script>
     <script src="js/i18n-phrases2.js?v=1"></script>
     <script src="js/i18n-phrases3.js?v=6"></script>
+    <script src="js/i18n-phrases4.js?v=1"></script>
     <script src="js/auth.js?v=10"></script>
     <script src="js/network.js?v=10"></script>
-    <script src="js/strategy.js?v=26"></script>
-    <script src="js/race-rules.js?v=10"></script>
+    <script src="js/strategy.js?v=27"></script>
+    <script src="js/race-rules.js?v=11"></script>
     <script src="js/compliance.js?v=3"></script>
     <script src="js/export.js?v=3"></script>
     <script src="js/autosave.js?v=4"></script>
     <script src="js/live-timing.js?v=20"></script>
     <script src="js/track-finder.js?v=2"></script>
-    <script src="js/ui.js?v=35"></script>
+    <script src="js/ui.js?v=36"></script>
     <script src="js/walkthrough.js?v=15"></script>
     <script src="js/setup-bar.js?v=13"></script>
     <script src="js/main.js?v=34"></script>

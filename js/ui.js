@@ -350,7 +350,7 @@ window.createDriverInput = function(val, checked, squad) {
 
     const starterLabel = document.createElement('span');
     starterLabel.className = 'driver-starter-label' + (checked ? '' : ' hidden');
-    starterLabel.textContent = 'STARTER';
+    starterLabel.textContent = window.tt('Starter');
 
     nameWrap.appendChild(driverInput);
     nameWrap.appendChild(starterLabel);
@@ -445,31 +445,7 @@ window.createDriverInput = function(val, checked, squad) {
     notifyWrap.appendChild(notifyInput);
     notifyWrap.appendChild(notifyLabel);
 
-    // ── Move up / down (tap-friendly alternative to dragging) ──
-    const moveBox = document.createElement('div');
-    moveBox.className = 'driver-move';
-    [['up', 'M3 10l5-5 5 5', 'moveUp'], ['down', 'M3 6l5 5 5-5', 'moveDown']].forEach(([dir, path, key]) => {
-        const b = document.createElement('button');
-        b.type = 'button';
-        b.className = 'driver-move-btn';
-        b.setAttribute('aria-label', window.t(key));
-        b.title = window.t(key);
-        b.innerHTML = '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="' + path + '"/></svg>';
-        b.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const list = div.parentNode;
-            if (!list) return;
-            if (dir === 'up' && div.previousElementSibling) list.insertBefore(div, div.previousElementSibling);
-            else if (dir === 'down' && div.nextElementSibling) list.insertBefore(div.nextElementSibling, div);
-            else return;
-            window.syncStarterToTop();
-            window.runSim();
-        });
-        moveBox.appendChild(b);
-    });
-
     div.appendChild(dragHandle);
-    div.appendChild(moveBox);
     div.appendChild(accentBar);
     div.appendChild(colorSwatch);
     div.appendChild(radio);
@@ -490,34 +466,53 @@ window.createDriverInput = function(val, checked, squad) {
     removeBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         const name = driverInput.value;
+        if (!window.confirm(window.tt('Remove {{name}} from the race?').replace('{{name}}', name))) return;
         if (window.getDriverPool().some(d => d.name === name)) { window.removeDriverFromPool(name); return; }
         const list = div.parentNode;
         if (list && list.children.length > 2) { div.remove(); window.syncStarterToTop(); window.runSim(); }
     });
-    // ── Sits out: stays in the group but does not drive this race (a team of 4 where only 3 drive) ──
-    const sitBtn = document.createElement('button');
-    sitBtn.type = 'button';
-    sitBtn.className = 'driver-sit-btn';
-    sitBtn.title = window.t('sitOutTip');
-    sitBtn.setAttribute('aria-label', window.t('sitOutTip'));
-    sitBtn.innerHTML = '<i class="fas fa-user-slash" aria-hidden="true"></i>';
-    const sitOutNow = () => { const e = window.getDriverPool().find(d => d.name === driverInput.value.trim()); return !!(e && e.sitOut); };
-    const showSitOut = (on) => { div.classList.toggle('is-sitout', on); sitBtn.setAttribute('aria-pressed', String(on)); };
-    showSitOut(sitOutNow());
-    sitBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const on = !div.classList.contains('is-sitout');
-        const pool = window.getDriverPool();
-        const entry = pool.find(d => d.name === driverInput.value.trim());
-        if (entry) { entry.sitOut = on; window.saveDriverPool(pool); }
-        showSitOut(on);
-        window.syncStarterToTop();
-        window.runSim();
-    });
-    div.appendChild(sitBtn);
+    // ── Per-driver settings (max stint, warning lead time) live in a small dialog ──
+    const gearBtn = document.createElement('button');
+    gearBtn.type = 'button';
+    gearBtn.className = 'driver-gear-btn';
+    gearBtn.title = window.tt('Driver settings');
+    gearBtn.setAttribute('aria-label', window.tt('Driver settings'));
+    gearBtn.innerHTML = '<i class="fas fa-sliders-h" aria-hidden="true"></i>';
+    const markGear = () => gearBtn.classList.toggle('has-custom', !!(staminaInput.value || notifyInput.value));
+    gearBtn.addEventListener('click', (e) => { e.stopPropagation(); window._openDriverSettings(driverInput, staminaWrap, staminaInput, notifyInput, markGear); });
+    staminaInput.addEventListener('input', markGear);
+    notifyInput.addEventListener('input', markGear);
+    markGear();
+    div.appendChild(gearBtn);
     div.appendChild(removeBtn);
 
     document.getElementById('driversList').appendChild(div);
+};
+
+window._openDriverSettings = function(nameInput, staminaWrap, staminaInput, notifyInput, done) {
+    const old = document.getElementById('driverSettingsModal');
+    if (old) old.remove();
+    const esc = window._escHtml || (x => String(x));
+    const showStamina = !staminaWrap.classList.contains('hidden');
+    const ov = document.createElement('div');
+    ov.id = 'driverSettingsModal';
+    ov.className = 'fixed inset-0 bg-black/85 flex items-center justify-center p-4';
+    ov.style.zIndex = 210;
+    ov.innerHTML = '<div class="bg-navy-900 border border-gray-700 rounded-2xl shadow-2xl max-w-sm w-full p-5 space-y-3" role="dialog" aria-modal="true">'
+        + '<div class="text-base font-black text-white">' + esc(nameInput.value) + '</div>'
+        + (showStamina ? '<div><label class="set-sublabel" for="dsStamina">' + window.tt('Max stint for this driver (min)') + '</label><input id="dsStamina" type="number" min="1" class="input-field" placeholder="∞" value="' + esc(staminaInput.value) + '"></div>' : '')
+        + '<div><label class="set-sublabel" for="dsNotify">' + window.tt('Warn this driver before the pit (min)') + '</label><input id="dsNotify" type="number" min="0" step="0.5" class="input-field" placeholder="' + esc(notifyInput.placeholder) + '" value="' + esc(notifyInput.value) + '"></div>'
+        + '<button type="button" id="dsDone" class="w-full bg-ice text-navy-950 font-bold py-2 rounded-lg">' + window.tt('Done') + '</button></div>';
+    document.body.appendChild(ov);
+    const push = (src, dst) => { dst.value = src.value; dst.dispatchEvent(new Event('input', { bubbles: true })); done(); };
+    const s = ov.querySelector('#dsStamina'), n = ov.querySelector('#dsNotify');
+    if (s) s.addEventListener('input', () => push(s, staminaInput));
+    n.addEventListener('input', () => push(n, notifyInput));
+    const close = () => ov.remove();
+    ov.querySelector('#dsDone').onclick = close;
+    ov.addEventListener('click', (e) => { if (e.target === ov) close(); });
+    ov.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+    (s || n).focus();
 };
 
 // The driver at the top of the list is the starter, so reordering the list moves the start.
@@ -565,6 +560,20 @@ window.toggleMaxConsecutive = function() {
     const allowed = document.getElementById('allowDouble')?.checked;
     const row = document.getElementById('maxConsecutiveRow');
     if (row) row.classList.toggle('hidden', !allowed);
+};
+
+// Window start to end as one range, and how long each squad gets inside it.
+window._updateSquadSummary = function() {
+    const el = document.getElementById('squadWindowSummary');
+    if (!el) return;
+    const n = parseInt(document.getElementById('numSquads')?.value) || 0;
+    const a = (document.getElementById('squadWindowStart')?.value || '').split(':');
+    const b = (document.getElementById('squadWindowEnd')?.value || '').split(':');
+    if (n < 2 || a.length < 2 || b.length < 2) { el.textContent = ''; return; }
+    let mins = (+b[0] * 60 + +b[1]) - (+a[0] * 60 + +a[1]);
+    if (mins <= 0) mins += 1440;
+    const fmt = (m) => Math.floor(m / 60) + ':' + String(Math.round(m % 60)).padStart(2, '0');
+    el.innerHTML = '<b>' + document.getElementById('squadWindowStart').value + ' → ' + document.getElementById('squadWindowEnd').value + '</b> <span>· ' + fmt(mins) + ' · ' + window.tt('each squad gets about') + ' ' + fmt(mins / n) + '</span>';
 };
 
 window.toggleSquadsInput = function() {
@@ -629,6 +638,8 @@ window.toggleSquadsInput = function() {
             }
         }
     }
+
+    window._updateSquadSummary();
 
     // Translate dropdown options
     window.translateSquadDropdown();
@@ -3373,12 +3384,10 @@ window._updateKartChangeInfo = function() {
 
 // Auto-show / hide the NLE section based on whether mode detection says noLimitEndurance
 window._syncNLESection = function() {
-    const maxStintVal  = parseFloat(document.getElementById('maxStint')?.value  || '0') || 0;
-    const reqStopsVal  = parseInt(document.getElementById('reqPitStops')?.value || '0') || 0;
-    const pitTimeVal   = parseInt(document.getElementById('minPitTime')?.value  || '0') || 0;
-    const isNLE = maxStintVal === 0 || reqStopsVal === 0 || pitTimeVal === 0;
     const section = document.getElementById('extraPitSection');
-    if (section) section.classList.toggle('hidden', !isNLE);
+    if (!section) return;
+    const on = (window._kartRuleActive && window._kartRuleActive()) || (window._ruleShow && window._ruleShow.kart);
+    section.classList.toggle('hidden', !on);
 };
 
 // Show kart rotation window info whenever numTeams changes

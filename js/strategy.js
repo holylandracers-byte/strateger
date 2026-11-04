@@ -642,12 +642,12 @@ window._setRaceTarget = function(mode, silent) {
 window._syncRaceTarget = function() {
     // Always show the duration as hours and minutes, and mark "no required stops" when that field is empty.
     const hm = document.getElementById('durationHM');
-    const stopsEl = document.getElementById('reqPitStops');
-    if (stopsEl) document.getElementById('noStopsBtn')?.classList.toggle('is-on', stopsEl.value.trim() === '');
+    let pitLossMs = 0;
     const setHM = () => {
         if (!hm) return;
         const h = parseFloat(document.getElementById('raceDuration')?.value) || 0;
-        hm.textContent = (window.isLapRace() ? '≈ ' : '') + (window.fmtHM ? window.fmtHM(h * 3600000) : h + 'h');
+        hm.textContent = (window.isLapRace() ? '≈ ' : '') + (window.fmtHM ? window.fmtHM(h * 3600000) : h + 'h')
+            + (window.isLapRace() && pitLossMs > 0 ? ' · ' + window.tt('incl. time lost in pits') + ' ' + window.fmtHM(pitLossMs) : '');
     };
     setHM();
     if (!window.isLapRace()) return;
@@ -669,6 +669,7 @@ window._syncRaceTarget = function() {
         stops = next; totalMs = driveMs + stops * pitMs;
     }
     const hours = totalMs / 3600000;
+    pitLossMs = stops * pitMs;
     if (dur) dur.value = String(Math.round(hours * 10000) / 10000);
     setHM();
     if (summary) {
