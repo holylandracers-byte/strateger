@@ -1576,6 +1576,15 @@ window._setLiveStintTargetMs = function(stintIdx, newMs, opts) {
 };
 
 
+// Slow tablets: rewriting the same text/classes every 250 ms re-lays-out the Exit button under the
+// driver's finger and can swallow the tap. Only touch the DOM when the value really changed.
+function _setIf(el, prop, val) {
+    if (!el) return;
+    if (prop === 'innerText') { if (el.dataset.lastText !== val) { el.dataset.lastText = val; el.innerText = val; } return; }
+    if (prop === 'innerHTML') { if (el.dataset.lastHtml !== val) { el.dataset.lastHtml = val; el.innerHTML = val; } return; }
+    if (el.className !== val) el.className = val;
+}
+
 window.updatePitModalLogic = function() {
     // Guard: bail out if we're not actually in a pit stop (prevents NaN cascade)
     if (!window.state || !window.state.isInPit || !window.state.pitStart) return;
@@ -1597,21 +1606,21 @@ window.updatePitModalLogic = function() {
 
     if (!releaseBtn) return;
 
-    if (timerDisplay) timerDisplay.innerText = Math.max(0, timeRemaining).toFixed(1);
+    if (timerDisplay) _setIf(timerDisplay, 'innerText', Math.max(0, timeRemaining).toFixed(1));
     releaseBtn.disabled = false;
-    releaseBtn.innerText = t('exitPits');
+    _setIf(releaseBtn, 'innerText', t('exitPits'));
 
     // Live timing: driver already left pit before minimum time
     try {
         const liveSaysInPit = window.liveData && (typeof window.liveData.ourTeamInPit !== 'undefined')
             ? window.liveData.ourTeamInPit : null;
         if (liveSaysInPit === false) {
-            if (timerDisplay) timerDisplay.className = "text-6xl font-bold font-mono text-yellow-300";
+            if (timerDisplay) _setIf(timerDisplay, 'className', "text-6xl font-bold font-mono text-yellow-300");
             if (pitWarningBox) {
                 pitWarningBox.classList.remove('hidden');
                 pitWarningBox.innerText = `${t('driverExitedEarlyNotice') || 'Driver exited pit early — confirm to accept.'} (${Math.max(0, timeRemaining).toFixed(1)}s early)`;
             }
-            releaseBtn.className = "w-full max-w-xs bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-4 rounded-lg text-3xl border border-yellow-400 cursor-pointer";
+            _setIf(releaseBtn, 'className', "w-full max-w-xs bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-4 rounded-lg text-3xl border border-yellow-400 cursor-pointer");
             window.alertState.lastZone = 'go';
             if (typeof window._runPitAdvice === 'function') window._runPitAdvice();
             return;
@@ -1629,15 +1638,15 @@ window.updatePitModalLogic = function() {
     else if (buffer > 0 && timeRemaining <= buffer) pitZone = 'ready';
 
     if (pitZone === 'wait') {
-        if (timerDisplay) timerDisplay.className = "text-6xl font-bold font-mono text-red-500";
-        releaseBtn.className = "w-full max-w-xs bg-gray-800 text-gray-500 font-bold py-4 rounded-lg text-2xl border border-gray-700 cursor-pointer";
+        if (timerDisplay) _setIf(timerDisplay, 'className', "text-6xl font-bold font-mono text-red-500");
+        _setIf(releaseBtn, 'className', "w-full max-w-xs bg-gray-800 text-gray-500 font-bold py-4 rounded-lg text-2xl border border-gray-700 cursor-pointer");
         if (pitWarningBox) pitWarningBox.classList.add('hidden');
         if (pitReadyBanner) {
             // "GET READY" heads-up 3 s before the buffer zone
             if (buffer > 0 && timeRemaining <= buffer + 3 && timeRemaining > buffer) {
                 pitReadyBanner.classList.remove('hidden');
-                pitReadyBanner.className = "w-full max-w-xs py-2 rounded-xl mb-2 text-center font-bold text-lg tracking-wider transition-all duration-300 bg-gray-800/80 border border-gray-600 text-gray-400";
-                pitReadyBanner.innerText = `${t('getReady')}...`;
+                _setIf(pitReadyBanner, 'className', "w-full max-w-xs py-2 rounded-xl mb-2 text-center font-bold text-lg tracking-wider transition-all duration-300 bg-gray-800/80 border border-gray-600 text-gray-400");
+                _setIf(pitReadyBanner, 'innerText', `${t('getReady')}...`);
             } else {
                 pitReadyBanner.classList.add('hidden');
             }
@@ -1645,13 +1654,13 @@ window.updatePitModalLogic = function() {
         window._lastOrangeBeep = null;
 
     } else if (pitZone === 'ready') {
-        if (timerDisplay) timerDisplay.className = "text-6xl font-bold font-mono text-green-400 animate-pulse";
-        releaseBtn.className = "w-full max-w-xs bg-green-600 hover:bg-green-500 text-white font-bold py-4 rounded-lg text-3xl border border-green-400 shadow-[0_0_20px_rgba(34,197,94,0.6)] cursor-pointer";
+        if (timerDisplay) _setIf(timerDisplay, 'className', "text-6xl font-bold font-mono text-green-400 animate-pulse");
+        _setIf(releaseBtn, 'className', "w-full max-w-xs bg-green-600 hover:bg-green-500 text-white font-bold py-4 rounded-lg text-3xl border border-green-400 shadow-[0_0_20px_rgba(34,197,94,0.6)] cursor-pointer");
         if (pitWarningBox) pitWarningBox.classList.add('hidden');
         if (pitReadyBanner) {
             pitReadyBanner.classList.remove('hidden');
-            pitReadyBanner.innerHTML = `<div class="text-green-300 text-5xl animate-bounce">${t('go')}</div>`;
-            pitReadyBanner.className = "w-full max-w-xs py-4 rounded-xl mb-2 text-center font-black tracking-wider transition-all duration-300 bg-green-600/40 border-2 border-green-400 shadow-[0_0_40px_rgba(34,197,94,0.6)]";
+            _setIf(pitReadyBanner, 'innerHTML', `<div class="text-green-300 text-5xl animate-bounce">${t('go')}</div>`);
+            _setIf(pitReadyBanner, 'className', "w-full max-w-xs py-4 rounded-xl mb-2 text-center font-black tracking-wider transition-all duration-300 bg-green-600/40 border-2 border-green-400 shadow-[0_0_40px_rgba(34,197,94,0.6)]");
         }
         window._lastOrangeBeep = null;
         if (window.alertState.lastZone !== 'go' && window.alertState.lastZone !== 'ready') {
@@ -1660,13 +1669,13 @@ window.updatePitModalLogic = function() {
 
     } else {
         // pitZone === 'go'
-        if (timerDisplay) timerDisplay.className = "text-6xl font-bold font-mono text-green-500";
-        releaseBtn.className = "w-full max-w-xs bg-green-600 hover:bg-green-500 text-white font-bold py-4 rounded-lg text-3xl border border-green-400 shadow-[0_0_20px_rgba(34,197,94,0.6)] cursor-pointer";
+        if (timerDisplay) _setIf(timerDisplay, 'className', "text-6xl font-bold font-mono text-green-500");
+        _setIf(releaseBtn, 'className', "w-full max-w-xs bg-green-600 hover:bg-green-500 text-white font-bold py-4 rounded-lg text-3xl border border-green-400 shadow-[0_0_20px_rgba(34,197,94,0.6)] cursor-pointer");
         if (pitWarningBox) pitWarningBox.classList.add('hidden');
         if (pitReadyBanner) {
             pitReadyBanner.classList.remove('hidden');
-            pitReadyBanner.innerHTML = `<div class="text-green-300 text-5xl animate-bounce">${t('go')}</div>`;
-            pitReadyBanner.className = "w-full max-w-xs py-4 rounded-xl mb-2 text-center font-black tracking-wider transition-all duration-300 bg-green-600/40 border-2 border-green-400 shadow-[0_0_40px_rgba(34,197,94,0.6)]";
+            _setIf(pitReadyBanner, 'innerHTML', `<div class="text-green-300 text-5xl animate-bounce">${t('go')}</div>`);
+            _setIf(pitReadyBanner, 'className', "w-full max-w-xs py-4 rounded-xl mb-2 text-center font-black tracking-wider transition-all duration-300 bg-green-600/40 border-2 border-green-400 shadow-[0_0_40px_rgba(34,197,94,0.6)]");
         }
         window._lastOrangeBeep = null;
         if (window.alertState.lastZone !== 'go' && window.alertState.lastZone !== 'ready') {
@@ -2250,6 +2259,36 @@ window._addStintsToPlan = function(afterIdx, extra) {
         }
     }
 };
+
+// The Exit Pits button reacts on pointer release (not only on "click") and is debounced: on a slow
+// tablet a click can be dropped when the page is busy repainting between press and release.
+// If live timing is blocking a manual exit, a second tap within 4 s forces it so the driver is never stuck.
+(function initExitPitsButton() {
+    let lastFire = 0, lastBlocked = 0;
+    const msg = 'Pit exit follows live timing. Tap again to force it.';
+    function fire() {
+        const n = Date.now();
+        if (n - lastFire < 700) return;
+        lastFire = n;
+        if (!window.state || !window.state.isInPit) return;
+        window.confirmPitExit();
+        if (window.state.isInPit) {                 // still in pit: live timing blocked the manual exit
+            if (n - lastBlocked < 4000) { lastBlocked = 0; window.confirmPitExit(true); return; }
+            lastBlocked = n;
+            if (window.showToast) window.showToast('🔒 ' + (window.tt ? window.tt(msg) : msg), 'warning', 4000);
+        }
+    }
+    function attach() {
+        const btn = document.getElementById('confirmExitBtn');
+        if (!btn || btn.dataset.tapReady) return;
+        btn.dataset.tapReady = '1';
+        btn.removeAttribute('onclick');
+        btn.style.touchAction = 'manipulation';
+        btn.addEventListener('pointerup', function(e) { if (e.pointerType === 'mouse' && e.button !== 0) return; e.preventDefault(); fire(); });
+        btn.addEventListener('click', function(e) { e.preventDefault(); fire(); });   // keyboard / assistive tech
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', attach); else attach();
+})();
 
 window.confirmPitExit = function(autoDetected) {
     // Guard: race is finished — no pit actions allowed
