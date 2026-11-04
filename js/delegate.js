@@ -112,6 +112,10 @@ window.copyDelegateLink = function (id) {
 window.openDelegateModal = function () {
     document.getElementById('headerOverflowMenu')?.classList.add('hidden');
     document.getElementById('delegateModal')?.classList.remove('hidden');
+    const tx = (id, en) => { const el = document.getElementById(id); if (el) el.textContent = window.tt(en); };
+    tx('dlgIntro', 'Hand part of the admin job to another phone, tablet or laptop. Pick what it may do; guests stay read-only and drivers keep driver mode. Create as many as you need and change or revoke them any time.');
+    tx('dlgCreateTxt', 'Create delegate link');
+    const nm = document.getElementById('dlgLabel'); if (nm) nm.placeholder = window.tt('Name (e.g. Pit wall tablet)');
     window.renderDelegateModal();
 };
 window.closeDelegateModal = function () {

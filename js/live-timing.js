@@ -2643,7 +2643,9 @@ window.setLtPane = function(pane) {
     if (btn) {
         const icon = { both: '▦', tiles: '▤', table: '☰' }[pane];
         btn.innerHTML = icon;
-        btn.title = btn.getAttribute('aria-label') + ': ' + pane;
+        const lbl = window.tt ? window.tt('Switch view: tiles / standings') : 'Switch view: tiles / standings';
+        btn.title = lbl;
+        btn.setAttribute('aria-label', lbl);
         btn.classList.toggle('text-ice', pane !== 'both');
     }
 };
