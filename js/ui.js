@@ -2636,7 +2636,9 @@ window.onLocationInput = function(value) {
                     // Only places (cities, towns) and tracks: no streets, shops or houses.
                     return (Array.isArray(json) ? json : []).filter(r => {
                         const cat = r.category || r.class;
-                        return cat === 'place' || (cat === 'leisure' && /track|sports_centre|stadium/.test(r.type || '')) || cat === 'sport';
+                        // Cities and towns often come back as administrative boundaries (rank 10-20), so those count too.
+                        const isTown = cat === 'boundary' && r.type === 'administrative' && r.place_rank >= 10 && r.place_rank <= 20;
+                        return cat === 'place' || isTown || (cat === 'leisure' && /track|sports_centre|stadium/.test(r.type || '')) || cat === 'sport';
                     });
                 })().catch(() => [])
             ]);
