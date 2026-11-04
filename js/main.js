@@ -1441,7 +1441,10 @@ function updateRemainingStrategyLogic(raceRemainingMs) {
     // for the stints after it, never the completed ones above.
     const currentTargetMs = window.state?.targetStintMs || stintTargets[currentStintIdx] || 0;
     if (currentTargetMs > 0) {
-        phtml += pill(`NOW ${Math.round(currentTargetMs / 60000)}m`, 'pill-normal pill-current', "Tap to change this stint's target", currentStintIdx);
+        // same colour rule as the upcoming stints: near max -> max, near min -> min, else regular
+        const nowType = classifyStint(currentTargetMs);
+        const nowTag = nowType === 'max' ? ` · ${t('max')}` : (nowType === 'min' ? ` · ${t('min') || 'MIN'}` : '');
+        phtml += pill(`NOW ${Math.round(currentTargetMs / 60000)}m${nowTag}`, `pill-${nowType} pill-current`, "Tap to change this stint's target", currentStintIdx);
     }
 
     groups.forEach(g => {
