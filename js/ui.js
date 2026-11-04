@@ -2441,6 +2441,15 @@ const _VENUE_ALIASES = {
     'bathurst': 'Mount Panorama Circuit, Bathurst, Australia',
     'tivoli': 'Tivoli Racing Park, Israel',
     'tivoli racing': 'Tivoli Racing Park, Israel',
+    // Leisure karting venues (Sodi World Series style sites)
+    'genk': 'Karting Genk, Genk, Belgium',
+    'karting genk': 'Karting Genk, Genk, Belgium',
+    'mariembourg': 'Karting des Fagnes, Mariembourg, Belgium',
+    'lonato': 'South Garda Karting, Lonato del Garda, Italy',
+    'south garda': 'South Garda Karting, Lonato del Garda, Italy',
+    'mondercange': 'ACL Karting, Mondercange, Luxembourg',
+    'cormeilles': 'Racing Kart Cormeilles, Cormeilles-en-Parisis, France',
+    'dubai kartdrome': 'Dubai Kartdrome, Dubai, UAE',
 };
 
 function findBestVenueAlias(input) {
@@ -2568,8 +2577,11 @@ window.onLocationInput = function(value) {
     window._locationSearchTimer = setTimeout(async () => {
         try {
             const qLower = query.toLowerCase();
+            // Several keys point at one venue ('buckmore', 'buckmore park'): list each venue once.
+            const aliasSeen = new Set();
             const aliasMatches = Object.entries(_VENUE_ALIASES)
                 .filter(([key]) => key.includes(qLower) || qLower.includes(key))
+                .filter(([, fullName]) => !aliasSeen.has(fullName) && aliasSeen.add(fullName))
                 .map(([key, fullName]) => ({ _isTrack: true, name: fullName.split(',')[0].trim(), trackLabel: fullName, displayName: fullName, admin1: '', country: fullName.split(',').slice(1).join(',').trim() }))
                 .slice(0, 4);
             const geoQuery = findBestVenueAlias(query) || query;
@@ -2580,18 +2592,26 @@ window.onLocationInput = function(value) {
                     return Array.isArray(json.results) ? json.results : [];
                 })().catch(() => []),
                 (async () => {
-                    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(geoQuery)}&limit=8&addressdetails=1`, { headers: { 'Accept': 'application/json', 'User-Agent': 'Strateger/1.0' } });
+                    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(geoQuery)}&limit=8&addressdetails=1&accept-language=en`, { headers: { 'Accept': 'application/json', 'User-Agent': 'Strateger/1.0' } });
                     if (!res.ok) return [];
                     const json = await res.json();
-                    return Array.isArray(json) ? json : [];
+                    // Only places (cities, towns) and tracks: no streets, shops or houses.
+                    return (Array.isArray(json) ? json : []).filter(r => {
+                        const cat = r.category || r.class;
+                        return cat === 'place' || (cat === 'leisure' && /track|sports_centre|stadium/.test(r.type || '')) || cat === 'sport';
+                    });
                 })().catch(() => [])
             ]);
             const fromMeteo = meteoResults.map(r => ({ name: r.name, admin1: r.admin1 || '', country: r.country || '', lat: r.latitude, lon: r.longitude, displayName: [r.name, r.country].filter(Boolean).join(', ') }));
             const fromNominatim = nominatimResults.map(r => ({ name: (r.display_name || '').split(',')[0] || r.name || query, admin1: r.address?.state || r.address?.county || '', country: r.address?.country || '', lat: Number(r.lat), lon: Number(r.lon), displayName: [(r.display_name || '').split(',')[0] || r.name || query, r.address?.country || ''].filter(Boolean).join(', ') }));
             const seen = new Set();
-            aliasMatches.forEach(a => seen.add(a.trackLabel.toLowerCase()));
+            const plain = x => String(x || '').toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
+            const aliasNames = new Set(aliasMatches.map(a => plain(a.name)));
             const geoResults = [...fromMeteo, ...fromNominatim].filter(r => {
-                const key = `${String(r.displayName || '').toLowerCase()}|${Number(r.lat).toFixed(4)}|${Number(r.lon).toFixed(4)}`;
+                // The same place often comes back from both services (and again for each district): one row per name and country.
+                const key = plain(r.name) + '|' + plain(r.country);
+                const pn = plain(r.name);
+                if ([...aliasNames].some(an => pn === an || pn.includes(an) || an.includes(pn))) return false;
                 if (seen.has(key)) return false;
                 seen.add(key);
                 return true;

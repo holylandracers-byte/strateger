@@ -17,6 +17,7 @@
         'Add direction change': ['הוספת שינוי כיוון', 'Ajouter un changement de sens', 'Adicionar mudança de sentido'],
         'Time': ['שעה', 'Heure', 'Hora'],
         'Track direction change': ['שינוי כיוון מסלול', 'Changement de sens de piste', 'Mudança de sentido da pista'],
+        'Notify from {{time}} (planned pit at {{max}}m − {{lead}}m ahead)': ['הודע מ-{{time}} (פיט מתוכנן ב-{{max}} דק׳ − {{lead}} דק׳ מראש)', 'Avertir dès {{time}} (arrêt prévu à {{max}} min − {{lead}} min d’avance)', 'Avisar a partir de {{time}} (parada planejada aos {{max}} min − {{lead}} min de antecedência)'],
         'Direction changes at': ['שינוי כיוון ב', 'Changement de sens à', 'Mudança de sentido em'],
         'Clock time': ['שעון', 'Heure', 'Hora do relógio'],
         'Half the race': ['חצי מאורך המרוץ', 'Mi-course', 'Metade da corrida'],

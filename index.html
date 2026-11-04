@@ -7,6 +7,7 @@
     
     <link rel="icon" type="image/svg+xml" href="/icons/icon-512.svg">
     <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="/icons/icon-512.png">
 
     <!-- PWA -->
     <link rel="manifest" href="/manifest.json">
@@ -15,7 +16,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Strateger">
-    <link rel="apple-touch-icon" href="/icons/icon-192.png">
+    <link rel="apple-touch-icon" href="/icons/icon-maskable-512.png">
 
     <script src="js/config.js?v=2"></script>
     <script>
@@ -47,7 +48,7 @@
     <script src="js/live-timing-manager.js?v=9"></script>
     <script src="js/qualifying.js?v=13"></script>
 
-    <link rel="stylesheet" href="css/style.css?v=65">
+    <link rel="stylesheet" href="css/style.css?v=66">
 
     <script>
         tailwind.config = {
@@ -347,6 +348,7 @@
                     <div id="durationBlock">
                         <label class="set-label" for="raceDuration" data-i18n="lblDuration">Duration (Hours)</label>
                         <input type="number" id="raceDuration" value="12" onchange="window.runSim()" class="input-field set-big">
+                        <div id="durationHM" class="duration-hm" aria-live="polite"></div>
                         <div class="set-chips" role="group" aria-label="Duration presets">
                             <button type="button" onclick="document.getElementById('raceDuration').value=1;window.runSim()">1h</button>
                             <button type="button" onclick="document.getElementById('raceDuration').value=3;window.runSim()">3h</button>
@@ -358,6 +360,9 @@
                     <div>
                         <label class="set-label" for="reqPitStops" data-i18n="lblStops">Req. Stops</label>
                         <input type="number" id="reqPitStops" value="15" placeholder="Off" onchange="window.runSim()" class="input-field set-big text-neon">
+                        <div class="set-chips" role="group" aria-label="Required stops presets">
+                            <button type="button" id="noStopsBtn" onclick="document.getElementById('reqPitStops').value='';window.runSim()" data-i18n="noRequiredStops">No required stops</button>
+                        </div>
                     </div>
                 </div>
 
@@ -573,12 +578,12 @@
                         <div>
                             <label class="set-sublabel" for="pitNotifyLeadMin" data-i18n="lblPitNotifyLead">Notify Lead Time (min)</label>
                             <input type="number" id="pitNotifyLeadMin" value="3" min="0" step="0.5" onchange="window.runSim(); window._updatePitNotifyPreview && window._updatePitNotifyPreview()" class="input-field">
-                            <p class="set-hint" data-i18n="lblPitNotifyLeadHint">Minutes before max stint (minus in-lap) to warn driver</p>
+                            <p class="set-hint" data-i18n="lblPitNotifyLeadHint">Minutes before the planned pit stop to tell the driver to come in</p>
                         </div>
                     </div>
                     <label class="set-sublabel" for="inLapSec" data-i18n="lblInLapSec">In-Lap to Pits (sec, dry)</label>
-                    <input type="number" id="inLapSec" min="0" step="5" placeholder="Auto" onchange="window.runSim(); window._updatePitNotifyPreview && window._updatePitNotifyPreview()" class="input-field">
-                    <p class="set-hint" data-i18n="lblInLapHint">Track time to reach pit entry. Empty = auto from circuit name.</p>
+                    <input type="number" id="inLapSec" min="0" step="5" placeholder="—" onchange="window.runSim(); window._updatePitNotifyPreview && window._updatePitNotifyPreview()" class="input-field">
+                    <p class="set-hint" data-i18n="lblInLapHint">Optional. Track time to reach pit entry; empty = none, the warning counts back from the planned pit.</p>
                     <div id="pitNotifyPreview" class="hidden rule-info"></div>
                 </div>
                 </div>
@@ -2438,7 +2443,7 @@
         </div>
     </div>
 
-    <script src="js/state.js?v=35"></script>
+    <script src="js/state.js?v=36"></script>
     <script src="js/lite-mode.js?v=1"></script>
     <script src="js/i18n-extra.js?v=10"></script>
     <script src="js/i18n-extra2.js?v=1"></script>
@@ -2447,20 +2452,20 @@
     <script src="js/i18n-new.js?v=1"></script>
     <script src="js/i18n-phrases.js?v=2"></script>
     <script src="js/i18n-phrases2.js?v=1"></script>
-    <script src="js/i18n-phrases3.js?v=5"></script>
+    <script src="js/i18n-phrases3.js?v=6"></script>
     <script src="js/auth.js?v=10"></script>
     <script src="js/network.js?v=10"></script>
-    <script src="js/strategy.js?v=23"></script>
+    <script src="js/strategy.js?v=24"></script>
     <script src="js/race-rules.js?v=9"></script>
     <script src="js/compliance.js?v=3"></script>
     <script src="js/export.js?v=3"></script>
     <script src="js/autosave.js?v=3"></script>
     <script src="js/live-timing.js?v=20"></script>
     <script src="js/track-finder.js?v=2"></script>
-    <script src="js/ui.js?v=30"></script>
+    <script src="js/ui.js?v=32"></script>
     <script src="js/walkthrough.js?v=15"></script>
     <script src="js/setup-bar.js?v=13"></script>
-    <script src="js/main.js?v=32"></script>
+    <script src="js/main.js?v=33"></script>
     <script src="js/live-extras.js?v=4"></script>
 </body>
 </html>

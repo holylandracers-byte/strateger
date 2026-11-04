@@ -635,6 +635,16 @@ window._setRaceTarget = function(mode, silent) {
 };
 
 window._syncRaceTarget = function() {
+    // Always show the duration as hours and minutes, and mark "no required stops" when that field is empty.
+    const hm = document.getElementById('durationHM');
+    const stopsEl = document.getElementById('reqPitStops');
+    if (stopsEl) document.getElementById('noStopsBtn')?.classList.toggle('is-on', stopsEl.value.trim() === '');
+    const setHM = () => {
+        if (!hm) return;
+        const h = parseFloat(document.getElementById('raceDuration')?.value) || 0;
+        hm.textContent = (window.isLapRace() ? '≈ ' : '') + (window.fmtHM ? window.fmtHM(h * 3600000) : h + 'h');
+    };
+    setHM();
     if (!window.isLapRace()) return;
     const laps = parseInt(document.getElementById('raceLaps')?.value) || 0;
     const lapMs = window.getAvgLapMs();
@@ -655,6 +665,7 @@ window._syncRaceTarget = function() {
     }
     const hours = totalMs / 3600000;
     if (dur) dur.value = String(Math.round(hours * 10000) / 10000);
+    setHM();
     if (summary) {
         const h = Math.floor(totalMs / 3600000), m = Math.round((totalMs % 3600000) / 60000);
         const lapTxt = Math.floor(lapMs / 60000) + ':' + String(((lapMs / 1000) % 60).toFixed(1)).padStart(4, '0');

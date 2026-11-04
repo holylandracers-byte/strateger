@@ -2454,34 +2454,36 @@ window._getOutlapSec = function() {
     return window.CIRCUIT_OUTLAP_SEC._default;
 };
 
-/** In-lap travel time (track → pit entry), seconds. Uses config override or circuit auto-detect. */
+/** In-lap travel time (track → pit entry), seconds. Only what the setup says: empty means no in-lap to subtract. */
 window._getInlapSec = function() {
-    const fromConfig = parseInt(window.config?.inLapSec) || parseInt(window.config?.outlap) || 0;
-    if (fromConfig > 0) return fromConfig;
-    return window._getOutlapSec();
+    return parseInt(window.config?.inLapSec) || parseInt(window.config?.outlap) || 0;
 };
 
 /**
- * Pit-entry notification timings based on max stint limit.
- * Returns null when max stint is unlimited (0).
+ * Pit-entry notification timings. The warning is counted back from the planned end of the stint (the plan's target,
+ * capped by the max stint when there is one): "tell the driver to come in N minutes before the planned pit".
+ * An in-lap time is optional; when it is empty nothing is subtracted, so the warning still works in the same lap.
+ * Returns null only when there is neither a max stint nor a planned stint length.
  */
 window._getStintNotifyTimings = function() {
     const cfg = window.config || {};
-    const cfgMax = cfg.maxStint || 0;
-    if (cfgMax <= 0) return null;
+    const capMs = (cfg.maxStint || 0) * 60000;
+    const plannedMs = window.state?.targetStintMs || 0;
+    const baseMs = plannedMs > 0 ? (capMs > 0 ? Math.min(plannedMs, capMs) : plannedMs) : capMs;
+    if (baseMs <= 0) return null;
 
-    const maxStintMs = cfgMax * 60000;
+    const maxStintMs = capMs || baseMs;
     const inLapMs = window._getInlapSec() * 1000;
     // Per-driver override: whoever is currently on track may need more/less advance warning
     // than the race-wide default (slower to react, parked further from pit lane, etc).
     const curDriver = (window.state && window.drivers) ? window.drivers[window.state.currentDriverIdx] : null;
     const leadMinEff = (curDriver && curDriver.notifyLeadMin != null) ? curDriver.notifyLeadMin : (parseFloat(cfg.pitNotifyLeadMin) || 3);
     const leadMs = leadMinEff * 60000;
-    const pitEntryDeadlineMs = Math.max(0, maxStintMs - inLapMs);
+    const pitEntryDeadlineMs = Math.max(0, baseMs - inLapMs);
     const notifyStartMs = Math.max(0, pitEntryDeadlineMs - leadMs);
-    const targetMs = window.state?.targetStintMs || maxStintMs;
+    const targetMs = plannedMs || maxStintMs;
 
-    return { maxStintMs, inLapMs, leadMs, pitEntryDeadlineMs, notifyStartMs, targetMs, inLapSec: Math.round(inLapMs / 1000) };
+    return { maxStintMs, baseMs, inLapMs, leadMs, pitEntryDeadlineMs, notifyStartMs, targetMs, inLapSec: Math.round(inLapMs / 1000) };
 };
 
 /** Setup preview: show when admin should start notifying the driver. */
@@ -2490,7 +2492,7 @@ window._updatePitNotifyPreview = function() {
     if (!el) return;
     const t = window.t || (k => k);
     const maxMin = parseFloat(document.getElementById('maxStint')?.value) || 0;
-    if (maxMin <= 0) { el.classList.add('hidden'); return; }
+    if (maxMin <= 0 && !(window.state && window.state.targetStintMs > 0)) { el.classList.add('hidden'); return; }
 
     const tmpCfg = {
         maxStint: maxMin,
@@ -4763,10 +4765,13 @@ window.updateStintNotifyBanner = function() {
     const maxMin = Math.round(timings.maxStintMs / 60000);
     const inLapSec = timings.inLapSec;
     const leadMin = Math.round(timings.leadMs / 60000);
-    const infoTpl = t('stintNotifyInfo') || 'Notify from {{time}} (max {{max}}m − {{inlap}}s in-lap − {{lead}}m lead)';
+    const planMin = Math.round(timings.baseMs / 60000);
+    const infoTpl = inLapSec > 0
+        ? (t('stintNotifyInfo') || 'Notify from {{time}} (max {{max}}m − {{inlap}}s in-lap − {{lead}}m lead)')
+        : window.tt('Notify from {{time}} (planned pit at {{max}}m − {{lead}}m ahead)');
     const infoLine = infoTpl
         .replace('{{time}}', fmtStint(timings.notifyStartMs))
-        .replace('{{max}}', String(maxMin))
+        .replace('{{max}}', String(inLapSec > 0 ? maxMin : planMin))
         .replace('{{inlap}}', String(inLapSec))
         .replace('{{lead}}', String(leadMin));
 

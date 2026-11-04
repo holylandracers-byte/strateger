@@ -4370,3 +4370,9 @@ body.lt-original #apexIframe { flex: 1 1 auto; width: 100%; height: auto !import
     #driversList .driver-remove { order: 12; }
     #driversList .driver-notify-wrap, #driversList .driver-stamina-wrap { flex: 1 1 100%; order: 20; justify-content: flex-end; padding: 0 12px 8px; }
 }
+
+/* Duration reads as hours and minutes; in a lap race it is derived, so the number box gives way to the readable total */
+.duration-hm { margin-top: 6px; font-size: 13px; font-weight: 600; color: #94a3b8; font-variant-numeric: tabular-nums; }
+#durationBlock.is-derived .num-stepper { display: none; }
+#durationBlock.is-derived .duration-hm { display: flex; align-items: center; justify-content: center; min-height: 60px; margin-top: 0; font-size: 30px; font-weight: 800; color: #f1f5f9; background: #020617; border: 1px solid #334155; border-radius: 10px; }
+#noStopsBtn.is-on { background: rgba(34, 211, 238, .14); border-color: var(--ice, #22d3ee); color: var(--ice, #22d3ee); }
