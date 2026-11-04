@@ -125,7 +125,8 @@ window.selectDriverFromSquad = function(squadLetter, currentTime, driverStats, c
 
 window.calculateStintDurations = function(config) {
     const raceMs = config.raceMs;
-    const pitTimeMs = (config.pitTime || 0) * 1000;
+    // Fast pits (no minimum) still plan with the typical pit time; a set minimum wins.
+    const pitTimeMs = (config.planPitTime != null ? config.planPitTime : (config.pitTime || 0)) * 1000;
 
     // Kart-change interval: organizer mandates a pit every N minutes.
     // Compute number of mandatory stops from interval, then use that as the stop count.
@@ -419,7 +420,7 @@ window.getScheduledSquad = function(dateTime, squadWindow, allSquadLabels) {
 
 window.calculateStrategyLogic = function(config) {
     const raceMs = config.raceMs || (config.duration * 3600000);
-    const pitTimeMs = (config.pitTime || 0) * 1000;
+    const pitTimeMs = (config.planPitTime != null ? config.planPitTime : (config.pitTime || 0)) * 1000;
     const maxDriverTotalMs = (config.maxDriverTotal || 0) * 60000;
     const extendedConfig = { ...config, maxDriverTotalMs };
 
@@ -651,7 +652,7 @@ window._syncRaceTarget = function() {
     const dur = document.getElementById('raceDuration');
     const summary = document.getElementById('lapTargetSummary');
     if (!laps || !lapMs) { if (summary) summary.textContent = ''; return; }
-    const pitMs = (parseInt(document.getElementById('minPitTime')?.value) || 0) * 1000;
+    const pitMs = ((parseInt(document.getElementById('minPitTime')?.value) || parseInt(document.getElementById('estPitTime')?.value)) || 0) * 1000;
     const reqStops = parseInt(document.getElementById('reqPitStops')?.value) || 0;
     const kartMin = parseFloat(document.getElementById('kartChangeInterval')?.value) || 0;
     const driveMs = laps * lapMs;
@@ -698,6 +699,11 @@ window.runSim = function() {
     const maxStintMin = parseFloat(_maxStintRaw) || 0;
     // 0 = no minimum pit time (driver swaps as fast as possible — non-pro format)
     const pitTimeSec  = parseInt(_pitTimeRaw) || 0;
+    const estPitSec   = parseInt(document.getElementById('estPitTime')?.value) || 0;
+    const planPitTime = pitTimeSec || estPitSec;
+    // The typical-pit-time box only matters in fast-pit mode (no minimum).
+    document.getElementById('estPitBlock')?.classList.toggle('hidden', pitTimeSec > 0);
+    document.getElementById('fastPitsBtn')?.classList.toggle('is-on', pitTimeSec === 0);
 
     // No Limit Endurance: any of the 3 key params is zero/missing
     // sprint ≤ 2 h with all params filled → 'sprint'
@@ -763,7 +769,7 @@ window.runSim = function() {
     }
 
     const raceMs = durationHours * 3600000;
-    const pitTimeMs = pitTimeSec * 1000;
+    const pitTimeMs = planPitTime * 1000;
     const totalPitTimeMs = reqStops * pitTimeMs;
     const totalNetDriveTime = raceMs - totalPitTimeMs;
 
@@ -783,7 +789,9 @@ window.runSim = function() {
         reqStops,
         minStint: minStintMin,
         maxStint: maxStintMin,   // 0 = unlimited — engine stretches by fuel/stamina
-        pitTime: pitTimeSec,     // 0 = as-fast-as-possible swap (non-pro format)
+        pitTime: pitTimeSec,     // 0 = as-fast-as-possible swap (non-pro format); this is the enforced minimum
+        estPitSec,               // typical pit time, only used to plan when there is no minimum
+        planPitTime,             // what the plan assumes each stop costs
         fuel: fuelMin,
         closedStart: closedStartMin,
         closedEnd: closedEndMin,

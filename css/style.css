@@ -4376,3 +4376,4 @@ body.lt-original #apexIframe { flex: 1 1 auto; width: 100%; height: auto !import
 #durationBlock.is-derived .num-stepper { display: none; }
 #durationBlock.is-derived .duration-hm { display: flex; align-items: center; justify-content: center; min-height: 60px; margin-top: 0; font-size: 30px; font-weight: 800; color: #f1f5f9; background: #020617; border: 1px solid #334155; border-radius: 10px; }
 #noStopsBtn.is-on { background: rgba(34, 211, 238, .14); border-color: var(--ice, #22d3ee); color: var(--ice, #22d3ee); }
+.set-chips button.is-on { background: rgba(34, 211, 238, .14); border-color: var(--ice, #22d3ee); color: var(--ice, #22d3ee); }

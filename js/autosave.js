@@ -50,7 +50,7 @@
 
     // what makes two plans "the same" for autosave purposes
     function signature(p) {
-        return JSON.stringify([p.config && [p.config.duration, p.config.raceTarget, p.config.raceLaps, p.config.avgLapSec, p.config.reqStops, p.config.minStint, p.config.maxStint, p.config.pitTime],
+        return JSON.stringify([p.config && [p.config.duration, p.config.raceTarget, p.config.raceLaps, p.config.avgLapSec, p.config.reqStops, p.config.minStint, p.config.maxStint, p.config.pitTime, p.config.estPitSec],
             (p.drivers || []).map(function(d) { return d.name; }),
             (p.timeline || []).map(function(x) { return [x.type, x.driverIdx, x.duration]; })]);
     }

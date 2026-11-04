@@ -1777,6 +1777,7 @@ window.applyStrategy = function(index) {
             setVal('minStint', strategy.config.minStint);
             setVal('maxStint', strategy.config.maxStint);
             setVal('minPitTime', strategy.config.pitTime);
+            setVal('estPitTime', strategy.config.estPitSec ?? 0);
             setVal('releaseBuffer', strategy.config.buffer);
             setVal('pitNotifyLeadMin', strategy.config.pitNotifyLeadMin ?? 3);
             setVal('inLapSec', strategy.config.inLapSec ?? strategy.config.outlap ?? 0);

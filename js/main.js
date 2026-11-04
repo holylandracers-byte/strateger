@@ -1240,7 +1240,7 @@ function _maybeRecalcAfterDrift() {
     const totalElapsedMs = now - raceStartMs;
     const raceRemainingMs = Math.max(0, raceMs - totalElapsedMs);
 
-    const pitTimeSec = parseFloat(window.config?.minPitSec || window.config?.pitTime) || 0;
+    const pitTimeSec = parseFloat(window.config?.minPitSec || window.config?.pitTime || window.config?.planPitTime) || 0;
     const pitTimeMs = pitTimeSec * 1000;
     const stopsDone = window.state.pitCount || 0;
     const totalStops = parseInt(window.config?.reqStops) || 0;
@@ -1310,7 +1310,7 @@ function updateRemainingStrategyLogic(raceRemainingMs) {
     const minStintMs = hasMinStint ? minStintRaw * 60000 : 0;
 
     // Pit time: optional — if not set, use 0
-    const pitTimeSec = parseFloat(window.config.minPitSec) || parseFloat(window.config.pitTime) || 0;
+    const pitTimeSec = parseFloat(window.config.minPitSec) || parseFloat(window.config.pitTime) || parseFloat(window.config.planPitTime) || 0;
     const pitTimeMs = pitTimeSec * 1000;
 
     const stopsDone = window.state.pitCount;
@@ -1517,7 +1517,7 @@ window._setLiveStintTargetMs = function(stintIdx, newMs, opts) {
     const raceStartMs = window.state.startTime || now;
     const raceRemainingMs = Math.max(0, raceMs - (now - raceStartMs));
 
-    const pitTimeSec = parseFloat(window.config?.minPitSec) || parseFloat(window.config?.pitTime) || 0;
+    const pitTimeSec = parseFloat(window.config?.minPitSec) || parseFloat(window.config?.pitTime) || parseFloat(window.config?.planPitTime) || 0;
     const pitTimeMs = pitTimeSec * 1000;
     const stopsDone = window.state.pitCount || 0;
     const totalStops = parseInt(window.config?.reqStops) || 0;
@@ -2318,7 +2318,7 @@ window.confirmPitExit = function(autoDetected) {
         if (remaining.length === 0) return;
         const raceMs = window.config?.raceMs || (parseFloat(window.config?.duration) || 0) * 3600000;
         const raceRemainingMs = raceMs - (now - window.state.startTime);
-        const pitTimeMs = (parseFloat(window.config?.minPitTime) || parseFloat(window.config?.minPitSec) || parseFloat(window.config?.pitTime) || 0) * 1000;
+        const pitTimeMs = (parseFloat(window.config?.minPitTime) || parseFloat(window.config?.minPitSec) || parseFloat(window.config?.pitTime) || parseFloat(window.config?.planPitTime) || 0) * 1000;
         const drivePoolMs = raceRemainingMs - (remaining.length - 1) * pitTimeMs;
         if (!(drivePoolMs > 0)) return;
         const plannedMs = remaining.reduce((a, b) => a + b, 0);

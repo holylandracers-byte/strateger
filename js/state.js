@@ -324,7 +324,7 @@ window.translations = {
         googleLogin: "Login with Google", eventCreated: "Event created successfully!", eventError: "Failed to create event", raceEventTitle: "Endurance Race (Strateger)",
         errImpossible: "Impossible Strategy!", errAvgHigh: "Avg stint > Max Stint. Increase Stops or Max Stint.", errAvgLow: "Avg stint < Min Stint. Decrease Stops or Min Stint.",
         appTitle: "STRATEGER", appSubtitle: "Endurance Race Strategy Manager", generalInfo: "General Info", advancedConstraints: "Advanced Constraints", driverConfig: "Drivers", aiTitle: "AI Strategy",
-        lblDuration: "Duration (Hours)", lblStops: "Req. Stops", noRequiredStops: "No required stops", lblMinStint: "Min Stint (min)", lblMaxStint: "Max Stint (min)", lblPitTime: "Pit Time (sec)", lblPitClosedStart: "Closed Start (min)", lblPitClosedEnd: "Closed End (min)",
+        lblDuration: "Duration (Hours)", lblStops: "Req. Stops", fastPits: "Fast pits (no minimum)", lblEstPit: "Typical pit time (sec)", lblEstPitHint: "No minimum is enforced. This estimate only plans the stops.", noRequiredStops: "No required stops", lblMinStint: "Min Stint (min)", lblMaxStint: "Max Stint (min)", lblPitTime: "Pit Time (sec)", lblPitClosedStart: "Closed Start (min)", lblPitClosedEnd: "Closed End (min)",
         lblMinDrive: "Min Driver Total (min)", lblMaxDrive: "Max Driver Total (min)", lblBuffer: "Pit Exit Buffer (s)", lblBufferHint: "Seconds before min pit time ends — driver walks to exit", lblPitNotifyLead: "Notify Lead Time (min)", lblPitNotifyLeadHint: "Minutes before the planned pit stop to tell the driver to come in", lblInLapSec: "In-Lap to Pits (sec, dry)", lblInLapHint: "Optional. Track time to reach pit entry; empty = none, the warning counts back from the planned pit.", lblDoubles: "Allow Doubles", lblSquads: "Use Squads", lblFuel: "Fuel", lblFuelTank: "Fuel Tank (min)",
         lblExtraPits: "Extra Pit Stops", lblReqExtraPits: "Required Extra Pits", lblMinPitLapSec: "Min Pit Lap (sec)", lblExtraPitsHint: "Mandatory extra pits in left lane. Pit lane closed first & last 10 min.",
         markExtraPit: "Mark as Extra Pit", extraPitDone: "Extra Pit", driverMaxTimeWarning: "⚠️ Near max drive time!", driverOverMaxTime: "🚨 OVER max drive time!",
@@ -550,7 +550,7 @@ window.translations = {
         googleLogin: "התחבר עם Google", eventCreated: "האירוע נוצר בהצלחה!", eventError: "שגיאה ביצירת האירוע", raceEventTitle: "מירוץ סיבולת (Strateger)",
         errImpossible: "אסטרטגיה לא אפשרית!", errAvgHigh: "ממוצע סטינט גבוה מהמקסימום. הוסף עצירות או הגדל מקסימום.", errAvgLow: "ממוצע סטינט נמוך מהמינימום. הפחת עצירות או הקטן מינימום.",
         appTitle: "STRATEGER", appSubtitle: "ניהול אסטרטגיה למירוצי סיבולת", generalInfo: "הגדרות כלליות", advancedConstraints: "אילוצים מתקדמים", driverConfig: "נהגים", aiTitle: "אסטרטגיה חכמה (AI)",
-        lblDuration: "משך (שעות)", lblStops: "עצירות חובה", noRequiredStops: "אין חובת עצירות", lblMinStint: "מינימום סטינט (דק')", lblMaxStint: "מקסימום סטינט (דק')", lblPitTime: "זמן פיטס (שניות)", lblPitClosedStart: "סגור בהתחלה (דק')", lblPitClosedEnd: "סגור בסוף (דק')",
+        lblDuration: "משך (שעות)", lblStops: "עצירות חובה", fastPits: "פיטס מהירים (ללא מינימום)", lblEstPit: "זמן פיט טיפוסי (שניות)", lblEstPitHint: "לא נאכף זמן מינימום. ההערכה משמשת רק לתכנון העצירות.", noRequiredStops: "אין חובת עצירות", lblMinStint: "מינימום סטינט (דק')", lblMaxStint: "מקסימום סטינט (דק')", lblPitTime: "זמן פיטס (שניות)", lblPitClosedStart: "סגור בהתחלה (דק')", lblPitClosedEnd: "סגור בסוף (דק')",
         lblMinDrive: "מינימום לנהג (דק')", lblMaxDrive: "מקסימום לנהג (דק')", lblBuffer: "באפר יציאה מפיט (שניות)", lblBufferHint: "שניות לפני סיום זמן מינימום בפיט — הנהג הולך ליציאה", lblPitNotifyLead: "התראה מראש (דק')", lblPitNotifyLeadHint: "כמה דקות לפני העצירה המתוכננת להגיד לנהג להיכנס", lblInLapSec: "סיבוב כניסה לפיט (שניות, יבש)", lblInLapHint: "אופציונלי. זמן הגעה לכניסה לפיט; ריק = ללא, ההתראה נספרת אחורה מהעצירה המתוכננת.", lblDoubles: "אפשר דאבל סטינט", lblSquads: "שימוש בחוליות", lblFuel: "דלק", lblFuelTank: "מיכל דלק (דק')",
         addDriver: "+ הוסף", generateStrategy: "צור אסטרטגיה (AI)", previewStrategy: "תצוגה מקדימה", startRace: "התחל מירוץ", loadSaved: "טען מירוץ",
         stepRaceSettings: "הגדרות מירוץ", stepDrivers: "נהגים", stepGo: "יאללה נתחיל", optional: "אופציונלי", joinAsDriverHint: "התחבר למירוץ שרץ במכשיר אחר",
@@ -3087,7 +3087,7 @@ window.SAVED_SETTINGS_KEY = 'strateger_saved_settings';
 // older versions still load; everything new is keyed by element id.
 window._SETTING_FIELDS = [
     ['duration', 'raceDuration'], ['stops', 'reqPitStops'], ['minStint', 'minStint'], ['maxStint', 'maxStint'],
-    ['minPitTime', 'minPitTime'], ['raceStartTime', 'raceStartTime'], ['raceStartDate', 'raceStartDate'],
+    ['minPitTime', 'minPitTime'], ['estPitTime', 'estPitTime'], ['raceStartTime', 'raceStartTime'], ['raceStartDate', 'raceStartDate'],
     ['raceLocation', 'raceLocation'], ['liveTimingUrl', 'liveTimingUrl'], ['searchValue', 'searchValue'],
     ['maxConsecutive', 'maxConsecutive'], ['numSquads', 'numSquads'],
     ['squadWindowStart', 'squadWindowStart'], ['squadWindowEnd', 'squadWindowEnd'],
@@ -3098,7 +3098,7 @@ window._SETTING_FIELDS = [
     ['fuelTime', 'fuelTime'], ['raceTarget', 'raceTarget'], ['raceLaps', 'raceLaps'], ['avgLapSec', 'avgLapSec']
 ];
 // Number fields where an empty box means "rule off" (shown as the Off placeholder).
-window._OFF_FIELD_IDS = ['reqPitStops', 'minStint', 'maxStint', 'minPitTime', 'pitClosedStart', 'pitClosedEnd',
+window._OFF_FIELD_IDS = ['reqPitStops', 'minStint', 'maxStint', 'minPitTime', 'estPitTime', 'pitClosedStart', 'pitClosedEnd',
     'kartChangeInterval', 'reqExtraPits', 'minPitLapSec', 'numTeams', 'inLapSec', 'minDriverTime', 'maxDriverTime', 'fuelTime'];
 // A stored 0 on one of those fields really means off, so show it as empty.
 window._normalizeOffFields = function() {
