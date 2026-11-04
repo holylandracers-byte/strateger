@@ -1013,15 +1013,15 @@
                             <button id="addSecondaryTeamBtn" data-i18n-aria="ariaSecondTeam" aria-label="Watch a second team" onclick="window.openTeamPicker('secondary')" class="lt-laptop-only text-[11px] bg-navy-700 border border-gray-600 text-gray-300 px-2 py-0.5 rounded" title="Watch a second team">➕👥</button>
                             <!-- Force Pit Out: bypasses 20s guard and live timing auto-exit, shown only when in pit -->
                             <button id="forcePitOutBtn" onclick="window.forcePitOut()" class="hidden text-[11px] bg-amber-600 hover:bg-amber-500 text-white font-bold px-2 py-0.5 rounded border border-amber-400 transition" title="Force pit out now (override)">⚡ OUT</button>
-                            <button id="ltPaneBtn" type="button" onclick="window.cycleLtPane()" class="text-[11px] bg-navy-700 border border-gray-600 text-gray-300 px-2 py-0.5 rounded" title="Switch view: tiles / standings" aria-label="Switch view: tiles / standings">&#9638;</button>
-                            <button id="ltMinBtn" type="button" onclick="window.setLtView('compact')" class="text-[11px] bg-navy-700 border border-gray-600 text-gray-300 px-2 py-0.5 rounded" title="Minimize live timing" aria-label="Minimize live timing">&#9644;</button>
+                            <button id="ltPhotoBtn" type="button" onclick="window.pickLtPhoto()" class="text-[11px] bg-navy-700 border border-gray-600 text-gray-300 px-2 py-0.5 rounded" title="Update from a photo of the timing screen" aria-label="Update from a photo of the timing screen">&#128247;</button>
+                            <input id="ltPhotoInput" type="file" accept="image/*" class="hidden">
+                            <button id="ltMinBtn" type="button" onclick="window.toggleLtMin()" class="text-[11px] bg-navy-700 border border-gray-600 text-gray-300 px-2 py-0.5 rounded" title="Minimize live timing" aria-label="Minimize live timing">&#9644;</button>
                             <button id="ltHideBtn" type="button" onclick="window.setLtView('hidden')" class="text-[11px] bg-navy-700 border border-gray-600 text-gray-300 px-2 py-0.5 rounded" title="Hide live timing" aria-label="Hide live timing">&#128065;</button>
                             <button onclick="window.stopLiveTiming()" class="text-[11px] bg-red-900 text-white px-2 rounded" data-i18n="stop">Stop</button>
                         </div>
                     </div>
                     <div id="ltCompactSummary" class="hidden items-center justify-between gap-2 text-xs font-mono text-gray-200 px-1">
                         <span id="ltCompactText">-</span>
-                        <button type="button" onclick="window.setLtView('full')" class="text-[11px] bg-navy-700 border border-gray-600 text-ice px-2 py-0.5 rounded" aria-label="Expand live timing">&#9633; Expand</button>
                     </div>
                     <div id="ltTiles" class="lt-tiles grid grid-cols-3 gap-1 text-center">
                         <div class="bg-navy-950 rounded border border-gray-700 p-1">
@@ -1574,7 +1574,7 @@
                     <div class="px-3 py-2 bg-navy-800 border-b border-gray-700 flex items-center justify-between shrink-0">
                         <span class="text-[11px] text-gray-400 uppercase font-bold tracking-wide" data-i18n="qualifyStageResults">Results</span>
                         <span id="qualifyAdvancedCount" class="hidden text-[11px] text-green-400 font-bold"></span>
-                        <span class="flex gap-1 ml-auto"><button type="button" onclick="window.setLtView('compact')" class="text-[11px] bg-navy-700 border border-gray-600 text-gray-300 px-2 py-0.5 rounded" aria-label="Minimize results">&#9644;</button><button type="button" onclick="window.setLtView('hidden')" class="text-[11px] bg-navy-700 border border-gray-600 text-gray-300 px-2 py-0.5 rounded" aria-label="Hide results">&#128065;</button></span>
+                        <span class="flex gap-1 ml-auto"><button type="button" onclick="window.toggleLtMin()" class="text-[11px] bg-navy-700 border border-gray-600 text-gray-300 px-2 py-0.5 rounded" aria-label="Minimize results">&#9644;</button><button type="button" onclick="window.setLtView('hidden')" class="text-[11px] bg-navy-700 border border-gray-600 text-gray-300 px-2 py-0.5 rounded" aria-label="Hide results">&#128065;</button></span>
                     </div>
                     <div id="qualifyStageResults" class="divide-y divide-gray-800/60 overflow-y-auto flex-1"></div>
                 </div>
@@ -2497,7 +2497,7 @@
     <script src="js/i18n-phrases2.js?v=2"></script>
     <script src="js/i18n-phrases3.js?v=6"></script>
     <script src="js/i18n-phrases4.js?v=2"></script>
-    <script src="js/i18n-phrases5.js?v=2"></script>
+    <script src="js/i18n-phrases5.js?v=3"></script>
     <script src="js/auth.js?v=10"></script>
     <script src="js/network.js?v=11"></script>
     <script src="js/delegate.js?v=2"></script>
@@ -2506,7 +2506,7 @@
     <script src="js/compliance.js?v=3"></script>
     <script src="js/export.js?v=3"></script>
     <script src="js/autosave.js?v=5"></script>
-    <script src="js/live-timing.js?v=22"></script>
+    <script src="js/live-timing.js?v=23"></script>
     <script src="js/track-finder.js?v=2"></script>
     <script src="js/ui.js?v=38"></script>
     <script src="js/walkthrough.js?v=15"></script>

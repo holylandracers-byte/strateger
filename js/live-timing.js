@@ -468,7 +468,7 @@ window.fetchLiveTimingFromProxy = async function() {
     const apexBtn = document.getElementById('apexViewToggle');
     if (apexBtn && window.liveTimingManager) {
         const prov = window.liveTimingManager.provider;
-        apexBtn.style.display = prov === 'apex' ? '' : 'none';
+        apexBtn.style.display = (window.liveTimingConfig && window.liveTimingConfig.url) || prov === 'apex' ? '' : 'none';
     }
 };
 
@@ -2626,42 +2626,67 @@ window.updateLtRestoreChip = function() {
     chip.classList.remove('hidden');
 };
 
-// ---- Inside the full widget: tiles only / standings only / both ----
-// A tablet can't always fit the six tiles AND the standings, so the header button cycles
-// between them in place (the standings scroll inside the widget). Remembered per device,
-// which also serves as "open on a different view by default".
-window.ltPane = 'both';
-try { window.ltPane = localStorage.getItem('strateger_lt_pane') || 'both'; } catch (e) {}
+// Minimize and restore share one button: tap again to bring the widget back to full size.
+window.toggleLtMin = function() {
+    window.setLtView(window.ltView === 'compact' ? 'full' : 'compact');
+};
 
-window.setLtPane = function(pane) {
-    if (pane !== 'tiles' && pane !== 'table') pane = 'both';
-    window.ltPane = pane;
-    try { localStorage.setItem('strateger_lt_pane', pane); } catch (e) {}
-    document.body.classList.toggle('lt-pane-tiles', pane === 'tiles');
-    document.body.classList.toggle('lt-pane-table-only', pane === 'table');
-    const btn = document.getElementById('ltPaneBtn');
-    if (btn) {
-        const icon = { both: '▦', tiles: '▤', table: '☰' }[pane];
-        btn.innerHTML = icon;
-        const lbl = window.tt ? window.tt('Switch view: tiles / standings') : 'Switch view: tiles / standings';
-        btn.title = lbl;
-        btn.setAttribute('aria-label', lbl);
-        btn.classList.toggle('text-ice', pane !== 'both');
+// ---- Update from a photo of the timing screen ----
+// For when the feed can't be reached: OCR a photo / screenshot, find our row and fill position and lap times.
+window.pickLtPhoto = function() {
+    const input = document.getElementById('ltPhotoInput');
+    if (!input) return;
+    if (!input.dataset.bound) {
+        input.dataset.bound = '1';
+        input.addEventListener('change', function() {
+            const f = input.files && input.files[0];
+            input.value = '';
+            if (f) window.readLtPhoto(f);
+        });
+    }
+    input.click();
+};
+
+window.readLtPhoto = async function(file) {
+    const tt = window.tt || function(x) { return x; };
+    const toast = function(msg, type) { if (window.showToast) window.showToast(msg, type || 'info'); };
+    if (!window.Tesseract) { toast(tt('Photo reading is not available offline'), 'error'); return; }
+    const btn = document.getElementById('ltPhotoBtn');
+    if (btn) btn.disabled = true;
+    toast(tt('Reading photo…'));
+    try {
+        const result = await window.Tesseract.recognize(file, 'eng');
+        const lines = String((result && result.data && result.data.text) || '').split(/\r?\n/).map(function(l) { return l.trim(); }).filter(Boolean);
+        const sc = window.searchConfig || {};
+        const term = String(sc.kartNumber || sc.teamName || sc.driverName || '').trim().toLowerCase();
+        const row = term ? lines.find(function(l) { return l.toLowerCase().indexOf(term) !== -1; }) : null;
+        if (!row) { toast(tt('Could not find your team in the photo'), 'error'); return; }
+        const pos = row.match(/^\D{0,2}(\d{1,3})\b/);
+        const times = (row.match(/\d{1,2}:\d{2}[.,]\d{2,3}|\b\d{2}[.,]\d{2,3}\b/g) || [])
+            .map(function(x) { return window.parseTimeToMs(x.replace(',', '.')); }).filter(Boolean);
+        if (!pos && !times.length) { toast(tt('Could not find your team in the photo'), 'error'); return; }
+        const d = window.liveData;
+        if (pos) { d.previousPosition = d.position; d.position = parseInt(pos[1], 10); }
+        if (times.length) {
+            d.lastLap = times[0];
+            d.bestLap = times.length > 1 ? Math.min.apply(null, times) : (d.bestLap ? Math.min(d.bestLap, times[0]) : times[0]);
+        }
+        if (typeof window.updateLiveTimingUI === 'function') window.updateLiveTimingUI();
+        toast(tt('Updated from photo') + (pos ? ' · P' + pos[1] : ''), 'success');
+    } catch (e) {
+        console.warn('[LivePhoto]', e);
+        toast(tt('Could not read the photo'), 'error');
+    } finally {
+        if (btn) btn.disabled = false;
     }
 };
 
-window.cycleLtPane = function() {
-    const order = ['both', 'tiles', 'table'];
-    window.setLtPane(order[(order.indexOf(window.ltPane) + 1) % order.length]);
-};
-
-(function initLtPane() {
-    const apply = function() { window.setLtPane(window.ltPane); };
-    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', apply); else apply();
-})();
-
 (function initLtView() {
-    const apply = function() { window.setLtView(window.ltView); };
+    const apply = function() {
+        window.setLtView(window.ltView);
+        const pb = document.getElementById('ltPhotoBtn');
+        if (pb && window.tt) { const l = window.tt('Update from a photo of the timing screen'); pb.title = l; pb.setAttribute('aria-label', l); }
+    };
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', apply); else apply();
     // keep the chip and compact summary current without touching the main UI update path
     setInterval(function() { window.updateLtRestoreChip(); window.updateLtCompactSummary(); }, 1000);

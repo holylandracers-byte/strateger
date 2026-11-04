@@ -3639,7 +3639,7 @@ body.lt-compact #qualifyResultsCard { flex: 0 0 auto !important; max-height: 170
 .lt-restore-chip:hover { background: #164e63; color: #fff; }
 .lt-restore-chip.hidden { display: none; }
 body.lt-compact #liveTimingDragHandle { flex-wrap: wrap; gap: 4px; }
-body.lt-compact #apexViewToggle, body.lt-compact #addSecondaryTeamBtn, body.lt-compact #teamLogoUploadBtn, body.lt-compact #forcePitOutBtn { display: none !important; }
+body.lt-compact #apexViewToggle, body.lt-compact #ltPhotoBtn, body.lt-compact #addSecondaryTeamBtn, body.lt-compact #teamLogoUploadBtn, body.lt-compact #forcePitOutBtn { display: none !important; }
 
 
 /* ==================== STRATEGY PREVIEW: STINT ROWS ==================== */
@@ -3993,6 +3993,7 @@ body.lt-original #dualTeamStrip,
 body.lt-original #secondaryTeamCard { display: none !important; }
 body.lt-original #liveTimingPanel { padding: 4px !important; }
 body.lt-original #apexIframeContainer:not(.hidden) { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; margin-top: 2px; }
+body.lt-original #competitorsTableHeader, body.lt-original #categoryFilterRow, body.lt-original #competitorsTable { display: none !important; }
 body.lt-original #apexIframe { flex: 1 1 auto; width: 100%; height: auto !important; min-height: 0; border-radius: 4px; }
 
 /* ==========================================
@@ -4416,16 +4417,6 @@ body.lt-original #apexIframe { flex: 1 1 auto; width: 100%; height: auto !import
 /* .lt-widget-wrapper sits at z-index 100, so the old z-50 chat opened *underneath* it.
    Stay above the widget but below the modals (110+). */
 #chatPanel { z-index: 106; max-height: calc(100dvh - 80px - var(--safe-bottom, 0px)); }
-
-/* ==================== LIVE TIMING: tiles / standings / both ==================== */
-body.lt-pane-tiles .lt-pane-table,
-body.lt-pane-tiles #apexIframeContainer { display: none !important; }
-body.lt-pane-table-only .lt-tiles { display: none !important; }
-/* Standings only: give the freed height to the table so it scrolls inside the widget */
-body.lt-pane-table-only .lt-table-scroll { max-height: min(60vh, 460px); }
-@media (min-width: 1024px) {
-    body.lt-pane-table-only .lt-table-scroll { max-height: none; }
-}
 
 /* ==================== TABLETS: tighter sizing, either orientation ==================== */
 /* One row of six tiles instead of two rows of three, smaller paddings, so the standings,
