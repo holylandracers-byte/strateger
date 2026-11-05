@@ -405,43 +405,34 @@ window.fetchLiveTimingFromProxy = async function() {
                     window.liveData.raceTimeLeftMs = feedMs;
                     window.liveData._raceTimeReceivedAt = feedAt;
                 } else {
-                    // Providers send whole seconds and are polled every ~2 s, so stamping "when we noticed the
-                    // change" ran up to 2 s behind the board. Instead estimate the moment the board's clock hits
-                    // zero from the last few polls (the smallest candidate is the poll closest to a real tick)
-                    // and derive the remaining time from that, so the app clock stays within ~0.3 s of the board.
+                    // The board's clock is a countdown that only ever moves one way, so we run our OWN countdown and
+                    // only use the feed to place it. Every poll gives a candidate end time (poll time + time left); a
+                    // late or cached response gives a LATER candidate, a fresh one the earliest, so the smallest candidate
+                    // seen is the best estimate and it never has to move forward again. The clock therefore never steps
+                    // back and forth: it can only be pulled earlier, once, when a fresher sample shows it was behind.
                     const pollAt = (typeof window.getSyncedNow === 'function') ? window.getSyncedNow() : Date.now();
-                    const est = window.liveData._clockEst || (window.liveData._clockEst = { buf: [], same: 0, last: null, endAt: null });
+                    const est = window.liveData._clockEst || (window.liveData._clockEst = { minCand: null, same: 0, last: null, endAt: null, up: 0 });
                     est.same = (feedMs === est.last) ? est.same + 1 : 0;
                     est.last = feedMs;
                     const cand = pollAt + feedMs;
-                    const lo = est.buf.length ? Math.min.apply(null, est.buf) : cand;
-                    if (est.same >= 4 || cand < lo - 2500 || cand > lo + 6000) est.buf = [];   // clock paused / rewound / other session
-                    est.buf.push(cand);
-                    if (est.buf.length > 12) est.buf.shift();
-                    const snap = data.race.snapshotAt;
                     if (est.same >= 4) {
-                        // clock stopped (red flag / between sessions): follow the board as it is
-                        est.endAt = pollAt + feedMs;
-                        est.snapBuf = [];
-                    } else if (snap) {
-                        // The snapshot's own timestamp says when the board read this value, so a late or cached response
-                        // cannot make the clock lag: end = snapshot time + time left. Both are whole seconds, so the
-                        // largest sum in the window is the one closest to the truth (+0.5 s for the missing fraction).
-                        est.snapBuf = est.snapBuf || [];
-                        const endSnap = snap + feedMs;
-                        const hi = est.snapBuf.length ? Math.max.apply(null, est.snapBuf) : endSnap;
-                        if (endSnap > hi + 3000 || endSnap < hi - 3000) est.snapBuf = [];     // clock restarted / other session
-                        est.snapBuf.push(endSnap);
-                        if (est.snapBuf.length > 10) est.snapBuf.shift();
-                        const target = Math.max.apply(null, est.snapBuf) + 500;
-                        if (est.endAt == null || Math.abs(target - est.endAt) > 1500) est.endAt = target;
-                        else est.endAt += Math.max(-40, Math.min(40, target - est.endAt));
+                        // board stopped (red flag / between sessions): follow it as it is, then start estimating again
+                        est.endAt = cand;
+                        est.minCand = null;
+                        est.up = 0;
                     } else {
-                        // best estimate of the instant the board's clock reads zero; the minimum candidate is the poll
-                        // closest to a real tick, and the board shows whole seconds so the true value averages +0.5 s
-                        const target = est.buf.length >= 3 ? Math.min.apply(null, est.buf) + 800 : cand + 500;
-                        if (est.endAt == null || Math.abs(target - est.endAt) > 2500) est.endAt = target;      // first value or a real jump
-                        else est.endAt += Math.max(-40, Math.min(40, target - est.endAt));                      // otherwise slew: the clock never visibly steps
+                        if (est.minCand == null || cand < est.minCand) { est.minCand = cand; est.up = 0; }
+                        else if (cand > est.minCand + 30000) {
+                            // the board keeps showing a much later end than we hold: time was added or another session started
+                            if (++est.up >= 5) { est.minCand = cand; est.up = 0; est.endAt = null; }
+                        } else est.up = 0;
+                        const target = est.minCand + 700;        // whole-second floor on the board: the truth is ~0.7 s after the smallest candidate
+                        if (est.endAt == null) est.endAt = target;
+                        else {
+                            const diff = target - est.endAt;
+                            if (diff < -3000 || diff > 5000) est.endAt = target;                                   // clearly wrong: place it once
+                            else est.endAt += Math.max(-150, Math.min(150, diff));                                  // small differences: ease in, never step
+                        }
                     }
                     window.liveData.raceTimeLeftMs = Math.max(0, est.endAt - pollAt);
                     window.liveData._raceTimeReceivedAt = pollAt;

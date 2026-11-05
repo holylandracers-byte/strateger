@@ -4744,3 +4744,18 @@ html.is-tablet .auto-pit-switch { min-height: 36px; font-size: 13px; }
 .so-mid { background: rgba(255,255,255,.05); color: #e5e7eb; border-color: rgba(255,255,255,.16); }
 .so-bad { background: rgba(239,68,68,.14); color: #fca5a5; border-color: rgba(239,68,68,.45); }
 .outlook-collapsed .so-wrap { display: none; }
+
+/* Phones: the live widget's toolbar (Auto pit, view, target, photo, hide, Stop...) is wider than the screen.
+   Buttons keep their full touch size and the row scrolls sideways, so Stop is always reachable. */
+@media (max-width: 767px) {
+    #liveTimingDragHandle {
+        flex-wrap: nowrap !important; justify-content: flex-start !important; gap: 10px;
+        overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch;
+        scrollbar-width: none; touch-action: pan-x;
+        padding-bottom: 2px;
+    }
+    #liveTimingDragHandle::-webkit-scrollbar { display: none; }
+    #liveTimingDragHandle > div { flex: none !important; flex-wrap: nowrap !important; }
+    #liveTimingDragHandle > div:last-child { margin-inline-start: auto; }
+    #liveTimingDragHandle button, #liveTimingDragHandle .auto-pit-switch { flex: none; }
+}
