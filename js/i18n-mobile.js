@@ -6,6 +6,8 @@
     Object.assign(window._TT_PH = window._TT_PH || {}, {
         'Live': ['חי', 'Direct', 'Ao vivo', 'Live', 'مباشر', 'En vivo', 'Live', 'ლაივი', 'Live', 'ライブ', 'Ζωντανά'],
         'Plan': ['תוכנית', 'Plan', 'Plano', 'План', 'الخطة', 'Plan', 'Piano', 'გეგმა', 'Plan', 'プラン', 'Πλάνο'],
+        'Live clock': ['שעון מה-Live', 'Chrono du direct', 'Relógio ao vivo', 'Часы из лайва', 'ساعة البث المباشر', 'Reloj en vivo', 'Orologio live', 'ლაივის საათი', 'Live-Uhr', 'ライブ時計', 'Ρολόι live'],
+        'Race clock follows the live timing clock. Turn off to run on the app timer only.': ['שעון המירוץ עוקב אחרי שעון ה-Live. כבו כדי להשתמש בטיימר האפליקציה בלבד.', 'Le chrono de course suit celui du direct. Désactivez pour n’utiliser que le minuteur de l’app.', 'O relógio da corrida segue o do ao vivo. Desative para usar só o cronómetro da app.', 'Часы гонки следуют за часами лайва. Выключите, чтобы использовать только таймер приложения.', 'ساعة السباق تتبع ساعة البث المباشر. أوقفها لاستخدام مؤقت التطبيق فقط.', 'El reloj de carrera sigue al del en vivo. Desactívalo para usar solo el temporizador de la app.', 'L’orologio di gara segue quello live. Disattiva per usare solo il timer dell’app.', 'რბოლის საათი ლაივის საათს მიჰყვება. გამორთეთ, რომ მხოლოდ აპის ტაიმერი გამოიყენოთ.', 'Die Rennuhr folgt der Live-Uhr. Ausschalten, um nur den App-Timer zu nutzen.', 'レース時計はライブ計時の時計に従います。オフにするとアプリのタイマーだけを使います。', 'Το ρολόι αγώνα ακολουθεί το ρολόι live. Απενεργοποιήστε το για να χρησιμοποιείται μόνο το χρονόμετρο της εφαρμογής.'],
         'Drivers': ['נהגים', 'Pilotes', 'Pilotos', 'Пилоты', 'السائقون', 'Pilotos', 'Piloti', 'მძღოლები', 'Fahrer', 'ドライバー', 'Οδηγοί'],
 
         // ----- live timing from photos -----

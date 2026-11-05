@@ -4574,12 +4574,19 @@ body.co-admin-session #shareRaceBtn, body.co-admin-session #driverLinkBtn, body.
     #racePanelsWrapper[data-mtab="live"] #strategyGroup,
     #racePanelsWrapper[data-mtab="live"] #penaltyQueuePanel,
     #racePanelsWrapper[data-mtab="live"] #statsTableGroup,
-    #racePanelsWrapper[data-mtab="plan"] #raceInfoPanel { display: none !important; }
+    #racePanelsWrapper[data-mtab="plan"] #raceInfoPanel,
+    #racePanelsWrapper[data-mtab="drivers"] #raceInfoPanel,
+    #racePanelsWrapper[data-mtab="drivers"] #strategyGroup,
+    #racePanelsWrapper[data-mtab="drivers"] #penaltyQueuePanel { display: none !important; }
+    /* phones: Plan and Drivers are separate tabs; tablets keep the drivers table inside Plan (two tabs) */
+    html:not(.is-tablet) #racePanelsWrapper[data-mtab="plan"] #statsTableGroup { display: none !important; }
+    html.is-tablet .m-tab-drivers { display: none; }
 
     #racePanelsWrapper[data-mtab="live"] #raceInfoPanel,
     #racePanelsWrapper[data-mtab="plan"] #strategyGroup,
     #racePanelsWrapper[data-mtab="plan"] #penaltyQueuePanel,
-    #racePanelsWrapper[data-mtab="plan"] #statsTableGroup {
+    #racePanelsWrapper[data-mtab="plan"] #statsTableGroup,
+    #racePanelsWrapper[data-mtab="drivers"] #statsTableGroup {
         animation: mtIn .42s cubic-bezier(.2, .85, .25, 1) both;
     }
     #racePanelsWrapper[data-mtab="plan"] #statsTableGroup { animation-delay: .08s; }
@@ -4589,11 +4596,11 @@ body.co-admin-session #shareRaceBtn, body.co-admin-session #driverLinkBtn, body.
         to   { opacity: 1; transform: none; filter: none; }
     }
     /* rows inside the section rise in one after another */
-    #racePanelsWrapper[data-mtab="plan"] #statsTable > tr { animation: mtRow .4s cubic-bezier(.2, .85, .25, 1) both; }
-    #racePanelsWrapper[data-mtab="plan"] #statsTable > tr:nth-child(2) { animation-delay: .04s; }
-    #racePanelsWrapper[data-mtab="plan"] #statsTable > tr:nth-child(3) { animation-delay: .08s; }
-    #racePanelsWrapper[data-mtab="plan"] #statsTable > tr:nth-child(4) { animation-delay: .12s; }
-    #racePanelsWrapper[data-mtab="plan"] #statsTable > tr:nth-child(n+5) { animation-delay: .16s; }
+    #racePanelsWrapper:is([data-mtab="plan"], [data-mtab="drivers"]) #statsTable > tr { animation: mtRow .4s cubic-bezier(.2, .85, .25, 1) both; }
+    #racePanelsWrapper:is([data-mtab="plan"], [data-mtab="drivers"]) #statsTable > tr:nth-child(2) { animation-delay: .04s; }
+    #racePanelsWrapper:is([data-mtab="plan"], [data-mtab="drivers"]) #statsTable > tr:nth-child(3) { animation-delay: .08s; }
+    #racePanelsWrapper:is([data-mtab="plan"], [data-mtab="drivers"]) #statsTable > tr:nth-child(4) { animation-delay: .12s; }
+    #racePanelsWrapper:is([data-mtab="plan"], [data-mtab="drivers"]) #statsTable > tr:nth-child(n+5) { animation-delay: .16s; }
     @keyframes mtRow { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -4770,21 +4777,27 @@ html.is-tablet .auto-pit-switch { min-height: 36px; font-size: 13px; }
 .so-lab { font-size: 12px; font-weight: 700; line-height: 1.15; white-space: nowrap; }
 .so-sub { font-size: 11.5px; opacity: .85; white-space: nowrap; }
 
-/* One-line forecast on the Live tab (phones and portrait tablets); tapping it opens the Plan tab */
+/* One-line outlook summary inside the outlook panel: always there once collapsed, never on the Live tab */
 .fc-strip { display: none; }
-@media (max-width: 1023px) and (orientation: portrait) {
-    #racePanelsWrapper[data-mtab="live"] .fc-strip:not(.hidden) {
-        display: flex; align-items: center; gap: 12px; width: 100%; min-height: 40px; padding: 4px 12px; margin-bottom: 2px;
-        border-radius: 10px; border: 1px solid rgb(var(--n700)); background: rgb(var(--n900)); color: #e2e8f0;
-        font-size: 13px; font-weight: 700; overflow-x: auto; white-space: nowrap; scrollbar-width: none;
-    }
-    .fc-strip::-webkit-scrollbar { display: none; }
-    .fc-now { color: rgb(var(--accent-rgb)); flex: none; }
-    .fc-c { display: inline-flex; align-items: center; gap: 4px; flex: none; background: none !important; border: 0 !important; }
-    .fc-c i { font-style: normal; font-size: 11px; }
-    .fc-left { color: #94a3b8; font-weight: 600; margin-inline-start: auto; flex: none; }
-    .fc-go { color: #64748b; font-size: 18px; flex: none; }
-    [dir="rtl"] .fc-go { transform: scaleX(-1); }
+#remainingStintsPanel.outlook-collapsed .fc-strip:not(.hidden) {
+    display: flex; align-items: center; gap: 12px; width: 100%; min-height: 36px; padding: 2px 4px 6px;
+    color: #e2e8f0; font-size: 13px; font-weight: 700; overflow-x: auto; white-space: nowrap; scrollbar-width: none;
+}
+.fc-strip::-webkit-scrollbar { display: none; }
+.fc-now { color: rgb(var(--accent-rgb)); flex: none; }
+.fc-c { display: inline-flex; align-items: center; gap: 4px; flex: none; background: none !important; border: 0 !important; }
+.fc-c i { font-style: normal; font-size: 11px; }
+.fc-left { color: #94a3b8; font-weight: 600; margin-inline-start: auto; flex: none; }
+.fc-go { display: none; }
+
+/* Phones: the outlook tiles shrink and wrap their labels so every tile fits on screen (nothing cut off) */
+@media (max-width: 767px) {
+    .so-tiles { gap: 4px; overflow-x: visible; }
+    .so-tile { flex: 1 1 0; min-width: 0; gap: 5px; padding: 4px 6px; border-radius: 9px; }
+    .so-count { font-size: 18px; }
+    .so-lab { font-size: clamp(9.5px, 2.9vw, 11px); white-space: normal; overflow-wrap: anywhere; }
+    .so-sub { font-size: clamp(9px, 2.7vw, 10.5px); }
+    .so-chip { font-size: 12px; padding: 2px 8px; }
 }
 
 /* Plan tab sections never shrink to fit: a short screen scrolls instead of cutting the outlook or the pace buttons */

@@ -99,7 +99,23 @@
         if (typeof window.broadcast === 'function') window.broadcast();
     };
 
+    // Detach the race clock from the live-timing clock (this device): the app's own timer runs alone.
+    window._clockFeedOn = store.get ? store.get('strateger_clock_feed') !== '0' : true;
+    window.toggleClockFeed = function() {
+        window._clockFeedOn = !window._clockFeedOn;
+        store.set('strateger_clock_feed', window._clockFeedOn ? '1' : '0');
+        window._updateClockSyncBtn(true);
+    };
+
     window._updateClockSyncBtn = function(hasFeed) {
+        const cf = $('clockFeedBtn');
+        if (cf) {
+            const on = window._clockFeedOn !== false;
+            cf.classList.toggle('hidden', !hasFeed);
+            cf.classList.toggle('is-on', on);
+            cf.setAttribute('aria-checked', String(on));
+            if (typeof window.tt === 'function') cf.title = window.tt('Race clock follows the live timing clock. Turn off to run on the app timer only.');
+        }
         const ap = $('autoPitBtn');
         if (ap) {
             const on = !!window._autoPitEnabled;
@@ -117,7 +133,7 @@
         const st = window.state, ld = window.liveData, cfg = window.config;
         const live = !!(st && st.isRunning && !st.isFinished && ld && ld.raceTimeLeftMs != null && ld.raceTimeLeftMs > 0 && cfg && cfg.raceMs);
         window._updateClockSyncBtn(live);
-        if (!live || !window._clockSyncOn || window.role !== 'host') return;
+        if (!live || !window._clockSyncOn || window._clockFeedOn === false || window.role !== 'host') return;
 
         const now = window.getSyncedNow();
         if (now - lastApplied < 10000) return;

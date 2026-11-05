@@ -3327,11 +3327,11 @@ window.checkForSavedRace = function() {
             const driverName = data.drivers[currentIdx] ? data.drivers[currentIdx].name : 'Unknown';
             document.getElementById('savedRaceDriver').innerText = driverName;
             const savedPitCount = data.liveData?.ourTeamPitCount ?? data.state?.pitCount ?? 0;
-            const savedStintNo = data.state?.globalStintNumber ?? ((data.state?.pitCount || 0) + 1);
+            // stops done out of the stops required (7 / 30; going over reads 31 / 30)
             const stopsEl = document.getElementById('savedRaceStops');
-            const stintEl = document.getElementById('savedRaceStint');
+            const stopsReqEl = document.getElementById('savedRaceStopsReq');
             if (stopsEl) stopsEl.innerText = String(savedPitCount);
-            if (stintEl) stintEl.innerText = String(savedStintNo);
+            if (stopsReqEl) stopsReqEl.innerText = String(parseInt(data.config?.reqStops) || '-');
             
             const raceMs = data.config.raceMs || (data.config.duration * 3600000);
             const elapsed = Date.now() - data.state.startTime;

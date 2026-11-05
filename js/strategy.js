@@ -1295,6 +1295,35 @@ window.normalizeStintDurationsMs = function(durations, opts) {
     return { durations: d, violations, ok: violations === 0 };
 };
 
+/**
+ * The ideal split of `poolMs` of driving over `n` stints: as many stints as possible at the (plan) maximum,
+ * at most ONE stint in between, and every other stint at the minimum. This uses the max and min rules as fully
+ * as they allow, and it is what every re-plan during the race aims for, so a stint that ran long or short
+ * is absorbed by the remaining stints instead of leaving a spread of in-between stints.
+ * Returns null when the rules cannot be met (caller falls back to the proportional method).
+ */
+window.idealStintSplit = function(n, poolMs, bounds) {
+    if (!(n > 0) || !(poolMs > 0) || !bounds) return null;
+    const minMs = bounds.minStintMs > 0 ? bounds.minStintMs : 0;
+    if (bounds.effectiveMaxStint === Infinity) return null;
+    // stay one minute under the cap while the time still fits (same rule as normalizeStintDurationsMs)
+    const planOk = bounds.planMaxStint != null && bounds.planMaxStint !== Infinity && poolMs <= n * bounds.planMaxStint + 1000;
+    const maxMs = planOk ? bounds.planMaxStint : bounds.effectiveMaxStint;
+    if (poolMs < n * minMs - 1000 || poolMs > n * maxMs + 1000) return null;
+    const out = new Array(n).fill(minMs);
+    if (maxMs <= minMs) { out.fill(Math.round(poolMs / n / 1000) * 1000); return out; }
+    let x = Math.floor((poolMs - n * minMs) / (maxMs - minMs));
+    x = Math.max(0, Math.min(n, x));
+    for (let i = 0; i < x; i++) out[i] = maxMs;
+    if (x < n) out[x] = poolMs - x * maxMs - (n - x - 1) * minMs;   // the single in-between stint takes what is left
+    for (let i = 0; i < n; i++) out[i] = Math.round(out[i] / 1000) * 1000;
+    // rounding: put any whole-second difference on the in-between stint
+    const diff = poolMs - out.reduce((a, b) => a + b, 0);
+    const k = Math.min(x, n - 1);
+    out[k] = Math.max(minMs, Math.min(maxMs, out[k] + Math.round(diff / 1000) * 1000));
+    return out;
+};
+
 window.countStintViolations = function(timeline, config) {
     if (!timeline) return 0;
     const bounds = window.getStintBoundsMs(config || window.config);

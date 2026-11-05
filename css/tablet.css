@@ -111,6 +111,9 @@ html.is-tablet .fixed.inset-0 > div[class*="max-w-"] button { min-height: 44px; 
     html.is-tablet #raceControlDock .tabular-nums.text-2xl,
     html.is-tablet #raceControlDock .text-2xl { font-size: 1.75rem !important; }
     html.is-tablet #raceTimerDisplay { font-size: 2rem !important; }
+    /* the stops count stands out a little, like the race clock (not as much) */
+    html.is-tablet #pitCountDisplay > span:first-child { font-size: 1.6rem !important; line-height: 1.1; }
+    html.is-tablet #pitCountDisplay > span:last-child { font-size: 1rem !important; }
 
     /* standings: six tiles in one row and a taller table, as there is plenty of height */
     html.is-tablet .lt-tiles { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }

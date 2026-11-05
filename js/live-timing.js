@@ -411,31 +411,47 @@ window.fetchLiveTimingFromProxy = async function() {
                     // seen is the best estimate and it never has to move forward again. The clock therefore never steps
                     // back and forth: it can only be pulled earlier, once, when a fresher sample shows it was behind.
                     const pollAt = (typeof window.getSyncedNow === 'function') ? window.getSyncedNow() : Date.now();
-                    const est = window.liveData._clockEst || (window.liveData._clockEst = { minCand: null, same: 0, last: null, endAt: null, up: 0 });
-                    est.same = (feedMs === est.last) ? est.same + 1 : 0;
-                    est.last = feedMs;
-                    const cand = pollAt + feedMs;
-                    if (est.same >= 4) {
-                        // board stopped (red flag / between sessions): follow it as it is, then start estimating again
-                        est.endAt = cand;
-                        est.minCand = null;
-                        est.up = 0;
-                    } else {
-                        if (est.minCand == null || cand < est.minCand) { est.minCand = cand; est.up = 0; }
-                        else if (cand > est.minCand + 30000) {
-                            // the board keeps showing a much later end than we hold: time was added or another session started
-                            if (++est.up >= 5) { est.minCand = cand; est.up = 0; est.endAt = null; }
-                        } else est.up = 0;
-                        const target = est.minCand + 700;        // whole-second floor on the board: the truth is ~0.7 s after the smallest candidate
-                        if (est.endAt == null) est.endAt = target;
-                        else {
-                            const diff = target - est.endAt;
-                            if (diff < -3000 || diff > 5000) est.endAt = target;                                   // clearly wrong: place it once
-                            else est.endAt += Math.max(-150, Math.min(150, diff));                                  // small differences: ease in, never step
+                    const est = window.liveData._clockEst || (window.liveData._clockEst = { minCand: null, last: null, endAt: null, sameSince: null, seen: new Set(), ext: null });
+                    // A value we already saw and then moved past is a LATE copy (a cached proxy answer), not news: skip it
+                    // completely. Late copies are what used to pull the clock back 15 s and forward again.
+                    const stale = feedMs !== est.last && est.seen.has(feedMs);
+                    if (!stale) {
+                        if (feedMs !== est.last) { est.sameSince = pollAt; est.seen.add(feedMs); if (est.seen.size > 60) est.seen.delete(est.seen.values().next().value); }
+                        est.last = feedMs;
+                        // live feeds refresh only every ~8-12 s, so "frozen" means unchanged for a long stretch of time, not a few polls
+                        const frozen = est.sameSince != null && (pollAt - est.sameSince) >= 45000;
+                        const cand = pollAt + feedMs;      // the true end is never later than this (the sample can only be late, never early)
+                        if (frozen) {
+                            // The board's clock has not moved for 45 s. Some tracks (e.g. circuittokiobay) report "in progress"
+                            // with a clock that never ticks: stop following it, the app's own timer takes over until it moves again.
+                            est.endAt = null; est.minCand = null; est.ext = null;
+                            window.liveData.raceTimeLeftMs = null;
+                            window.liveData._raceTimeReceivedAt = null;
+                            window.liveData._clockFrozen = true;
+                        } else {
+                            window.liveData._clockFrozen = false;
+                            if (est.minCand == null || cand < est.minCand) { est.minCand = cand; est.ext = null; }
+                            else if (cand > est.minCand + 30000 && feedMs !== est.lastExtVal) {
+                                // New, never-seen values that all imply a much later end: time was added or a new session began.
+                                // Needs three in a row that agree with each other, so one odd answer never moves the clock.
+                                if (est.ext && Math.abs(cand - est.ext.cand) <= 4000) { est.ext.n++; est.ext.cand = Math.min(est.ext.cand, cand); }
+                                else est.ext = { cand: cand, n: 1 };
+                                est.lastExtVal = feedMs;
+                                if (est.ext.n >= 3) { est.minCand = est.ext.cand; est.endAt = null; est.ext = null; est.seen = new Set([feedMs]); }
+                            }
+                            const target = est.minCand + 700;        // whole-second floor on the board: the truth is ~0.7 s after the smallest candidate
+                            if (est.endAt == null) est.endAt = target;
+                            else {
+                                const diff = target - est.endAt;
+                                if (diff < -3000 || diff > 5000) est.endAt = target;                                   // clearly wrong: place it once
+                                else est.endAt += Math.max(-150, Math.min(150, diff));                                  // small differences: ease in, never step
+                            }
                         }
                     }
-                    window.liveData.raceTimeLeftMs = Math.max(0, est.endAt - pollAt);
-                    window.liveData._raceTimeReceivedAt = pollAt;
+                    if (est.endAt != null) {
+                        window.liveData.raceTimeLeftMs = Math.max(0, est.endAt - pollAt);
+                        window.liveData._raceTimeReceivedAt = pollAt;
+                    }
                 }
                 window.liveData._lastFeedRaceMs = feedMs;
                 // The app derives elapsed = configured duration - feed remaining. If the feed has MORE
@@ -2365,7 +2381,7 @@ window.toggleOutlookCollapse = function() {
         // from what was configured in Strateger. Using the feed's raw value directly (as
         // this used to) made the widget clock and the main dashboard clock disagree.
         const ld = window.liveData;
-        if (ld && ld.raceTimeLeftMs != null && ld.raceTimeLeftMs >= 0 && raceMs > 0) {
+        if (window._clockFeedOn !== false && ld && ld.raceTimeLeftMs != null && ld.raceTimeLeftMs >= 0 && raceMs > 0) {
             const sinceReceived = ld._raceTimeReceivedAt ? (syncedNow - ld._raceTimeReceivedAt) : 0;
             const raceRemainingRaw = Math.max(0, ld.raceTimeLeftMs - sinceReceived);
             const effectiveElapsedMs = Math.max(0, raceMs - raceRemainingRaw);

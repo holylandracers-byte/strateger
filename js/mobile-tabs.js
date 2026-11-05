@@ -7,7 +7,7 @@
 // ==========================================
 (function () {
     'use strict';
-    const TABS = ['live', 'plan'];
+    const TABS = ['live', 'plan', 'drivers'];
     let cur = null;
     let userPicked = false;
     let lastCardH = 0;
@@ -26,6 +26,8 @@
 
     function select(id, user) {
         const wrap = $('racePanelsWrapper');
+        // tablets have two tabs: the drivers table sits inside Plan
+        if (id === 'drivers' && document.documentElement.classList.contains('is-tablet')) id = 'plan';
         if (!wrap || TABS.indexOf(id) < 0 || id === cur) return;
         const from = TABS.indexOf(cur);
         const to = TABS.indexOf(id);
@@ -56,6 +58,7 @@
         const dash = $('raceDashboard');
         if (!dash || dash.classList.contains('hidden')) return;
         autoPick();
+        if (cur === 'drivers' && document.documentElement.classList.contains('is-tablet')) select('plan', false);
         // keep the pinned card height available to the sticky tab bar
         const card = document.querySelector('#raceControlDock > div:first-child');
         const wrap = $('racePanelsWrapper');

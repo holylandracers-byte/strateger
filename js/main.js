@@ -700,7 +700,7 @@ window.recalculateTargetStint = function() {
             const now = window.getSyncedNow();
             let raceRemaining = raceMs - (now - window.state.startTime);
             // Use live timing race clock when available — interpolate between API updates
-            if (window.liveData && window.liveData.raceTimeLeftMs != null) {
+            if (window._clockFeedOn !== false && window.liveData && window.liveData.raceTimeLeftMs != null) {
                 const sinceReceived = window.liveData._raceTimeReceivedAt ? (now - window.liveData._raceTimeReceivedAt) : 0;
                 raceRemaining = Math.max(0, window.liveData.raceTimeLeftMs - sinceReceived);
             }
@@ -1014,7 +1014,8 @@ window.renderFrame = function() {
         
         // Use live timing race clock when available (more accurate than local timer)
         // Interpolate between API updates using the same synced clock as the rest of the frame.
-        if (window.liveData && window.liveData.raceTimeLeftMs != null && window.liveData.raceTimeLeftMs >= 0) {
+        const feedClockAllowed = window._clockFeedOn !== false;   // the "Live clock" switch in the live widget
+        if (feedClockAllowed && window.liveData && window.liveData.raceTimeLeftMs != null && window.liveData.raceTimeLeftMs >= 0) {
             const sinceReceived = window.liveData._raceTimeReceivedAt ? (now - window.liveData._raceTimeReceivedAt) : 0;
             raceRemainingRaw = Math.max(0, window.liveData.raceTimeLeftMs - sinceReceived);
         }
@@ -1025,7 +1026,7 @@ window.renderFrame = function() {
         const totalSec = Math.floor(raceMs / 1000);
         // With a live-timing clock the board shows remaining time floored to the second, so floor it too
         // (flooring elapsed, as for the local timer, would show one second more than the board).
-        const feedClockOn = !!(window.liveData && window.liveData.raceTimeLeftMs != null && window.liveData.raceTimeLeftMs >= 0);
+        const feedClockOn = feedClockAllowed && !!(window.liveData && window.liveData.raceTimeLeftMs != null && window.liveData.raceTimeLeftMs >= 0);
         const elapsedSec = feedClockOn
             ? Math.max(0, totalSec - Math.floor(raceRemainingRaw / 1000))
             : Math.floor(effectiveElapsedMs / 1000);
@@ -1284,7 +1285,11 @@ function _maybeRecalcAfterDrift() {
     const newTargets = [...(window.state.stintTargets || [])];
     newTargets[currentStintIdx] = elapsed;
     const remainingSlice = newTargets.slice(currentStintIdx + 1, currentStintIdx + 1 + futureStints);
-    if (remainingSlice.length > 0 && typeof window.normalizeStintDurationsMs === 'function') {
+    const idealSlice = (remainingSlice.length > 0 && typeof window.idealStintSplit === 'function')
+        ? window.idealStintSplit(remainingSlice.length, futurePool, window.getStintBoundsMs(window.config)) : null;
+    if (idealSlice) {
+        for (let i = 0; i < idealSlice.length; i++) newTargets[currentStintIdx + 1 + i] = idealSlice[i];
+    } else if (remainingSlice.length > 0 && typeof window.normalizeStintDurationsMs === 'function') {
         const norm = window.normalizeStintDurationsMs(remainingSlice, {
             totalTargetMs: futurePool,
             bounds: window.getStintBoundsMs(window.config),
@@ -2380,8 +2385,12 @@ window.confirmPitExit = function(autoDetected) {
         const drivePoolMs = raceRemainingMs - (remaining.length - 1) * pitTimeMs;
         if (!(drivePoolMs > 0)) return;
         const plannedMs = remaining.reduce((a, b) => a + b, 0);
-        if (Math.abs(plannedMs - drivePoolMs) < 30000) return; // still on plan
         const bounds = window.getStintBoundsMs ? window.getStintBoundsMs(window.config) : null;
+        if (Math.abs(plannedMs - drivePoolMs) < 30000) {
+            // the total is on plan; only stop here if the shape is the ideal one too
+            const ideal = (typeof window.idealStintSplit === 'function' && bounds) ? window.idealStintSplit(remaining.length, drivePoolMs, bounds) : null;
+            if (!ideal || ideal.every((v, i) => Math.abs(v - remaining[i]) < 30000)) return;
+        }
         // A stint that already ran is history: its real length replaces the plan, and nothing below touches it again.
         targets[completedIdx] = driveDuration;
         // If the time left cannot be covered within the max stint, the plan needs more stops, as it did at the start.
@@ -2396,10 +2405,16 @@ window.confirmPitExit = function(autoDetected) {
             for (let k = completedIdx + 1; k < targets.length; k++) remaining.push(targets[k]);
         }
         const poolNow = raceRemainingMs - (remaining.length - 1) * pitTimeMs;
-        const baseSum = remaining.reduce((a, b) => a + b, 0) || 1;
-        let newRemaining = remaining.map(t => Math.round(t * poolNow / baseSum));
-        if (typeof window.normalizeStintDurationsMs === 'function') {
-            newRemaining = window.normalizeStintDurationsMs(newRemaining, { totalTargetMs: poolNow, bounds: bounds, plan: true }).durations;
+        // Re-plan the stints still to run from scratch: as many at the maximum as the time allows, at most one in
+        // between, the rest at the minimum. Scaling the old plan proportionally kept (and spread) every stint that
+        // had already drifted, which left a string of in-between stints after any long or short stint.
+        let newRemaining = (typeof window.idealStintSplit === 'function' && bounds) ? window.idealStintSplit(remaining.length, poolNow, bounds) : null;
+        if (!newRemaining) {
+            const baseSum = remaining.reduce((a, b) => a + b, 0) || 1;
+            newRemaining = remaining.map(t => Math.round(t * poolNow / baseSum));
+            if (typeof window.normalizeStintDurationsMs === 'function') {
+                newRemaining = window.normalizeStintDurationsMs(newRemaining, { totalTargetMs: poolNow, bounds: bounds, plan: true }).durations;
+            }
         }
         for (let i = 0; i < newRemaining.length; i++) targets[completedIdx + 1 + i] = newRemaining[i];
         console.log(`♻️ Pit exit recalc: ${(drivePoolMs / 60000).toFixed(1)}m of driving left across ${newRemaining.length} stints (was ${(plannedMs / 60000).toFixed(1)}m)`);
@@ -3496,7 +3511,7 @@ window.updateDriverMode = function() {
     const raceMs = window.config.raceMs || (parseFloat(window.config.duration) * 3600000);
     let raceRemaining = raceMs - (now - window.state.startTime);
     // Use live timing race clock when available — interpolate between API updates
-    if (window.liveData && window.liveData.raceTimeLeftMs != null) {
+    if (window._clockFeedOn !== false && window.liveData && window.liveData.raceTimeLeftMs != null) {
         const sinceReceived = window.liveData._raceTimeReceivedAt ? (now - window.liveData._raceTimeReceivedAt) : 0;
         raceRemaining = Math.max(0, window.liveData.raceTimeLeftMs - sinceReceived);
     }
