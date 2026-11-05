@@ -3096,7 +3096,7 @@ window._SETTING_FIELDS = [
     ['pitClosedStart', 'pitClosedStart'], ['pitClosedEnd', 'pitClosedEnd'],
     ['kartChangeInterval', 'kartChangeInterval'], ['reqExtraPits', 'reqExtraPits'], ['minPitLapSec', 'minPitLapSec'],
     ['numTeams', 'numTeams'], ['minDriverTime', 'minDriverTime'], ['maxDriverTime', 'maxDriverTime'],
-    ['releaseBuffer', 'releaseBuffer'], ['pitNotifyLeadMin', 'pitNotifyLeadMin'], ['inLapSec', 'inLapSec'],
+    ['releaseBuffer', 'releaseBuffer'], ['pitNotifyLeadMin', 'pitNotifyLeadMin'], ['nearMaxTol', 'nearMaxTol'], ['nearMinTol', 'nearMinTol'], ['inLapSec', 'inLapSec'],
     ['fuelTime', 'fuelTime'], ['raceTarget', 'raceTarget'], ['raceLaps', 'raceLaps'], ['avgLapSec', 'avgLapSec']
 ];
 // Number fields where an empty box means "rule off" (shown as the Off placeholder).

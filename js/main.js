@@ -500,6 +500,8 @@ window.startDemoRace = function() {
     setVal('maxDriverTime', String(Math.max(15, Math.round((profile.duration * 60) / 2))));
     setVal('releaseBuffer', '5');
     setVal('pitNotifyLeadMin', '3');
+    setVal('nearMaxTol', '5');
+    setVal('nearMinTol', '5');
     setVal('inLapSec', '0');
     setChecked('allowDouble', false);
     setChecked('trackFuel', window.demoConfig?.fuel ?? false);
@@ -1328,8 +1330,10 @@ function updateRemainingStrategyLogic(raceRemainingMs) {
 
     // Tolerance band around max and min: a stint that close to the limit is, in practice,
     // a max (or min) stint -- 70 / 67 / 66 on a 70 max are all "max", so they group together.
-    const TOLERANCE_MS = 5 * 60000;
-    const MIN_TOLERANCE_MS = 3 * 60000;
+    // set under Advanced settings (defaults: 5 minutes each)
+    const tolMin = (v) => { v = parseFloat(v); return isFinite(v) && v >= 0 ? v : 5; };
+    const TOLERANCE_MS = tolMin(window.config.nearMaxTolMin) * 60000;
+    const MIN_TOLERANCE_MS = tolMin(window.config.nearMinTolMin) * 60000;
 
     const maxStintVal = hasMaxStint ? maxStintRaw : null;
     const minStintVal = hasMinStint ? minStintRaw : null;

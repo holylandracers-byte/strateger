@@ -793,6 +793,10 @@ window.runSim = function() {
     const kartChangeIntervalMin = parseFloat(document.getElementById('kartChangeInterval')?.value || '0') || 0;
     const releaseBufferSec = parseInt(document.getElementById('releaseBuffer')?.value || '5') || 5;
     const pitNotifyLeadMin = parseFloat(document.getElementById('pitNotifyLeadMin')?.value || '3') || 3;
+    // how close to the max / min a stint must be to count as "near" it in the outlook (minutes, 0 = only exactly at the limit)
+    const tolOf = (id) => { const v = parseFloat(document.getElementById(id)?.value); return isFinite(v) && v >= 0 ? v : 5; };
+    const nearMaxTolMin = tolOf('nearMaxTol');
+    const nearMinTolMin = tolOf('nearMinTol');
     const inLapSecRaw = parseInt(document.getElementById('inLapSec')?.value || '0') || 0;
 
     const config = {
@@ -827,6 +831,8 @@ window.runSim = function() {
         avgLapSec: parseFloat(document.getElementById('avgLapSec')?.value) || 0,
         buffer: releaseBufferSec,
         pitNotifyLeadMin,
+        nearMaxTolMin,
+        nearMinTolMin,
         inLapSec: inLapSecRaw,
         outlap: inLapSecRaw,     // 0 = auto-detect from circuit in _getOutlapSec
         // NLE-specific

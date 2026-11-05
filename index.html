@@ -620,6 +620,21 @@
                     <p class="set-hint" data-i18n="lblInLapHint">Optional. Track time to reach pit entry; empty = none, the warning counts back from the planned pit.</p>
                     <div id="pitNotifyPreview" class="hidden rule-info"></div>
                 </div>
+
+                <h3 class="rules-group-title" data-i18n="grpOutlookTol">Outlook: what counts as near</h3>
+                <div class="rule" data-rule="always">
+                    <p class="rule-effect" style="margin-top:0" data-i18n="lblNearTolHint">A stint counts as near the maximum (or minimum) when it is within this many minutes of the limit. The strategy outlook groups stints this way.</p>
+                    <div class="set-grid-2">
+                        <div>
+                            <label class="set-sublabel" for="nearMaxTol" data-i18n="lblNearMaxTol">Near max: within (min)</label>
+                            <input type="number" id="nearMaxTol" value="5" min="0" step="1" onchange="window.runSim()" class="input-field">
+                        </div>
+                        <div>
+                            <label class="set-sublabel" for="nearMinTol" data-i18n="lblNearMinTol">Near min: within (min)</label>
+                            <input type="number" id="nearMinTol" value="5" min="0" step="1" onchange="window.runSim()" class="input-field">
+                        </div>
+                    </div>
+                </div>
                 </div>
             </div>
 
@@ -2320,13 +2335,13 @@
         </div>
     </div>
 
-    <script src="js/state.js?v=40"></script>
+    <script src="js/state.js?v=41"></script>
     <script src="js/lite-mode.js?v=1"></script>
     <script src="js/i18n-extra.js?v=11"></script>
     <script src="js/i18n-extra2.js?v=2"></script>
     <script src="js/i18n-extra3.js?v=1"></script>
     <script src="js/i18n-laps.js?v=1"></script>
-    <script src="js/i18n-new.js?v=6"></script>
+    <script src="js/i18n-new.js?v=7"></script>
     <script src="js/i18n-squads.js?v=1"></script>
     <script src="js/i18n-fill.js?v=2"></script>
     <script src="js/i18n-phrases.js?v=3"></script>
@@ -2340,17 +2355,17 @@
     <script src="js/auth.js?v=10"></script>
     <script src="js/network.js?v=19"></script>
     <script src="js/delegate.js?v=8"></script>
-    <script src="js/strategy.js?v=28"></script>
+    <script src="js/strategy.js?v=29"></script>
     <script src="js/race-rules.js?v=11"></script>
     <script src="js/compliance.js?v=3"></script>
     <script src="js/export.js?v=3"></script>
     <script src="js/autosave.js?v=6"></script>
     <script src="js/live-timing.js?v=29"></script>
     <script src="js/track-finder.js?v=2"></script>
-    <script src="js/ui.js?v=38"></script>
+    <script src="js/ui.js?v=39"></script>
     <script src="js/walkthrough.js?v=15"></script>
     <script src="js/setup-bar.js?v=13"></script>
-    <script src="js/main.js?v=49"></script>
+    <script src="js/main.js?v=50"></script>
     <script src="js/live-extras.js?v=12"></script>
     <script src="js/live-photo.js?v=2"></script>
 </body>

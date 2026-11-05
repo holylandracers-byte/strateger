@@ -1648,6 +1648,8 @@ window.applyStrategy = function(index) {
             setVal('estPitTime', strategy.config.estPitSec ?? 0);
             setVal('releaseBuffer', strategy.config.buffer);
             setVal('pitNotifyLeadMin', strategy.config.pitNotifyLeadMin ?? 3);
+            setVal('nearMaxTol', strategy.config.nearMaxTolMin ?? 5);
+            setVal('nearMinTol', strategy.config.nearMinTolMin ?? 5);
             setVal('inLapSec', strategy.config.inLapSec ?? strategy.config.outlap ?? 0);
             setVal('closedStart', strategy.config.closedStart);
             setVal('closedEnd', strategy.config.closedEnd);
