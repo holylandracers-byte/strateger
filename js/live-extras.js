@@ -96,7 +96,22 @@
         if (window._clockSyncOn) window._syncRaceClockToFeed();
     };
 
+    window.toggleAutoPit = function() {
+        window._autoPitEnabled = window._autoPitEnabled === false;
+        store.set('strateger_auto_pit', window._autoPitEnabled ? '1' : '0');
+        window._updateClockSyncBtn(true);
+        if (typeof window.broadcast === 'function') window.broadcast();
+    };
+
     window._updateClockSyncBtn = function(hasFeed) {
+        const ap = $('autoPitBtn');
+        if (ap) {
+            const on = window._autoPitEnabled !== false;
+            ap.classList.toggle('hidden', !hasFeed);
+            ap.textContent = '🏁 ' + (on ? tr('pitAutoOn', 'Auto pit') : tr('pitAutoOff', 'Pit manual'));
+            ap.classList.toggle('is-on', on);
+            ap.setAttribute('aria-pressed', String(on));
+        }
         const b = $('clockSyncBtn');
         if (!b) return;
         b.classList.toggle('hidden', !hasFeed);
@@ -111,14 +126,14 @@
         if (!live || !window._clockSyncOn || window.role !== 'host') return;
 
         const now = window.getSyncedNow();
-        if (now - lastApplied < 15000) return;
+        if (now - lastApplied < 6000) return;
         const received = ld._raceTimeReceivedAt || now;
         if (now - received > 20000) return;                       // stale feed: keep the local clock
         const feedRemaining = Math.max(0, ld.raceTimeLeftMs - (now - received));
         const raceMs = cfg.raceMs;
         const localRemaining = raceMs - (now - st.startTime);
         const skew = feedRemaining - localRemaining;
-        if (Math.abs(skew) <= 2000) return;                        // already together
+        if (Math.abs(skew) <= 700) return;                         // already together
 
         lastApplied = now;
         if (feedRemaining > raceMs) {
@@ -133,7 +148,7 @@
             return;
         } else {
             st.startTime = now - (raceMs - feedRemaining);
-            window.showToast('⏱ ' + tr('clockSyncedTo', 'Race clock synced to live timing') + ' (' + (skew > 0 ? '+' : '') + Math.round(skew / 1000) + 's)', 'success', 3500);
+            if (Math.abs(skew) > 2500) window.showToast('⏱ ' + tr('clockSyncedTo', 'Race clock synced to live timing') + ' (' + (skew > 0 ? '+' : '') + Math.round(skew / 1000) + 's)', 'success', 3500);
         }
         if (typeof window.saveRaceState === 'function') window.saveRaceState();
         if (typeof window.broadcast === 'function') window.broadcast();

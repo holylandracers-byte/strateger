@@ -25,7 +25,7 @@ html.is-tablet #racePanelsWrapper .text-\[10px\],
 html.is-tablet #racePanelsWrapper .text-\[11px\] { font-size: 12.5px !important; }
 html.is-tablet #racePanelsWrapper .text-xs { font-size: 13px !important; }
 html.is-tablet .cr-kart, html.is-tablet .cr-pos { font-size: 13px !important; }
-html.is-tablet .cr-name { font-size: 14px !important; }
+html.is-tablet .cr-name { font-size: 13px !important; }
 html.is-tablet .stat-time, html.is-tablet .stat-pct { font-size: 12.5px !important; }
 html.is-tablet #statsTable td, html.is-tablet #statsTable th { font-size: 13px; }
 html.is-tablet #liveRaceClock, html.is-tablet #demoBadge, html.is-tablet #timerModeIcon { font-size: 12.5px !important; }
@@ -40,7 +40,7 @@ html.is-tablet #nextDriverName,
 html.is-tablet button[onclick*="openPitTimeAdjust"],
 html.is-tablet button[onclick*="PitTime"] { min-height: 44px; }
 html.is-tablet #apexViewToggle, html.is-tablet #pickTeamBtn, html.is-tablet #ltPhotoBtn,
-html.is-tablet #ltMinBtn, html.is-tablet #ltHideBtn, html.is-tablet #clockSyncBtn,
+html.is-tablet #ltMinBtn, html.is-tablet #ltHideBtn, html.is-tablet #clockSyncBtn, html.is-tablet #autoPitBtn,
 html.is-tablet #liveTimingPanel button[onclick*="stopLiveTiming"] {
     min-height: 40px; min-width: 40px; padding-inline: 8px; font-size: 13px !important;
 }
@@ -49,7 +49,6 @@ html.is-tablet .dash-panel-move-btn { width: 30px; height: 30px; font-size: 13px
 /* keep the live header row (Original / target / photo / hide / Stop) clear of the corner move button */
 html.is-tablet #liveTimingPanel > .flex.justify-between:first-child,
 html.is-tablet #liveTimingPanel > .flex.justify-between.mb-1 { padding-inline-end: 34px; flex-wrap: wrap; row-gap: 6px; }
-html.is-tablet .competitor-row { min-height: 46px; height: 46px; }
 html.is-tablet #pitEntryBtn { min-height: 64px; font-size: 1.25rem; }
 html.is-tablet #raceControlDock button.is-on,
 html.is-tablet #raceControlDock [data-pit-preset],
@@ -93,7 +92,6 @@ html.is-tablet .fixed.inset-0 > div[class*="max-w-"] button { min-height: 44px; 
 @media (orientation: landscape) and (max-height: 640px) {
     html.is-tablet { --header-h: 50px; }
     html.is-tablet #pitEntryBtn { min-height: 54px; }
-    html.is-tablet .competitor-row { min-height: 42px; height: 42px; }
 }
 
 /* ==================== PORTRAIT TABLET: phone layout, scaled up ==================== */
@@ -122,8 +120,6 @@ html.is-tablet .fixed.inset-0 > div[class*="max-w-"] button { min-height: 44px; 
     html.is-tablet #raceInfoPanel #liveTimingWidgetWrapper { max-height: min(66vh, 760px) !important; }
     html.is-tablet #liveTimingWidgetWrapper .lt-table-scroll { max-height: min(46vh, 520px) !important; }
     html.is-tablet .lt-table-scroll { max-height: min(46vh, 520px); }
-    html.is-tablet .competitor-row { min-height: 50px; height: 50px; }
-    html.is-tablet .cr-name { font-size: 15px !important; }
 
     /* plan + drivers tabs: comfortable table rows */
     html.is-tablet #statsTable td { padding-top: 10px; padding-bottom: 10px; }

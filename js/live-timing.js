@@ -2,18 +2,17 @@
 // ⏱️ LIVE TIMING CONTROLLER
 // ==========================================
 
-// Pit detection is always driven by live timing when it's connected — the manual/auto
-// toggle was removed because switching to Manual while live timing stayed connected
-// produced a pit loop (the feed and the user's manual entry fought over state). The
-// user can still press "Enter Pit" manually at any time (see confirmPitEntry); it's
-// just no longer possible to tell live timing to stop auto-tracking pits.
-window._autoPitEnabled = true;
+// Pit detection follows live timing by default. The strategist can switch it off with the
+// "Auto pit" chip in the live widget (window.toggleAutoPit, js/live-extras.js); when off,
+// every feed-driven pit entry/exit/penalty adjustment is skipped through
+// _liveTimingMayForcePit and the pit is tracked by hand only.
+try { window._autoPitEnabled = localStorage.getItem('strateger_auto_pit') !== '0'; } catch (e) { window._autoPitEnabled = true; }
 
 // Single chokepoint for every place that wants live timing (real feed or demo
 // simulation) to force a pit entry/exit/penalty-adjustment. Kept as a function (rather
 // than inlining `true`) so call sites and intent stay unchanged.
 window._liveTimingMayForcePit = function() {
-    return true;
+    return window._autoPitEnabled !== false;
 };
 
 function getLapWord(count) {
@@ -405,9 +404,31 @@ window.fetchLiveTimingFromProxy = async function() {
                 if (feedAt) {
                     window.liveData.raceTimeLeftMs = feedMs;
                     window.liveData._raceTimeReceivedAt = feedAt;
-                } else if (feedMs !== window.liveData._lastFeedRaceMs) {
-                    window.liveData.raceTimeLeftMs = feedMs;
-                    window.liveData._raceTimeReceivedAt = Date.now();
+                } else {
+                    // Providers send whole seconds and are polled every ~2 s, so stamping "when we noticed the
+                    // change" ran up to 2 s behind the board. Instead estimate the moment the board's clock hits
+                    // zero from the last few polls (the smallest candidate is the poll closest to a real tick)
+                    // and derive the remaining time from that, so the app clock stays within ~0.3 s of the board.
+                    const pollAt = Date.now();
+                    const est = window.liveData._clockEst || (window.liveData._clockEst = { buf: [], same: 0, last: null });
+                    est.same = (feedMs === est.last) ? est.same + 1 : 0;
+                    est.last = feedMs;
+                    const cand = pollAt + feedMs;
+                    const lo = est.buf.length ? Math.min.apply(null, est.buf) : cand;
+                    if (est.same >= 4 || cand < lo - 2500 || cand > lo + 6000) est.buf = [];   // clock paused / rewound / other session
+                    est.buf.push(cand);
+                    if (est.buf.length > 12) est.buf.shift();
+                    if (est.same >= 4 || est.buf.length < 3) {
+                        // not enough samples yet (or clock paused): behave as before
+                        if (feedMs !== window.liveData._lastFeedRaceMs || est.same >= 4) {
+                            window.liveData.raceTimeLeftMs = feedMs;
+                            window.liveData._raceTimeReceivedAt = pollAt;
+                        }
+                    } else {
+                        const endAt = Math.min.apply(null, est.buf) + 800;   // whole-second floor: true value averages +0.5 s, minus fetch latency
+                        window.liveData.raceTimeLeftMs = Math.max(0, endAt - pollAt);
+                        window.liveData._raceTimeReceivedAt = pollAt;
+                    }
                 }
                 window.liveData._lastFeedRaceMs = feedMs;
                 // The app derives elapsed = configured duration - feed remaining. If the feed has MORE
@@ -2341,8 +2362,8 @@ window.toggleOutlookCollapse = function() {
             const sinceReceived = ld._raceTimeReceivedAt ? (syncedNow - ld._raceTimeReceivedAt) : 0;
             const raceRemainingRaw = Math.max(0, ld.raceTimeLeftMs - sinceReceived);
             const effectiveElapsedMs = Math.max(0, raceMs - raceRemainingRaw);
-            const elapsedSec = Math.floor(effectiveElapsedMs / 1000);
             const totalSec = Math.floor(raceMs / 1000);
+            const elapsedSec = Math.max(0, totalSec - Math.floor(raceRemainingRaw / 1000));   // floored remaining, like the board
             const remainingSec = Math.max(0, totalSec - elapsedSec);
             el.textContent = formatRaceTime(remainingSec * 1000);
             el.title = window.t ? window.t('raceClockLabel') : 'RACE TIME';

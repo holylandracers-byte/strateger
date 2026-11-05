@@ -1020,8 +1020,13 @@ window.renderFrame = function() {
         // Floor elapsed to whole seconds — derive remaining from the SAME boundary
         // so countdown and stint timers always cross the second together
         const effectiveElapsedMs = Math.max(0, raceMs - raceRemainingRaw);
-        const elapsedSec = Math.floor(effectiveElapsedMs / 1000);
         const totalSec = Math.floor(raceMs / 1000);
+        // With a live-timing clock the board shows remaining time floored to the second, so floor it too
+        // (flooring elapsed, as for the local timer, would show one second more than the board).
+        const feedClockOn = !!(window.liveData && window.liveData.raceTimeLeftMs != null && window.liveData.raceTimeLeftMs >= 0);
+        const elapsedSec = feedClockOn
+            ? Math.max(0, totalSec - Math.floor(raceRemainingRaw / 1000))
+            : Math.floor(effectiveElapsedMs / 1000);
         const remainingSec = Math.max(0, totalSec - elapsedSec);
         // keep raw remaining for logic checks
         const raceRemaining = raceRemainingRaw;
@@ -1627,7 +1632,7 @@ window.updatePitModalLogic = function() {
 
     // Live timing: driver already left pit before minimum time
     try {
-        const liveSaysInPit = window.liveData && (typeof window.liveData.ourTeamInPit !== 'undefined')
+        const liveSaysInPit = window._liveTimingMayForcePit() && window.liveData && (typeof window.liveData.ourTeamInPit !== 'undefined')
             ? window.liveData.ourTeamInPit : null;
         if (liveSaysInPit === false) {
             if (timerDisplay) _setIf(timerDisplay, 'className', "text-6xl font-bold font-mono text-yellow-300");
