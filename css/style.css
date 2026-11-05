@@ -3719,6 +3719,15 @@ body.lt-compact #apexViewToggle, body.lt-compact #ltPhotoBtn, body.lt-compact #a
 #previewScreen.live-mode .preview-close-btn { padding: 0 16px; background: var(--ice); color: var(--navy-950); border-color: var(--ice); font-weight: 700; }
 #previewScreen.live-mode .preview-close-btn i { display: none; }
 #previewScreen.live-mode .preview-close-btn::after { content: attr(data-live-label); font-size: 14px; }
+/* The label (arrow + text) must sit fully inside the button: the size is set by the content,
+   never by the fixed 40/44px square that the icon-only close button uses on tablets and laptops. */
+#previewScreen.live-mode #previewCloseBtn {
+    width: auto !important; min-width: 44px; height: 44px !important; padding: 0 18px !important;
+    gap: 8px; white-space: nowrap; flex-shrink: 0; font-size: 14px !important; line-height: 1;
+    display: inline-flex; align-items: center; justify-content: center;
+}
+#previewScreen.live-mode #previewCloseBtn::before { content: "←"; font-size: 17px; line-height: 1; }
+[dir="rtl"] #previewScreen.live-mode #previewCloseBtn::before { content: "→"; }
 
 /* ==================== DRIVER PICKER SHEET ==================== */
 .sdp-overlay { position: fixed; inset: 0; z-index: 10000; display: flex; align-items: flex-end; justify-content: center; background: rgba(2, 6, 23, .72); animation: sdp-fade .18s ease-out; }

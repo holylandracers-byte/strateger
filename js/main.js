@@ -4725,7 +4725,8 @@ window.openLivePreview = function() {
     // no longer competes with a floating button for the same corner.
     previewScreen.classList.add('live-mode');
     const closeBtn = document.getElementById('previewCloseBtn');
-    if (closeBtn) closeBtn.setAttribute('data-live-label', (window.t && window.t('backToRace') !== 'backToRace' ? window.t('backToRace') : null) || 'Back to race');
+    // the arrow is drawn by CSS (it flips in RTL), so strip the one baked into the translation
+    if (closeBtn) closeBtn.setAttribute('data-live-label', String((window.t && window.t('backToRace') !== 'backToRace' ? window.t('backToRace') : null) || 'Back to race').replace(/^\s*[←→⬅➡]\s*/, '').replace(/\s*[←→⬅➡]\s*$/, ''));
 
     if (typeof window.renderPreview === 'function') window.renderPreview();
     // Mid-race the plan can still be adjusted — but only for stints that haven't

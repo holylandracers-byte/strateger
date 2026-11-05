@@ -85,16 +85,12 @@
     };
 
     // ----- 4) race clock follows the timing clock -----
-    window._clockSyncOn = store.get('strateger_clock_sync') !== '0';
+    // The race clock always follows the timing clock while a feed is connected: if the strategist
+    // does not want that, they stop live timing. (The old on/off switch let it drift and was removed.)
+    window._clockSyncOn = true;
     let lastApplied = 0, warnedFar = false;
-
-    window.toggleClockSync = function() {
-        window._clockSyncOn = !window._clockSyncOn;
-        store.set('strateger_clock_sync', window._clockSyncOn ? '1' : '0');
-        lastApplied = 0;
-        window._updateClockSyncBtn(true);
-        if (window._clockSyncOn) window._syncRaceClockToFeed();
-    };
+    try { localStorage.removeItem('strateger_clock_sync'); } catch (e) {}
+    window.toggleClockSync = function() { /* no longer switchable */ };
 
     window.toggleAutoPit = function() {
         window._autoPitEnabled = window._autoPitEnabled === false;
@@ -115,8 +111,11 @@
         const b = $('clockSyncBtn');
         if (!b) return;
         b.classList.toggle('hidden', !hasFeed);
-        b.textContent = window._clockSyncOn ? '⏱ ' + tr('clockSynced', 'synced') : '⏱ ' + tr('clockOff', 'sync off');
-        b.classList.toggle('is-on', !!window._clockSyncOn);
+        b.textContent = '⏱ ' + tr('clockSynced', 'synced');
+        b.classList.add('is-on');
+        b.removeAttribute('onclick');
+        b.style.pointerEvents = 'none';
+        b.tabIndex = -1;
     };
 
     window._syncRaceClockToFeed = function() {
