@@ -3,6 +3,14 @@
 // ==========================================
 
 window.updateDriversFromUI = function() {
+    // While a race is on screen, window.drivers is the live record (names, drive time, stops, logs).
+    // The setup form behind it still holds stale/draft values, and runSim() (re-run by any late
+    // setup change after a refresh/resume) would rebuild the drivers from it -- zeroing every
+    // driver's totals and stops. Never rebuild them from the form mid-race.
+    const dash = document.getElementById('raceDashboard');
+    if (window.state && (window.state.isRunning || window.state.isFinished) && dash && !dash.classList.contains('hidden')
+        && Array.isArray(window.drivers) && window.drivers.length) return;
+
     // Exclude placeholder rows injected by the minimum-driver framework
     const realRows = Array.from(document.querySelectorAll('#driversList .driver-row')).filter(row => !row.classList.contains('opacity-50') && !row.classList.contains('is-sitout'));
     const inputs = realRows.map(row => row.querySelector('.driver-input')).filter(Boolean);
