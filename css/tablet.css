@@ -87,6 +87,21 @@ html.is-tablet .fixed.inset-0 > div[class*="max-w-"] button { min-height: 44px; 
     html.is-tablet .lt-tiles > div > div:first-child { font-size: 12px; }
     html.is-tablet .lt-tiles #livePosition { font-size: 1.35rem; }
     html.is-tablet #liveTimingPanel { padding: 8px 10px; }
+
+    /* Nothing is clipped inside a card: the dock's sections keep their full height (they used to
+       shrink with overflow:hidden and cut off their own content) and the column scrolls as one. */
+    html.is-tablet #raceControlDock > * { flex: none !important; }
+    html.is-tablet #statsTableGroup,
+    html.is-tablet #strategyGroup { overflow: visible !important; }
+    html.is-tablet #statsTableScroll { max-height: none !important; overflow: visible !important; }
+    /* the pit button stays reachable while the sections scroll beneath it */
+    html.is-tablet #raceControlDock > #pitActionGroup {
+        position: sticky; bottom: -14px; z-index: 6; margin-top: auto;
+        padding: 10px 0 14px; background: linear-gradient(to bottom, transparent, rgb(var(--n950, 6 10 20)) 14px);
+    }
+    /* the timing / setup card fills the column instead of a fixed 420px box */
+    html.is-tablet #raceInfoPanel #liveTimingWidgetWrapper { max-height: none; }
+    html.is-tablet #raceInfoPanel #liveTimingPanel .lt-table-scroll { max-height: none; }
 }
 /* short landscape tablets (e.g. 960x600): keep the timer strip and pit button on screen */
 @media (orientation: landscape) and (max-height: 640px) {
