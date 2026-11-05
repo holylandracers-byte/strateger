@@ -152,3 +152,35 @@
         return r;
     };
 })();
+
+// ----- Read-only plan for spectators and delegates (they have no plan object, only the synced stint list) -----
+(function() {
+    const esc = function(x) { return String(x == null ? '' : x).replace(/[&<>"']/g, function(c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); };
+    const hm = function(v) { const d = new Date(v); return isNaN(d) ? '--:--' : String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
+    window.openClientPlan = function() {
+        const tl = (window._receivedTimeline || []).slice();
+        const tt = window.tt || function(x) { return x; };
+        let ov = document.getElementById('clientPlanOverlay');
+        if (ov) ov.remove();
+        const cur = (window.state && window.state.globalStintNumber) || 1;
+        const rows = tl.map(function(s) {
+            const n = s.stintNumber || 0;
+            const st = n < cur ? 'done' : (n === cur ? 'now' : 'next');
+            const drv = (window.drivers || [])[s.driverIdx] || {};
+            return '<div class="cp-row cp-' + st + '"><span class="cp-n">' + (st === 'done' ? '✓' : (st === 'now' ? '▶' : n)) + '</span>'
+                + '<span class="cp-dot" style="background:' + esc(drv.color || '#22d3ee') + '"></span>'
+                + '<span class="cp-name">' + esc(s.driverName || drv.name || '') + '</span>'
+                + '<span class="cp-time" dir="ltr">' + hm(s.start) + '–' + hm(s.end) + '</span>'
+                + '<span class="cp-dur">' + Math.round((s.duration || 0) / 60000) + 'm</span></div>';
+        }).join('');
+        ov = document.createElement('div');
+        ov.id = 'clientPlanOverlay';
+        ov.className = 'client-plan';
+        ov.innerHTML = '<div class="cp-sheet"><div class="cp-head"><b>' + esc(tt('Race plan')) + '</b><button type="button" class="cp-close" aria-label="Close">&times;</button></div>'
+            + '<div class="cp-list">' + (rows || '<p class="cp-empty">…</p>') + '</div></div>';
+        ov.addEventListener('click', function(e) { if (e.target === ov || e.target.closest('.cp-close')) ov.remove(); });
+        document.body.appendChild(ov);
+        const nowRow = ov.querySelector('.cp-now');
+        if (nowRow) nowRow.scrollIntoView({ block: 'center' });
+    };
+})();

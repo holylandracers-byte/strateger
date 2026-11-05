@@ -1295,13 +1295,18 @@ function updateRemainingStrategyLogic(raceRemainingMs) {
     const timeField = document.getElementById('remTimeText');
     const t = window.t || ((k) => k);
 
-    if (!panel || window.role !== 'host') return;
+    if (!panel) return;
+    // Spectators and delegates see the same outlook, read-only: the targets live in the synced
+    // state, so nothing here needs the host. Only the host recalculates / edits them.
+    const isHost = window.role === 'host';
     panel.classList.remove('hidden');
 
-    // Check if actual stint diverged from plan and update targets accordingly
-    _maybeRecalcAfterDrift();
-    if (typeof window.fixRemainingStintTargets === 'function') {
-        window.fixRemainingStintTargets(true);
+    if (isHost) {
+        // Check if actual stint diverged from plan and update targets accordingly
+        _maybeRecalcAfterDrift();
+        if (typeof window.fixRemainingStintTargets === 'function') {
+            window.fixRemainingStintTargets(true);
+        }
     }
 
     // Support optional min/max — if not set, treat as unconstrained
@@ -1340,6 +1345,7 @@ function updateRemainingStrategyLogic(raceRemainingMs) {
     // Helper: build one stint pill. Pass idx to make it tap-to-edit (current/future
     // stints only — completed stints are flagged via pill-done and never get an idx).
     function pill(label, cls, title, idx) {
+        if (!isHost) idx = null;   // read-only outside the host
         const editable = idx != null ? ' pill-editable' : '';
         const onclick = idx != null ? ` onclick="window.editLiveStintTarget(${idx})"` : '';
         return `<span class="stint-outlook-pill ${cls}${editable}" title="${title || ''}"${onclick}>${label}</span>`;
@@ -4680,6 +4686,8 @@ window.toggleTimerMode = function() {
 // ==========================================
 
 window.openLivePreview = function() {
+    // Spectators / delegates have no plan object, only the synced stint list: show it read-only
+    if (window.role !== 'host' && typeof window.openClientPlan === 'function') return window.openClientPlan();
     const previewScreen = document.getElementById('previewScreen');
     const raceDashboard = document.getElementById('raceDashboard');
     if (!previewScreen || !window.previewData) return;

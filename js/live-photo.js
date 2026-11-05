@@ -200,11 +200,10 @@
         }
     };
 
-    // the existing 📷 button in the live-timing toolbar and the new upload button share this picker
-    window.pickLtPhoto = function () {
-        const input = document.getElementById('ltPhotoInput');
-        if (!input) return;
-        input.multiple = true;
+    // one picker per input: gallery / files (several photos) and the camera (one shot)
+    function bind(id) {
+        const input = document.getElementById(id);
+        if (!input) return null;
         if (!input.dataset.bound2) {
             input.dataset.bound2 = '1';
             input.addEventListener('change', function () {
@@ -213,7 +212,19 @@
                 if (files.length) window.readLtPhotos(files);
             });
         }
+        return input;
+    }
+    // the 📷 toolbar button and the "Upload" button: choose existing photos / screenshots
+    window.pickLtPhoto = function () {
+        const input = bind('ltPhotoInput');
+        if (!input) return;
+        input.multiple = true;
         input.click();
+    };
+    // "Take a photo": opens the phone / tablet camera directly
+    window.pickLtCamera = function () {
+        const input = bind('ltPhotoCamInput');
+        if (input) input.click(); else window.pickLtPhoto();
     };
     // legacy single-file entry point
     window.readLtPhoto = function (file) { return window.readLtPhotos([file]); };
