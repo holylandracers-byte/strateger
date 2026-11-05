@@ -334,11 +334,18 @@ window.initHostPeer = function() {
         });
         
         window.peer.on('connection', (c) => {
-            // Check if the viewer is already connected
-            if (window.connectedViewers.has(c.peer)) {
-                console.log(`Viewer with ID ${c.peer} is already connected. Reusing connection.`);
-                c.close(); // Close the duplicate connection
-                return;
+            // The same guest / driver / delegate connecting again. This is almost always a phone whose old line died
+            // without saying so (sleep, network change): the host still sees that old line as "open" for a long time, and
+            // refusing the newcomer (as this used to) kept the phone out until the old line finally timed out.
+            // The newest connection wins; the stale one is dropped.
+            const prev = window.connectedViewers.get(c.peer);
+            if (prev && prev !== c) {
+                console.log(`Viewer ${c.peer} connected again: replacing its old connection.`);
+                prev._replaced = true;
+                if (prev.viewerName) window.usedViewerNames.delete(prev.viewerName);
+                window.connections = window.connections.filter(x => x !== prev);
+                window.connectedViewers.delete(c.peer);
+                try { prev.close(); } catch (e) {}
             }
 
             window.connections.push(c);
@@ -583,10 +590,11 @@ window.initHostPeer = function() {
             });
             
             c.on('close', () => {
+                if (c._replaced) return;   // a newer connection from the same peer has taken over; nothing to clean up
                 console.log(`Viewer ${c.peer} disconnected.`);
                 if (c.viewerName) window.usedViewerNames.delete(c.viewerName); // Remove name from used names set
-                window.connectedViewers.delete(c.peer); // Remove from connected viewers map
-                window.connections = window.connections.filter(conn => conn.peer !== c.peer);
+                if (window.connectedViewers.get(c.peer) === c) window.connectedViewers.delete(c.peer); // Remove from connected viewers map
+                window.connections = window.connections.filter(conn => conn !== c);
                 window.updateViewerDropdown();
                 if (typeof window.delegateConnClosed === 'function') window.delegateConnClosed();
             });
@@ -689,8 +697,8 @@ window.reconnectState = {
     hostId: null,
     isReconnecting: false,
     retryCount: 0,
-    maxRetries: 40,   // ~18 min: long enough to ride out a host change
-    retryDelay: 1000 // Start with 1 second
+    maxRetries: 150,  // ~12 min at the 5 s cap: long enough to ride out a host change
+    retryDelay: 500   // first retry after half a second; the delay grows gently up to 5 s
 };
 
 // === Role Exclusivity: Driver ↔ Viewer ===
@@ -747,11 +755,16 @@ window.connectToHost = function(hostId) {
     if (!hostId) return;
     window.reconnectState.hostId = hostId;
     const startConn = () => {
+        window._attemptAt = Date.now();
         clearTimeout(window._connTimeout);
-        if (window.conn) window.conn.close();
-        // Release the previous peer first, otherwise the broker still holds our id and hands us a new one
+        // detach first: PeerJS fires 'close' synchronously, and a close we cause ourselves must not schedule another reconnect
+        if (window.conn) { const stale = window.conn; window.conn = null; try { stale.close(); } catch (e) {} }
+        // If our line to the signalling server is still up (the usual case: only the data channel to the host died),
+        // keep the same peer and just open a new data channel: instant, and the host sees the same identity.
+        const reusePeer = !!(window.peer && !window.peer.destroyed && !window.peer.disconnected && window.peer.open);
+        // Otherwise release the previous peer first, or the broker still holds our id and hands us a new one
         // (the host would then no longer recognise us as the viewer it already approved)
-        if (window.peer && !window.peer.destroyed) { try { window.peer.destroy(); } catch (e) {} }
+        if (!reusePeer && window.peer && !window.peer.destroyed) { try { window.peer.destroy(); } catch (e) {} }
 
         // Check if the client already has a peer ID
         let clientId = localStorage.getItem('strateger_client_id');
@@ -766,8 +779,8 @@ window.connectToHost = function(hostId) {
             return;
         }
 
-        window.peer = new Peer(clientId, PEER_CONFIG);
-        window.peer.on('open', (id) => {
+        const onPeerOpen = (id) => {
+            window._idBusyTries = 0;
             console.log(`Client Peer ID initialized: ${id}`);
             window.myId = id; // Store our peer ID so DM recipient filtering works
             window.conn = window.peer.connect(hostId, { reliable: true });
@@ -779,6 +792,9 @@ window.connectToHost = function(hostId) {
                     try { window.conn.close(); } catch(e) {}
                     // Was connected before (host restarted / a delegate is taking over): keep trying instead of giving up
                     if (window._everConnected) { if (!window.reconnectState.isReconnecting) window.attemptReconnection(); return; }
+                    // First join: a slow signalling server or a sleeping radio is common on phones, so try again quietly
+                    window._firstJoinTries = (window._firstJoinTries || 0) + 1;
+                    if (window._firstJoinTries <= 3) { console.log('First join timed out, retrying (' + window._firstJoinTries + '/3)'); window.connectToHost(hostId); return; }
                     // Show timeout on whichever screen is visible
                     const viewerScreen = document.getElementById('viewerNameScreen');
                     const waitScreen = document.getElementById('clientWaitScreen');
@@ -792,11 +808,12 @@ window.connectToHost = function(hostId) {
                         waitScreen.innerHTML = errorHtml;
                     }
                 }
-            }, 15000);
+            }, 10000);
 
             window.conn.on('open', () => {
                 clearTimeout(connTimeout);
                 window._everConnected = true;
+                window._firstJoinTries = 0;
                 console.log("Connected to Host");
                 // Reset reconnection state on successful connection
                 window.resetReconnectionState();
@@ -834,6 +851,9 @@ window.connectToHost = function(hostId) {
             });
 
             window.conn.on('data', (data) => {
+                // anything from the host (state, chat, heartbeat) proves the line is alive
+                window._lastHostMsgAt = Date.now();
+                if (data && data.type === 'PING') return;
                 if (data.type === 'UPDATE' || data.type === 'INIT') {
                     // Always absorb state data
                     window._lastHostUpdateAt = Date.now();   // spectator freshness indicator
@@ -1026,7 +1046,10 @@ window.connectToHost = function(hostId) {
                 }
             });
 
+            const thisConn = window.conn;
             window.conn.on('close', () => {
+                // a connection we replaced ourselves must not tear down (or re-trigger) the new one
+                if (window.conn !== thisConn) return;
                 console.log("Disconnected from Host");
                 window.conn = null;
                 // Attempt automatic reconnection
@@ -1038,14 +1061,35 @@ window.connectToHost = function(hostId) {
             window.conn.on('error', (err) => {
                 console.error("Connection error:", err);
             });
-        });
+        };
 
+        if (reusePeer) {
+            onPeerOpen(window.peer.id);
+        } else {
+            window.peer = new Peer(clientId, PEER_CONFIG);
+            window.peer.on('disconnected', () => {
+                // lost the signalling server (typical after the phone slept): get it back without a new identity
+                if (window.peer && !window.peer.destroyed) { try { window.peer.reconnect(); } catch (e) {} }
+            });
+            window.peer.on('open', onPeerOpen);
+        }
+
+        if (reusePeer) return;   // the error handler below is already attached to this peer
         window.peer.on('error', (err) => {
             console.error("PeerJS Error:", err);
             if (err.type === 'unavailable-id') {
-                console.error(`Peer ID "${clientId}" is already taken. Generating a new ID.`);
-                localStorage.removeItem('strateger_client_id'); // Clear the stored ID
-                startConn(); // Retry with a new ID
+                // After a dropped connection the signalling server holds our old id for a few seconds. Keep asking for the
+                // SAME id (the host knows it as approved / as this driver); only take a new one if it stays busy.
+                window._idBusyTries = (window._idBusyTries || 0) + 1;
+                if (window._idBusyTries <= 10) {
+                    console.warn(`Peer ID "${clientId}" still held by the server, retrying (${window._idBusyTries}/10)`);
+                    setTimeout(startConn, 900);
+                } else {
+                    console.error(`Peer ID "${clientId}" stayed busy. Generating a new ID.`);
+                    window._idBusyTries = 0;
+                    localStorage.removeItem('strateger_client_id');
+                    startConn();
+                }
             } else if (err.type === 'peer-unavailable') {
                 // Host ID doesn't exist on the signaling server
                 console.error('Host peer not found — link may be expired');
@@ -1078,14 +1122,11 @@ window.attemptReconnection = function() {
     }
 
     window.reconnectState.isReconnecting = true;
-    const delay = Math.min(window.reconnectState.retryDelay * Math.pow(2, window.reconnectState.retryCount), 30000); // Cap at 30 seconds
-    
-    const waitScreen = document.getElementById('clientWaitScreen');
-    if (waitScreen) {
-        waitScreen.innerHTML = `<div class="flex flex-col items-center justify-center gap-2"><div class="text-lg text-yellow-400 font-bold">🔄 Reconnecting...</div><div class="text-xs text-gray-400 mt-2">Attempt ${window.reconnectState.retryCount + 1} of ${window.reconnectState.maxRetries}</div><div class="text-xs text-gray-500 mt-1">Retrying in ${(delay / 1000).toFixed(1)}s</div></div>`;
-    }
-    
-    setTimeout(() => {
+    const delay = Math.min(window.reconnectState.retryDelay * Math.pow(1.6, window.reconnectState.retryCount), 5000);   // 0.5, 0.8, 1.3, 2, 3.3, 5, 5...
+    window._showConnBanner(true, Math.round(delay));
+
+    clearTimeout(window._reconnectTimer);
+    window._reconnectTimer = setTimeout(() => {
         console.log(`Reconnection attempt ${window.reconnectState.retryCount + 1}...`);
         window.reconnectState.retryCount++;
         window.reconnectState.isReconnecting = false;
@@ -1097,6 +1138,8 @@ window.attemptReconnection = function() {
 window.resetReconnectionState = function() {
     window.reconnectState.retryCount = 0;
     window.reconnectState.isReconnecting = false;
+    window._lastHostMsgAt = Date.now();
+    window._showConnBanner(false);
     console.log('Reconnection successful, state reset');
 };
 
@@ -1227,3 +1270,74 @@ setInterval(function () {
     else if (age > 20) { fresh.textContent = '⚠ ' + (t('watchStale') || 'No update') + ' ' + age + 's'; fresh.className = 'font-mono text-red-400'; }
     else { fresh.textContent = age + 's'; fresh.className = 'font-mono text-gray-400'; }
 }, 1000);
+
+// ==========================================
+// 🔄 CONNECTION WATCHDOG (guests, drivers, delegates)
+// ==========================================
+// A phone that sleeps, changes network or loses signal often keeps a "dead" data channel that never reports
+// 'close', so the old code waited for a timeout that never came while the race carried on. Now:
+//  - the host sends a tiny PING every 3 s, so silence means a broken line, not a quiet race
+//  - the client reconnects at once when the line has been silent for 8 s, when the tab comes back to the front,
+//    when the network returns, or when the user taps the banner
+//  - the reconnect keeps the same peer id, so the host still recognises the guest / driver / delegate
+window._isJoinedClient = function () { return (window.role === 'client' || window.role === 'viewer') && !!(window.reconnectState && window.reconnectState.hostId); };
+
+window._showConnBanner = function (show, retryMs) {
+    let b = document.getElementById('connBanner');
+    if (!show) { if (b) b.classList.add('hidden'); return; }
+    if (!window._everConnected) return;            // the join screens have their own messages
+    if (!b) {
+        b = document.createElement('div');
+        b.id = 'connBanner';
+        b.className = 'conn-banner';
+        b.setAttribute('role', 'status');
+        b.innerHTML = '<span class="conn-dot"></span><span class="conn-text"></span><button type="button" class="conn-retry"></button>';
+        b.querySelector('.conn-retry').addEventListener('click', function () { window._forceAt = 0; window.forceReconnect('tap'); });
+        document.body.appendChild(b);
+    }
+    b.querySelector('.conn-text').textContent = window.tt ? window.tt('Connection lost, reconnecting…') : 'Connection lost, reconnecting…';
+    b.querySelector('.conn-retry').textContent = window.tt ? window.tt('Retry now') : 'Retry now';
+    b.classList.remove('hidden');
+};
+
+window.forceReconnect = function (reason) {
+    if (!window._isJoinedClient()) return;
+    const now = Date.now();
+    if (window._forceAt && now - window._forceAt < 2500) return;   // one attempt at a time
+    window._forceAt = now;
+    console.log('🔄 Forcing reconnect (' + reason + ')');
+    clearTimeout(window._reconnectTimer);
+    window.reconnectState.retryCount = 0;
+    window.reconnectState.isReconnecting = false;
+    window._showConnBanner(true);
+    if (window.conn) { const stale = window.conn; window.conn = null; try { stale.close(); } catch (e) {} }
+    window.connectToHost(window.reconnectState.hostId);
+};
+
+// "alive" = a message from the host in the last 8 s (the host pings every 3 s even when nothing changes)
+window._lineAlive = function () { return !!(window.conn && window.conn.open && window._lastHostMsgAt && Date.now() - window._lastHostMsgAt < 8000); };
+
+setInterval(function () {
+    if (!window._isJoinedClient() || !window._everConnected) return;
+    if (document.hidden) return;
+    if (window._lineAlive()) { window._showConnBanner(false); return; }
+    if (Date.now() - (window._attemptAt || 0) < 16000) { window._showConnBanner(true); return; }   // an attempt is still in flight
+    if (!window.reconnectState.isReconnecting) window.forceReconnect('silent line');
+    else window._showConnBanner(true);
+}, 2000);
+
+function _wakeCheck(why) {
+    if (!window._isJoinedClient() || !window._everConnected) return;
+    // came back to the front or got network: if the line is not provably alive, rebuild it now
+    if (!window._lineAlive()) window.forceReconnect(why);
+}
+document.addEventListener('visibilitychange', function () { if (!document.hidden) _wakeCheck('visible'); });
+window.addEventListener('online', function () { _wakeCheck('online'); });
+window.addEventListener('pageshow', function () { _wakeCheck('pageshow'); });
+window.addEventListener('focus', function () { _wakeCheck('focus'); });
+
+// Host heartbeat
+setInterval(function () {
+    if (window.role !== 'host' || !Array.isArray(window.connections)) return;
+    window.connections.forEach(function (c) { try { if (c && c.open) c.send({ type: 'PING', t: Date.now() }); } catch (e) {} });
+}, 3000);

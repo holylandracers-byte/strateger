@@ -4,6 +4,8 @@
 // ==========================================
 (function () {
     Object.assign(window._TT_PH = window._TT_PH || {}, {
+        'Connection lost, reconnecting…': ['החיבור אבד, מתחברים מחדש…', 'Connexion perdue, reconnexion…', 'Conexão perdida, reconectando…', 'Связь потеряна, переподключаемся…', 'انقطع الاتصال، جارٍ إعادة الاتصال…', 'Conexión perdida, reconectando…', 'Connessione persa, riconnessione…', 'კავშირი გაწყდა, ვუერთდებით ხელახლა…', 'Verbindung verloren, verbinde neu…', '接続が切れました。再接続しています…', 'Η σύνδεση χάθηκε, γίνεται επανασύνδεση…'],
+        'Retry now': ['נסו עכשיו', 'Réessayer', 'Tentar agora', 'Повторить', 'أعد المحاولة الآن', 'Reintentar ya', 'Riprova ora', 'სცადეთ ახლავე', 'Jetzt erneut versuchen', '今すぐ再試行', 'Δοκιμάστε τώρα'],
         'Edit the plan': ['עריכת התוכנית', 'Modifier le plan', 'Editar o plano', 'Редактировать план', 'تعديل الخطة', 'Editar el plan', 'Modifica il piano', 'გეგმის რედაქტირება', 'Plan bearbeiten', 'プランを編集', 'Επεξεργασία προγράμματος'],
         'Stint minutes and driver order (rules are checked)': [
             'דקות סטינט וסדר נהגים (החוקים נבדקים)',

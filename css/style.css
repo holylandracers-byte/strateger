@@ -4796,3 +4796,10 @@ html.is-tablet .auto-pit-switch { min-height: 36px; font-size: 13px; }
 #statsTableGroup col.stops-col { width: 46px; }
 #statsTableGroup col.total-col { width: 84px; }
 #statsTableGroup thead th { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10.5px; padding-inline: 3px; }
+
+/* Connection banner for guests, drivers and delegates: always visible above everything, one tap to retry */
+.conn-banner { position: fixed; top: calc(8px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%); z-index: 400; display: flex; align-items: center; gap: 10px; max-width: calc(100vw - 24px); padding: 8px 8px 8px 14px; border-radius: 999px; background: rgb(var(--n900)); color: #fde68a; border: 1px solid rgba(245, 158, 11, .6); box-shadow: 0 8px 28px rgba(0, 0, 0, .5); font-size: 13px; font-weight: 700; }
+.conn-banner.hidden { display: none; }
+.conn-dot { width: 9px; height: 9px; border-radius: 50%; background: #f59e0b; flex: none; animation: pulse 1.2s infinite; }
+.conn-text { min-width: 0; }
+.conn-retry { flex: none; min-height: 34px; padding: 0 14px; border-radius: 999px; border: 0; background: #f59e0b; color: #1c1917; font-weight: 800; font-size: 13px; cursor: pointer; }
