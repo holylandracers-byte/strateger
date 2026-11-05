@@ -865,6 +865,7 @@ window.connectToHost = function(hostId) {
                     if (data.strategyTimeline) {
                         window._receivedTimeline = data.strategyTimeline;
                     }
+                    if (data.planTimeline) window._receivedPlan = data.planTimeline;   // stints + pits, for the read-only / delegate plan
 
                     // For viewers (non-driver): gate dashboard behind approval
                     if (!window._autoDriverMode && window.viewerApprovalStatus !== 'approved') {
@@ -915,6 +916,8 @@ window.connectToHost = function(hostId) {
                     if (typeof window.onCoAdminPerms === 'function') window.onCoAdminPerms(data);
                 } else if (data.type === 'COADMIN_SYNC') {
                     if (typeof window.onCoAdminSync === 'function') window.onCoAdminSync(data);
+                } else if (data.type === 'CO_NOTICE') {
+                    window.showToast(window.tt ? window.tt(data.text || '') : (data.text || ''), data.kind === 'error' ? 'error' : 'success', 4500);
                 } else if (data.type === 'CO_BLOCKED') {
                     if (typeof window.onCoBlocked === 'function') window.onCoBlocked(data);
                 } else if (data.type === 'PRIVATE_MESSAGE') {
@@ -1109,6 +1112,7 @@ window.broadcast = function(specificPayload = null) {
         searchConfig: window.searchConfig,
         currentPitAdjustment: window.currentPitAdjustment || 0, // 🟢 Include pit adjustment so viewers see it
         strategyTimeline: (window.cachedStrategy && window.cachedStrategy.timeline) ? window.cachedStrategy.timeline.filter(t => t.type === 'stint').map(t => ({ driverIdx: t.driverIdx, driverName: t.driverName, start: t.start, end: t.end, duration: t.duration, stintNumber: t.stintNumber, squad: t.squad })) : null,
+        planTimeline: window._planForClients ? window._planForClients() : null,
         timestamp: Date.now()
         };
 

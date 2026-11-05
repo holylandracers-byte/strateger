@@ -4693,3 +4693,36 @@ html body #competitorsTable .cr-laps, html body #competitorsTable .cr-int, html 
 @container (min-width: 350px) { #competitorsTable .cr-laps { display: block !important; } }
 @container (min-width: 410px) { #competitorsTable .cr-int { display: block !important; } }
 @container (min-width: 470px) { #competitorsTable .cr-avg { display: block !important; } }
+
+/* ==================== PLAN FOR SPECTATORS / DELEGATES: rules + editing ==================== */
+.cp-body { display: flex; flex-direction: column; min-height: 0; flex: 1; }
+.cp-rules { margin: 8px 10px 0; padding: 8px 10px; border-radius: 10px; font-size: 13px; border: 1px solid rgb(var(--n700)); background: rgb(var(--n800) / .6); }
+.cp-rules.is-ok { color: #86efac; border-color: rgba(74, 222, 128, .35); }
+.cp-rules.is-bad { color: #fca5a5; border-color: rgba(248, 113, 113, .45); background: rgba(127, 29, 29, .22); }
+.cp-rules-head { font-weight: 700; display: flex; gap: 8px; align-items: center; }
+.cp-rules-list { margin: 6px 0 0; padding: 0; list-style: none; display: grid; gap: 4px; color: #fecaca; font-size: 12.5px; }
+.cp-step { display: inline-flex; align-items: center; gap: 4px; }
+.cp-mins { min-width: 30px; text-align: center; font-weight: 800; color: #fff; font-variant-numeric: tabular-nums; }
+.cp-btn { min-width: 40px; height: 40px; border-radius: 10px; border: 1px solid rgb(var(--n700)); background: rgb(var(--n800)); color: #e2e8f0; font-size: 18px; font-weight: 800; cursor: pointer; touch-action: manipulation; }
+.cp-btn:active { background: rgb(var(--accent-rgb)); color: rgb(var(--n950)); }
+.cp-btn:disabled { opacity: .35; cursor: default; }
+.cp-mini { min-width: 34px; height: 34px; font-size: 12px; }
+.cp-move { display: inline-flex; flex-direction: column; gap: 2px; }
+.cp-move .cp-mini { height: 24px; min-width: 34px; font-size: 10px; }
+.cp-foot { display: flex; gap: 8px; padding: 10px; border-top: 1px solid rgb(var(--n700)); }
+.cp-act { flex: 1; min-height: 44px; border-radius: 10px; border: 1px solid rgb(var(--accent-rgb) / .5); background: rgb(var(--accent-rgb) / .1); color: rgb(var(--accent-rgb)); font-weight: 700; font-size: 14px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.cp-act:active { background: rgb(var(--accent-rgb)); color: rgb(var(--n950)); }
+.cp-row { flex-wrap: nowrap; }
+.cp-list { flex: 1; min-height: 0; }
+
+/* Live widget: "Auto pit" is a real on/off switch; the clock sync is only a status (it always follows the feed) */
+.auto-pit-switch { display: inline-flex; align-items: center; gap: 8px; min-height: 28px; padding: 2px 4px 2px 10px; border-radius: 999px; border: 1px solid #475569; background: transparent; color: #94a3b8; font-size: 12px; font-weight: 700; cursor: pointer; touch-action: manipulation; }
+.auto-pit-switch .aps-track { position: relative; width: 34px; height: 20px; border-radius: 999px; background: #334155; transition: background .18s; flex: none; }
+.auto-pit-switch .aps-thumb { position: absolute; top: 2px; inset-inline-start: 2px; width: 16px; height: 16px; border-radius: 50%; background: #cbd5e1; transition: transform .18s, background .18s; }
+.auto-pit-switch.is-on { color: #4ade80; border-color: rgba(74, 222, 128, .55); background: rgba(74, 222, 128, .08); }
+.auto-pit-switch.is-on .aps-track { background: #16a34a; }
+.auto-pit-switch.is-on .aps-thumb { background: #fff; transform: translateX(14px); }
+[dir="rtl"] .auto-pit-switch.is-on .aps-thumb { transform: translateX(-14px); }
+.auto-pit-switch:focus-visible { outline: 2px solid rgb(var(--accent-rgb)); outline-offset: 2px; }
+.clock-sync-status { font-size: 11px; color: #64748b; white-space: nowrap; }
+html.is-tablet .auto-pit-switch { min-height: 36px; font-size: 13px; }

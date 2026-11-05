@@ -40,7 +40,7 @@ html.is-tablet #nextDriverName,
 html.is-tablet button[onclick*="openPitTimeAdjust"],
 html.is-tablet button[onclick*="PitTime"] { min-height: 44px; }
 html.is-tablet #apexViewToggle, html.is-tablet #pickTeamBtn, html.is-tablet #ltPhotoBtn,
-html.is-tablet #ltMinBtn, html.is-tablet #ltHideBtn, html.is-tablet #clockSyncBtn, html.is-tablet #autoPitBtn,
+html.is-tablet #ltMinBtn, html.is-tablet #ltHideBtn, html.is-tablet #autoPitBtn,
 html.is-tablet #liveTimingPanel button[onclick*="stopLiveTiming"] {
     min-height: 40px; min-width: 40px; padding-inline: 8px; font-size: 13px !important;
 }

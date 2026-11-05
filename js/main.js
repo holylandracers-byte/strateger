@@ -1550,7 +1550,8 @@ window._setLiveStintTargetMs = function(stintIdx, newMs, opts) {
     const pitTimeMs = pitTimeSec * 1000;
     const stopsDone = window.state.pitCount || 0;
     const totalStops = parseInt(window.config?.reqStops) || 0;
-    const futureStints = Math.max(0, totalStops - stopsDone);
+    // stints added mid-race (pit-exit re-plan, delegate) can take the plan past the required stops
+    const futureStints = Math.max(0, totalStops - stopsDone, stintTargets.length - (currentStintIdx + 1));
     if (futureStints === 0 || stintIdx >= currentStintIdx + 1 + futureStints) return false; // nothing to redistribute into beyond the required stops
 
     const newTargets = [...stintTargets];
@@ -3964,39 +3965,9 @@ window._undoPitTimer = null;
  * Save a snapshot of the current state before pit entry (called from confirmPitEntry).
  */
 window._saveUndoPitSnapshot = function() {
-    window._undoPitSnapshot = {
-        isInPit: false,
-        pitCount: window.state.pitCount - 1, // before increment
-        pitStart: 0,
-        stintStart: window.state.stintStart,
-        stintOffset: window.state.stintOffset,
-        currentDriverIdx: window.state.currentDriverIdx,
-        globalStintNumber: window.state.globalStintNumber,
-        consecutiveStints: window.state.consecutiveStints,
-        timestamp: Date.now()
-    };
-    
-    // Show undo toast with countdown
-    window._showUndoPitToast();
-};
-
-window._showUndoPitToast = function() {
-    const toast = document.getElementById('undoPitToast');
-    if (!toast) return;
-    
-    toast.classList.remove('hidden');
-    let remaining = 10;
-    const countEl = document.getElementById('undoPitCountdown');
-    
-    if (window._undoPitTimer) clearInterval(window._undoPitTimer);
-    
-    window._undoPitTimer = setInterval(() => {
-        remaining--;
-        if (countEl) countEl.innerText = remaining + 's';
-        if (remaining <= 0) {
-            window._hideUndoPitToast();
-        }
-    }, 1000);
+    // The "Undo Pit" toast was removed: it only appeared after the pit was already underway and added nothing.
+    // Cancelling a pit entry stays available on the pit screen ("Cancel Entry").
+    window._undoPitSnapshot = null;
 };
 
 window._hideUndoPitToast = function() {

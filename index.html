@@ -41,15 +41,15 @@
     <!-- OCR fallback for scanned/photographed rules PDFs with no real text layer -->
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js" defer></script>
 
-    <script src="js/racefacer-scraper.js?v=7"></script>
+    <script src="js/racefacer-scraper.js?v=8"></script>
     <script src="js/apex-scraper.js?v=10"></script>
     <script src="js/hakafast-scraper.js?v=7"></script>
     <script src="js/alpha-scraper.js?v=7"></script>
     <script src="js/live-timing-manager.js?v=9"></script>
     <script src="js/qualifying.js?v=13"></script>
 
-    <link rel="stylesheet" href="css/style.css?v=84">
-    <link rel="stylesheet" href="css/tablet.css?v=5">
+    <link rel="stylesheet" href="css/style.css?v=86">
+    <link rel="stylesheet" href="css/tablet.css?v=6">
     <script src="js/tablet-mode.js?v=1"></script>
     <script src="js/themes.js?v=1"></script>
     <script src="js/mobile-tabs.js?v=1"></script>
@@ -1030,8 +1030,8 @@
                             <span class="text-xs font-bold" data-i18n="live">LIVE</span>
                             <!-- Race clock synced to main timer -->
                             <span class="text-[11px] text-gray-400 font-mono ml-1" id="liveRaceClock"></span>
-                            <button type="button" id="clockSyncBtn" class="clock-sync-btn hidden" onclick="window.toggleClockSync()" title="Race clock follows the live timing clock"></button>
-                            <button type="button" id="autoPitBtn" class="clock-sync-btn hidden" onclick="window.toggleAutoPit()" data-i18n-title="pitAutoTitle" title="Pit entry and exit follow live timing"></button>
+                            <span id="clockSyncBtn" class="clock-sync-status hidden" title="Race clock follows the live timing clock"></span>
+                            <button type="button" id="autoPitBtn" class="auto-pit-switch hidden" role="switch" aria-checked="false" onclick="window.toggleAutoPit()" data-i18n-title="pitAutoTitle" title="Pit entry and exit follow live timing"><span class="aps-label" data-i18n="pitAutoOn">Auto pit</span><span class="aps-track" aria-hidden="true"><span class="aps-thumb"></span></span></button>
                         </div>
                         <div class="flex items-center gap-1">
                             <!-- Pro: team logo upload button (hidden for free tier) -->
@@ -2096,13 +2096,6 @@
         </div>
     </div>
 
-    <!-- UNDO PIT TOAST (fixed bottom-center) -->
-    <div id="undoPitToast" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] bg-navy-900 border border-amber-500/50 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 animate-slide-up">
-        <span class="text-sm font-bold" data-i18n="undoPit">Undo Pit</span>
-        <span id="undoPitCountdown" class="text-xs text-amber-400 font-mono">10s</span>
-        <button onclick="window.executeUndoPit()" class="bg-amber-500 text-black font-bold px-3 py-1 rounded text-sm hover:bg-amber-400 transition" data-i18n="undoCountdown">Undo</button>
-    </div>
-
     <!-- TOAST NOTIFICATION CONTAINER -->
     <div id="toastContainer" class="fixed top-14 right-3 z-[200] flex flex-col gap-2 pointer-events-none" style="max-width:380px;"></div>
 
@@ -2340,23 +2333,24 @@
     <script src="js/i18n-phrases3.js?v=6"></script>
     <script src="js/i18n-phrases4.js?v=2"></script>
     <script src="js/i18n-phrases5.js?v=4"></script>
+    <script src="js/i18n-phrases6.js?v=1"></script>
     <script src="js/i18n-themes.js?v=1"></script>
     <script src="js/i18n-mobile.js?v=3"></script>
     <script src="js/auth.js?v=10"></script>
-    <script src="js/network.js?v=13"></script>
-    <script src="js/delegate.js?v=6"></script>
+    <script src="js/network.js?v=14"></script>
+    <script src="js/delegate.js?v=7"></script>
     <script src="js/strategy.js?v=28"></script>
     <script src="js/race-rules.js?v=11"></script>
     <script src="js/compliance.js?v=3"></script>
     <script src="js/export.js?v=3"></script>
     <script src="js/autosave.js?v=6"></script>
-    <script src="js/live-timing.js?v=26"></script>
+    <script src="js/live-timing.js?v=27"></script>
     <script src="js/track-finder.js?v=2"></script>
     <script src="js/ui.js?v=38"></script>
     <script src="js/walkthrough.js?v=15"></script>
     <script src="js/setup-bar.js?v=13"></script>
-    <script src="js/main.js?v=44"></script>
-    <script src="js/live-extras.js?v=9"></script>
+    <script src="js/main.js?v=46"></script>
+    <script src="js/live-extras.js?v=11"></script>
     <script src="js/live-photo.js?v=2"></script>
 </body>
 </html>

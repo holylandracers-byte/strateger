@@ -161,7 +161,15 @@ class RaceFacerScraper {
             currentLap: data.current_lap,
             isEndurance: data.is_endurance,
             hasPits: data.has_pits,
-            timestamp: data.timestamp
+            timestamp: data.timestamp,
+            // when the board produced this snapshot (epoch ms); pairs with time_left_in_seconds so a late or cached
+            // response still tells us exactly when the clock will hit zero
+            snapshotAt: (function (v) {
+                v = Number(v);
+                if (!isFinite(v) || v <= 0) return null;
+                if (v < 1e11) v *= 1000;
+                return Math.abs(v - Date.now()) < 120000 ? v : null;
+            })(data.timestamp_socket != null ? data.timestamp_socket : data.timestamp)
         };
 
         const competitors = (data.runs || []).map(run => ({

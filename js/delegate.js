@@ -11,14 +11,15 @@ window.DELEGATE_PERMS = {
     pitAdj: { icon: 'fa-stopwatch',      label: 'Pit time adjust',  hint: '± seconds on the pit stop',       cmds: ['adjustPitTime'] },
     driver: { icon: 'fa-user-astronaut', label: 'Next driver',      hint: 'Change who drives next',          cmds: ['cycleNextDriver'] },
     mode:   { icon: 'fa-gauge-high',     label: 'Pace & squads',    hint: 'Push / problem, night, squad',    cmds: ['setMode', 'toggleNightMode', 'switchNightSquad'] },
+    plan:   { icon: 'fa-list-check',     label: 'Edit the plan',    hint: 'Stint minutes, driver order, add or remove a stint (rules are checked)', cmds: ['coSetStintMin', 'coMoveStint', 'coAddStint', 'coRemoveStint'] },
     finish: { icon: 'fa-flag',           label: 'Confirm finish',   hint: 'Confirm the race finish',         cmds: ['confirmRaceFinish'] },
     chat:   { icon: 'fa-comments',       label: 'Chat as admin',    hint: 'Message all viewers',             cmds: [] },
     takeover: { icon: 'fa-crown',        label: 'Take over if host is lost', hint: 'Become the host if the main device dies', cmds: [] }
 };
 window.DELEGATE_PRESETS = {
-    full:       { label: 'Full admin',   perms: ['pit', 'pitAdj', 'driver', 'mode', 'finish', 'chat', 'takeover'] },
+    full:       { label: 'Full admin',   perms: ['pit', 'pitAdj', 'driver', 'mode', 'plan', 'finish', 'chat', 'takeover'] },
     pit:        { label: 'Pit crew',     perms: ['pit', 'pitAdj', 'driver'] },
-    strategist: { label: 'Strategist',   perms: ['mode', 'driver', 'pitAdj', 'chat'] },
+    strategist: { label: 'Strategist',   perms: ['mode', 'driver', 'pitAdj', 'plan', 'chat'] },
     watch:      { label: 'Watch + chat', perms: ['chat'] }
 };
 // Elements each permission re-enables on the delegate's screen (enforceViewerMode hides them for viewers)
@@ -29,7 +30,7 @@ window.DELEGATE_SELECTORS = {
     finish: '#confirmRaceFinishBtn'
 };
 // Every permission that puts a control in the delegate's hands (chat and takeover alone do not make a screen "hands-on")
-window.DELEGATE_HANDS_ON = ['pit', 'pitAdj', 'driver', 'mode', 'finish'];
+window.DELEGATE_HANDS_ON = ['pit', 'pitAdj', 'driver', 'mode', 'plan', 'finish'];
 
 const _dlgEsc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -234,7 +235,10 @@ window.handleDelegateMessage = function (c, data) {
             return true;
         }
         const args = Array.isArray(data.args) ? data.args.slice(0, 3).filter(a => ['string', 'number', 'boolean'].includes(typeof a) || a == null) : [];
-        try { window[cmd](...args); } catch (e) { console.error('Delegate command failed', cmd, e); }
+        let result;
+        try { result = window[cmd](...args); } catch (e) { console.error('Delegate command failed', cmd, e); }
+        // Plan commands answer with a short English sentence when they refuse; the delegate translates it
+        if (typeof result === 'string' && result) { try { c.send({ type: 'CO_NOTICE', text: result, kind: 'error' }); } catch (e) {} }
         // Live timing can hold a manual pit exit; tell the delegate so a second tap can force it, like on the host
         if (cmd === 'confirmPitExit' && !args[0] && window.state && window.state.isInPit) {
             try { c.send({ type: 'CO_BLOCKED', cmd }); } catch (e) {}
@@ -525,3 +529,115 @@ setInterval(function () {
     document.getElementById('coTakeoverTxt').textContent = '⚠ ' + window.tt('Host not responding') + ' · ' + Math.round(age / 1000) + 's';
     bar.querySelector('button').textContent = '👑 ' + window.tt('Take over as host');
 }, 1000);
+
+
+// ---------------------------------------------------------------- PLAN EDITING (host side)
+// A delegate holding "Edit the plan" sends these; the host runs them on the live plan (state.stintTargets,
+// stintSchedule and the preview timeline), the same way the host's own PLAN screen edits it. Stint limits are
+// enforced by the same clamp/redistribute code, and a change that would break a rule is refused with a sentence.
+
+// What the delegate's read-only plan needs: stints and pits in order, with the real driver for finished stints
+window._planForClients = function () {
+    const tl = window.previewData && window.previewData.timeline;
+    if (!Array.isArray(tl) || !tl.length) return null;
+    return {
+        items: tl.map(x => ({ t: x.type === 'pit' ? 'p' : 's', d: x.driverIdx, n: x.driverName, c: x.color, q: x.squad, u: Math.round(x.duration || 0), a: (x._actual || x._done) ? 1 : 0, no: x.stintNumber || 0 })),
+        rules: window.raceRules || null
+    };
+};
+
+window._planCtx = function () {
+    const st = window.state, cfg = window.config;
+    if (window.role !== 'host' || !st || !cfg || !st.isRunning || st.isFinished || !Array.isArray(st.stintTargets)) return { err: 'The race is not running' };
+    if (st.isInPit) return { err: 'Change the plan after the pit stop, not during it' };
+    const now = window.getSyncedNow ? window.getSyncedNow() : Date.now();
+    const raceMs = cfg.raceMs || (parseFloat(cfg.duration) || 0) * 3600000;
+    const pitMs = (parseFloat(cfg.minPitTime) || parseFloat(cfg.minPitSec) || parseFloat(cfg.pitTime) || parseFloat(cfg.planPitTime) || 0) * 1000;
+    const cur = Math.max(0, (st.globalStintNumber || 1) - 1);
+    const elapsed = (now - st.stintStart) + (st.stintOffset || 0);
+    const curTarget = st.targetStintMs || st.stintTargets[cur] || 0;
+    return {
+        st, cfg, cur, pitMs,
+        remaining: Math.max(0, raceMs - (now - st.startTime)),
+        ttfc: Math.max(0, curTarget - elapsed),
+        bounds: window.getStintBoundsMs(cfg),
+        futureN: st.stintTargets.length - (cur + 1)
+    };
+};
+
+// Spread the time that is left evenly over the stints after the current one, inside min/max
+window._rebalanceFuture = function (ctx) {
+    const st = ctx.st, targets = st.stintTargets;
+    const n = targets.length - (ctx.cur + 1);
+    if (n <= 0) return;
+    const pool = ctx.remaining - ctx.ttfc - n * ctx.pitMs;
+    const res = window.normalizeStintDurationsMs(new Array(n).fill(pool / n), { totalTargetMs: pool, bounds: ctx.bounds, plan: true });
+    for (let i = 0; i < n; i++) targets[ctx.cur + 1 + i] = res.durations[i];
+    st.stintTargets = targets;
+    window._mirrorTargetsToPreview();
+};
+
+window._mirrorTargetsToPreview = function () {
+    const tl = window.previewData && window.previewData.timeline;
+    const targets = window.state && window.state.stintTargets;
+    if (Array.isArray(tl) && Array.isArray(targets)) {
+        tl.filter(x => x.type === 'stint').forEach((s, i) => { if (targets[i] != null && !(s._actual || s._done)) s.duration = targets[i]; });
+        if (typeof window.recalculateTimelineTimes === 'function') window.recalculateTimelineTimes();
+    }
+    if (typeof window.renderPreview === 'function' && window.previewData) { try { window.renderPreview(); } catch (e) {} }
+    if (typeof window.broadcast === 'function') window.broadcast();
+    if (typeof window.saveRaceState === 'function') window.saveRaceState();
+};
+
+window.coSetStintMin = function (idx, min) {
+    const ctx = window._planCtx();
+    if (ctx.err) return ctx.err;
+    idx = Math.round(Number(idx)); min = Number(min);
+    if (!(min > 0) || !(idx >= ctx.cur) || idx >= ctx.st.stintTargets.length) return 'That stint cannot be changed';
+    if (!window._setLiveStintTargetMs(idx, min * 60000, { silent: true })) return 'That stint cannot be changed';
+    window._mirrorTargetsToPreview();
+    return '';
+};
+
+window.coMoveStint = function (idx, dir) {
+    const ctx = window._planCtx();
+    if (ctx.err) return ctx.err;
+    idx = Math.round(Number(idx)); dir = Number(dir) < 0 ? -1 : 1;
+    const to = idx + dir;
+    if (idx <= ctx.cur || to <= ctx.cur || to >= ctx.st.stintTargets.length) return 'That stint cannot be moved';
+    if (typeof window.moveStint === 'function') window.moveStint(idx, dir);
+    if (typeof window.broadcast === 'function') window.broadcast();
+    if (typeof window.saveRaceState === 'function') window.saveRaceState();
+    return '';
+};
+
+window.coAddStint = function () {
+    const ctx = window._planCtx();
+    if (ctx.err) return ctx.err;
+    const n = ctx.futureN + 1;
+    const pool = ctx.remaining - ctx.ttfc - n * ctx.pitMs;
+    if (ctx.bounds.minStintMs > 0 && pool / n < ctx.bounds.minStintMs) return 'Not enough time left for another stint above the minimum';
+    window._addStintsToPlan(ctx.cur, 1);
+    window._rebalanceFuture(ctx);
+    return '';
+};
+
+window.coRemoveStint = function () {
+    const ctx = window._planCtx();
+    if (ctx.err) return ctx.err;
+    if (ctx.futureN <= 1) return 'At least one more stint is needed';
+    const stopsAfter = ctx.st.stintTargets.length - 2;
+    if (stopsAfter < (parseInt(ctx.cfg.reqStops) || 0)) return 'That would go below the required number of stops';
+    const n = ctx.futureN - 1;
+    const pool = ctx.remaining - ctx.ttfc - n * ctx.pitMs;
+    if (ctx.bounds.effectiveMaxStint !== Infinity && pool / n > ctx.bounds.effectiveMaxStint) return 'The remaining time does not fit in fewer stints under the maximum';
+    ctx.st.stintTargets.pop();
+    if (Array.isArray(ctx.st.stintSchedule) && ctx.st.stintSchedule.length > ctx.st.stintTargets.length) ctx.st.stintSchedule.pop();
+    const tl = window.previewData && window.previewData.timeline;
+    if (Array.isArray(tl)) {
+        const lastS = tl.map(x => x.type).lastIndexOf('stint');
+        if (lastS > 0) { tl.splice(lastS, 1); if (tl[lastS - 1] && tl[lastS - 1].type === 'pit') tl.splice(lastS - 1, 1); }
+    }
+    window._rebalanceFuture(ctx);
+    return '';
+};

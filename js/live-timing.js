@@ -418,9 +418,24 @@ window.fetchLiveTimingFromProxy = async function() {
                     if (est.same >= 4 || cand < lo - 2500 || cand > lo + 6000) est.buf = [];   // clock paused / rewound / other session
                     est.buf.push(cand);
                     if (est.buf.length > 12) est.buf.shift();
+                    const snap = data.race.snapshotAt;
                     if (est.same >= 4) {
                         // clock stopped (red flag / between sessions): follow the board as it is
                         est.endAt = pollAt + feedMs;
+                        est.snapBuf = [];
+                    } else if (snap) {
+                        // The snapshot's own timestamp says when the board read this value, so a late or cached response
+                        // cannot make the clock lag: end = snapshot time + time left. Both are whole seconds, so the
+                        // largest sum in the window is the one closest to the truth (+0.5 s for the missing fraction).
+                        est.snapBuf = est.snapBuf || [];
+                        const endSnap = snap + feedMs;
+                        const hi = est.snapBuf.length ? Math.max.apply(null, est.snapBuf) : endSnap;
+                        if (endSnap > hi + 3000 || endSnap < hi - 3000) est.snapBuf = [];     // clock restarted / other session
+                        est.snapBuf.push(endSnap);
+                        if (est.snapBuf.length > 10) est.snapBuf.shift();
+                        const target = Math.max.apply(null, est.snapBuf) + 500;
+                        if (est.endAt == null || Math.abs(target - est.endAt) > 1500) est.endAt = target;
+                        else est.endAt += Math.max(-40, Math.min(40, target - est.endAt));
                     } else {
                         // best estimate of the instant the board's clock reads zero; the minimum candidate is the poll
                         // closest to a real tick, and the board shows whole seconds so the true value averages +0.5 s

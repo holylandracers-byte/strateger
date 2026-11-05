@@ -104,18 +104,13 @@
         if (ap) {
             const on = !!window._autoPitEnabled;
             ap.classList.toggle('hidden', !hasFeed);
-            ap.textContent = '🏁 ' + (on ? tr('pitAutoOn', 'Auto pit') : tr('pitAutoOff', 'Pit manual'));
             ap.classList.toggle('is-on', on);
-            ap.setAttribute('aria-pressed', String(on));
+            ap.setAttribute('aria-checked', String(on));
         }
         const b = $('clockSyncBtn');
         if (!b) return;
         b.classList.toggle('hidden', !hasFeed);
         b.textContent = '⏱ ' + tr('clockSynced', 'synced');
-        b.classList.add('is-on');
-        b.removeAttribute('onclick');
-        b.style.pointerEvents = 'none';
-        b.tabIndex = -1;
     };
 
     window._syncRaceClockToFeed = function() {
@@ -169,34 +164,143 @@
     };
 })();
 
-// ----- Read-only plan for spectators and delegates (they have no plan object, only the synced stint list) -----
+// ----- Plan for spectators and delegates (they have no plan object, only what the host synced) -----
+// Shows who is driving NOW (from the live state, not the original plan), real times for the stints still to
+// come, and the rule check. A delegate holding "Edit the plan" also gets minute steppers, move arrows and
+// add / remove stint; each tap is sent to the host, which enforces the stint limits and refuses anything that
+// would break a rule.
 (function() {
     const esc = function(x) { return String(x == null ? '' : x).replace(/[&<>"']/g, function(c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); };
     const hm = function(v) { const d = new Date(v); return isNaN(d) ? '--:--' : String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
+    const T = function(x) { return window.tt ? window.tt(x) : x; };
+    let timer = null;
+
+    // The plan as a list of stints, each with the facts the screen needs
+    function buildPlan() {
+        const st = window.state || {}, cfg = window.config || {}, drivers = window.drivers || [];
+        const cur = Math.max(0, (st.globalStintNumber || 1) - 1);
+        const live = !!(st.isRunning && !st.isFinished);
+        const targets = Array.isArray(st.stintTargets) ? st.stintTargets : [];
+        const pitMs = (parseFloat(cfg.minPitTime) || parseFloat(cfg.minPitSec) || parseFloat(cfg.pitTime) || parseFloat(cfg.planPitTime) || 0) * 1000;
+        let items = [];   // {type, driverIdx, name, color, duration, done, pitMs}
+        const rp = window._receivedPlan;
+        if (rp && Array.isArray(rp.items) && rp.items.length) {
+            rp.items.forEach(function(x) {
+                items.push({ type: x.t === 'p' ? 'pit' : 'stint', driverIdx: x.d, name: x.n, color: x.c, squad: x.q, duration: x.u, done: !!x.a });
+            });
+            if (rp.rules && window.role !== 'host') window.raceRules = rp.rules;
+        } else {
+            (window._receivedTimeline || []).forEach(function(s, i) {
+                if (i) items.push({ type: 'pit', duration: pitMs });
+                items.push({ type: 'stint', driverIdx: s.driverIdx, name: s.driverName, duration: s.duration, done: (s.stintNumber || i + 1) <= cur });
+            });
+        }
+        const stints = items.filter(function(x) { return x.type === 'stint'; });
+        stints.forEach(function(s, i) {
+            s.idx = i;
+            if (i < cur) s.done = true;
+            // what the live race says wins over the original plan: the stint on track is driven by currentDriverIdx
+            if (live && i === cur && drivers[st.currentDriverIdx]) { s.driverIdx = st.currentDriverIdx; s.name = drivers[st.currentDriverIdx].name; s.color = drivers[st.currentDriverIdx].color; }
+            else if (live && i === cur + 1 && st.nextDriverIdx != null && drivers[st.nextDriverIdx]) { s.driverIdx = st.nextDriverIdx; s.name = drivers[st.nextDriverIdx].name; s.color = drivers[st.nextDriverIdx].color; }
+            const d = drivers[s.driverIdx];
+            if (d) { s.color = s.color || d.color; s.name = s.name || d.name; }
+            // stints still to run follow the live targets
+            if (live && i >= cur && targets[i] != null) s.duration = (i === cur && st.targetStintMs) ? st.targetStintMs : targets[i];
+        });
+        // times for what has not finished: from the real start of the current stint on
+        if (live && st.stintStart) {
+            let t = st.stintStart - (st.stintOffset || 0);
+            let k = 0;
+            items.forEach(function(it) {
+                if (it.type === 'stint') {
+                    if (it.idx < cur) return;
+                    it.start = t; t += it.duration; it.end = t; k++;
+                } else if (it.idx === undefined && k > 0) {
+                    t += it.duration || pitMs;
+                }
+            });
+        }
+        return { items: items, stints: stints, cur: cur, live: live };
+    }
+
+    function canEdit() { const co = window._coAdmin; return !!(co && co.granted && co.perms && co.perms.plan); }
+
+    function complianceHtml(plan) {
+        if (typeof window.checkCompliance !== 'function') return '';
+        const tl = plan.items.map(function(x) { return { type: x.type, driverIdx: x.driverIdx, duration: x.duration || 0, _actual: x.done, _done: x.done }; });
+        const c = window.checkCompliance(tl, window.config);
+        if (!c.total) return '';
+        const ok = c.failing.length === 0;
+        const F = function(k, v) { return typeof window.tf === 'function' ? window.tf(k, v) : k; };
+        const head = ok ? F('cpHeadOk', { n: c.total }) : F('cpHeadBad', { b: c.failing.length, n: c.total });
+        const list = (ok ? [] : c.failing).map(function(i) { return '<li class="bad"><i class="fas fa-times"></i> ' + esc(i.text) + '</li>'; }).join('');
+        return '<div class="cp-rules ' + (ok ? 'is-ok' : 'is-bad') + '"><div class="cp-rules-head"><i class="fas fa-' + (ok ? 'shield-alt' : 'exclamation-triangle') + '"></i> ' + esc(head) + '</div>' + (list ? '<ul class="cp-rules-list">' + list + '</ul>' : '') + '</div>';
+    }
+
+    function rowsHtml(plan) {
+        const edit = canEdit() && plan.live;
+        const unit = (window.t && window.t('unitMin') !== 'unitMin') ? window.t('unitMin') : 'm';
+        return plan.stints.map(function(s) {
+            const i = s.idx, done = i < plan.cur, now = i === plan.cur && plan.live;
+            const state = done ? 'done' : (now ? 'now' : 'next');
+            const mins = Math.round((s.duration || 0) / 60000);
+            let dur = '<span class="cp-dur">' + mins + unit + '</span>';
+            let mv = '';
+            if (edit && !done) {
+                dur = '<span class="cp-step"><button type="button" class="cp-btn" data-act="min" data-i="' + i + '" data-v="' + (mins - 1) + '" aria-label="-1">&minus;</button>'
+                    + '<span class="cp-mins">' + mins + '</span>'
+                    + '<button type="button" class="cp-btn" data-act="min" data-i="' + i + '" data-v="' + (mins + 1) + '" aria-label="+1">+</button></span>';
+                if (!now) mv = '<span class="cp-move"><button type="button" class="cp-btn cp-mini" data-act="move" data-i="' + i + '" data-v="-1" aria-label="' + esc(T('Move up')) + '"' + (i - 1 <= plan.cur ? ' disabled' : '') + '>&#9650;</button>'
+                    + '<button type="button" class="cp-btn cp-mini" data-act="move" data-i="' + i + '" data-v="1" aria-label="' + esc(T('Move down')) + '"' + (i + 1 >= plan.stints.length ? ' disabled' : '') + '>&#9660;</button></span>';
+            }
+            return '<div class="cp-row cp-' + state + '"><span class="cp-n">' + (done ? '&#10003;' : (now ? '&#9654;' : (i + 1))) + '</span>'
+                + '<span class="cp-dot" style="background:' + esc(s.color || '#22d3ee') + '"></span>'
+                + '<span class="cp-name">' + esc(s.name || '') + '</span>'
+                + (s.start ? '<span class="cp-time" dir="ltr">' + hm(s.start) + '–' + hm(s.end) + '</span>' : '')
+                + dur + mv + '</div>';
+        }).join('');
+    }
+
+    function render(ov) {
+        const plan = buildPlan();
+        const list = ov.querySelector('.cp-list');
+        const keep = list ? list.scrollTop : 0;
+        const edit = canEdit() && plan.live;
+        const html = complianceHtml(plan)
+            + '<div class="cp-list">' + (rowsHtml(plan) || '<p class="cp-empty">…</p>') + '</div>'
+            + (edit ? '<div class="cp-foot"><button type="button" class="cp-act" data-act="add"><i class="fas fa-plus"></i> ' + esc(T('Add stint')) + '</button>'
+                + '<button type="button" class="cp-act" data-act="remove"><i class="fas fa-minus"></i> ' + esc(T('Remove last stint')) + '</button></div>' : '');
+        if (ov._last === html) return;     // nothing changed: do not rebuild under a finger
+        ov._last = html;
+        ov.querySelector('.cp-body').innerHTML = html;
+        const nl = ov.querySelector('.cp-list');
+        if (nl) {
+            nl.scrollTop = keep;
+            if (!keep) { const nowRow = nl.querySelector('.cp-now'); if (nowRow) nowRow.scrollIntoView({ block: 'center' }); }
+        }
+    }
+
     window.openClientPlan = function() {
-        const tl = (window._receivedTimeline || []).slice();
-        const tt = window.tt || function(x) { return x; };
         let ov = document.getElementById('clientPlanOverlay');
         if (ov) ov.remove();
-        const cur = (window.state && window.state.globalStintNumber) || 1;
-        const rows = tl.map(function(s) {
-            const n = s.stintNumber || 0;
-            const st = n < cur ? 'done' : (n === cur ? 'now' : 'next');
-            const drv = (window.drivers || [])[s.driverIdx] || {};
-            return '<div class="cp-row cp-' + st + '"><span class="cp-n">' + (st === 'done' ? '✓' : (st === 'now' ? '▶' : n)) + '</span>'
-                + '<span class="cp-dot" style="background:' + esc(drv.color || '#22d3ee') + '"></span>'
-                + '<span class="cp-name">' + esc(s.driverName || drv.name || '') + '</span>'
-                + '<span class="cp-time" dir="ltr">' + hm(s.start) + '–' + hm(s.end) + '</span>'
-                + '<span class="cp-dur">' + Math.round((s.duration || 0) / 60000) + 'm</span></div>';
-        }).join('');
+        if (timer) { clearInterval(timer); timer = null; }
         ov = document.createElement('div');
         ov.id = 'clientPlanOverlay';
         ov.className = 'client-plan';
-        ov.innerHTML = '<div class="cp-sheet"><div class="cp-head"><b>' + esc(tt('Race plan')) + '</b><button type="button" class="cp-close" aria-label="Close">&times;</button></div>'
-            + '<div class="cp-list">' + (rows || '<p class="cp-empty">…</p>') + '</div></div>';
-        ov.addEventListener('click', function(e) { if (e.target === ov || e.target.closest('.cp-close')) ov.remove(); });
+        ov.innerHTML = '<div class="cp-sheet"><div class="cp-head"><b>' + esc(T('Race plan')) + '</b><button type="button" class="cp-close" aria-label="Close">&times;</button></div><div class="cp-body"></div></div>';
+        ov.addEventListener('click', function(e) {
+            if (e.target === ov || e.target.closest('.cp-close')) { ov.remove(); clearInterval(timer); timer = null; return; }
+            const b = e.target.closest('[data-act]');
+            if (!b || b.disabled || !canEdit()) return;
+            const act = b.dataset.act;
+            if (act === 'min') window.coSetStintMin(Number(b.dataset.i), Number(b.dataset.v));
+            else if (act === 'move') window.coMoveStint(Number(b.dataset.i), Number(b.dataset.v));
+            else if (act === 'add') window.coAddStint();
+            else if (act === 'remove') window.coRemoveStint();
+        });
         document.body.appendChild(ov);
-        const nowRow = ov.querySelector('.cp-now');
-        if (nowRow) nowRow.scrollIntoView({ block: 'center' });
+        render(ov);
+        // the host's replies arrive as ordinary updates: keep the sheet in step while it is open
+        timer = setInterval(function() { if (!document.body.contains(ov)) { clearInterval(timer); timer = null; return; } render(ov); }, 1200);
     };
 })();
