@@ -312,7 +312,7 @@ window.initHostPeer = function() {
 
     try {
         const hasSavedRace = localStorage.getItem('strateger_race_state');
-        let storedId = sessionStorage.getItem('strateger_host_id');
+        let storedId = sessionStorage.getItem('strateger_host_id') || (hasSavedRace ? localStorage.getItem('strateger_host_id') : null);
         
         // יצירת ID חדש אם אין מירוץ שמור
         if (!hasSavedRace) {

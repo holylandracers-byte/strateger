@@ -3090,7 +3090,7 @@ window._SETTING_FIELDS = [
     ['minPitTime', 'minPitTime'], ['estPitTime', 'estPitTime'], ['raceStartTime', 'raceStartTime'], ['raceStartDate', 'raceStartDate'],
     ['raceLocation', 'raceLocation'], ['liveTimingUrl', 'liveTimingUrl'], ['searchValue', 'searchValue'],
     ['maxConsecutive', 'maxConsecutive'], ['numSquads', 'numSquads'],
-    ['squadWindowStart', 'squadWindowStart'], ['squadWindowEnd', 'squadWindowEnd'],
+    ['squadWindowStart', 'squadWindowStart'], ['squadWindowEnd', 'squadWindowEnd'], ['squadSleepH', 'squadSleepH'],
     ['pitClosedStart', 'pitClosedStart'], ['pitClosedEnd', 'pitClosedEnd'],
     ['kartChangeInterval', 'kartChangeInterval'], ['reqExtraPits', 'reqExtraPits'], ['minPitLapSec', 'minPitLapSec'],
     ['numTeams', 'numTeams'], ['minDriverTime', 'minDriverTime'], ['maxDriverTime', 'maxDriverTime'],
@@ -3209,6 +3209,7 @@ window.loadSavedSettings = function() {
     window._SETTING_FIELDS.forEach(([key, id]) => set(id, s[key]));
     window._SETTING_CHECKS.forEach(([key, id]) => setChecked(id, s[key]));
     if (typeof window.toggleMaxConsecutive === 'function') window.toggleMaxConsecutive();
+    if (typeof window.toggleSquadsInput === 'function') window.toggleSquadsInput(true);
     window._normalizeOffFields();
     if (typeof window._setRaceTarget === 'function') window._setRaceTarget(document.getElementById('raceTarget')?.value || 'time', true);
 
@@ -3255,7 +3256,7 @@ window.saveRaceState = function() {
         hostId: window.myId, 
         timestamp: Date.now()
     };
-    sessionStorage.setItem(window.RACE_STATE_KEY, JSON.stringify(snapshot));
+    try { localStorage.setItem(window.RACE_STATE_KEY, JSON.stringify(snapshot)); } catch (e) {}
 };
 
 // Save a final snapshot on refresh/back-navigation
@@ -3266,6 +3267,10 @@ if (!window.__racePersistenceHooksAttached) {
     });
     window.addEventListener('beforeunload', () => {
         try { if (typeof window.saveRaceState === 'function') window.saveRaceState(); } catch (e) {}
+    });
+    // Phones and tablets often kill the app straight from the background without pagehide.
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) { try { if (typeof window.saveRaceState === 'function') window.saveRaceState(); } catch (e) {} }
     });
 }
 
@@ -3281,13 +3286,13 @@ window.checkForSavedRace = function() {
     else if (typeof window.runSim === 'function') window.runSim();
 
     // 2. בדיקת מירוץ פעיל
-    const savedData = sessionStorage.getItem(window.RACE_STATE_KEY);
+    const savedData = localStorage.getItem(window.RACE_STATE_KEY) || sessionStorage.getItem(window.RACE_STATE_KEY);
     if (!savedData) return;
 
     try {
         const data = JSON.parse(savedData);
         if (Date.now() - new Date(data.timestamp).getTime() > 24 * 60 * 60 * 1000) {
-            sessionStorage.removeItem(window.RACE_STATE_KEY);
+            localStorage.removeItem(window.RACE_STATE_KEY); sessionStorage.removeItem(window.RACE_STATE_KEY);
             return;
         }
 
@@ -3309,16 +3314,23 @@ window.checkForSavedRace = function() {
             const elapsed = Date.now() - data.state.startTime;
             const remaining = Math.max(0, raceMs - elapsed);
             document.getElementById('savedRaceTime').innerText = window.formatTimeHMS(remaining);
+            const hintEl = document.getElementById('savedRaceHint');
+            if (hintEl) {
+                const tt = (k, fb) => { const v = window.t ? window.t(k) : null; return (v && v !== k) ? v : fb; };
+                const mins = Math.max(0, Math.round((Date.now() - (Number(data.timestamp) || Date.now())) / 60000));
+                const ago = mins >= 60 ? Math.floor(mins / 60) + 'h ' + (mins % 60) + 'm' : mins + 'm';
+                hintEl.textContent = tt('resumeCrashHint', 'The app was closed during a race. Continue where you left off?') + ' · ' + tt('resumeSavedAgo', 'Saved {t} ago').replace('{t}', ago);
+            }
         }
     } catch (e) {
         console.error("Error parsing saved race:", e);
-        sessionStorage.removeItem(window.RACE_STATE_KEY);
+        localStorage.removeItem(window.RACE_STATE_KEY); sessionStorage.removeItem(window.RACE_STATE_KEY);
         document.getElementById('setupScreen').classList.remove('hidden');
     }
 };
 
 window.continueRace = function() {
-    const savedData = sessionStorage.getItem(window.RACE_STATE_KEY);
+    const savedData = localStorage.getItem(window.RACE_STATE_KEY) || sessionStorage.getItem(window.RACE_STATE_KEY);
     if (!savedData) return window.finalDiscardRace();
 
     try {
@@ -3337,7 +3349,7 @@ window.continueRace = function() {
 
         // Restore Host ID from the confirmed saved race
         if (data.hostId) {
-            sessionStorage.setItem('strateger_host_id', data.hostId);
+            sessionStorage.setItem('strateger_host_id', data.hostId); try { localStorage.setItem('strateger_host_id', data.hostId); } catch (e) {}
             window.myId = data.hostId; 
         }
 
@@ -3395,7 +3407,7 @@ window.continueRace = function() {
         }, 1000);
 
         if (window._saveInterval) clearInterval(window._saveInterval);
-        window._saveInterval = setInterval(window.saveRaceState, 10000);
+        window._saveInterval = setInterval(window.saveRaceState, 5000);
 
         // Restore live timing after refresh/continue
         try {
@@ -3453,9 +3465,9 @@ window.cancelDiscard = function() {
 
 window.finalDiscardRace = function() {
     try { sessionStorage.setItem('strateger_race_discarded_at', String(Date.now())); } catch (e) {}
-    sessionStorage.removeItem(window.RACE_STATE_KEY);
+    localStorage.removeItem(window.RACE_STATE_KEY); sessionStorage.removeItem(window.RACE_STATE_KEY);
     // Delete Host ID
-    sessionStorage.removeItem('strateger_host_id');
+    sessionStorage.removeItem('strateger_host_id'); try { localStorage.removeItem('strateger_host_id'); } catch (e) {}
     // Delete Chat History
     sessionStorage.removeItem('strateger_chat_history');
 

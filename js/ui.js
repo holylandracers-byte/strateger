@@ -97,6 +97,22 @@ window.toggleDriverParticipant = function(name) {
     window.applyDriverGroupToRace();
 };
 
+// Which squad each driver belongs to survives re-renders, reloads and saved strategies.
+const _SQUAD_ASSIGN_KEY = 'strateger_squad_assign';
+window._getSquadAssign = function() {
+    try { return JSON.parse(localStorage.getItem(_SQUAD_ASSIGN_KEY) || '{}') || {}; } catch (e) { return {}; }
+};
+window._setSquadAssign = function(name, idx) {
+    if (!name) return;
+    const m = window._getSquadAssign();
+    m[name] = idx;
+    try { localStorage.setItem(_SQUAD_ASSIGN_KEY, JSON.stringify(m)); } catch (e) {}
+};
+window._squadIdxFor = function(name, fallback, numSquads) {
+    const v = window._getSquadAssign()[name];
+    return (typeof v === 'number' && v >= 0 && v < numSquads) ? v : fallback;
+};
+
 window.applyDriverGroupToRace = function(triggerSim = true) {
     const list = document.getElementById('driversList');
     if (!list) return;
@@ -106,7 +122,7 @@ window.applyDriverGroupToRace = function(triggerSim = true) {
 
     list.innerHTML = '';
     slots.forEach((d, i) => {
-        const squadIdx = numSquads > 0 ? i % numSquads : 0;
+        const squadIdx = numSquads > 0 ? window._squadIdxFor(d.name, i % numSquads, numSquads) : 0;
         window.createDriverInput(d.name, i === 0, squadIdx);
         const rows = list.querySelectorAll('.driver-row');
         const lastRow = rows[rows.length - 1];
@@ -221,7 +237,7 @@ window.addDriverField = function() {
     const numSquads = parseInt(document.getElementById('numSquads')?.value) || 0;
     const squadIdx = numSquads > 0 ? (count - 1) % numSquads : 0;
     window.createDriverInput(`${window.t('ltDriver')} ${count}`, count === 1, squadIdx);
-    window.toggleSquadsInput();
+    window.toggleSquadsInput(true);
 };
 
 window.removeDriverField = function() {
@@ -361,7 +377,7 @@ window.createDriverInput = function(val, checked, squad) {
     const squadIdx = typeof squad === 'number' ? squad : (squad === 'B' ? 1 : squad === 'C' ? 2 : squad === 'D' ? 3 : 0);
 
     const squadLabel = document.createElement('div');
-    squadLabel.className = 'squad-toggle-container hidden select-none';
+    squadLabel.className = 'squad-toggle-container select-none' + ((parseInt(document.getElementById('numSquads')?.value) || 0) > 0 ? '' : ' hidden');
     squadLabel.addEventListener('click', (e) => e.stopPropagation());
 
     const squadHidden = document.createElement('input');
@@ -381,6 +397,7 @@ window.createDriverInput = function(val, checked, squad) {
         squadHidden.value = String(cur);
         squadDisplay.innerText = SQUAD_LABELS[cur];
         squadDisplay.style.background = SQUAD_COLORS[cur];
+        window._setSquadAssign(driverInput.value.trim(), cur);
         window.runSim();
     };
 
@@ -566,6 +583,7 @@ window.toggleMaxConsecutive = function() {
 window._updateSquadSummary = function() {
     const el = document.getElementById('squadWindowSummary');
     if (!el) return;
+    const T = (k, fb) => { const v = window.t ? window.t(k) : null; return (v && v !== k) ? v : fb; };
     const n = parseInt(document.getElementById('numSquads')?.value) || 0;
     const a = (document.getElementById('squadWindowStart')?.value || '').split(':');
     const b = (document.getElementById('squadWindowEnd')?.value || '').split(':');
@@ -573,10 +591,70 @@ window._updateSquadSummary = function() {
     let mins = (+b[0] * 60 + +b[1]) - (+a[0] * 60 + +a[1]);
     if (mins <= 0) mins += 1440;
     const fmt = (m) => Math.floor(m / 60) + ':' + String(Math.round(m % 60)).padStart(2, '0');
-    el.innerHTML = '<b>' + document.getElementById('squadWindowStart').value + ' → ' + document.getElementById('squadWindowEnd').value + '</b> <span>· ' + fmt(mins) + ' · ' + window.tt('each squad gets about') + ' ' + fmt(mins / n) + '</span>';
+    const sleepMin = mins - mins / n;
+    const need = parseFloat(document.getElementById('squadSleepH')?.value) || 3;
+    const low = sleepMin < need * 60 - 1;
+    el.innerHTML = '<b>' + document.getElementById('squadWindowStart').value + ' → ' + document.getElementById('squadWindowEnd').value + '</b> <span>· ' + fmt(mins) + ' · ' + window.tt('each squad gets about') + ' ' + fmt(mins / n) + ' · ' + T('squadSleepEach', 'each squad sleeps about') + ' ' + fmt(sleepMin) + '</span>'
+        + (low ? '<br><span class="squad-sleep-warn">⚠ ' + T('squadSleepLow', 'Less than {n} h of sleep per squad — widen the window').replace('{n}', need) + '</span>' : '');
 };
 
-window.toggleSquadsInput = function() {
+// Pick a window that covers the night and gives every squad at least the chosen hours of sleep.
+// A squad sleeps while the others drive, so with n squads the window must be sleep * n / (n - 1) long.
+window._suggestSquadWindow = function() {
+    const n = parseInt(document.getElementById('numSquads')?.value) || 0;
+    if (n < 2) return null;
+    const sleepH = parseFloat(document.getElementById('squadSleepH')?.value) || 3;
+    const raceH = parseFloat(document.getElementById('raceDuration')?.value) || 12;
+    const dateV = document.getElementById('raceStartDate')?.value;
+    const timeV = document.getElementById('raceStartTime')?.value || '00:00';
+    const start = dateV ? new Date(dateV + 'T' + timeV + ':00') : new Date();
+    if (!dateV) { const p = timeV.split(':'); start.setHours(+p[0] || 0, +p[1] || 0, 0, 0); }
+    const SLOT = 30;
+    const slots = Math.floor(raceH * 60 / SLOT);
+    const needSlots = Math.ceil(sleepH * 60 * n / (n - 1) / SLOT);
+    if (needSlots > slots) return { tooShort: true, sleepH: sleepH };
+    const isNight = (i) => { const d = new Date(start.getTime() + i * SLOT * 60000); const h = d.getHours() + d.getMinutes() / 60; return h >= 23 || h < 7; };
+    const night = []; for (let i = 0; i < slots; i++) night.push(isNight(i) ? 1 : 0);
+    const nightIn = (a, len) => { let c = 0; for (let i = a; i < a + len; i++) c += night[i]; return c; };
+    const maxLen = Math.max(needSlots, Math.min(slots, 18));
+    let a = 0, len = needSlots, bestNight = -1;
+    for (let i = 0; i + needSlots <= slots; i++) {
+        const c = nightIn(i, needSlots);
+        if (c > bestNight) { bestNight = c; a = i; }
+    }
+    const mid = bestNight <= 0;
+    if (mid) a = Math.max(0, Math.round((slots - needSlots) / 2));
+    else {
+        let grew = true;
+        while (grew && len < maxLen) {
+            grew = false;
+            if (a > 0 && night[a - 1]) { a--; len++; grew = true; }
+            else if (a + len < slots && night[a + len]) { len++; grew = true; }
+        }
+    }
+    const fmtT = (i) => { const d = new Date(start.getTime() + i * SLOT * 60000); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
+    return { start: fmtT(a), end: fmtT(a + len), mid: mid, sleepH: sleepH };
+};
+
+window.suggestSquadWindow = function(silent) {
+    const T = (k, fb) => { const v = window.t ? window.t(k) : null; return (v && v !== k) ? v : fb; };
+    const r = window._suggestSquadWindow();
+    if (!r) return false;
+    if (r.tooShort) {
+        if (!silent && window.showToast) window.showToast(T('squadSuggestShort', 'The race is too short to give every squad {n} h of sleep').replace('{n}', r.sleepH), 'warning', 4500);
+        return false;
+    }
+    const s = document.getElementById('squadWindowStart'), e = document.getElementById('squadWindowEnd');
+    if (!s || !e) return false;
+    s.value = r.start; e.value = r.end;
+    window._updateSquadSummary();
+    if (!silent && window.showToast) window.showToast(T(r.mid ? 'squadSuggestedMid' : 'squadSuggested', 'Suggested window {a} → {b}').replace('{a}', r.start).replace('{b}', r.end), 'success', 4000);
+    if (!silent && typeof window.runSim === 'function') window.runSim();
+    if (typeof window._autoSaveSettings === 'function') window._autoSaveSettings();
+    return true;
+};
+
+window.toggleSquadsInput = function(keepAssign) {
     const numSquads = parseInt(document.getElementById('numSquads')?.value) || 0;
     const useSquads = numSquads > 0;
 
@@ -617,24 +695,25 @@ window.toggleSquadsInput = function() {
             schedContainer.classList.remove('hidden');
             const startInput = document.getElementById('squadWindowStart');
             const endInput = document.getElementById('squadWindowEnd');
-            if (startInput && !startInput.value) {
-                const raceStartInput = document.getElementById('raceStartTime');
-                const raceHours = parseFloat(document.getElementById('raceDuration')?.value) || 12;
-                let baseH = 0, baseM = 0;
-                if (raceStartInput && raceStartInput.value) {
-                    const p = raceStartInput.value.split(':');
-                    baseH = parseInt(p[0]) || 0;
-                    baseM = parseInt(p[1]) || 0;
+            if (startInput && (!startInput.value || !endInput.value)) {
+                if (!window.suggestSquadWindow(true)) {
+                    const raceStartInput = document.getElementById('raceStartTime');
+                    const raceHours = parseFloat(document.getElementById('raceDuration')?.value) || 12;
+                    let baseH = 0, baseM = 0;
+                    if (raceStartInput && raceStartInput.value) {
+                        const p = raceStartInput.value.split(':');
+                        baseH = parseInt(p[0]) || 0;
+                        baseM = parseInt(p[1]) || 0;
+                    }
+                    const startOffsetMin = Math.round(raceHours * 60 / 3);
+                    const endOffsetMin = Math.round(raceHours * 60 * 2 / 3);
+                    const sH = Math.floor((baseH * 60 + baseM + startOffsetMin) / 60) % 24;
+                    const sM = (baseH * 60 + baseM + startOffsetMin) % 60;
+                    const eH = Math.floor((baseH * 60 + baseM + endOffsetMin) / 60) % 24;
+                    const eM = (baseH * 60 + baseM + endOffsetMin) % 60;
+                    startInput.value = `${String(sH).padStart(2,'0')}:${String(sM).padStart(2,'0')}`;
+                    endInput.value = `${String(eH).padStart(2,'0')}:${String(eM).padStart(2,'0')}`;
                 }
-                // Default squad window: middle third of race
-                const startOffsetMin = Math.round(raceHours * 60 / 3);
-                const endOffsetMin = Math.round(raceHours * 60 * 2 / 3);
-                const sH = Math.floor((baseH * 60 + baseM + startOffsetMin) / 60) % 24;
-                const sM = (baseH * 60 + baseM + startOffsetMin) % 60;
-                const eH = Math.floor((baseH * 60 + baseM + endOffsetMin) / 60) % 24;
-                const eM = (baseH * 60 + baseM + endOffsetMin) % 60;
-                startInput.value = `${String(sH).padStart(2,'0')}:${String(sM).padStart(2,'0')}`;
-                endInput.value = `${String(eH).padStart(2,'0')}:${String(eM).padStart(2,'0')}`;
             }
         }
     }
@@ -645,7 +724,7 @@ window.toggleSquadsInput = function() {
     window.translateSquadDropdown();
 
     // Auto-assign drivers equally across squads
-    if (useSquads) window.autoAssignSquads(numSquads);
+    if (useSquads) window.autoAssignSquads(numSquads, keepAssign === true);
 };
 
 window.translateSquadDropdown = function() {
@@ -657,7 +736,7 @@ window.translateSquadDropdown = function() {
     });
 };
 
-window.autoAssignSquads = function(numSquads) {
+window.autoAssignSquads = function(numSquads, keep) {
     const SQUAD_COLORS = ['#3b82f6','#06b6d4','#a855f7','#f97316'];
     const SQUAD_LABELS = ['A','B','C','D'];
     const rows = document.querySelectorAll('.driver-row');
@@ -665,7 +744,13 @@ window.autoAssignSquads = function(numSquads) {
         const hidden = row.querySelector('.squad-value');
         const display = row.querySelector('.squad-toggle-container > div:last-child');
         if (!hidden || !display) return;
-        const sq = i % numSquads;
+        const nm = (row.querySelector('.driver-input')?.value || '').trim();
+        let sq = i % numSquads;
+        if (keep) {
+            const cur = parseInt(hidden.value);
+            sq = window._squadIdxFor(nm, (cur >= 0 && cur < numSquads) ? cur : sq, numSquads);
+        }
+        window._setSquadAssign(nm, sq);
         hidden.value = String(sq);
         display.innerText = SQUAD_LABELS[sq];
         display.style.background = SQUAD_COLORS[sq];
@@ -1851,6 +1936,8 @@ window.applyStrategy = function(index) {
             if (typeof window.toggleMaxConsecutive === 'function') window.toggleMaxConsecutive();
             const numSquadsEl = document.getElementById('numSquads');
             if (numSquadsEl) numSquadsEl.value = String(strategy.config.numSquads || (strategy.config.useSquads ? 2 : 0));
+            setVal('squadWindowStart', strategy.config.squadWindowStart);
+            setVal('squadWindowEnd', strategy.config.squadWindowEnd);
         }
 
         // 3. בניית רשימת הנהגים מחדש ב-UI
@@ -1861,9 +1948,11 @@ window.applyStrategy = function(index) {
                 strategy.drivers.forEach((d, i) => {
                     // שימוש בפונקציה הקיימת ליצירת שדה
                     window.createDriverInput(d.name, d.isStarter, d.squad);
+                    if (d.squad) window._setSquadAssign(d.name, ['A','B','C','D'].indexOf(d.squad));
                 });
             }
         }
+        if (typeof window.toggleSquadsInput === 'function') window.toggleSquadsInput(true);
 
         // 4. אם יש driverSchedule שנשמר, נשתמש בו; אחרת נחשב מחדש
         if (strategy.driverSchedule && strategy.driverSchedule.length > 0) {

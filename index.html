@@ -504,6 +504,15 @@
                                 <input type="time" id="squadWindowEnd" class="input-field" onchange="window._updateSquadSummary(); window.runSim()">
                             </div>
                         </div>
+                        <div class="squad-sleep-row">
+                            <div>
+                                <label class="set-sublabel" for="squadSleepH" data-i18n="squadSleepMin">Min. sleep per squad</label>
+                                <select id="squadSleepH" class="input-field" onchange="window._updateSquadSummary(); window._autoSaveSettings && window._autoSaveSettings()">
+                                    <option value="2">2 h</option><option value="3" selected>3 h</option><option value="4">4 h</option><option value="5">5 h</option>
+                                </select>
+                            </div>
+                            <button type="button" class="squad-suggest-btn" onclick="window.suggestSquadWindow()"><i class="fas fa-moon"></i> <span data-i18n="squadSuggest">Suggest window</span></button>
+                        </div>
                         <p id="squadWindowSummary" class="set-when-sum" aria-live="polite"></p>
                         <p class="set-hint" data-i18n="lblSquadScheduleHint">Outside this window all drivers share equally. Inside, squads rotate evenly.</p>
                     </div>
@@ -1006,7 +1015,7 @@
                         </div>
                         <div class="flex items-center gap-1">
                             <!-- Pro: team logo upload button (hidden for free tier) -->
-                            <button id="teamLogoUploadBtn" data-i18n-aria="ariaTeamLogo" aria-label="Upload team logo" class="team-logo-upload-btn hidden" onclick="window.openTeamLogoUpload()" title="Upload Logo">📷</button>
+                            <button id="teamLogoUploadBtn" data-i18n-aria="ariaTeamLogo" aria-label="Upload team logo" class="team-logo-upload-btn hidden" onclick="window.openTeamLogoUpload()" title="Upload Logo">🖼️</button>
                             <button id="apexViewToggle" data-i18n-aria="ariaLiveView" aria-label="Toggle original timing view" onclick="window.toggleApexIframe()" class="text-[11px] bg-navy-700 border border-gray-600 text-gray-300 px-2 py-0.5 rounded" title="Toggle original timing view">🌐 Original</button>
                             <button id="pickTeamBtn" data-i18n-aria="pickYourTeam" aria-label="Pick your team" onclick="window.openTeamPicker()" class="text-[11px] bg-navy-700 border border-gray-600 text-gray-300 px-2 py-0.5 rounded" title="Pick your team / filter">🎯</button>
                             <!-- Laptop only (>=1280px): follow a second team from the same org -->
@@ -1636,7 +1645,8 @@
         <div class="bg-navy-900 border-2 border-ice p-6 rounded-xl w-full max-w-sm text-center shadow-2xl">
             <div class="mb-2"><img src="/icons/icon-192.svg" class="app-mark" alt="" width="44" height="44"></div>
             <div id="savedRaceTeamName" class="text-base font-black text-ice mb-1 hidden"></div>
-            <h2 class="text-sm font-bold text-gray-300 mb-4" data-i18n="activeRaceFound">Active Race Found</h2>
+            <h2 class="text-sm font-bold text-gray-300 mb-1" data-i18n="activeRaceFound">Active Race Found</h2>
+            <p id="savedRaceHint" class="text-[11px] text-gray-500 mb-4 leading-snug"></p>
             <!-- Time remaining — large and prominent -->
             <div class="bg-navy-950 rounded-2xl p-4 mb-3 border border-ice/40">
                 <div class="text-[11px] text-gray-500 uppercase font-bold tracking-wider mb-1" data-i18n="timeLeft">Time Left</div>
@@ -2492,6 +2502,7 @@
     <script src="js/i18n-extra3.js?v=1"></script>
     <script src="js/i18n-laps.js?v=1"></script>
     <script src="js/i18n-new.js?v=4"></script>
+    <script src="js/i18n-squads.js?v=1"></script>
     <script src="js/i18n-fill.js?v=2"></script>
     <script src="js/i18n-phrases.js?v=3"></script>
     <script src="js/i18n-phrases2.js?v=2"></script>
@@ -2505,7 +2516,7 @@
     <script src="js/race-rules.js?v=11"></script>
     <script src="js/compliance.js?v=3"></script>
     <script src="js/export.js?v=3"></script>
-    <script src="js/autosave.js?v=5"></script>
+    <script src="js/autosave.js?v=6"></script>
     <script src="js/live-timing.js?v=23"></script>
     <script src="js/track-finder.js?v=2"></script>
     <script src="js/ui.js?v=38"></script>

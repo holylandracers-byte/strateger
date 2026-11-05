@@ -1163,7 +1163,7 @@ window.initRace = function() {
         // === FIX: Save IMMEDIATELY so we can restore even if refreshed quickly ===
         window.saveRaceState(); 
         if (window._saveInterval) clearInterval(window._saveInterval);
-        window._saveInterval = setInterval(window.saveRaceState, 10000);
+        window._saveInterval = setInterval(window.saveRaceState, 5000);
     }
 
     // Start live timing updates (including demo mode) if enabled
