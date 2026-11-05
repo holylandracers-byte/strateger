@@ -329,6 +329,7 @@ window.initHostPeer = function() {
         
         window.peer.on('open', (id) => {
             console.log("Host ID initialized:", id);
+            window._takeoverIdTries = 0;
             window.updateShareUI();
         });
         
@@ -593,6 +594,21 @@ window.initHostPeer = function() {
         
         window.peer.on('error', (err) => {
             console.error("Peer Error:", err);
+             if (err.type === 'unavailable-id' && window._takeoverIdTries > 0) {
+                // Took over from a dead host: its race link is still registered for a little while.
+                // Keep asking for the same link so viewers, drivers and delegates reconnect by themselves.
+                window._takeoverIdTries--;
+                try { window.peer.destroy(); } catch (e) {}
+                window.peer = null;
+                if (!window._takeoverToldWaiting) { window._takeoverToldWaiting = true; window.showToast(window.tt('Reclaiming the race link…'), 'info', 5000); }
+                if (window._takeoverIdTries > 0) { setTimeout(window.initHostPeer, 4000); return; }
+                // Gave up: continue on a fresh link rather than leaving the race without any
+                sessionStorage.removeItem('strateger_host_id');
+                try { localStorage.removeItem('strateger_host_id'); } catch (e) {}
+                window.showToast(window.tt('The old link stayed busy, so this race has a new link. Share it again.'), 'warning', 9000);
+                window.initHostPeer();
+                return;
+             }
              if (err.type === 'unavailable-id') {
                 sessionStorage.removeItem('strateger_host_id');
                 window.initHostPeer(); 
@@ -673,7 +689,7 @@ window.reconnectState = {
     hostId: null,
     isReconnecting: false,
     retryCount: 0,
-    maxRetries: 10,
+    maxRetries: 40,   // ~18 min: long enough to ride out a host change
     retryDelay: 1000 // Start with 1 second
 };
 
@@ -731,7 +747,11 @@ window.connectToHost = function(hostId) {
     if (!hostId) return;
     window.reconnectState.hostId = hostId;
     const startConn = () => {
+        clearTimeout(window._connTimeout);
         if (window.conn) window.conn.close();
+        // Release the previous peer first, otherwise the broker still holds our id and hands us a new one
+        // (the host would then no longer recognise us as the viewer it already approved)
+        if (window.peer && !window.peer.destroyed) { try { window.peer.destroy(); } catch (e) {} }
 
         // Check if the client already has a peer ID
         let clientId = localStorage.getItem('strateger_client_id');
@@ -753,14 +773,16 @@ window.connectToHost = function(hostId) {
             window.conn = window.peer.connect(hostId, { reliable: true });
 
             // Connection timeout — if host is unreachable, don't hang forever
-            const connTimeout = setTimeout(() => {
+            const connTimeout = window._connTimeout = setTimeout(() => {
                 if (window.conn && !window.conn.open) {
                     console.warn('Connection to host timed out after 15s');
                     try { window.conn.close(); } catch(e) {}
+                    // Was connected before (host restarted / a delegate is taking over): keep trying instead of giving up
+                    if (window._everConnected) { if (!window.reconnectState.isReconnecting) window.attemptReconnection(); return; }
                     // Show timeout on whichever screen is visible
                     const viewerScreen = document.getElementById('viewerNameScreen');
                     const waitScreen = document.getElementById('clientWaitScreen');
-                    const errorHtml = '<div class="flex flex-col items-center justify-center gap-2"><div class="text-xl text-yellow-400 font-bold">⏱️ ' + window.tt('Connection Timed Out') + '</div><div class="text-xs text-gray-400 mt-2">' + window.tt('Host may be offline or link expired') + '</div><button onclick="location.reload()" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-500">' + window.tt('Try Again') + '</button></div>';
+                    const errorHtml = '<div class="flex flex-col items-center justify-center gap-2"><div class="text-xl text-yellow-400 font-bold">⏱️ ' + window.tt('Connection Timed Out') + '</div><div class="text-xs text-gray-400 mt-2">' + window.tt('Host may be offline or link expired') + '</div><button onclick="location.reload()" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-500">' + window.tt('Try Again') + '</button>' + (window.coTakeoverHtml ? window.coTakeoverHtml() : '') + '</div>';
                     const viewerError = document.getElementById('viewerNameError');
                     const viewerWaiting = document.getElementById('viewerWaitingMsg');
                     if (viewerScreen && !viewerScreen.classList.contains('hidden')) {
@@ -774,6 +796,7 @@ window.connectToHost = function(hostId) {
 
             window.conn.on('open', () => {
                 clearTimeout(connTimeout);
+                window._everConnected = true;
                 console.log("Connected to Host");
                 // Reset reconnection state on successful connection
                 window.resetReconnectionState();
@@ -796,9 +819,11 @@ window.connectToHost = function(hostId) {
                 }
 
                 // Auto-send viewer approval request with pending name
-                if (window.pendingChatName && !window._autoDriverMode && !window._coAdmin) {
-                    window.requestViewerApproval(window.pendingChatName);
-                    console.log(`📡 Sent approval request as "${window.pendingChatName}"`);
+                // (a viewer that was already approved re-announces itself after a reconnect or a host change)
+                const reapplyName = window.pendingChatName || (window.viewerApprovalStatus === 'approved' ? localStorage.getItem('strateger_viewer_name') : null);
+                if (reapplyName && !window._autoDriverMode && !window._coAdmin) {
+                    window.requestViewerApproval(reapplyName);
+                    console.log(`📡 Sent approval request as "${reapplyName}"`);
                 }
                 
                 // Update wait screen / viewer name screen to show connected status
@@ -888,6 +913,10 @@ window.connectToHost = function(hostId) {
                     if (typeof window.onCoAdminGranted === 'function') window.onCoAdminGranted(data);
                 } else if (data.type === 'COADMIN_PERMS') {
                     if (typeof window.onCoAdminPerms === 'function') window.onCoAdminPerms(data);
+                } else if (data.type === 'COADMIN_SYNC') {
+                    if (typeof window.onCoAdminSync === 'function') window.onCoAdminSync(data);
+                } else if (data.type === 'CO_BLOCKED') {
+                    if (typeof window.onCoBlocked === 'function') window.onCoBlocked(data);
                 } else if (data.type === 'PRIVATE_MESSAGE') {
                     // Legacy support: convert to CHAT-like message
                     const msg = { type: 'CHAT', sender: data.sender || 'Host', text: data.message, role: 'host', recipient: window.myId, timestamp: Date.now() };
@@ -984,6 +1013,7 @@ window.connectToHost = function(hostId) {
                 } else if (data.type === 'VIEWER_REMOVED') {
                     // We were removed by the host
                     console.log('🚫 You have been removed from this race.');
+                    try { localStorage.removeItem('strateger_takeover_pack'); } catch (e) {}
                     window.showToast(data.message || window.tt('You have been removed from this race'), 'error', 6000);
                     // Close connection
                     setTimeout(() => {
@@ -1016,9 +1046,15 @@ window.connectToHost = function(hostId) {
             } else if (err.type === 'peer-unavailable') {
                 // Host ID doesn't exist on the signaling server
                 console.error('Host peer not found — link may be expired');
+                // Was connected before: the host is probably restarting or being replaced, so retry with backoff
+                if (window._everConnected) {
+                    clearTimeout(window._connTimeout);
+                    if (!window.reconnectState.isReconnecting) window.attemptReconnection();
+                    return;
+                }
                 const waitScreen = document.getElementById('clientWaitScreen');
                 if (waitScreen) {
-                    waitScreen.innerHTML = '<div class="flex flex-col items-center justify-center gap-2"><div class="text-xl text-red-400 font-bold">❌ ' + window.tt('Host Not Found') + '</div><div class="text-xs text-gray-400 mt-2">' + window.tt('The race link may have expired or the host is offline') + '</div><button onclick="location.reload()" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-500">' + window.tt('Try Again') + '</button></div>';
+                    waitScreen.innerHTML = '<div class="flex flex-col items-center justify-center gap-2"><div class="text-xl text-red-400 font-bold">❌ ' + window.tt('Host Not Found') + '</div><div class="text-xs text-gray-400 mt-2">' + window.tt('The race link may have expired or the host is offline') + '</div><button onclick="location.reload()" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-500">' + window.tt('Try Again') + '</button>' + (window.coTakeoverHtml ? window.coTakeoverHtml() : '') + '</div>';
                 }
             }
         });
@@ -1171,7 +1207,8 @@ window.broadcast = function(specificPayload = null) {
 // A spectator is a joined client that is not a driver: read-only UI, no controls, and a
 // freshness badge so they know the numbers are live. Styling lives in css (body.watcher-mode).
 setInterval(function () {
-    const isWatcher = window.role === 'client' && !window._autoDriverMode;
+    // A delegate holding any hands-on permission is not a spectator: the watcher CSS hides the very controls it was granted
+    const isWatcher = window.role === 'client' && !window._autoDriverMode && !(window.coHasControls && window.coHasControls());
     document.body.classList.toggle('watcher-mode', isWatcher);
     const badge = document.getElementById('watcherBadge');
     if (!badge) return;

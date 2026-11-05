@@ -7,15 +7,16 @@
 // carries its own permission set, can be edited live and revoked at any time.
 
 window.DELEGATE_PERMS = {
-    pit:    { icon: 'fa-flag-checkered', label: 'Pit stops',        hint: 'Enter / exit pit, force pit out', cmds: ['confirmPitEntry', 'confirmPitExit', 'forcePitOut'] },
+    pit:    { icon: 'fa-flag-checkered', label: 'Pit stops',        hint: 'Enter / exit pit, force pit out', cmds: ['confirmPitEntry', 'confirmPitExit', 'forcePitOut', 'cancelPitStop'] },
     pitAdj: { icon: 'fa-stopwatch',      label: 'Pit time adjust',  hint: '± seconds on the pit stop',       cmds: ['adjustPitTime'] },
     driver: { icon: 'fa-user-astronaut', label: 'Next driver',      hint: 'Change who drives next',          cmds: ['cycleNextDriver'] },
     mode:   { icon: 'fa-gauge-high',     label: 'Pace & squads',    hint: 'Push / problem, night, squad',    cmds: ['setMode', 'toggleNightMode', 'switchNightSquad'] },
     finish: { icon: 'fa-flag',           label: 'Confirm finish',   hint: 'Confirm the race finish',         cmds: ['confirmRaceFinish'] },
-    chat:   { icon: 'fa-comments',       label: 'Chat as admin',    hint: 'Message all viewers',             cmds: [] }
+    chat:   { icon: 'fa-comments',       label: 'Chat as admin',    hint: 'Message all viewers',             cmds: [] },
+    takeover: { icon: 'fa-crown',        label: 'Take over if host is lost', hint: 'Become the host if the main device dies', cmds: [] }
 };
 window.DELEGATE_PRESETS = {
-    full:       { label: 'Full admin',   perms: ['pit', 'pitAdj', 'driver', 'mode', 'finish', 'chat'] },
+    full:       { label: 'Full admin',   perms: ['pit', 'pitAdj', 'driver', 'mode', 'finish', 'chat', 'takeover'] },
     pit:        { label: 'Pit crew',     perms: ['pit', 'pitAdj', 'driver'] },
     strategist: { label: 'Strategist',   perms: ['mode', 'driver', 'pitAdj', 'chat'] },
     watch:      { label: 'Watch + chat', perms: ['chat'] }
@@ -27,6 +28,8 @@ window.DELEGATE_SELECTORS = {
     mode:   '#btnPush, #btnBad, #btnResetMode, #btnNightMode, #btnSwitchSquad',
     finish: '#confirmRaceFinishBtn'
 };
+// Every permission that puts a control in the delegate's hands (chat and takeover alone do not make a screen "hands-on")
+window.DELEGATE_HANDS_ON = ['pit', 'pitAdj', 'driver', 'mode', 'finish'];
 
 const _dlgEsc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -74,8 +77,34 @@ window.toggleDelegatePerm = function (id, perm, on) {
     if (!inv) return;
     inv.perms[perm] = !!on;
     window._saveDelegates();
+    if (perm === 'takeover' && on) window._delegateConns(inv).forEach(window._coSendSync);
     window._delegateConns(inv).forEach(c => { try { c.send({ type: 'COADMIN_PERMS', perms: inv.perms }); } catch (e) {} });
 };
+
+// Everything a delegate needs to carry on if the host device dies: the parts of the race the live UPDATE
+// stream does not include (full strategy, preview timeline), the invite list (so the other delegates can
+// re-join the new host) and who was already approved (so viewers are let straight back in).
+window._coSyncPayload = function () {
+    return {
+        type: 'COADMIN_SYNC',
+        hostId: window.myId,
+        strategy: window.cachedStrategy || null,
+        previewData: window.previewData || null,
+        invites: window.delegateInvites,
+        approved: Array.from(window.approvedViewers.keys()).map(pid => [pid, window.reservedViewerNames.get(pid) || null]),
+        timestamp: Date.now()
+    };
+};
+window._coSendSync = function (c) {
+    if (!c || !c.open || !c._co) return;
+    const inv = window.delegateInvites.find(i => i.id === c._co.id);
+    if (!inv || !inv.perms.takeover) return;
+    try { c.send(window._coSyncPayload()); } catch (e) { console.warn('Delegate sync failed', e); }
+};
+setInterval(function () {
+    if (window.role !== 'host' || !window.delegateInvites.length || !window.state || !window.state.isRunning) return;
+    (window.connections || []).forEach(window._coSendSync);
+}, 20000);
 
 window.revokeDelegate = function (id) {
     const inv = window.delegateInvites.find(i => i.id === id);
@@ -185,6 +214,7 @@ window.handleDelegateMessage = function (c, data) {
                 liveTimingConfig: window.liveTimingConfig, searchConfig: window.searchConfig,
                 currentPitAdjustment: window.currentPitAdjustment || 0, timestamp: Date.now() });
         } catch (e) {}
+        window._coSendSync(c);
         window.updateViewerApprovalUI && window.updateViewerApprovalUI();
         window.renderDelegateModal();
         return true;
@@ -205,6 +235,10 @@ window.handleDelegateMessage = function (c, data) {
         }
         const args = Array.isArray(data.args) ? data.args.slice(0, 3).filter(a => ['string', 'number', 'boolean'].includes(typeof a) || a == null) : [];
         try { window[cmd](...args); } catch (e) { console.error('Delegate command failed', cmd, e); }
+        // Live timing can hold a manual pit exit; tell the delegate so a second tap can force it, like on the host
+        if (cmd === 'confirmPitExit' && !args[0] && window.state && window.state.isInPit) {
+            try { c.send({ type: 'CO_BLOCKED', cmd }); } catch (e) {}
+        }
         if (typeof window.broadcast === 'function') window.broadcast();
         return true;
     }
@@ -235,8 +269,27 @@ window.coAllowsEl = function (el) {
     return Object.keys(window.DELEGATE_SELECTORS).some(k => co.perms[k] && el.matches(window.DELEGATE_SELECTORS[k]));
 };
 
+// The page renders once as a plain viewer before the host's grant arrives, and that pass strips the
+// onclick / enables nothing back. Give the granted controls their behaviour back.
+window._coRestoreControls = function () {
+    const clicks = { btnPush: "window.setMode('push')", btnBad: "window.setMode('bad')", btnResetMode: "window.setMode('normal')" };
+    Object.keys(clicks).forEach(id => {
+        const el = document.getElementById(id);
+        if (!el || !window.coAllowsEl(el)) return;
+        el.setAttribute('onclick', clicks[id]);
+        el.style.pointerEvents = '';
+        el.disabled = false;
+        el.classList.remove('opacity-60', 'cursor-not-allowed');
+        delete el.dataset.viewerDisabled;
+    });
+    document.querySelectorAll('#pitEntryBtn, .penalty-btn, .pit-adj-btn').forEach(el => {
+        if (window.coAllowsEl(el)) { el.classList.remove('hidden'); el.disabled = false; }
+    });
+};
+
 window.onCoAdminGranted = function (data) {
-    const co = window._coAdmin = Object.assign(window._coAdmin || {}, { granted: true, perms: data.perms || {}, label: data.label });
+    const co = window._coAdmin = Object.assign(window._coAdmin || {}, { granted: true, perms: data.perms || {}, label: data.label, invId: data.id });
+    if (!co.perms.takeover) { try { localStorage.removeItem('strateger_takeover_pack'); } catch (e) {} }
     if (co.shownPerms && JSON.stringify(co.shownPerms) !== JSON.stringify(co.perms)) { location.reload(); return; }
     co.shownPerms = Object.assign({}, co.perms);
     window.viewerApprovalStatus = 'approved';
@@ -247,8 +300,34 @@ window.onCoAdminGranted = function (data) {
         if (!co.perms[k]) return;
         window.DELEGATE_PERMS[k].cmds.forEach(cmd => { window[cmd] = (...a) => window.coSend(cmd, a); });
     });
+    // Pit exit: if live timing held the last manual exit (CO_BLOCKED), a second tap within 4s forces it, same as on the host
+    if (co.perms.pit) {
+        // Pit entry before the minimum stint asks "proceed?". That question has to be answered here, on the
+        // delegate's screen: asked on the host it would sit there waiting for someone who is not holding that device.
+        window.confirmPitEntry = (autoDetected) => {
+            const st = window.state, cfg = window.config || {};
+            if (!autoDetected && st && st.isRunning && !st.isInPit) {
+                const now = window.getSyncedNow ? window.getSyncedNow() : Date.now();
+                const cur = (now - st.stintStart) + (st.stintOffset || 0);
+                const minMs = (cfg.minStint || 0) * 60000;
+                if (minMs > 0 && cur < minMs && typeof window.showConfirmModal === 'function') {
+                    const t = window.t || (k => k);
+                    window.showConfirmModal(`⚠️ ${t('shortStintMsg')}`, `${t('missingSeconds') || 'Missing'}: ${Math.ceil((minMs - cur) / 1000)}s`,
+                        t('proceedToPit') || 'Proceed to Pit?', () => window.coSend('confirmPitEntry', [true]));
+                    return;
+                }
+            }
+            window.coSend('confirmPitEntry', autoDetected ? [true] : []);
+        };
+        window.confirmPitExit = (autoDetected) => {
+            const force = !!autoDetected || (Date.now() - (co.exitBlockedAt || 0) < 4000);
+            if (force) co.exitBlockedAt = 0;
+            window.coSend('confirmPitExit', force ? [true] : []);
+        };
+    }
     ['viewerNameScreen', 'clientWaitScreen', 'setupScreen'].forEach(id => document.getElementById(id)?.classList.add('hidden'));
     document.getElementById('raceDashboard')?.classList.remove('hidden');
+    window._coRestoreControls();
     if (typeof window.enforceViewerMode === 'function') window.enforceViewerMode();
     const chatBtn = document.getElementById('chatToggleBtn');
     if (chatBtn) chatBtn.style.display = 'block';
@@ -279,3 +358,170 @@ window.startCoAdminSession = function (hostId, key) {
     document.getElementById('clientWaitScreen')?.classList.remove('hidden');
     if (typeof window.connectToHost === 'function') window.connectToHost(hostId);
 };
+
+// A delegate holding any hands-on permission is a driver of the dashboard, not a spectator
+window.coHasControls = function () {
+    const co = window._coAdmin;
+    return !!(co && co.granted && window.DELEGATE_HANDS_ON.some(k => co.perms[k]));
+};
+
+// The host held a manual pit exit back (live timing is authoritative): arm the "tap again to force" window
+window.onCoBlocked = function () {
+    const co = window._coAdmin;
+    if (!co) return;
+    co.exitBlockedAt = Date.now();
+    window.showToast('🔒 ' + window.tt('Pit exit follows live timing. Tap again to force it.'), 'warning', 4000);
+};
+
+// The pit screen is opened by the host's own tap, so a mirrored session never sees it. Mirror it for
+// delegates who may run the pits: same timer, same exit button, driven by the synced race state.
+window._coSyncUi = function () {
+    const co = window._coAdmin;
+    if (!co || !co.granted || !co.perms.pit || !window.state) return;
+    const modal = document.getElementById('pitModal');
+    const inPit = !!(window.state.isInPit && window.state.isRunning && !window.state.isFinished);
+    if (modal) {
+        if (inPit && modal.classList.contains('hidden')) modal.classList.remove('hidden');
+        else if (!inPit && !modal.classList.contains('hidden')) modal.classList.add('hidden');
+    }
+    if (inPit) { try { window.updatePitModalLogic(); } catch (e) {} }
+    try { window._syncForcePitOutBtn && window._syncForcePitOutBtn(); } catch (e) {}
+};
+setInterval(window._coSyncUi, 500);
+
+// ---------------------------------------------------------------- TAKEOVER (host device lost)
+// A delegate with the "take over" permission keeps a local copy of everything needed to run the race.
+// If the main device dies it can become the host: the copy is written exactly like a crash-recovery save
+// and the page reloads as host on the same race link, so viewers, drivers and the other delegates
+// reconnect on their own.
+const CO_PACK_KEY = 'strateger_takeover_pack';
+
+window._coLoadPack = function () {
+    try { return JSON.parse(localStorage.getItem(CO_PACK_KEY) || 'null'); } catch (e) { return null; }
+};
+
+window.onCoAdminSync = function (data) {
+    const co = window._coAdmin;
+    if (!co) return;
+    co.sync = data;
+    window._coSavePack();
+};
+
+window._coSavePack = function () {
+    const co = window._coAdmin;
+    if (!co || !co.granted || !co.perms.takeover || !window.state || !window.config || !window.drivers) return;
+    if (!window.state.isRunning && !window.state.isFinished) return;
+    const prev = window._coLoadPack();
+    const pack = {
+        v: 1,
+        savedAt: Date.now(),
+        hostId: (window.reconnectState && window.reconnectState.hostId) || (co.sync && co.sync.hostId) || null,
+        invId: co.invId || null,
+        offset: window._hostTimeOffset || 0,
+        snap: {
+            config: window.config, state: window.state, drivers: window.drivers,
+            liveTimingConfig: window.liveTimingConfig, searchConfig: window.searchConfig, liveData: window.liveData,
+            currentPitAdjustment: window.currentPitAdjustment || 0
+        },
+        sync: co.sync || (prev && prev.sync) || null
+    };
+    try { localStorage.setItem(CO_PACK_KEY, JSON.stringify(pack)); } catch (e) {}
+};
+setInterval(window._coSavePack, 5000);
+document.addEventListener('visibilitychange', () => { if (document.hidden) window._coSavePack(); });
+window.addEventListener('pagehide', () => window._coSavePack());
+
+// The saved copy that a takeover would use, or null when there is nothing safe to take over
+window.coTakeoverAvailable = function () {
+    if (!window._coAdmin) return null;
+    const pack = window._coLoadPack();
+    if (!pack || !pack.snap || !pack.snap.state || !pack.snap.config || !pack.hostId) return null;
+    if (Date.now() - pack.savedAt > 12 * 3600000) return null;
+    const joined = window.reconnectState && window.reconnectState.hostId;
+    if (joined && String(pack.hostId) !== String(joined)) return null;
+    if (!pack.snap.state.isRunning || pack.snap.state.isFinished) return null;
+    return pack;
+};
+
+// Button for the join/"host not found" screens, so a delegate who reloads after the host died can still take over
+window.coTakeoverHtml = function () {
+    if (!window.coTakeoverAvailable()) return '';
+    return '<button onclick="window.coTakeover()" class="mt-3 bg-amber-500 text-black font-bold px-4 py-2 rounded hover:bg-amber-400">👑 ' + _dlgEsc(window.tt('Take over as host')) + '</button>';
+};
+
+// Move epoch-millisecond timestamps from the host's clock to this device's clock
+function _coShiftClock(v, d) {
+    if (!d) return v;
+    if (typeof v === 'number') return (v > 1e12 && v < 4e12) ? v - d : v;
+    if (Array.isArray(v)) return v.map(x => _coShiftClock(x, d));
+    if (v && typeof v === 'object') { Object.keys(v).forEach(k => { v[k] = _coShiftClock(v[k], d); }); }
+    return v;
+}
+
+window.coTakeover = function () {
+    if (window._coAdmin && window._coAdmin.granted) window._coSavePack();   // freshest copy if we are still connected
+    const pack = window.coTakeoverAvailable();
+    if (!pack) return window.showToast(window.tt('No race data to take over yet'), 'warning');
+
+    const hostFresh = !!(window.conn && window.conn.open && window._lastHostUpdateAt && Date.now() - window._lastHostUpdateAt < 15000);
+    const ask = hostFresh
+        ? 'The main device is still connected. Take over anyway? Two hosts at the same time will conflict.'
+        : 'Take over as host? This device will run the race from the last synced state. Do this only if the main device is really down.';
+    if (!confirm(window.tt(ask))) return;
+
+    const sync = pack.sync || {};
+    const d = Math.abs(pack.offset || 0) >= 200 ? pack.offset : 0;
+    const snap = pack.snap;
+    const raceSnapshot = {
+        config: snap.config,
+        state: _coShiftClock(snap.state, d),
+        drivers: _coShiftClock(snap.drivers, d),
+        strategy: sync.strategy || null,
+        previewData: sync.previewData || null,
+        liveTimingConfig: snap.liveTimingConfig,
+        searchConfig: snap.searchConfig,
+        liveData: snap.liveData,
+        currentPitAdjustment: snap.currentPitAdjustment || 0,
+        hostId: pack.hostId,
+        timestamp: Date.now()
+    };
+    try {
+        localStorage.setItem(window.RACE_STATE_KEY, JSON.stringify(raceSnapshot));
+        // The other delegates re-join the new host with the invites they already hold (minus this device's own)
+        if (Array.isArray(sync.invites)) localStorage.setItem('strateger_delegates', JSON.stringify(sync.invites.filter(i => i.id !== pack.invId)));
+        // Viewers/drivers the old host had approved walk straight back in
+        sessionStorage.setItem('strateger_takeover_extras', JSON.stringify({ approved: sync.approved || [] }));
+        sessionStorage.setItem('strateger_auto_takeover', '1');
+        localStorage.removeItem(CO_PACK_KEY);
+        // Mid-race there is no room for the first-run language picker / guided tour
+        localStorage.setItem('strateger_onboarded', 'true');
+        localStorage.setItem('strateger_lang_explicit', 'true');
+    } catch (e) {
+        return window.showToast(window.tt('Not enough storage to take over'), 'error');
+    }
+    window.location.replace(window.location.origin + window.location.pathname);
+};
+
+// "Host not responding" bar: only for delegates allowed to take over, only while the race should be running
+setInterval(function () {
+    const co = window._coAdmin;
+    let bar = document.getElementById('coTakeoverBar');
+    const age = window._lastHostUpdateAt ? Date.now() - window._lastHostUpdateAt : 0;
+    const show = !!(co && co.granted && co.perms.takeover && window.state && window.state.isRunning && !window.state.isFinished && age > 15000);
+    if (!show) { if (bar) bar.classList.add('hidden'); return; }
+    if (!bar) {
+        bar = document.createElement('div');
+        bar.id = 'coTakeoverBar';
+        bar.className = 'co-takeover-bar';
+        const txt = document.createElement('span');
+        txt.id = 'coTakeoverTxt';
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.addEventListener('click', () => window.coTakeover());
+        bar.appendChild(txt); bar.appendChild(btn);
+        document.body.appendChild(bar);
+    }
+    bar.classList.remove('hidden');
+    document.getElementById('coTakeoverTxt').textContent = '⚠ ' + window.tt('Host not responding') + ' · ' + Math.round(age / 1000) + 's';
+    bar.querySelector('button').textContent = '👑 ' + window.tt('Take over as host');
+}, 1000);

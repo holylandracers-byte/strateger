@@ -3299,6 +3299,27 @@ window.checkForSavedRace = function() {
         }
 
         document.getElementById('setupScreen').classList.add('hidden');
+
+        // A delegate just took over from a lost host (see delegate.js coTakeover): no "continue?" prompt,
+        // the race is resumed straight away on the old race link
+        if (sessionStorage.getItem('strateger_auto_takeover')) {
+            sessionStorage.removeItem('strateger_auto_takeover');
+            window._takeoverIdTries = 20;   // ~80 s of asking for the old link before falling back to a new one
+            setTimeout(() => {
+                window.continueRace();
+                try {
+                    const ex = JSON.parse(sessionStorage.getItem('strateger_takeover_extras') || 'null');
+                    sessionStorage.removeItem('strateger_takeover_extras');
+                    ((ex && ex.approved) || []).forEach(([pid, name]) => {
+                        window.approvedViewers.set(pid, true);
+                        if (name) window.reservedViewerNames.set(pid, name);
+                    });
+                } catch (e) { console.warn('Takeover: could not restore approved viewers', e); }
+                if (window.showToast) window.showToast(window.tt('You are now the host'), 'success', 6000);
+            }, 400);
+            return;
+        }
+
         const modal = document.getElementById('savedRaceModal');
         if (modal) {
             modal.classList.remove('hidden');

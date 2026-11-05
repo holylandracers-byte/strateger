@@ -600,23 +600,26 @@ function updateModeUI() {
     const baseClass = "btn-press bg-navy-800 border rounded-lg text-sm text-gray-300 font-bold shadow-md transition flex flex-col items-center justify-center";
 
     // For viewers: show mode state visually but keep buttons disabled
-    const isViewer = window.role === 'client';
-    const viewerExtra = isViewer ? ' opacity-60 cursor-not-allowed' : '';
+    // A delegate that was granted the pace controls keeps them live; everyone else on a client sees them read-only
+    const lockedFor = (el) => window.role === 'client' && !(el && window.coAllowsEl && window.coAllowsEl(el));
+    const viewerPush = lockedFor(btnPush), viewerBad = lockedFor(btnBad), isViewer = lockedFor(btnReset);
 
     if (btnPush) {
+        const viewerExtra = viewerPush ? ' opacity-60 cursor-not-allowed' : '';
         btnPush.className = baseClass + " border-green-500/30 hover:bg-navy-700" + viewerExtra;
         if (window.state.mode === 'push') {
             btnPush.className = "btn-press bg-green-600 border-green-400 rounded-lg text-sm text-white font-bold shadow-[0_0_15px_rgba(34,197,94,0.4)] flex flex-col items-center justify-center scale-105" + viewerExtra;
         }
-        if (isViewer) { btnPush.style.pointerEvents = 'none'; btnPush.removeAttribute('onclick'); }
+        if (viewerPush) { btnPush.style.pointerEvents = 'none'; btnPush.removeAttribute('onclick'); }
     }
 
     if (btnBad) {
+        const viewerExtra = viewerBad ? ' opacity-60 cursor-not-allowed' : '';
         btnBad.className = baseClass + " border-red-500/30 hover:bg-navy-700" + viewerExtra;
         if (window.state.mode === 'bad') {
             btnBad.className = "btn-press bg-red-600 border-red-400 rounded-lg text-sm text-white font-bold shadow-[0_0_15px_rgba(239,68,68,0.4)] flex flex-col items-center justify-center scale-105" + viewerExtra;
         }
-        if (isViewer) { btnBad.style.pointerEvents = 'none'; btnBad.removeAttribute('onclick'); }
+        if (viewerBad) { btnBad.style.pointerEvents = 'none'; btnBad.removeAttribute('onclick'); }
     }
 
     if (btnReset) {
@@ -2278,6 +2281,7 @@ window._addStintsToPlan = function(afterIdx, extra) {
         lastFire = n;
         if (!window.state || !window.state.isInPit) return;
         window.confirmPitExit();
+        if (window._coAdmin && window._coAdmin.granted) return;   // delegate: the host decides, and answers with CO_BLOCKED if live timing holds the exit
         if (window.state.isInPit) {                 // still in pit: live timing blocked the manual exit
             if (n - lastBlocked < 4000) { lastBlocked = 0; window.confirmPitExit(true); return; }
             lastBlocked = n;

@@ -4518,3 +4518,11 @@ body.co-admin-session #shareRaceBtn, body.co-admin-session #driverLinkBtn, body.
     #raceInfoPanel #liveTimingWidgetWrapper { max-height: none !important; }
     #liveTimingWidgetWrapper .lt-table-scroll { max-height: min(260px, 34vh) !important; }
 }
+
+/* Delegate: host-lost bar (take over) + the mirrored pit screen has no host-only extras */
+.co-takeover-bar { position: fixed; top: 0; left: 0; right: 0; z-index: 400; display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; padding: 8px 12px; background: #b45309; color: #fff; font-size: 13px; font-weight: 700; box-shadow: 0 2px 12px rgba(0, 0, 0, .5); }
+.co-takeover-bar.hidden { display: none; }
+.co-takeover-bar button { background: #fbbf24; color: #1c1917; font-weight: 800; padding: 6px 14px; border-radius: 8px; border: 0; cursor: pointer; }
+body.co-admin-session #pitModal #notifyBtn,
+body.co-admin-session #pitModal #notifiedMsg,
+body.co-admin-session #pitModal #extraPitToggleRow { display: none !important; }
