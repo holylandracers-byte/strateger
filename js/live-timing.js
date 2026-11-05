@@ -2225,6 +2225,12 @@ window.toggleOutlookCollapse = function() {
     let dragging = false;
     let startY = 0, startH = 0;
 
+    // Landscape tablets have the height to show more of the standings by default
+    function defaultH() {
+        const tab = document.documentElement.classList.contains('is-tablet') && window.matchMedia('(orientation:landscape)').matches;
+        return tab ? Math.max(420, Math.min(window.innerHeight - 230, 640)) : 420;
+    }
+
     function maxH() {
         if (!wrapper || !wrapper.parentElement) return 800;
         // In the single-column layout the panel scrolls, so the widget may grow past the screen.
@@ -2279,7 +2285,7 @@ window.toggleOutlookCollapse = function() {
         if (!handle || !wrapper) return;
 
         const saved = parseInt(localStorage.getItem(STORAGE_KEY));
-        document.documentElement.style.setProperty('--lt-widget-h', (Number.isFinite(saved) && saved >= MIN_H ? saved : 420) + 'px');
+        document.documentElement.style.setProperty('--lt-widget-h', (Number.isFinite(saved) && saved >= MIN_H ? saved : defaultH()) + 'px');
         if (Number.isFinite(saved) && saved >= MIN_H) document.body.classList.add('lt-resized');
 
         handle.addEventListener('mousedown', onStart);

@@ -4773,10 +4773,8 @@ window.notifyDriverForPit = function() {
     window.state.driverPitNotified = true;
     window.state.driverPitNotifiedAt = now;
 
-    if (!belowMin && window.state.mode !== 'bad') {
-        window.state.mode = 'bad';
-        updateModeUI();
-    }
+    // Notifying the driver must never change the pace mode: Problem mode is entered only
+    // when the strategist presses PROBLEM themselves.
 
     const driver = window.drivers[window.state.currentDriverIdx];
     const driverName = driver?.name || 'Driver';
