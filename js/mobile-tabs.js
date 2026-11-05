@@ -1,13 +1,13 @@
 // ==========================================
 // In-race section tabs (phone + tablet portrait).
 // Shows one section at a time under the pinned stint card:
-//   live = live timing / connect form, plan = strategy + penalties, drivers = stats table.
+//   live = live timing / connect form, plan = strategy, penalties and the drivers table.
 // CSS (css/style.css, "ONE SECTION AT A TIME") does the hiding and animating; this only
 // keeps data-mtab, the sliding pill, the pinned card height and the penalty dot in sync.
 // ==========================================
 (function () {
     'use strict';
-    const TABS = ['live', 'plan', 'drivers'];
+    const TABS = ['live', 'plan'];
     let cur = null;
     let userPicked = false;
     let lastCardH = 0;

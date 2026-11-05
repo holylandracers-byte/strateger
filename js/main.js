@@ -1197,9 +1197,15 @@ window.renderFrame = function() {
             window.updateStrategyNotifications();
         }
 
-        if (typeof window.updateStats === 'function' && !window.state.isInPit) {
-            let t = (now - window.state.stintStart) + (window.state.stintOffset || 0);
-            window.updateStats(t);
+        if (typeof window.updateStats === 'function') {
+            // not while in the pit (the stint clock is stopped), except to fill a table that has no rows yet
+            const statsEl = document.getElementById('statsTable');
+            if (!window.state.isInPit) {
+                let t = (now - window.state.stintStart) + (window.state.stintOffset || 0);
+                window.updateStats(t);
+            } else if (statsEl && statsEl.children.length === 0) {
+                window.updateStats(0);
+            }
         }
 
         updateWeatherUI();
@@ -1346,6 +1352,7 @@ function updateRemainingStrategyLogic(raceRemainingMs) {
     const futurePoolMs = raceRemainingMs - timeToFinishCurrent - futurePitTimeLoss;
 
     timeField.innerText = window.formatTimeHMS(raceRemainingMs);
+    { const le = document.getElementById('remStintsLeft'); if (le) le.textContent = ''; }
 
     // Helper: build one stint pill. Pass idx to make it tap-to-edit (current/future
     // stints only — completed stints are flagged via pill-done and never get an idx).
@@ -1430,68 +1437,36 @@ function updateRemainingStrategyLogic(raceRemainingMs) {
         }
     }
 
-    // Collapse consecutive identical pills into "Nx" groups (keeping each group's
-    // underlying stint indices so a tap can still target a real stint), then render.
-    const groups = [];
-    stintDescriptors.forEach(s => {
-        const last = groups[groups.length - 1];
-        // max / min stints group by kind (their real durations differ a little and are
-        // shown as a range); regular and impossible ones group by whole minutes
-        const key = (s.type === 'max' || s.type === 'min') ? s.type : `${s.type}-${s.min}`;
-        const mins = Math.round((s.ms != null ? s.ms : s.min * 60000) / 60000);
-        if (last && last.key === key) {
-            last.count++;
-            last.lo = Math.min(last.lo, mins);
-            last.hi = Math.max(last.hi, mins);
-            if (s.idx != null) last.idxs.push(s.idx);
-        } else {
-            groups.push({ key, type: s.type, min: s.min, count: 1, lo: mins, hi: mins, idxs: s.idx != null ? [s.idx] : [] });
-        }
+    // ---- Outlook, simplified: how many stints still to run are near the max, near the min, or in between ----
+    // (the per-stint detail and editing live in the PLAN screen; only the stint on track stays tappable here)
+    const unit = (t('unitMin') && t('unitMin') !== 'unitMin') ? t('unitMin') : 'm';
+    const num = n => `<bdi dir="ltr">${n}</bdi>`;
+    const minsTxt = (lo, hi) => (lo === hi ? num(lo) : num(`${lo}–${hi}`)) + `<span class="so-unit">${unit}</span>`;
+    const kinds = { max: [], min: [], normal: [], impossible: [] };
+    stintDescriptors.forEach(sd => {
+        const ms = sd.ms != null ? sd.ms : sd.min * 60000;
+        (kinds[sd.type] || kinds.normal).push(Math.round(ms / 60000));
     });
-    const spanLabel = g => g.lo === g.hi ? `${g.lo}m` : `${g.lo}–${g.hi}m`;
-
+    const tile = (type, cls, label) => {
+        const arr = kinds[type];
+        if (!arr.length) return '';
+        return `<div class="so-tile ${cls}"><b class="so-count">${num(arr.length)}</b><span class="so-lab">${label}</span><span class="so-sub">${minsTxt(Math.min.apply(null, arr), Math.max.apply(null, arr))}</span></div>`;
+    };
     let phtml = '';
-
-    // Flag already-completed stints so it's clear they're locked — they never
-    // appear below and can't be edited from here, only the current stint and
-    // whatever comes after it can.
-    if (stopsDone > 0) {
-        phtml += pill(`✓ ${stopsDone} done`, 'pill-done', 'Completed stints — locked');
-    }
-
-    // Current (in-progress) stint — editable, changing it only reflows the pool
-    // for the stints after it, never the completed ones above.
+    let chips = '';
     const currentTargetMs = window.state?.targetStintMs || stintTargets[currentStintIdx] || 0;
     if (currentTargetMs > 0) {
-        // same colour rule as the upcoming stints: near max -> max, near min -> min, else regular
         const nowType = classifyStint(currentTargetMs);
-        const nowTag = nowType === 'max' ? ` · ${t('max')}` : (nowType === 'min' ? ` · ${t('min') || 'MIN'}` : '');
-        phtml += pill(`NOW ${Math.round(currentTargetMs / 60000)}m${nowTag}`, `pill-${nowType} pill-current`, "Tap to change this stint's target", currentStintIdx);
+        const nowTag = nowType === 'max' ? t('max') : (nowType === 'min' ? (t('min') || 'MIN') : '');
+        const tapIdx = isHost ? currentStintIdx : null;
+        chips += `<span class="so-chip so-now pill-${nowType}${tapIdx != null ? ' pill-editable' : ''}"${tapIdx != null ? ` onclick="window.editLiveStintTarget(${tapIdx})"` : ''} title="${t('olNow')}"><span>▶ ${t('olNow')} ${minsTxt(Math.round(currentTargetMs / 60000), Math.round(currentTargetMs / 60000))}${nowTag ? ` · ${nowTag}` : ''}</span></span>`;
     }
-
-    groups.forEach(g => {
-        const prefix = g.count > 1 ? `${g.count}× ` : '';
-        const idx = (g.count === 1 && g.idxs.length === 1) ? g.idxs[0] : null; // only single-stint groups are unambiguous to edit
-        if (g.type === 'max') {
-            phtml += pill(`${prefix}${t('max')} · ${spanLabel(g)}`, 'pill-max', hasMaxStint ? `Max stint ${maxStintVal}m` : null, idx);
-        } else if (g.type === 'min') {
-            phtml += pill(`${prefix}${t('min') || 'MIN'} · ${spanLabel(g)}`, 'pill-min', hasMinStint ? `Min stint ${minStintVal}m` : null, idx);
-        } else if (g.type === 'normal') {
-            phtml += pill(`${prefix}${t('norm') || 'NORM'} ${g.min}m`, 'pill-normal', null, idx);
-        } else {
-            phtml += pill(`${prefix}${g.min}m ⚠`, 'pill-impossible', null, idx);
-        }
-    });
-
-    // Buffer hint (only meaningful when min is constrained)
-    if (hasMinStint) {
-        const bufferMin = Math.floor(bufferMs / 60000);
-        if (bufferMin > 0) {
-            phtml += `<span class="text-[11px] text-gray-600 self-center ml-1">+${bufferMin}m</span>`;
-        }
-    }
-
+    if (stopsDone > 0) chips += `<span class="so-chip so-done" title="${t('olDone')}"><span>✓ ${num(stopsDone)} ${t('olDone')}</span></span>`;
+    phtml += `<div class="so-chips">${chips}</div>`;
+    phtml += `<div class="so-tiles">${tile('max', 'so-max', t('olNearMax'))}${tile('normal', 'so-mid', t('olBetween'))}${tile('min', 'so-min', t('olNearMin'))}${tile('impossible', 'so-bad', '⚠')}</div>`;
     pillsEl.innerHTML = phtml;
+    const leftEl = document.getElementById('remStintsLeft');
+    if (leftEl) leftEl.innerHTML = `${num(stintDescriptors.length + (currentTargetMs > 0 ? 1 : 0))} ${t('olLeft')}`;
 }
 
 // ==========================================

@@ -48,11 +48,11 @@
     <script src="js/live-timing-manager.js?v=9"></script>
     <script src="js/qualifying.js?v=13"></script>
 
-    <link rel="stylesheet" href="css/style.css?v=86">
+    <link rel="stylesheet" href="css/style.css?v=87">
     <link rel="stylesheet" href="css/tablet.css?v=6">
     <script src="js/tablet-mode.js?v=1"></script>
     <script src="js/themes.js?v=1"></script>
-    <script src="js/mobile-tabs.js?v=1"></script>
+    <script src="js/mobile-tabs.js?v=2"></script>
 
     <script>
         tailwind.config = {
@@ -972,7 +972,6 @@
                 <span class="m-tabs-pill" aria-hidden="true"></span>
                 <button type="button" role="tab" data-mtab="live" class="m-tab"><i class="fas fa-satellite-dish"></i><span data-i18n-phrase="Live">Live</span></button>
                 <button type="button" role="tab" data-mtab="plan" class="m-tab"><i class="fas fa-route"></i><span data-i18n-phrase="Plan">Plan</span><b id="mtabPlanDot" class="m-tab-dot hidden"></b></button>
-                <button type="button" role="tab" data-mtab="drivers" class="m-tab"><i class="fas fa-users"></i><span data-i18n-phrase="Drivers">Drivers</span></button>
             </nav>
 
             <div id="raceInfoPanel" class="flex-1 min-h-0 overflow-y-auto p-2 space-y-2">
@@ -1202,11 +1201,12 @@
                                     <span data-i18n="strategyOutlook">OUTLOOK</span>
                                 </button>
                                 <div class="flex items-center gap-1.5">
-                                    <button onclick="window.openLivePreview()" class="text-[11px] text-gray-400 hover:text-white bg-gray-700/50 hover:bg-gray-600/70 border border-gray-600 rounded px-1.5 py-0.5 transition font-bold uppercase tracking-wide leading-none" data-i18n="livePreviewBtn">▶ PLAN</button>
-                                    <span id="remTimeText" class="text-[11px] text-white font-mono font-bold">--:--</span>
+                                    
+                                    <span id="remStintsLeft" class="so-left"></span>
+                                    <button onclick="window.openLivePreview()" class="text-[11px] text-gray-400 hover:text-white bg-gray-700/50 hover:bg-gray-600/70 border border-gray-600 rounded px-1.5 py-0.5 transition font-bold uppercase tracking-wide leading-none" data-i18n="livePreviewBtn">▶ PLAN</button><span id="remTimeText" class="hidden">--:--</span>
                                 </div>
                             </div>
-                            <div id="remStintsText" class="flex flex-wrap gap-1 pb-1.5 border-b border-gray-700/50"></div>
+                            <div id="remStintsText" class="so-wrap pb-1.5 border-b border-gray-700/50"></div>
                         </div>
 
                         <!-- Mode buttons -->
@@ -2325,7 +2325,7 @@
     <script src="js/i18n-extra2.js?v=2"></script>
     <script src="js/i18n-extra3.js?v=1"></script>
     <script src="js/i18n-laps.js?v=1"></script>
-    <script src="js/i18n-new.js?v=5"></script>
+    <script src="js/i18n-new.js?v=6"></script>
     <script src="js/i18n-squads.js?v=1"></script>
     <script src="js/i18n-fill.js?v=2"></script>
     <script src="js/i18n-phrases.js?v=3"></script>
@@ -2349,7 +2349,7 @@
     <script src="js/ui.js?v=38"></script>
     <script src="js/walkthrough.js?v=15"></script>
     <script src="js/setup-bar.js?v=13"></script>
-    <script src="js/main.js?v=46"></script>
+    <script src="js/main.js?v=48"></script>
     <script src="js/live-extras.js?v=11"></script>
     <script src="js/live-photo.js?v=2"></script>
 </body>
