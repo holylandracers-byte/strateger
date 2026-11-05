@@ -88,12 +88,12 @@
     // The race clock always follows the timing clock while a feed is connected: if the strategist
     // does not want that, they stop live timing. (The old on/off switch let it drift and was removed.)
     window._clockSyncOn = true;
-    let lastApplied = 0, warnedFar = false;
+    let lastApplied = 0, warnedFar = false, pendingSkews = 0;
     try { localStorage.removeItem('strateger_clock_sync'); } catch (e) {}
     window.toggleClockSync = function() { /* no longer switchable */ };
 
     window.toggleAutoPit = function() {
-        window._autoPitEnabled = window._autoPitEnabled === false;
+        window._autoPitEnabled = !window._autoPitEnabled;
         store.set('strateger_auto_pit', window._autoPitEnabled ? '1' : '0');
         window._updateClockSyncBtn(true);
         if (typeof window.broadcast === 'function') window.broadcast();
@@ -102,7 +102,7 @@
     window._updateClockSyncBtn = function(hasFeed) {
         const ap = $('autoPitBtn');
         if (ap) {
-            const on = window._autoPitEnabled !== false;
+            const on = !!window._autoPitEnabled;
             ap.classList.toggle('hidden', !hasFeed);
             ap.textContent = '🏁 ' + (on ? tr('pitAutoOn', 'Auto pit') : tr('pitAutoOff', 'Pit manual'));
             ap.classList.toggle('is-on', on);
@@ -125,14 +125,16 @@
         if (!live || !window._clockSyncOn || window.role !== 'host') return;
 
         const now = window.getSyncedNow();
-        if (now - lastApplied < 6000) return;
+        if (now - lastApplied < 10000) return;
         const received = ld._raceTimeReceivedAt || now;
         if (now - received > 20000) return;                       // stale feed: keep the local clock
         const feedRemaining = Math.max(0, ld.raceTimeLeftMs - (now - received));
         const raceMs = cfg.raceMs;
         const localRemaining = raceMs - (now - st.startTime);
         const skew = feedRemaining - localRemaining;
-        if (Math.abs(skew) <= 700) return;                         // already together
+        if (Math.abs(skew) <= 1500) { pendingSkews = 0; return; }   // already together (the displayed clock follows the feed directly)
+        if (++pendingSkews < 2) return;                            // must persist for two checks: one odd poll never moves the clock
+        pendingSkews = 0;
 
         lastApplied = now;
         if (feedRemaining > raceMs) {

@@ -2,17 +2,17 @@
 // ⏱️ LIVE TIMING CONTROLLER
 // ==========================================
 
-// Pit detection follows live timing by default. The strategist can switch it off with the
-// "Auto pit" chip in the live widget (window.toggleAutoPit, js/live-extras.js); when off,
-// every feed-driven pit entry/exit/penalty adjustment is skipped through
+// Pit detection from live timing happens only while the strategist has switched on the
+// "Auto pit" chip in the live widget (window.toggleAutoPit, js/live-extras.js; off by default).
+// When off, every feed-driven pit entry/exit/penalty adjustment is skipped through
 // _liveTimingMayForcePit and the pit is tracked by hand only.
-try { window._autoPitEnabled = localStorage.getItem('strateger_auto_pit') !== '0'; } catch (e) { window._autoPitEnabled = true; }
+try { window._autoPitEnabled = localStorage.getItem('strateger_auto_pit') === '1'; } catch (e) { window._autoPitEnabled = false; }
 
 // Single chokepoint for every place that wants live timing (real feed or demo
 // simulation) to force a pit entry/exit/penalty-adjustment. Kept as a function (rather
 // than inlining `true`) so call sites and intent stay unchanged.
 window._liveTimingMayForcePit = function() {
-    return window._autoPitEnabled !== false;
+    return !!window._autoPitEnabled;
 };
 
 function getLapWord(count) {
@@ -409,8 +409,8 @@ window.fetchLiveTimingFromProxy = async function() {
                     // change" ran up to 2 s behind the board. Instead estimate the moment the board's clock hits
                     // zero from the last few polls (the smallest candidate is the poll closest to a real tick)
                     // and derive the remaining time from that, so the app clock stays within ~0.3 s of the board.
-                    const pollAt = Date.now();
-                    const est = window.liveData._clockEst || (window.liveData._clockEst = { buf: [], same: 0, last: null });
+                    const pollAt = (typeof window.getSyncedNow === 'function') ? window.getSyncedNow() : Date.now();
+                    const est = window.liveData._clockEst || (window.liveData._clockEst = { buf: [], same: 0, last: null, endAt: null });
                     est.same = (feedMs === est.last) ? est.same + 1 : 0;
                     est.last = feedMs;
                     const cand = pollAt + feedMs;
@@ -418,17 +418,18 @@ window.fetchLiveTimingFromProxy = async function() {
                     if (est.same >= 4 || cand < lo - 2500 || cand > lo + 6000) est.buf = [];   // clock paused / rewound / other session
                     est.buf.push(cand);
                     if (est.buf.length > 12) est.buf.shift();
-                    if (est.same >= 4 || est.buf.length < 3) {
-                        // not enough samples yet (or clock paused): behave as before
-                        if (feedMs !== window.liveData._lastFeedRaceMs || est.same >= 4) {
-                            window.liveData.raceTimeLeftMs = feedMs;
-                            window.liveData._raceTimeReceivedAt = pollAt;
-                        }
+                    if (est.same >= 4) {
+                        // clock stopped (red flag / between sessions): follow the board as it is
+                        est.endAt = pollAt + feedMs;
                     } else {
-                        const endAt = Math.min.apply(null, est.buf) + 800;   // whole-second floor: true value averages +0.5 s, minus fetch latency
-                        window.liveData.raceTimeLeftMs = Math.max(0, endAt - pollAt);
-                        window.liveData._raceTimeReceivedAt = pollAt;
+                        // best estimate of the instant the board's clock reads zero; the minimum candidate is the poll
+                        // closest to a real tick, and the board shows whole seconds so the true value averages +0.5 s
+                        const target = est.buf.length >= 3 ? Math.min.apply(null, est.buf) + 800 : cand + 500;
+                        if (est.endAt == null || Math.abs(target - est.endAt) > 2500) est.endAt = target;      // first value or a real jump
+                        else est.endAt += Math.max(-40, Math.min(40, target - est.endAt));                      // otherwise slew: the clock never visibly steps
                     }
+                    window.liveData.raceTimeLeftMs = Math.max(0, est.endAt - pollAt);
+                    window.liveData._raceTimeReceivedAt = pollAt;
                 }
                 window.liveData._lastFeedRaceMs = feedMs;
                 // The app derives elapsed = configured duration - feed remaining. If the feed has MORE
