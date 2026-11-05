@@ -4759,3 +4759,40 @@ html.is-tablet .auto-pit-switch { min-height: 36px; font-size: 13px; }
     #liveTimingDragHandle > div:last-child { margin-inline-start: auto; }
     #liveTimingDragHandle button, #liveTimingDragHandle .auto-pit-switch { flex: none; }
 }
+
+/* ==================== OUTLOOK v2: compact, direction-aware, scrolls instead of clipping ==================== */
+[dir="rtl"] #remStintsText.so-wrap { direction: rtl; }
+.so-tiles { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; scroll-snap-type: x proximity; }
+.so-tiles::-webkit-scrollbar { display: none; }
+.so-tile { display: flex; flex: 1 0 auto; align-items: center; gap: 8px; min-width: 104px; padding: 5px 10px; border-radius: 10px; border: 1px solid; scroll-snap-align: start; }
+.so-count { font-size: 22px; line-height: 1; font-weight: 800; flex: none; }
+.so-txt { display: flex; flex-direction: column; min-width: 0; gap: 1px; }
+.so-lab { font-size: 12px; font-weight: 700; line-height: 1.15; white-space: nowrap; }
+.so-sub { font-size: 11.5px; opacity: .85; white-space: nowrap; }
+
+/* One-line forecast on the Live tab (phones and portrait tablets); tapping it opens the Plan tab */
+.fc-strip { display: none; }
+@media (max-width: 1023px) and (orientation: portrait) {
+    #racePanelsWrapper[data-mtab="live"] .fc-strip:not(.hidden) {
+        display: flex; align-items: center; gap: 12px; width: 100%; min-height: 40px; padding: 4px 12px; margin-bottom: 2px;
+        border-radius: 10px; border: 1px solid rgb(var(--n700)); background: rgb(var(--n900)); color: #e2e8f0;
+        font-size: 13px; font-weight: 700; overflow-x: auto; white-space: nowrap; scrollbar-width: none;
+    }
+    .fc-strip::-webkit-scrollbar { display: none; }
+    .fc-now { color: rgb(var(--accent-rgb)); flex: none; }
+    .fc-c { display: inline-flex; align-items: center; gap: 4px; flex: none; background: none !important; border: 0 !important; }
+    .fc-c i { font-style: normal; font-size: 11px; }
+    .fc-left { color: #94a3b8; font-weight: 600; margin-inline-start: auto; flex: none; }
+    .fc-go { color: #64748b; font-size: 18px; flex: none; }
+    [dir="rtl"] .fc-go { transform: scaleX(-1); }
+}
+
+/* Plan tab sections never shrink to fit: a short screen scrolls instead of cutting the outlook or the pace buttons */
+@media (max-width: 1023px) and (orientation: portrait) {
+    #raceControlDock > #strategyGroup, #raceControlDock > #statsTableGroup, #raceControlDock > #penaltyQueuePanel { flex: none !important; }
+}
+
+/* Drivers table header: the stops/total titles stay inside their own columns */
+#statsTableGroup col.stops-col { width: 46px; }
+#statsTableGroup col.total-col { width: 84px; }
+#statsTableGroup thead th { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10.5px; padding-inline: 3px; }

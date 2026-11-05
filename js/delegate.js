@@ -11,7 +11,7 @@ window.DELEGATE_PERMS = {
     pitAdj: { icon: 'fa-stopwatch',      label: 'Pit time adjust',  hint: '± seconds on the pit stop',       cmds: ['adjustPitTime'] },
     driver: { icon: 'fa-user-astronaut', label: 'Next driver',      hint: 'Change who drives next',          cmds: ['cycleNextDriver'] },
     mode:   { icon: 'fa-gauge-high',     label: 'Pace & squads',    hint: 'Push / problem, night, squad',    cmds: ['setMode', 'toggleNightMode', 'switchNightSquad'] },
-    plan:   { icon: 'fa-list-check',     label: 'Edit the plan',    hint: 'Stint minutes, driver order, add or remove a stint (rules are checked)', cmds: ['coSetStintMin', 'coMoveStint', 'coAddStint', 'coRemoveStint'] },
+    plan:   { icon: 'fa-list-check',     label: 'Edit the plan',    hint: 'Stint minutes and driver order (rules are checked)', cmds: ['coSetStintMin', 'coMoveStint'] },
     finish: { icon: 'fa-flag',           label: 'Confirm finish',   hint: 'Confirm the race finish',         cmds: ['confirmRaceFinish'] },
     chat:   { icon: 'fa-comments',       label: 'Chat as admin',    hint: 'Message all viewers',             cmds: [] },
     takeover: { icon: 'fa-crown',        label: 'Take over if host is lost', hint: 'Become the host if the main device dies', cmds: [] }
@@ -534,7 +534,7 @@ setInterval(function () {
 // ---------------------------------------------------------------- PLAN EDITING (host side)
 // A delegate holding "Edit the plan" sends these; the host runs them on the live plan (state.stintTargets,
 // stintSchedule and the preview timeline), the same way the host's own PLAN screen edits it. Stint limits are
-// enforced by the same clamp/redistribute code, and a change that would break a rule is refused with a sentence.
+// enforced by the same clamp/redistribute code. The number of stints is never changed from here.
 
 // What the delegate's read-only plan needs: stints and pits in order, with the real driver for finished stints
 window._planForClients = function () {
@@ -563,18 +563,6 @@ window._planCtx = function () {
         bounds: window.getStintBoundsMs(cfg),
         futureN: st.stintTargets.length - (cur + 1)
     };
-};
-
-// Spread the time that is left evenly over the stints after the current one, inside min/max
-window._rebalanceFuture = function (ctx) {
-    const st = ctx.st, targets = st.stintTargets;
-    const n = targets.length - (ctx.cur + 1);
-    if (n <= 0) return;
-    const pool = ctx.remaining - ctx.ttfc - n * ctx.pitMs;
-    const res = window.normalizeStintDurationsMs(new Array(n).fill(pool / n), { totalTargetMs: pool, bounds: ctx.bounds, plan: true });
-    for (let i = 0; i < n; i++) targets[ctx.cur + 1 + i] = res.durations[i];
-    st.stintTargets = targets;
-    window._mirrorTargetsToPreview();
 };
 
 window._mirrorTargetsToPreview = function () {
@@ -608,36 +596,5 @@ window.coMoveStint = function (idx, dir) {
     if (typeof window.moveStint === 'function') window.moveStint(idx, dir);
     if (typeof window.broadcast === 'function') window.broadcast();
     if (typeof window.saveRaceState === 'function') window.saveRaceState();
-    return '';
-};
-
-window.coAddStint = function () {
-    const ctx = window._planCtx();
-    if (ctx.err) return ctx.err;
-    const n = ctx.futureN + 1;
-    const pool = ctx.remaining - ctx.ttfc - n * ctx.pitMs;
-    if (ctx.bounds.minStintMs > 0 && pool / n < ctx.bounds.minStintMs) return 'Not enough time left for another stint above the minimum';
-    window._addStintsToPlan(ctx.cur, 1);
-    window._rebalanceFuture(ctx);
-    return '';
-};
-
-window.coRemoveStint = function () {
-    const ctx = window._planCtx();
-    if (ctx.err) return ctx.err;
-    if (ctx.futureN <= 1) return 'At least one more stint is needed';
-    const stopsAfter = ctx.st.stintTargets.length - 2;
-    if (stopsAfter < (parseInt(ctx.cfg.reqStops) || 0)) return 'That would go below the required number of stops';
-    const n = ctx.futureN - 1;
-    const pool = ctx.remaining - ctx.ttfc - n * ctx.pitMs;
-    if (ctx.bounds.effectiveMaxStint !== Infinity && pool / n > ctx.bounds.effectiveMaxStint) return 'The remaining time does not fit in fewer stints under the maximum';
-    ctx.st.stintTargets.pop();
-    if (Array.isArray(ctx.st.stintSchedule) && ctx.st.stintSchedule.length > ctx.st.stintTargets.length) ctx.st.stintSchedule.pop();
-    const tl = window.previewData && window.previewData.timeline;
-    if (Array.isArray(tl)) {
-        const lastS = tl.map(x => x.type).lastIndexOf('stint');
-        if (lastS > 0) { tl.splice(lastS, 1); if (tl[lastS - 1] && tl[lastS - 1].type === 'pit') tl.splice(lastS - 1, 1); }
-    }
-    window._rebalanceFuture(ctx);
     return '';
 };

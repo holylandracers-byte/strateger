@@ -166,8 +166,8 @@
 
 // ----- Plan for spectators and delegates (they have no plan object, only what the host synced) -----
 // Shows who is driving NOW (from the live state, not the original plan), real times for the stints still to
-// come, and the rule check. A delegate holding "Edit the plan" also gets minute steppers, move arrows and
-// add / remove stint; each tap is sent to the host, which enforces the stint limits and refuses anything that
+// come, and the rule check. A delegate holding "Edit the plan" also gets minute steppers and move arrows;
+// each tap is sent to the host, which enforces the stint limits and refuses anything that
 // would break a rule.
 (function() {
     const esc = function(x) { return String(x == null ? '' : x).replace(/[&<>"']/g, function(c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); };
@@ -268,8 +268,7 @@
         const edit = canEdit() && plan.live;
         const html = complianceHtml(plan)
             + '<div class="cp-list">' + (rowsHtml(plan) || '<p class="cp-empty">…</p>') + '</div>'
-            + (edit ? '<div class="cp-foot"><button type="button" class="cp-act" data-act="add"><i class="fas fa-plus"></i> ' + esc(T('Add stint')) + '</button>'
-                + '<button type="button" class="cp-act" data-act="remove"><i class="fas fa-minus"></i> ' + esc(T('Remove last stint')) + '</button></div>' : '');
+            + '';
         if (ov._last === html) return;     // nothing changed: do not rebuild under a finger
         ov._last = html;
         ov.querySelector('.cp-body').innerHTML = html;
@@ -295,8 +294,6 @@
             const act = b.dataset.act;
             if (act === 'min') window.coSetStintMin(Number(b.dataset.i), Number(b.dataset.v));
             else if (act === 'move') window.coMoveStint(Number(b.dataset.i), Number(b.dataset.v));
-            else if (act === 'add') window.coAddStint();
-            else if (act === 'remove') window.coRemoveStint();
         });
         document.body.appendChild(ov);
         render(ov);

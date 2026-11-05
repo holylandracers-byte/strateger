@@ -2230,7 +2230,7 @@ window.toggleOutlookCollapse = function() {
         const panel = document.getElementById('remainingStintsPanel');
         if (!panel || panel.classList.contains('hidden')) return;   // wait until it actually renders
         window._outlookCollapseDefaultApplied = true;
-        const shouldCollapse = stored != null ? stored === '1' : window.matchMedia('(max-width:1279px)').matches;
+        const shouldCollapse = stored != null ? stored === '1' : false;   // open by default on every screen
         panel.classList.toggle('outlook-collapsed', shouldCollapse);
         const icon = document.getElementById('outlookCollapseIcon');
         if (icon) icon.textContent = shouldCollapse ? '▸' : '▾';

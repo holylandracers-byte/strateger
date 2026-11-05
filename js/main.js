@@ -1352,7 +1352,7 @@ function updateRemainingStrategyLogic(raceRemainingMs) {
     const futurePoolMs = raceRemainingMs - timeToFinishCurrent - futurePitTimeLoss;
 
     timeField.innerText = window.formatTimeHMS(raceRemainingMs);
-    { const le = document.getElementById('remStintsLeft'); if (le) le.textContent = ''; }
+    { const le = document.getElementById('remStintsLeft'); if (le) le.textContent = ''; const fs = document.getElementById('forecastStrip'); if (fs) fs.classList.add('hidden'); }
 
     // Helper: build one stint pill. Pass idx to make it tap-to-edit (current/future
     // stints only — completed stints are flagged via pill-done and never get an idx).
@@ -1450,7 +1450,8 @@ function updateRemainingStrategyLogic(raceRemainingMs) {
     const tile = (type, cls, label) => {
         const arr = kinds[type];
         if (!arr.length) return '';
-        return `<div class="so-tile ${cls}"><b class="so-count">${num(arr.length)}</b><span class="so-lab">${label}</span><span class="so-sub">${minsTxt(Math.min.apply(null, arr), Math.max.apply(null, arr))}</span></div>`;
+        // width follows how many stints there are, so the row reads like a bar of what is actually left
+        return `<div class="so-tile ${cls}" style="flex-grow:${arr.length}"><b class="so-count">${num(arr.length)}</b><span class="so-txt"><span class="so-lab">${label}</span><span class="so-sub">${minsTxt(Math.min.apply(null, arr), Math.max.apply(null, arr))}</span></span></div>`;
     };
     let phtml = '';
     let chips = '';
@@ -1465,6 +1466,14 @@ function updateRemainingStrategyLogic(raceRemainingMs) {
     phtml += `<div class="so-chips">${chips}</div>`;
     phtml += `<div class="so-tiles">${tile('max', 'so-max', t('olNearMax'))}${tile('normal', 'so-mid', t('olBetween'))}${tile('min', 'so-min', t('olNearMin'))}${tile('impossible', 'so-bad', '⚠')}</div>`;
     pillsEl.innerHTML = phtml;
+    // one-line version for the Live tab on phones (the full outlook sits in the Plan tab)
+    const strip = document.getElementById('forecastStrip');
+    if (strip) {
+        const part = (type, cls, sym, lab) => kinds[type].length ? `<span class="fc-c ${cls}" title="${lab}"><i>${sym}</i>${num(kinds[type].length)}</span>` : '';
+        const nowTxt = currentTargetMs > 0 ? `<span class="fc-now">▶ ${minsTxt(Math.round(currentTargetMs / 60000), Math.round(currentTargetMs / 60000))}</span>` : '';
+        strip.innerHTML = `${nowTxt}${part('max', 'so-max', '▲', t('olNearMax'))}${part('normal', 'so-mid', '●', t('olBetween'))}${part('min', 'so-min', '▼', t('olNearMin'))}${part('impossible', 'so-bad', '⚠', '')}<span class="fc-left">${num(stintDescriptors.length + (currentTargetMs > 0 ? 1 : 0))} ${t('olLeft')}</span><span class="fc-go" aria-hidden="true">›</span>`;
+        strip.classList.remove('hidden');
+    }
     const leftEl = document.getElementById('remStintsLeft');
     if (leftEl) leftEl.innerHTML = `${num(stintDescriptors.length + (currentTargetMs > 0 ? 1 : 0))} ${t('olLeft')}`;
 }
