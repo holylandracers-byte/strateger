@@ -89,7 +89,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Restore saved page background
     const savedBg = localStorage.getItem('strateger_bg');
     if (savedBg !== null) {
-        if (typeof window.setPageBackground === 'function') window.setPageBackground(savedBg);
+        if (typeof window.setPageBackground === 'function') window.setPageBackground(savedBg, { restore: true });
         else document.body.style.background = savedBg || '';
     }
 

@@ -5,10 +5,12 @@
 מדריך תפעולי לצוות אסטרטגיה במסלול. מבוסס על סימולציה חיה באתר  
 **https://strateger.onrender.com**
 
-**Document version:** 1.0 · **Languages:** עברית + English  
-**Tested:** July 2026 · **Devices:** Laptop (1440×900) · Tablet (768×1024) · Phone (390×844)
+**Document version:** 1.1 · **Languages:** עברית + English  
+**Updated:** November 2026 (v1.0 tested July 2026) · **Devices:** Laptop (1440×900) · Tablet (768×1024) · Phone (390×844)
 
-> **Screenshots:** `docs/walkthrough/screenshots/` — captured live from the hosted app.
+> **Screenshots:** `docs/walkthrough/screenshots/` — captured live from the app.  
+> **הערה על צילומי המסך:** צילומי הסטאפ והמירוץ (§2–§13) צולמו ביולי 2026, לפני שדרוג הממשק. **הטקסט כאן מעודכן**; אם צילום נראה אחרת — הטקסט הוא הקובע. צילומי **מראה / ערכות נושא** (§14) צולמו בנובמבר 2026.  
+> *Setup and race screenshots (§2–§13) are from July 2026 and predate the UI overhaul — the text is current; where a screenshot differs, trust the text. Appearance screenshots (§14) are from November 2026.*
 
 ---
 
@@ -30,14 +32,16 @@ The guide is **already in your repo** — it is not on the website. The live app
 
 | שלב | Step | EN | HE |
 |-----|------|----|----|
-| 1 | Open app | [strateger.onrender.com](https://strateger.onrender.com) | |
-| 2 | Choose language | 🇬🇧 EN or 🇮🇱 HE (top-left) | |
-| 3 | Set race params | Duration, stops, min/max stint, pit time | |
-| 4 | Add drivers | Names + colors + STARTER | |
-| 5 | Qualifying (optional) | **Qualifying + Race** → **Start Qualifying** | **מקצה דירוג + מירוץ** → **התחל מקצה דירוג** |
-| 6 | Start race | **START RACE** | **התחל מירוץ** |
-| 7 | During race | Tap **ENTER PIT** / **Exit Pits** at **real times** — not the plan | **כניסה לפיטס** / **יציאה מהפיט** לפי **זמן אמת** |
-| 8 | After drift | Open **▶ PLAN** — remaining stints auto-adjust | **▶ תוכנית** — סטינטים שנותרו מתעדכנים |
+| 1 | Open app | [strateger.onrender.com](https://strateger.onrender.com) — Home shows your saved strategies | דף הבית מציג אסטרטגיות שמורות |
+| 2 | Choose language | 12 languages — pick on first launch or in the header menu | 12 שפות — בבחירה ראשונה או בתפריט |
+| 3 | Pick a look | ☰ Menu → **Appearance** (§14) | ☰ תפריט ← **מראה** |
+| 4 | New strategy | **+ New strategy** → one-page setup (accordion cards) | **+ אסטרטגיה חדשה** |
+| 5 | Set race params | Duration (h:mm) or laps, stops, min/max stint, pit time | משך (ש:דק׳) או הקפות |
+| 6 | Add drivers | Names + colors; the top driver is the starter | הנהג העליון = STARTER |
+| 7 | Qualifying (optional) | Answer **Yes** to the qualifying question → **Start Qualifying** | תשובה **כן** בשאלת המקצה |
+| 8 | Preview + start | **Preview and start** → check the plan → **START RACE** (asks to confirm) | **התחל מירוץ** (עם אישור) |
+| 9 | During race | Tap **ENTER PIT** / **Exit Pits** at **real times** — not the plan | **כניסה לפיטס** / **יציאה מהפיט** לפי **זמן אמת** |
+| 10 | After drift | Open **▶ PLAN** — remaining stints auto-adjust | **▶ תוכנית** — סטינטים שנותרו מתעדכנים |
 
 ---
 
@@ -56,6 +60,8 @@ The guide is **already in your repo** — it is not on the website. The live app
 11. [טיפים מהירים / Quick Reference](#11-טיפים-מהירים--quick-reference)
 12. [תחזית אסטרטגיה + בלתי אפשרי / Strategy Outlook & IMPOSSIBLE](#12-תחזית-אסטרטגיה--בלתי-אפשרי--strategy-outlook--impossible)
 13. [תזמון חי — הרבה קבוצות / Live Timing (Many Teams)](#13-תזמון-חי--הרבה-קבוצות--live-timing-many-teams)
+14. [מראה וערכות נושא / Appearance & Themes](#14-מראה-וערכות-נושא--appearance--themes)
+15. [מה השתנה מאז v1.0 / What Changed Since v1.0](#15-מה-השתנה-מאז-v10--what-changed-since-v10)
 
 ---
 
@@ -77,7 +83,8 @@ https://strateger.onrender.com
 ```
 
 > **הערה:** האפליקציה היא PWA — ניתן להוסיף למסך הבית בטאבלט/טלפון לגישה מהירה במסלול.  
-> **Note:** The app is a PWA — add to home screen on tablet/phone for quick pit-lane access.
+> **Note:** The app is a PWA — add to home screen on tablet/phone for quick pit-lane access.  
+> **עדכון:** אין יותר אפליקציית Android/iOS נפרדת — רק האתר + PWA. / *The Android/iOS wrapper was dropped: web + PWA only.*
 
 ### מכשיר מומלץ / Recommended Device
 
@@ -94,21 +101,31 @@ https://strateger.onrender.com
 ### שלב 1 — פתיחת האפליקציה / Step 1 — Open the App
 
 1. גלוש ל-**https://strateger.onrender.com**
-2. בחר שפה: **🇮🇱 HE** (עברית) או **🇬🇧 EN** (English) — בפינה העליונה
-3. הזן **שם קבוצה** (Team Name) — למשל: `Team Apex Racing`
+2. בחר שפה — **12 שפות** (עברית, English, Français, Português, Русский, العربية, Español, Italiano, ქართული, Deutsch, 日本語, Ελληνικά). עברית וערבית מוצגות מימין לשמאל (RTL).
+3. **דף הבית** מציג את האסטרטגיות השמורות שלך (כרטיס לכל אחת: משך, עצירות, נהגים, פס סטינטים צבעוני).
+   *Home lists your saved strategies — one card each with duration, stops, drivers and a coloured stint bar.*
 
-### שלב 2 — בחירת מצב / Step 2 — Choose Mode
-
-| כפתור | עברית | מתי להשתמש |
+| כפתור בכרטיס | Button | מה עושה |
 |---|---|---|
-| **Race Only** | מירוץ בלבד | מירוץ סיבולת בלבד, ללא מקצה |
-| **Qualifying + Race** | מקצה דירוג + מירוץ | יום מירוץ מלא — מקצה ואז מירוץ |
+| **Preview and start** | תצוגה מקדימה והתחלה | פותח את התוכנית; משם מתחילים מירוץ |
+| **Edit** | עריכה | חוזר להגדרות של אותה אסטרטגיה |
+| **+ New strategy** | אסטרטגיה חדשה | מסך הגדרות ריק |
+| **Start without a strategy** | להתחיל בלי אסטרטגיה | מירוץ מהיר |
+| **Join as Driver** / **Race History** | הצטרף כנהג / היסטוריית מירוצים | |
+
+> אם האפליקציה נסגרה באמצע מירוץ (טאבלט/טלפון נהרג ברקע) — כרטיס **Resume** מציע לחזור למירוץ וגם מציג **לפני כמה זמן נשמר**. המירוץ והסקוואדים נשמרים ב-localStorage ובכל שינוי נראות (visibilitychange) ובכל ~5 שניות.  
+> *If the app is killed mid-race, a Resume card offers to continue and shows how long ago it was saved; race + squads are persisted every ~5 s and when the tab is hidden.*
+
+### שלב 2 — מסך ההגדרות / Step 2 — The Setup Screen
+
+ההגדרות הן **עמוד אחד, עמודה אחת**, ככרטיסים מתקפלים (accordion — **פתוח אחד בכל פעם**), עם **שורת Start מוצמדת** למטה. ל-Race / Qualifying אין יותר מתג נפרד: מקצה דירוג הוא **שאלה בתוך ההגדרות** (§3).  
+*One page, one column, collapsible cards (one open at a time) with a pinned Start bar. The old Race Only / Qualifying + Race toggle is gone — qualifying is a question inside setup (§3).*
 
 ![Setup — Laptop EN](screenshots/01-laptop-setup-en.png)
-*Laptop · English · Race Only mode*
+*Laptop · July 2026 build — layout is now a single centred column*
 
 ![Setup — Laptop HE](screenshots/11-laptop-setup-he.png)
-*Laptop · Hebrew (RTL) · Qualifying + Race mode*
+*Laptop · Hebrew (RTL) — section chevrons sit on the left, icons on the right*
 
 ### שלב 3 — הגדרות מירוץ / Step 3 — Race Settings
 
@@ -116,35 +133,55 @@ https://strateger.onrender.com
 
 | שדה | Field | דוגמה / Example | הסבר |
 |---|---|---|---|
-| Duration (Hours) | משך (שעות) | `3` | משך המירוץ |
-| Req. Stops | עצירות חובה | `3` | מספר פיטסטופים חובה |
-| Min Stint (min) | מינימום סטינט | `20` | זמן מינימום לנהג במסלול |
-| Max Stint (min) | מקסימום סטינט | `40` | זמן מקסימום לנהג במסלול |
-| Pit Time (sec) | זמן פיטס | `45–120` | זמן עצירה בפיט (שניות) |
-| Race Start Time | שעת התחלה | `19:00` | לתזמון ולוח שנה |
-| Race Date | תאריך | `2026-07-01` | |
+| Race target | יעד המירוץ | `Time` / `Laps` | מירוץ **לפי זמן** או **לפי הקפות** (מס׳ הקפות × זמן הקפה ממוצע קובע את אורך המירוץ; העצירות מוגדלות אם תקרת הסטינט דורשת) |
+| Duration | משך | `3:00` | מוצג כ-**ש:דק׳** (לא עשרוני) |
+| Required stops | עצירות חובה | `3` | וגם צ׳יפ **No required stops** |
+| Min / Max Stint (min) | מינימום / מקסימום סטינט | `20` / `40` | שדה ריק = כבוי (**"empty = off"**, לא "0") |
+| Pit Time (sec) | זמן פיט | `45–120` | שדה ריק = אין מינימום. צ׳יפ **Fast pits (no minimum)** מנקה את המינימום ומציג **זמן פיט טיפוסי** — משמש רק לתכנון, לא נאכף |
+| Race Start Time / Date | שעה / תאריך | `19:00` | לתזמון ולוח שנה |
 
-> **טיפ מהיר:** השתמש בכפתורי **3h / 6h / 12h / 24h** לבחירה מהירה של משך המירוץ.  
-> **Quick tip:** Use **3h / 6h / 12h / 24h** preset buttons for fast duration selection.
+> **טיפ מהיר:** כפתורי **3h / 6h / 12h / 24h** לבחירה מהירה של משך המירוץ.  
+> **תכנון:** התוכנית, התכנון מחדש והתיקון האוטומטי מכוונים **דקה אחת מתחת למקסימום** (max−1) כדי לא לעבור את התקרה בטעות.
 
-**תיבת סיכום אוטומטית:**  
-האפליקציה מציגה מיד: `4 Stints | Avg: 40.0m` ו-`Drive: 160m + Pit: 6m = 166m (2.77h)`
+**תיבת סיכום אוטומטית:** `4 Stints | Avg: 40.0m` ו-`Drive + Pit = Race length` — השורה מוצמדת מתחת לרשימה, בשעות, ובמירוץ הקפות גם עוקבת אחרי **הקפות מול היעד**.
+
+#### חוקים וכללים / Rules & Advanced Constraints
+
+| כלל | Rule | מה זה עושה |
+|---|---|---|
+| **Every driver drives** | כל נהג נוהג | מוסיף את העצירות הדרושות (N−1 ל-N נהגים פעילים) |
+| **Sit-out** (לכל נהג) | הושבה | הנהג נשאר בקבוצה אך **מחוץ לתוכנית**; נשמר במאגר הנהגים |
+| **Closed windows** | חלונות סגורים | חלון פיט סגור — עם **נתיב** in / out / both. חלון פתיחה/סיום נבדקים באותו מנגנון |
+| **Direction change** | החלפת כיוון | לפי **שעה** או לפי **חצי מירוץ**, פיט in / out / both |
+| **Add a rule** (Custom rules card) | כרטיס חוקים מותאמים | בסוף Advanced Constraints, מתקפל (ברירת מחדל: חצי מירוץ). חלונות שה-AI מצא עדיין מוצגים |
+| **Compliance checker** | בדיקת עמידה בתקנון | מוצג בתצוגה המקדימה; תוכנית AI שמפרה יותר חוקים נדחית |
+
+> *Rules proposal (AI)* — מציג משמעות כל כלל וציטוטים מהתקנון; שורות כפולות מנוקות.
 
 ### שלב 4 — נהגים / Step 4 — Drivers
 
-1. הוסף נהגים דרך **"Add driver to group…"** + כפתור **+**
-2. בחר **צבע** לכל נהג (מזהה ויזואלי במסלול)
-3. סמן **STARTER** — הנהג שיוצא לסטינט הראשון
-4. לחץ **Preview Strategy** / **תצוגה מקדימה** לראות את התוכנית המלאה לפני המירוץ
+1. הוסף נהגים מ**מאגר הנהגים** או הקלד שם חדש. שורת נהג **מינימלית** — שם + צבע; לחיצה על השורה פותחת **דיאלוג לנהג** (אזהרה, Sit-out וכו׳).
+2. בחר **צבע** לכל נהג — שינוי צבע **נשמר במאגר**, והצבעים זהים בפס הסטינטים.
+3. **הנהג העליון ברשימה = STARTER** (אין עוד סימון נפרד). שינוי סדר — דרך **ידית הגרירה (grip)**.
+4. לחץ **Preview** / **Preview and start** לראות את התוכנית לפני המירוץ.
 
 ![Strategy preview — Laptop EN](screenshots/02-laptop-strategy-preview-en.png)
 *Laptop · Strategy Preview — stint timeline before race start*
+
+#### תצוגה מקדימה / The Preview
+
+- **גרירת סטינטים:** בלחיצה על ה-**grip** בלבד (לא על השורה כולה). בטאבלט/מגע צריך **להחזיק 2 שניות** — כך נוגעים בשורה כדי לגלול. שורות קטנות יותר + פס גלילה.
+- **טלפון:** שורות סטינט דחוסות בשתי שורות.
+- במירוץ הקפות: הנהיגה מתפזרת **שווה** בין הסטינטים.
+- **Start Race** מבקש **אישור** לפני התחלה. כשיש אזהרות תקנון — מופיע באנר בתצוגה.
+- **שמירה:** הדיאלוג מציע **מכשיר / ענן**, ושומר עותק מקומי + מסנכרן לענן כשיש חיבור. **שמירה אוטומטית** אחרי ~15 שניות סרק, ומעדכנת את האסטרטגיה בעלת השם **במקום** (בלי עותקים כפולים).
+- **ייצוא:** תמונה/PDF כדף דוח נקי עם מעברי עמוד.
 
 ### תצוגה לפי מכשיר — Setup / Responsive — Setup
 
 | Laptop (1440×900) | Tablet (768×1024) | Phone (390×844) |
 |---|---|---|
-| 2 עמודות: הגדרות + נהגים | 2 עמודות צרות, כפתורים גדולים | עמודה אחת, גלילה |
+| עמודה אחת ממורכזת + שורת Start מוצמדת | אותו דבר, כפתורים גדולים | עמודה אחת, גלילה |
 | ![Laptop setup](screenshots/01-laptop-setup-en.png) | ![Tablet setup](screenshots/17-tablet-setup-en.png) | ![Phone setup](screenshots/16-phone-setup-en.png) |
 
 ---
@@ -153,7 +190,10 @@ https://strateger.onrender.com
 
 ### הגדרת מקצה / Qualifying Configuration
 
-בחר **Qualifying + Race**, ואז הגדר:
+מקצה הדירוג הוא **עץ החלטות מתקדם** בתוך מסך ההגדרות: קודם שאלה **כן / לא**, ורק אם ענית **כן** נפתחים שלבי המשך (פורמט → נהגים → משך → כלל פיט) כאריחי אייקונים. חזרה ל-**לא** מסתירה את העץ. משך מקצה **ריק = כבוי**. יחידות ותצוגה מקדימה מתורגמות לשפה הנבחרת.  
+*Qualifying is a progressive decision tree: Yes/No first, then format, drivers, duration, pit rule. Back to No hides it; empty duration = off.*
+
+הגדר:
 
 | הגדרה | Setting | אפשרויות / Options |
 |---|---|---|
@@ -197,8 +237,8 @@ https://strateger.onrender.com
 
 ## 4. תחילת מירוץ / Starting the Race
 
-1. לאחר הגדרות + נהגים → **Preview Strategy** (אופציונלי)
-2. לחץ **START RACE** / **התחל מירוץ**
+1. לאחר הגדרות + נהגים → **Preview and start** (תצוגה מקדימה לפני התחלה)
+2. לחץ **START RACE** / **התחל מירוץ** ואשר בחלון האישור
 3. המסך עובר ל**לוח מחוונים חי**
 
 **מה קורה ברקע:**  
@@ -223,12 +263,18 @@ https://strateger.onrender.com
 | **🔥 PUSH** | קצב | מצב דחיפה — מקצר יעד סטינט |
 | **🐢 PROBLEM** | תקלה | מצב תקלה — מאריך יעד סטינט |
 | **ENTER PIT** | כניסה לפיטס | כפתור ראשי — כניסה לפיט |
+| **Phase steps** | שלבי מירוץ | רצועת שלבים + סלוט ל"הפעולה הבאה" |
+| **🌧 Rain / Dry** | גשם / יבש | החלפת תוכנית לגשם/יבש |
+| **💬 Chat** | צ׳אט | אייקון בכותרת עם תג הודעות שלא נקראו |
+| **Pace** | קצב | PUSH / PROBLEM (ראה למטה) — עם הסבר בלחיצה |
 
 ![Race dashboard — English laptop](screenshots/03-laptop-race-dashboard-en.png)
 *Laptop · English · Live race dashboard at race start*
 
 ![Race dashboard — Hebrew laptop](screenshots/12-laptop-race-dashboard-he.png)
 *Laptop · Hebrew (RTL) · Live race dashboard*
+
+> **עדכוני מסך מירוץ:** בטלפון/טאבלט **לאורך (portrait)** שעון הסטינט ראשון, כפתור הפיט **מוצמד** למטה, וסרגל תזמון חי מסודר. בטאבלט — שש אריחי סטטיסטיקה בשורה אחת. הנקודה האדומה הכפולה של LIVE הוסתרה (תזמון חי כבר מציג LIVE).
 
 ### מצבי PUSH / PROBLEM
 
@@ -268,6 +314,10 @@ On Track  →  ENTER PIT  →  IN PIT (timer)  →  Exit Pits  →  Next driver 
 
 ![Pit stop in progress](screenshots/05-laptop-pit-stop-en.png)
 
+> **בחירת הנהג הבא:** בטאבלט — לחיצה על נהג **מחליפה** את הנהג הבא, וה**תוכנית נכתבת מחדש** בהתאם. התאמת זמן הפיט היא בשני כפתורים (פחות/יותר) עם **גודל צעד** לבחירה.  
+> **Exit Pits במכשירים איטיים:** הכפתור מגיב גם בשחרור המצביע (עם debounce), כך שלחיצה לא הולכת לאיבוד כשהדף מצייר מחדש. אם **תזמון חי** חוסם יציאה ידנית — מופיעה הודעה, ו**לחיצה שנייה תוך 4 שניות כופה** את היציאה — הנהג אף פעם לא נתקע במסך הפיט.  
+> **אזהרת כניסה לפיט** נספרת לאחור מהסטינט המתוכנן (in-lap אופציונלי, עובד גם בלי max stint).
+
 #### שלב 3 — יציאה מהפיט / Exit Pit
 
 1. לחץ **Exit Pits**
@@ -292,6 +342,8 @@ On Track  →  ENTER PIT  →  IN PIT (timer)  →  Exit Pits  →  Next driver 
 
 Strateger does **not** force you to follow the plan exactly.  
 It **adapts the remaining plan** based on actual timestamps while respecting race parameters.
+
+> **סטינטים שכבר נוהגו ננעלים:** אחרי כל פיט התוכנית של **הסטינטים שנותרו** מחושבת מחדש; אם תקרת הסטינט דורשת — **נוספת עצירה**. ה-NOW pill צבוע לפי max / min / regular כמו העתידיים, וסטינטים קרובים ל-max/min מקובצים עם משכיהם **האמיתיים**.
 
 ### איך זה עובד / How It Works
 
@@ -438,6 +490,7 @@ Timeline:
 | ENTER PIT visible | ✅ | ✅ | ✅ (scroll) |
 | PLAN timeline | ✅ full | ✅ scroll | ⚠️ compact |
 | Hebrew RTL | ✅ | ✅ | ✅ |
+| Appearance picker | חלון ממורכז, 6 עמודות | חלון ממורכז, 6 עמודות | **גיליון תחתון**, 3 עמודות |
 | Recommended use | Planning | **Trackside** | Backup |
 
 ---
@@ -643,6 +696,18 @@ Live timing is **not a floating popup**. It lives in its **own dock** at the top
 | **Phone** | Prefer **filter to your team only** — one row, no long scroll |
 | **All** | Drag panels in `raceInfoPanel` if needed — pit button stays pinned at bottom |
 
+### עדכוני תזמון חי / Live Timing Updates
+
+| יכולת | Feature | פרטים |
+|---|---|---|
+| **מתג תצוגה** | View switch | כפתור בכותרת מחליף בין **אריחים / דירוג / שניהם**; נזכר לכל מכשיר |
+| **העמוד המקורי** | Original page view | זמין לכל הספקים; ממלא את כל הווידג׳ט (מסתיר אריחי סטטיסטיקה) |
+| **איזו מכונית שלך** | Car filter | התאמה לפי **קבוצה / קארט / נהג / הצג הכול**, עם טקסט עזרה; **Team picker** לבחירה מהרשימה |
+| **שעון** | Clock sync | שעון המירוץ עוקב אחרי שעון התזמון: סטיות קטנות מעגנות מחדש; פיד ארוך מאריך את המירוץ; הפרש של 10+ דק׳ לא מיושם. מתג ליד השעון |
+| **גובה** | Resizable | ידית גובה בכל פריסה (גם טלפון) ונשמרת |
+| **פאנל ריק** | Empty panel | "Not connected" ניתן להסתרה; צ׳יפ מחזיר |
+| **עדכון מתצלום** | Photo update | עדכון מצב מתצלום של מסך התזמון (זיהוי הקבוצה שלך בתמונה) |
+
 ### Auto-Pit (Optional)
 
 When live timing detects pit in/out, **Auto-Pit** can call ENTER PIT / Exit Pits for you.  
@@ -650,5 +715,114 @@ Always verify **STRATEGY OUTLOOK** after auto events — same recalc rules apply
 
 ---
 
-*מדריך זה נוצר מסימולציה חיה ב-strateger.onrender.com · יולי 2026*  
-*This guide was created from live simulation at strateger.onrender.com · July 2026*
+## 14. מראה וערכות נושא / Appearance & Themes
+
+**ערכת הנושא צובעת את כל האפליקציה** — כותרת, כרטיסים, חלונות, תפריטים, כפתורים והדגשות — בכל המכשירים (טלפון, טאבלט, מחשב). לא רק את הרקע מאחור.  
+*A theme recolours the whole app on every device — header, cards, dialogs, menus, buttons and highlights — not just the page background.*
+
+### איך פותחים / How to Open
+
+☰ **תפריט** ← **מראה** (**Appearance**, אייקון 🎨). Esc, ✕, לחיצה על הרקע או **Close** סוגרים.
+
+### מה בחלון / What's in the Panel
+
+| אזור | Area | תיאור |
+|---|---|---|
+| **תצוגה מקדימה חיה** | Live preview | אפליקציה מוקטנת בצבעי הערכה. במחשב — **מעבר עכבר** (או מקש Tab) על ערכה מציג אותה **בלי להחיל**; לחיצה מחילה |
+| **מסנן קבוצות** | Group chips | **All · Classic · Dark tones · Vivid · Photo** |
+| **רשת ערכות** | Theme grid | כל ריבוע מציג את הרקע + **פס בצבע הפאנל** + **נקודת הדגשה** — רואים את צבעי הממשק, לא רק את הרקע |
+| **Lite mode** | מצב קל | Auto / On / Off — פחות אנימציות ואפקטים, מועיל בטאבלטים איטיים |
+| **Custom photo** | תמונה אישית | העלאת תמונה משלך (JPG/PNG/WebP עד 5MB) — **Pro** |
+| **Reset to default** | איפוס | חזרה לערכה הרגילה |
+
+### 40 ערכות / The 40 Themes
+
+| קבוצה | Group | ערכות |
+|---|---|---|
+| **Classic** (6) | קלאסי | Default · Pure Black · Carbon · Tarmac · Flag · Pit Lane |
+| **Dark tones** (14) | גוונים כהים | Night · Midnight · Deep Red · Forest · Purple · Pink · Amber · Sunset · Racing Red · Martini · Ferrari · Papaya · Volcanic · Neon |
+| **Vivid** (12) | עזים | Ice · Teal · Bronze · Toxic · Royal · Blood Moon · Solar · Lightning · Cyan · Magenta · Chrome · Jade |
+| **Photo** (8, **Pro**, דורש אינטרנט) | תמונה | Race · Night Race · Pit Stop · Onboard · Wet Race · Starting Grid · Speed Blaze · Helmet |
+
+כל השמות, הכותרות והטקסטים בחלון מתורגמים ל-**12 השפות**.
+
+### מה בדיוק משתנה בצבע / What Actually Changes Colour
+
+כל ערכה מגדירה **4 צבעים** — ראשי, פאנל, מסגרת, **הדגשה (accent)** — ומהם נגזר כל השאר:
+
+| צבע | Token | משפיע על |
+|---|---|---|
+| **ראשי** | `--n950` / `navy-950` | רקע המסכים (הגדרות, מירוץ, תצוגה מקדימה, מודאלים) |
+| **פאנל** | `--n900` / `navy-900` | כותרת, כרטיסים, שורת המידע, חלונות, תפריטים |
+| **משני** | `--n800`, `--n700` | משטחים מוגבהים, מצב hover, כפתורים משניים (נגזר מפאנל + מסגרת) |
+| **מסגרת** | `--g600/700/800` | גבולות וקווי הפרדה בכל האפליקציה |
+| **הדגשה** | `--accent-rgb` / `ice` | כפתורי פעולה, טאב פעיל, פוקוס, קישורים, ריבוע נבחר |
+
+עוד: צבע שורת הדפדפן בטלפון (`theme-color`) עוקב אחרי הפאנל; ערכות Photo ו-Custom photo משתמשות בפאלטה **כמעט שחורה** כדי שהטקסט יישאר קריא על כל תמונה.
+
+### בכל סוג מסך / On Each Device
+
+| | **טלפון / Phone** | **טאבלט / Tablet** | **מחשב / Desktop** |
+|---|---|---|---|
+| **החלון** | **גיליון תחתון** (bottom sheet) עם ידית, עד 92% גובה | כרטיס ממורכז | כרטיס ממורכז רחב יותר (עד 780px) |
+| **רשת** | 3 עמודות (4 מ-480px) | 6 עמודות | 6 עמודות |
+| **אחרי בחירה** | נסגר אוטומטית כדי **לחשוף את התוצאה** | נשאר פתוח — אפשר להשוות | נשאר פתוח + תצוגה מקדימה במעבר עכבר |
+| **תצוגה מקדימה** | נמוכה (84px) | 150px | 150px (96px במסך נמוך) |
+| **מגע** | כפתורים ≥ 40–44px | | |
+
+![Appearance — Phone (Forest)](screenshots/24-phone-appearance-forest-en.jpg)
+*Phone · bottom sheet · Forest theme*
+
+![Home — Phone (Forest)](screenshots/25-phone-home-forest-en.jpg)
+*Phone · the whole home screen follows the theme: header, cards, buttons and the accent colour*
+
+![Appearance — Tablet (Ferrari)](screenshots/22-tablet-appearance-ferrari-en.jpg)
+*Tablet · centred card · Ferrari theme*
+
+![Appearance — Laptop (Pink)](screenshots/23-laptop-appearance-pink-en.jpg)
+*Laptop · live preview + group chips · Pink theme*
+
+### נשמר ונטען / Saved & Restored
+
+- הבחירה נשמרת במכשיר (`strateger_bg`) ונטענת **לפני הציור הראשון** (בלי הבהוב) — לערכות צבע. ערכות Photo / Custom photo נטענות אחרי שסטטוס Pro ידוע; ללא Pro — חוזרים בשקט לברירת המחדל.
+- ערכות Photo ללא Pro: הריבוע מסומן 🔒; לחיצה פותחת את חלון השדרוג.
+- הערכה משפיעה גם על **מצב צפייה / נהג / צופה** באותו מכשיר.
+
+### פתרון בעיות / Troubleshooting
+
+| תסמין | פתרון |
+|---|---|
+| ערכת Photo לא נטענת | בדוק אינטרנט; הריבוע מציג רק את הפאלטה כשאין תמונה |
+| אחרי עדכון הצבעים נראים ישנים | רענן קשיח; ה-Service Worker מתעדכן לגרסה חדשה (cache 64) |
+| קשה לקרוא על ערכה עזה | בחר ערכה מ-**Classic / Dark tones**, או Photo (פאלטה כהה) |
+
+---
+
+## 15. מה השתנה מאז v1.0 / What Changed Since v1.0
+
+סיכום שינויים מאז מדריך 1.0 (יולי 2026). פירוט במקומות הרלוונטיים למעלה.
+
+| תחום | Area | שינוי |
+|---|---|---|
+| **דף הבית** | Home | אסטרטגיות שמורות כרטיסים, כרטיס Resume עם **Edit**, תאריכים ומחרוזות מתורגמים |
+| **הגדרות** | Setup | עמוד אחד, עמודה אחת, accordion (פתוח אחד), שורת Start מוצמדת, הנהג העליון = STARTER; **אשף ההגדרה המודרך הוסר** |
+| **מירוץ** | Race target | יעד **זמן או הקפות**; משך ב-ש:דק׳; שדות ריקים = כבוי; Fast pits; "No required stops" |
+| **חוקים** | Rules | Every driver drives, Sit-out לנהג, חלונות סגורים עם נתיב, החלפת כיוון (שעה / חצי מירוץ), כרטיס חוקים מותאמים, בדיקת תקנון, הצעת חוקים מ-AI |
+| **מקצה דירוג** | Qualifying | עץ החלטות עם כן/לא ואריחים |
+| **תוכנית** | Planning | max−1, נעילת סטינטים שנוהגו, הוספת עצירה כשצריך, סיכום Outlook מקובץ, החלפת גשם/יבש |
+| **תצוגה מקדימה** | Preview | גרירה דרך grip בלבד, שורות דחוסות, שורת סיכום מוצמדת, אישור התחלה, ייצוא דוח נקי |
+| **שמירה** | Save | מכשיר/ענן, שמירה אוטומטית בעלת שם, **התאוששות מקריסה** (מירוץ + סקוואדים) |
+| **סקוואדים** | Squads | שחזור אותיות/חלונות/שיבוץ אחרי טעינה; הגדרת **שינה מינימלית** והצעת חלון ("Suggest window") שמכסה את הלילה; שורת סקוואד רק במצב לילה |
+| **שיתוף** | Delegate | **האצלה (co-admin):** קישורי הזמנה ללא הגבלה מתפריט ☰, הרשאות לכל הזמנה (פיט, זמן פיט, נהג הבא, קצב/סקוואדים, סיום, צ׳אט), נערכות בזמן אמת וניתנות לביטול; המארח מאמת כל פקודה |
+| **צ׳אט** | Chat | כפתור בכותרת + תג, נפתח מעל ווידג׳ט התזמון |
+| **תזמון חי** | Live timing | מתג תצוגה, עמוד מקורי לכל הספקים, בורר קבוצה, סנכרון שעון, עדכון מתצלום (§13) |
+| **טאבלט** | Tablet | שש אריחים בשורה, ריווח צפוף, החלפת נהג הבא בלחיצה, תיקון Exit Pits |
+| **חיפוש מיקום** | Location | שורה אחת לכל אתר, ערים/עיירות/מסלולים, איחוד תוצאות בתוך 1 ק״מ |
+| **מראה** | Appearance | **עבודה מחדש מלאה** — 40 ערכות, הצבע משפיע על כל הממשק בכל מכשיר (§14) |
+| **שפות** | Languages | כל טקסט חדש ב-**12 שפות**; ביקורת מלאה ליוונית |
+| **פלטפורמה** | Platform | web + PWA בלבד (ללא עטיפת Android/iOS) |
+
+---
+
+*מדריך זה נוצר מסימולציה חיה ב-strateger.onrender.com · יולי 2026 · עודכן נובמבר 2026 (v1.1)*  
+*This guide was created from live simulation at strateger.onrender.com · July 2026 · updated November 2026 (v1.1)*

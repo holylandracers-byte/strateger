@@ -2988,6 +2988,8 @@ window.setLanguage = function(lang) {
     });
 
     document.querySelectorAll('[data-i18n-aria]').forEach(el => { el.setAttribute('aria-label', window.t(el.getAttribute('data-i18n-aria'))); });
+    // Phrase-table strings (js/i18n-*.js, window.tt): data-i18n-phrase="English text"
+    document.querySelectorAll('[data-i18n-phrase]').forEach(el => { if (typeof window.tt === 'function') el.textContent = window.tt(el.getAttribute('data-i18n-phrase')); });
     // Tooltips: data-i18n-title
     document.querySelectorAll('[data-i18n-title]').forEach(el => { el.title = window.t(el.getAttribute('data-i18n-title')); });
 

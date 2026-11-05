@@ -48,15 +48,17 @@
     <script src="js/live-timing-manager.js?v=9"></script>
     <script src="js/qualifying.js?v=13"></script>
 
-    <link rel="stylesheet" href="css/style.css?v=72">
+    <link rel="stylesheet" href="css/style.css?v=76">
+    <script src="js/themes.js?v=1"></script>
 
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     colors: {
-                        navy: { 950: '#020617', 900: '#0f172a', 800: '#1e293b', 700: '#334155' },
-                        ice: '#22d3ee', neon: '#a3e635', danger: '#ef4444', fuel: '#f97316',
+                        navy: { 950: 'rgb(var(--n950) / <alpha-value>)', 900: 'rgb(var(--n900) / <alpha-value>)', 800: 'rgb(var(--n800) / <alpha-value>)', 700: 'rgb(var(--n700) / <alpha-value>)' },
+                        gray: { 600: 'rgb(var(--g600) / <alpha-value>)', 700: 'rgb(var(--g700) / <alpha-value>)', 800: 'rgb(var(--g800) / <alpha-value>)' },
+                        ice: 'rgb(var(--accent-rgb) / <alpha-value>)', neon: '#a3e635', danger: '#ef4444', fuel: '#f97316',
                         squadA: '#3b82f6', squadB: '#06b6d4', squadC: '#a855f7', squadD: '#f97316', live: '#ef4444',
                         gold: '#fbbf24', silver: '#9ca3af', bronze: '#f97316'
                     },
@@ -1865,23 +1867,50 @@
         </div>
     </div>
 
-    <!-- ==================== THEME PICKER PANEL ==================== -->
-    <div id="themePanel" class="hidden fixed inset-0 z-[55] flex items-center justify-center p-4" onclick="if(event.target===this)window.toggleThemePanel()">
+    <!-- ==================== APPEARANCE PANEL ==================== -->
+    <div id="themePanel" class="hidden fixed inset-0 z-[55] flex items-end sm:items-center justify-center p-0 sm:p-4" role="dialog" aria-modal="true" aria-labelledby="themePanelTitle" onclick="if(event.target===this)window.toggleThemePanel()">
         <div class="theme-panel-modal animate-fade-in-scale">
-            <!-- Header -->
-            <div class="flex items-center justify-between mb-5">
-                <div>
-                    <h3 class="text-white text-lg font-bold flex items-center gap-2">
+            <div class="tp-grab" aria-hidden="true"></div>
+            <div class="tp-head">
+                <div class="min-w-0">
+                    <h3 id="themePanelTitle" class="text-white text-lg font-bold flex items-center gap-2">
                         <i class="fas fa-palette text-ice"></i>
-                        <span data-i18n="lblAppearance">Appearance</span>
+                        <span data-i18n="appearance">Appearance</span>
                     </h3>
-                    <p class="text-xs text-gray-500 mt-0.5">Choose a background theme for your race</p>
+                    <p class="tp-sub" data-i18n-phrase="The theme recolours the whole app: header, cards, buttons and highlights.">The theme recolours the whole app: header, cards, buttons and highlights.</p>
                 </div>
-                <button onclick="window.toggleThemePanel()" class="w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 text-gray-400 hover:text-white transition flex items-center justify-center text-sm">✕</button>
+                <button type="button" onclick="window.toggleThemePanel()" class="tp-close" data-i18n-aria="close" aria-label="Close">✕</button>
             </div>
 
-            <!-- Scrollable content -->
+            <div id="tpPreview" class="tp-preview" aria-hidden="true"></div>
+            <div id="tpChips" class="tp-chips" role="tablist"></div>
+
             <div class="theme-panel-scroll">
+                <!-- Theme groups are rendered by js/themes.js -->
+                <div id="tpGroups"></div>
+
+                <!-- ─── Custom Photo (Pro) ─── -->
+                <section class="tp-group" id="customPhotoSection">
+                    <div class="theme-category-label"><span class="theme-category-icon">🖼️</span> <span data-i18n-phrase="Custom photo">Custom photo</span> <span class="tp-note">PRO</span></div>
+                    <div id="customPhotoProGate" class="hidden tp-gate">
+                        <i class="fas fa-lock text-gold"></i>
+                        <span data-i18n-phrase="Upgrade to Pro to upload your own race photo background.">Upgrade to Pro to upload your own race photo background.</span>
+                        <button type="button" onclick="window.showProGate('Custom Photo')" class="text-ice underline" data-i18n-phrase="Upgrade">Upgrade</button>
+                    </div>
+                    <div id="customPhotoUploadArea">
+                        <label id="customPhotoLabel" class="tp-upload">
+                            <i class="fas fa-cloud-upload-alt text-2xl text-gray-500"></i>
+                            <span data-i18n-phrase="Upload your photo (JPG/PNG, max 5MB)">Upload your photo (JPG/PNG, max 5MB)</span>
+                            <input type="file" id="customPhotoInput" accept="image/jpeg,image/png,image/webp" class="hidden" onchange="window.applyCustomPhoto(this)">
+                        </label>
+                        <div id="customPhotoPreview" class="hidden mt-2 relative rounded-xl overflow-hidden">
+                            <img id="customPhotoImg" src="" alt="" class="w-full h-28 object-cover rounded-xl">
+                            <button type="button" onclick="window.clearCustomPhoto()" class="absolute top-1 right-1 bg-black/70 text-white rounded-full w-7 h-7 flex items-center justify-center text-xs hover:bg-black/90" data-i18n-aria="close" aria-label="Close">✕</button>
+                            <button type="button" onclick="window.setPageBackground('custom-photo')" class="absolute bottom-1 left-1 right-1 bg-ice/90 text-black font-bold text-[11px] py-1.5 rounded-lg" data-i18n-phrase="Apply">Apply</button>
+                        </div>
+                    </div>
+                </section>
+
                 <div class="lite-setting">
                     <div>
                         <div class="lite-title" data-i18n="xLiteMode">Lite mode</div>
@@ -1893,227 +1922,11 @@
                         <button type="button" class="wz-seg-btn" data-lite-opt="off" onclick="window.setLiteMode('off')" data-i18n="xLiteOff">Off</button>
                     </div>
                 </div>
-                <!-- ─── CSS Themes ─── -->
-                <div class="theme-category-label">
-                    <span class="theme-category-icon">🎨</span> Design Themes
-                </div>
-                <div id="bgSwatches" class="theme-grid">
-                    <button class="theme-swatch bg-swatch active" data-bg="" onclick="window.setPageBackground('')">
-                        <div class="theme-preview" style="background: linear-gradient(135deg, #020617 50%, #1e293b 100%);"></div>
-                        <span class="theme-label">Default</span>
-                    </button>
-                    <button class="theme-swatch bg-swatch" data-bg="checkered" onclick="window.setPageBackground('checkered')">
-                        <div class="theme-preview" style="background-color:#111; background-image: repeating-conic-gradient(#222 0% 25%, #111 0% 50%); background-size: 10px 10px;"></div>
-                        <span class="theme-label">🏁 Flag</span>
-                    </button>
-                    <button class="theme-swatch bg-swatch" data-bg="carbon" onclick="window.setPageBackground('carbon')">
-                        <div class="theme-preview" style="background: repeating-linear-gradient(45deg, #0a0a0a, #0a0a0a 2px, #151515 2px, #151515 4px);"></div>
-                        <span class="theme-label">Carbon</span>
-                    </button>
-                    <button class="theme-swatch bg-swatch" data-bg="tarmac" onclick="window.setPageBackground('tarmac')">
-                        <div class="theme-preview" style="background: #181818; background-image: url('data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%224%22 height=%224%22><rect width=%224%22 height=%224%22 fill=%22%23181818%22/><rect width=%221%22 height=%221%22 x=%220%22 y=%220%22 fill=%22%23202020%22 /><rect width=%221%22 height=%221%22 x=%222%22 y=%222%22 fill=%22%23141414%22 /></svg>'); position: relative;">
-                            <div style="position:absolute;top:48%;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#fff3,transparent)"></div>
-                        </div>
-                        <span class="theme-label">Tarmac</span>
-                    </button>
-                    <button class="theme-swatch bg-swatch" data-bg="neon-grid" onclick="window.setPageBackground('neon-grid')">
-                        <div class="theme-preview" style="background-color:#050510; background-image: linear-gradient(rgba(0,255,200,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(0,255,200,0.1) 1px, transparent 1px); background-size: 8px 8px;"></div>
-                        <span class="theme-label">🔲 Neon</span>
-                    </button>
-                    <button class="theme-swatch bg-swatch" data-bg="black" onclick="window.setPageBackground('black')">
-                        <div class="theme-preview" style="background:#000; border: 1px solid #222;"></div>
-                        <span class="theme-label">Pure Black</span>
-                    </button>
-                    <button class="theme-swatch bg-swatch" data-bg="pit-lane" onclick="window.setPageBackground('pit-lane')">
-                        <div class="theme-preview" style="background:#0c0c0c; position:relative;">
-                            <div style="position:absolute;bottom:0;left:0;right:0;height:6px;background:repeating-linear-gradient(90deg,#d4a017 0,#d4a017 6px,#111 6px,#111 12px)"></div>
-                        </div>
-                        <span class="theme-label">⚠️ Pit Lane</span>
-                    </button>
-                    <button class="theme-swatch bg-swatch" data-bg="night-circuit" onclick="window.setPageBackground('night-circuit')">
-                        <div class="theme-preview" style="background: radial-gradient(ellipse at 30% 80%, rgba(34,211,238,0.18) 0%, transparent 55%), radial-gradient(ellipse at 70% 20%, rgba(168,85,247,0.14) 0%, transparent 55%), #050a12;"></div>
-                        <span class="theme-label">🌙 Night</span>
-                    </button>
-                    <button class="theme-swatch bg-swatch" data-bg="stripes-red" onclick="window.setPageBackground('stripes-red')">
-                        <div class="theme-preview" style="background: linear-gradient(180deg, #0a0000 0%, #300808 50%, #0a0000 100%); position:relative;">
-                            <div style="position:absolute;top:42%;left:0;right:0;height:4px;background:#cc0000"></div>
-                            <div style="position:absolute;top:56%;left:0;right:0;height:2px;background:#cc0000"></div>
-                        </div>
-                        <span class="theme-label">🏎️ Racing Red</span>
-                    </button>
-                    <button class="theme-swatch bg-swatch" data-bg="midnight-blue" onclick="window.setPageBackground('midnight-blue')">
-                        <div class="theme-preview" style="background: linear-gradient(180deg, #020820 0%, #0a1640 50%, #020820 100%);"></div>
-                        <span class="theme-label">🌊 Midnight</span>
-                    </button>
-                    <button class="theme-swatch bg-swatch" data-bg="deep-red" onclick="window.setPageBackground('deep-red')">
-                        <div class="theme-preview" style="background: linear-gradient(180deg, #1a0505 0%, #2d0a0a 50%, #1a0505 100%);"></div>
-                        <span class="theme-label">🔴 Deep Red</span>
-                    </button>
-                    <button class="theme-swatch bg-swatch" data-bg="forest" onclick="window.setPageBackground('forest')">
-                        <div class="theme-preview" style="background: linear-gradient(180deg, #051a0a 0%, #0a2d15 50%, #051a0a 100%);"></div>
-                        <span class="theme-label">🌲 Forest</span>
-                    </button>
-                    <button class="theme-swatch bg-swatch" data-bg="purple-night" onclick="window.setPageBackground('purple-night')">
-                        <div class="theme-preview" style="background: linear-gradient(180deg, #0d0520 0%, #1a0a35 50%, #0d0520 100%);"></div>
-                        <span class="theme-label">🟣 Purple</span>
-                    </button>
-                    <button class="theme-swatch bg-swatch" data-bg="hot-pink" onclick="window.setPageBackground('hot-pink')">
-                        <div class="theme-preview" style="background: linear-gradient(180deg, #150005 0%, #3a0a28 50%, #150005 100%);"></div>
-                        <span class="theme-label">🌸 Pink</span>
-                    </button>
-                    <button class="theme-swatch bg-swatch" data-bg="amber-heat" onclick="window.setPageBackground('amber-heat')">
-                        <div class="theme-preview" style="background: linear-gradient(180deg, #1a1000 0%, #2d1a05 50%, #1a1000 100%);"></div>
-                        <span class="theme-label">🔥 Amber</span>
-                    </button>
-                    <button class="theme-swatch bg-swatch" data-bg="sunset-racing" onclick="window.setPageBackground('sunset-racing')">
-                        <div class="theme-preview" style="background: linear-gradient(180deg, #1a0520 0%, #4a1a08 50%, #1a0520 100%);"></div>
-                        <span class="theme-label">🌅 Sunset</span>
-                    </button>
-                    <button class="theme-swatch bg-swatch" data-bg="martini-stripe" onclick="window.setPageBackground('martini-stripe')">
-                        <div class="theme-preview" style="background: linear-gradient(180deg, #0e0e14 44%, #1a3a6e 44.5%, #1a3a6e 47%, #cc2222 47.5%, #cc2222 50.5%, #1a3a6e 51%, #1a3a6e 53.5%, #0e0e14 54%);"></div>
-                        <span class="theme-label">🏎️ Martini</span>
-                    </button>
-                    <button class="theme-swatch bg-swatch" data-bg="ferrari-rosso" onclick="window.setPageBackground('ferrari-rosso')">
-                        <div class="theme-preview" style="background: linear-gradient(180deg, #0e0000 0%, #4a0a0a 50%, #0e0000 100%);"></div>
-                        <span class="theme-label">🐎 Ferrari</span>
-                    </button>
-                    <button class="theme-swatch bg-swatch" data-bg="mclaren-papaya" onclick="window.setPageBackground('mclaren-papaya')">
-                        <div class="theme-preview" style="background: linear-gradient(180deg, #100800 0%, #4a2a0a 50%, #100800 100%);"></div>
-                        <span class="theme-label">🟠 McLaren</span>
-                    </button>
-                    <button class="theme-swatch bg-swatch" data-bg="volcanic" onclick="window.setPageBackground('volcanic')">
-                        <div class="theme-preview" style="background: linear-gradient(180deg, #0a0000 0%, #401005 50%, #0a0000 100%);"></div>
-                        <span class="theme-label">🌋 Volcanic</span>
-                    </button>
-                    <button class="theme-swatch bg-swatch" data-bg="ice-blue" onclick="window.setPageBackground('ice-blue')">
-                        <div class="theme-preview" style="background: linear-gradient(180deg, #001830 0%, #0055aa 50%, #001830 100%);"></div>
-                        <span class="theme-label">🧊 Ice Blue</span>
-                    </button>
-                    <button class="theme-swatch bg-swatch" data-bg="teal-circuit" onclick="window.setPageBackground('teal-circuit')">
-                        <div class="theme-preview" style="background: linear-gradient(180deg, #001a1a 0%, #00a0a0 50%, #001a1a 100%);"></div>
-                        <span class="theme-label">🩵 Teal</span>
-                    </button>
-                    <button class="theme-swatch bg-swatch" data-bg="bronze-age" onclick="window.setPageBackground('bronze-age')">
-                        <div class="theme-preview" style="background: linear-gradient(180deg, #1a0e00 0%, #a05a00 50%, #1a0e00 100%);"></div>
-                        <span class="theme-label">🥉 Bronze</span>
-                    </button>
-                    <button class="theme-swatch bg-swatch" data-bg="toxic-green" onclick="window.setPageBackground('toxic-green')">
-                        <div class="theme-preview" style="background: linear-gradient(180deg, #001500 0%, #009900 50%, #001500 100%);"></div>
-                        <span class="theme-label">☢️ Toxic</span>
-                    </button>
-                    <button class="theme-swatch bg-swatch" data-bg="royal-navy" onclick="window.setPageBackground('royal-navy')">
-                        <div class="theme-preview" style="background: linear-gradient(180deg, #000033 0%, #1a1acc 50%, #000033 100%);"></div>
-                        <span class="theme-label">👑 Royal</span>
-                    </button>
-                    <button class="theme-swatch bg-swatch" data-bg="blood-moon" onclick="window.setPageBackground('blood-moon')">
-                        <div class="theme-preview" style="background: radial-gradient(ellipse at 50% 35%, #cc0000 0%, #1a0000 100%);"></div>
-                        <span class="theme-label">🌑 Blood Moon</span>
-                    </button>
-                    <button class="theme-swatch bg-swatch" data-bg="solar-flare" onclick="window.setPageBackground('solar-flare')">
-                        <div class="theme-preview" style="background: linear-gradient(180deg, #1a0d00 0%, #ff9900 50%, #1a0d00 100%);"></div>
-                        <span class="theme-label">☀️ Solar</span>
-                    </button>
-                    <button class="theme-swatch bg-swatch" data-bg="electric-yellow" onclick="window.setPageBackground('electric-yellow')">
-                        <div class="theme-preview" style="background: linear-gradient(180deg, #111100 0%, #aaaa00 50%, #111100 100%);"></div>
-                        <span class="theme-label">⚡ Yellow</span>
-                    </button>
-                    <button class="theme-swatch bg-swatch" data-bg="cyan-surge" onclick="window.setPageBackground('cyan-surge')">
-                        <div class="theme-preview" style="background: linear-gradient(180deg, #001515 0%, #00ffff 50%, #001515 100%);"></div>
-                        <span class="theme-label">🩵 Cyan</span>
-                    </button>
-                    <button class="theme-swatch bg-swatch" data-bg="magenta-wave" onclick="window.setPageBackground('magenta-wave')">
-                        <div class="theme-preview" style="background: linear-gradient(180deg, #150015 0%, #cc00cc 50%, #150015 100%);"></div>
-                        <span class="theme-label">💜 Magenta</span>
-                    </button>
-                    <button class="theme-swatch bg-swatch" data-bg="silver-chrome" onclick="window.setPageBackground('silver-chrome')">
-                        <div class="theme-preview" style="background: linear-gradient(180deg, #0a0a0a 0%, #aaaaaa 50%, #0a0a0a 100%);"></div>
-                        <span class="theme-label">🪙 Chrome</span>
-                    </button>
-                    <button class="theme-swatch bg-swatch" data-bg="jade-dragon" onclick="window.setPageBackground('jade-dragon')">
-                        <div class="theme-preview" style="background: linear-gradient(180deg, #001a0d 0%, #00cc66 50%, #001a0d 100%);"></div>
-                        <span class="theme-label">🐉 Jade</span>
-                    </button>
-                </div>
+            </div>
 
-                <!-- ─── Photo Themes ─── -->
-                <div class="theme-category-label mt-4">
-                    <span class="theme-category-icon">📸</span> Photo Themes
-                    <span class="text-[11px] text-gray-600 font-normal ml-2">requires internet</span>
-                </div>
-                <div class="theme-grid">
-                    <button class="theme-swatch bg-swatch" data-bg="kart-race" onclick="window.setPageBackground('kart-race')">
-                        <div class="theme-preview overflow-hidden">
-                            <img src="https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=400&q=60" class="w-full h-full object-cover" loading="lazy" onerror="this.style.display='none'">
-                        </div>
-                        <span class="theme-label">🏎️ Race</span>
-                    </button>
-                    <button class="theme-swatch bg-swatch" data-bg="kart-night" onclick="window.setPageBackground('kart-night')">
-                        <div class="theme-preview overflow-hidden">
-                            <img src="https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?auto=format&fit=crop&w=400&q=60" class="w-full h-full object-cover" loading="lazy" onerror="this.style.display='none'">
-                        </div>
-                        <span class="theme-label">🌙 Night Race</span>
-                    </button>
-                    <button class="theme-swatch bg-swatch" data-bg="kart-pit" onclick="window.setPageBackground('kart-pit')">
-                        <div class="theme-preview overflow-hidden">
-                            <img src="https://images.unsplash.com/photo-1541348263662-e068662d82af?auto=format&fit=crop&w=400&q=60" class="w-full h-full object-cover" loading="lazy" onerror="this.style.display='none'">
-                        </div>
-                        <span class="theme-label">🔧 Pit Stop</span>
-                    </button>
-                    <button class="theme-swatch bg-swatch" data-bg="kart-onboard" onclick="window.setPageBackground('kart-onboard')">
-                        <div class="theme-preview overflow-hidden">
-                            <img src="https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=400&q=60" class="w-full h-full object-cover" loading="lazy" onerror="this.style.display='none'">
-                        </div>
-                        <span class="theme-label">🎥 Onboard</span>
-                    </button>
-                    <button class="theme-swatch bg-swatch" data-bg="kart-wet" onclick="window.setPageBackground('kart-wet')">
-                        <div class="theme-preview overflow-hidden">
-                            <img src="https://images.unsplash.com/photo-1543466835-00a7b8755b4c?auto=format&fit=crop&w=400&q=60" class="w-full h-full object-cover" loading="lazy" onerror="this.style.display='none'">
-                        </div>
-                        <span class="theme-label">🌧️ Wet Race</span>
-                    </button>
-                    <button class="theme-swatch bg-swatch" data-bg="kart-grid" onclick="window.setPageBackground('kart-grid')">
-                        <div class="theme-preview overflow-hidden">
-                            <img src="https://images.unsplash.com/photo-1504707748692-419802cf939d?auto=format&fit=crop&w=400&q=60" class="w-full h-full object-cover" loading="lazy" onerror="this.style.display='none'">
-                        </div>
-                        <span class="theme-label">🚦 Starting Grid</span>
-                    </button>
-                    <button class="theme-swatch bg-swatch" data-bg="kart-blaze" onclick="window.setPageBackground('kart-blaze')">
-                        <div class="theme-preview overflow-hidden">
-                            <img src="https://images.unsplash.com/photo-1583394293214-fb28a5a16b6d?auto=format&fit=crop&w=400&q=60" class="w-full h-full object-cover" loading="lazy" onerror="this.style.display='none'">
-                        </div>
-                        <span class="theme-label">💨 Speed Blaze</span>
-                    </button>
-                    <button class="theme-swatch bg-swatch" data-bg="kart-helmet" onclick="window.setPageBackground('kart-helmet')">
-                        <div class="theme-preview overflow-hidden">
-                            <img src="https://images.unsplash.com/photo-1594398901-e69f3a2c1e23?auto=format&fit=crop&w=400&q=60" class="w-full h-full object-cover" loading="lazy" onerror="this.style.display='none'">
-                        </div>
-                        <span class="theme-label">🪖 Helmet</span>
-                    </button>
-                </div>
-
-                <!-- ─── Custom Photo (Pro) ─── -->
-                <div class="theme-category-label mt-4">
-                    <span class="theme-category-icon">🖼️</span> Custom Photo
-                    <span class="text-[11px] text-ice font-bold ml-2">PRO</span>
-                </div>
-                <div class="mt-2" id="customPhotoSection">
-                    <div id="customPhotoProGate" class="hidden text-[11px] text-gray-500 text-center py-2">
-                        <i class="fas fa-lock text-gold mr-1"></i> Upgrade to Pro to upload your own race photo background.
-                        <button onclick="window.showProGate('Custom Photo')" class="text-ice underline ml-1">Upgrade</button>
-                    </div>
-                    <div id="customPhotoUploadArea">
-                        <label id="customPhotoLabel" class="flex flex-col items-center justify-center gap-2 cursor-pointer border-2 border-dashed border-gray-600 hover:border-ice rounded-xl py-4 px-3 transition">
-                            <i class="fas fa-cloud-upload-alt text-2xl text-gray-500"></i>
-                            <span class="text-[11px] text-gray-400">Upload your photo (JPG/PNG, max 5MB)</span>
-                            <input type="file" id="customPhotoInput" accept="image/jpeg,image/png,image/webp" class="hidden" onchange="window.applyCustomPhoto(this)">
-                        </label>
-                        <div id="customPhotoPreview" class="hidden mt-2 relative rounded-xl overflow-hidden">
-                            <img id="customPhotoImg" src="" alt="Custom background" class="w-full h-28 object-cover rounded-xl">
-                            <button onclick="window.clearCustomPhoto()" class="absolute top-1 right-1 bg-black/70 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-black/90">✕</button>
-                            <button onclick="window.setPageBackground('custom-photo')" class="absolute bottom-1 left-1 right-1 bg-ice/90 text-black font-bold text-[11px] py-1 rounded-lg">Apply</button>
-                        </div>
-                    </div>
-                </div>
+            <div class="tp-foot">
+                <button type="button" class="tp-reset" onclick="window.setPageBackground('')"><i class="fas fa-rotate-left"></i> <span data-i18n-phrase="Reset to default">Reset to default</span></button>
+                <button type="button" class="tp-done" onclick="window.toggleThemePanel()" data-i18n="close">Close</button>
             </div>
         </div>
     </div>
@@ -2509,6 +2322,7 @@
     <script src="js/i18n-phrases3.js?v=6"></script>
     <script src="js/i18n-phrases4.js?v=2"></script>
     <script src="js/i18n-phrases5.js?v=3"></script>
+    <script src="js/i18n-themes.js?v=1"></script>
     <script src="js/auth.js?v=10"></script>
     <script src="js/network.js?v=11"></script>
     <script src="js/delegate.js?v=2"></script>
