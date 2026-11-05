@@ -48,8 +48,9 @@
     <script src="js/live-timing-manager.js?v=9"></script>
     <script src="js/qualifying.js?v=13"></script>
 
-    <link rel="stylesheet" href="css/style.css?v=77">
+    <link rel="stylesheet" href="css/style.css?v=80">
     <script src="js/themes.js?v=1"></script>
+    <script src="js/mobile-tabs.js?v=1"></script>
 
     <script>
         tailwind.config = {
@@ -965,7 +966,15 @@
         </div>
 
         <!-- SINGLE RACE DASHBOARD PANEL: all content in one scrollable area -->
-        <div id="racePanelsWrapper" class="flex-1 flex flex-col min-h-0 overflow-hidden">
+        <div id="racePanelsWrapper" data-mtab="plan" class="flex-1 flex flex-col min-h-0 overflow-hidden">
+
+            <!-- Phone / tablet-portrait section tabs (hidden by CSS elsewhere); see js/mobile-tabs.js -->
+            <nav id="mobileTabs" class="m-tabs" role="tablist">
+                <span class="m-tabs-pill" aria-hidden="true"></span>
+                <button type="button" role="tab" data-mtab="live" class="m-tab"><i class="fas fa-satellite-dish"></i><span data-i18n-phrase="Live">Live</span></button>
+                <button type="button" role="tab" data-mtab="plan" class="m-tab"><i class="fas fa-route"></i><span data-i18n-phrase="Plan">Plan</span><b id="mtabPlanDot" class="m-tab-dot hidden"></b></button>
+                <button type="button" role="tab" data-mtab="drivers" class="m-tab"><i class="fas fa-users"></i><span data-i18n-phrase="Drivers">Drivers</span></button>
+            </nav>
 
             <div id="raceInfoPanel" class="flex-1 min-h-0 overflow-y-auto p-2 space-y-2">
 
@@ -1001,6 +1010,11 @@
                             <button type="button" class="no-live-btn no-live-btn-alt" onclick="window.openTimingPage()" data-i18n="ltViewPage">View timing page</button>
                         </div>
                     </form>
+                    <!-- No timing link / old system: build and update the table from photos of the timing screen -->
+                    <div class="no-live-photo">
+                        <p class="no-live-help" data-i18n-phrase="No timing link? Upload photos of the timing screen. The first photo builds the table, every new photo updates it.">No timing link? Upload photos of the timing screen. The first photo builds the table, every new photo updates it.</p>
+                        <button type="button" class="no-live-btn no-live-btn-alt lt-photo-upload" onclick="window.pickLtPhoto()"><i class="fas fa-camera"></i> <span data-i18n-phrase="Upload timing photos">Upload timing photos</span></button>
+                    </div>
                     <div id="raceLtStatus" class="no-live-status" role="status" aria-live="polite"></div>
                 </div>
 
@@ -1025,7 +1039,7 @@
                             <!-- Force Pit Out: bypasses 20s guard and live timing auto-exit, shown only when in pit -->
                             <button id="forcePitOutBtn" onclick="window.forcePitOut()" class="hidden text-[11px] bg-amber-600 hover:bg-amber-500 text-white font-bold px-2 py-0.5 rounded border border-amber-400 transition" title="Force pit out now (override)">⚡ OUT</button>
                             <button id="ltPhotoBtn" type="button" onclick="window.pickLtPhoto()" class="text-[11px] bg-navy-700 border border-gray-600 text-gray-300 px-2 py-0.5 rounded" title="Update from a photo of the timing screen" aria-label="Update from a photo of the timing screen">&#128247;</button>
-                            <input id="ltPhotoInput" type="file" accept="image/*" class="hidden">
+                            <input id="ltPhotoInput" type="file" accept="image/*" multiple class="hidden">
                             <button id="ltMinBtn" type="button" onclick="window.toggleLtMin()" class="text-[11px] bg-navy-700 border border-gray-600 text-gray-300 px-2 py-0.5 rounded" title="Minimize live timing" aria-label="Minimize live timing">&#9644;</button>
                             <button id="ltHideBtn" type="button" onclick="window.setLtView('hidden')" class="text-[11px] bg-navy-700 border border-gray-600 text-gray-300 px-2 py-0.5 rounded" title="Hide live timing" aria-label="Hide live timing">&#128065;</button>
                             <button onclick="window.stopLiveTiming()" class="text-[11px] bg-red-900 text-white px-2 rounded" data-i18n="stop">Stop</button>
@@ -1140,7 +1154,7 @@
                             <!-- Target stint -->
                             <div class="text-center">
                                 <div class="text-[11px] text-gray-400 font-bold tracking-widest uppercase" data-i18n="targetStint" data-i18n-title="targetHint" title="Recommended time to pit, updated from the current pace.">TARGET</div>
-                                <div class="flex items-baseline justify-center gap-1">
+                                <div class="flex flex-wrap items-baseline justify-center gap-x-1">
                                     <span id="strategyTargetStint" class="text-xl font-bold text-white font-mono">--:--</span>
                                     <span id="strategyDelta" class="text-[11px] font-bold text-gray-400"></span>
                                 </div>
@@ -2323,6 +2337,7 @@
     <script src="js/i18n-phrases4.js?v=2"></script>
     <script src="js/i18n-phrases5.js?v=4"></script>
     <script src="js/i18n-themes.js?v=1"></script>
+    <script src="js/i18n-mobile.js?v=2"></script>
     <script src="js/auth.js?v=10"></script>
     <script src="js/network.js?v=13"></script>
     <script src="js/delegate.js?v=6"></script>
@@ -2338,5 +2353,6 @@
     <script src="js/setup-bar.js?v=13"></script>
     <script src="js/main.js?v=40"></script>
     <script src="js/live-extras.js?v=4"></script>
+    <script src="js/live-photo.js?v=1"></script>
 </body>
 </html>

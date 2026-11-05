@@ -4487,18 +4487,117 @@ body.co-admin-session #shareRaceBtn, body.co-admin-session #driverLinkBtn, body.
     #raceControlDock > #strategyGroup { order: 3; }
     #raceControlDock > #penaltyQueuePanel { order: 4; }
     #raceControlDock > #statsTableGroup { order: 5; }
+    /* Pit bar: a solid footer. Content scrolls up to its edge and never shows through it. */
     #raceControlDock > #pitActionGroup {
         order: 9;
         position: sticky;
-        bottom: calc(-1 * max(8px, env(safe-area-inset-bottom)));
-        z-index: 20;
+        bottom: 0;
+        z-index: 40;
         margin: auto 0 0 !important;
-        padding: 8px 8px max(10px, env(safe-area-inset-bottom));
-        background: linear-gradient(to bottom, rgba(2, 6, 23, 0), var(--navy-950, rgb(var(--n950))) 14px);
-        border-top: 0;
+        padding: 8px 10px max(10px, env(safe-area-inset-bottom));
+        background: rgb(var(--n950));
+        border-top: 1px solid rgb(var(--n700));
+        box-shadow: 0 -12px 18px -10px rgba(0, 0, 0, .65);
     }
     #pitEntryBtn { box-shadow: 0 6px 18px -6px rgba(220, 38, 38, .55); }
 }
+
+/* ==================== STINT CARD: long values never leave the card ==================== */
+#strategyTargetStint, #stintTimerDisplay {
+    font-size: clamp(16px, 5.4vw, 22px);
+    white-space: nowrap;
+    line-height: 1.15;
+}
+#strategyTargetStint { max-width: 100%; }
+#strategyDelta { white-space: nowrap; }
+
+/* ==================== PHONE / TABLET PORTRAIT: ONE SECTION AT A TIME ====================
+   Stint card + section tabs stay pinned on top, the pit bar stays pinned at the bottom, and the
+   middle shows exactly one section (Live / Plan / Drivers) with an animated switch -- so opening
+   the live-timing form or a long list never buries the rest of the screen. */
+.m-tabs { display: none; }
+@media (max-width: 1023px) and (orientation: portrait) {
+    #racePanelsWrapper { gap: 0 !important; padding-top: 0 !important; padding-bottom: 0 !important; }
+    #raceControlDock > div:first-child {
+        position: sticky; top: 0; z-index: 30;
+        margin-top: 6px; background: rgb(var(--n900));
+        box-shadow: 0 0 0 6px rgb(var(--n950));   /* hides content scrolling past the card's rounded corners */
+    }
+    .m-tabs {
+        display: flex; order: 2; position: sticky; top: var(--mt-card-h, 132px); z-index: 29;
+        margin: 6px 8px 0; padding: 4px; gap: 2px; border-radius: 14px;
+        background: rgb(var(--n900)); border: 1px solid rgb(var(--n700));
+        box-shadow: 0 8px 0 -2px rgb(var(--n950));
+        isolation: isolate;
+    }
+    .m-tabs-pill {
+        position: absolute; z-index: -1; top: 4px; bottom: 4px; left: 0; width: 0;
+        border-radius: 10px;
+        background: rgb(var(--accent-rgb) / .16); border: 1px solid rgb(var(--accent-rgb) / .55);
+        box-shadow: 0 0 14px -4px rgb(var(--accent-rgb) / .6);
+        transition: transform .38s cubic-bezier(.3, 1.25, .5, 1), width .38s cubic-bezier(.3, 1.25, .5, 1);
+    }
+    .m-tab {
+        position: relative; flex: 1 1 0; min-width: 0; min-height: 40px;
+        display: flex; align-items: center; justify-content: center; gap: 6px;
+        font-size: 13px; font-weight: 700; color: #94a3b8; border-radius: 10px;
+        transition: color .25s;
+    }
+    .m-tab i { font-size: 13px; transition: transform .35s cubic-bezier(.3, 1.4, .5, 1); }
+    .m-tab span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .m-tab.on { color: #fff; }
+    .m-tab.on i { transform: scale(1.18); color: rgb(var(--accent-rgb)); }
+    .m-tab-dot {
+        position: absolute; top: 6px; inset-inline-end: 10px; width: 9px; height: 9px; border-radius: 50%;
+        background: #f59e0b; box-shadow: 0 0 0 2px rgb(var(--n900));
+        animation: mtDot 1.4s ease-in-out infinite;
+    }
+    .m-tab-dot.hidden { display: none; }
+    @keyframes mtDot { 50% { transform: scale(1.35); } }
+
+    /* panels: only the active section is shown; the tab bar sits at order 2, sections after it */
+    #raceInfoPanel, #raceControlDock > #strategyGroup, #raceControlDock > #penaltyQueuePanel, #raceControlDock > #statsTableGroup {
+        margin-top: 10px; margin-bottom: 10px;
+    }
+    #raceInfoPanel { order: 3; }
+    /* the live widget's own z-index 100 would float it over the pinned card, tabs and pit bar */
+    #raceInfoPanel .lt-widget-wrapper { z-index: 1; }
+    #racePanelsWrapper[data-mtab="live"] #strategyGroup,
+    #racePanelsWrapper[data-mtab="live"] #penaltyQueuePanel,
+    #racePanelsWrapper[data-mtab="live"] #statsTableGroup,
+    #racePanelsWrapper[data-mtab="plan"] #raceInfoPanel,
+    #racePanelsWrapper[data-mtab="plan"] #statsTableGroup,
+    #racePanelsWrapper[data-mtab="drivers"] #raceInfoPanel,
+    #racePanelsWrapper[data-mtab="drivers"] #strategyGroup,
+    #racePanelsWrapper[data-mtab="drivers"] #penaltyQueuePanel { display: none !important; }
+
+    #racePanelsWrapper[data-mtab="live"] #raceInfoPanel,
+    #racePanelsWrapper[data-mtab="plan"] #strategyGroup,
+    #racePanelsWrapper[data-mtab="plan"] #penaltyQueuePanel,
+    #racePanelsWrapper[data-mtab="drivers"] #statsTableGroup {
+        animation: mtIn .42s cubic-bezier(.2, .85, .25, 1) both;
+    }
+    #racePanelsWrapper[data-mtab="plan"] #penaltyQueuePanel { animation-delay: .05s; }
+    @keyframes mtIn {
+        from { opacity: 0; transform: translateX(var(--mt-dx, 28px)) scale(.985); filter: blur(2px); }
+        to   { opacity: 1; transform: none; filter: none; }
+    }
+    /* rows inside the section rise in one after another */
+    #racePanelsWrapper[data-mtab="drivers"] #statsTable > tr { animation: mtRow .4s cubic-bezier(.2, .85, .25, 1) both; }
+    #racePanelsWrapper[data-mtab="drivers"] #statsTable > tr:nth-child(2) { animation-delay: .04s; }
+    #racePanelsWrapper[data-mtab="drivers"] #statsTable > tr:nth-child(3) { animation-delay: .08s; }
+    #racePanelsWrapper[data-mtab="drivers"] #statsTable > tr:nth-child(4) { animation-delay: .12s; }
+    #racePanelsWrapper[data-mtab="drivers"] #statsTable > tr:nth-child(n+5) { animation-delay: .16s; }
+    @keyframes mtRow { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+}
+@media (prefers-reduced-motion: reduce) {
+    .m-tabs-pill, .m-tab, .m-tab i { transition: none !important; }
+    #racePanelsWrapper[data-mtab] :is(#raceInfoPanel, #strategyGroup, #penaltyQueuePanel, #statsTableGroup),
+    #racePanelsWrapper #statsTable > tr, .m-tab-dot { animation: none !important; }
+}
+
+/* The appearance picker must sit above the live-timing widget (z-index 100) and the other overlays */
+#themePanel { z-index: 160 !important; }
 
 /* Live-timing toolbar: real touch targets on phones and tablets */
 @media (pointer: coarse) and (max-width: 1023px) {
@@ -4526,3 +4625,7 @@ body.co-admin-session #shareRaceBtn, body.co-admin-session #driverLinkBtn, body.
 body.co-admin-session #pitModal #notifyBtn,
 body.co-admin-session #pitModal #notifiedMsg,
 body.co-admin-session #pitModal #extraPitToggleRow { display: none !important; }
+
+/* Live timing from photos (no timing link) */
+.no-live-photo { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px dashed rgb(var(--n700)); }
+.no-live-photo .no-live-btn { display: inline-flex; align-items: center; gap: 8px; }
